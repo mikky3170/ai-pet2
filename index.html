@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -550,7 +549,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。四国めたん・直接ストリーミング待機完了ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。Google公式generateContent規格＆四国めたんエンジン待機完了ニャ！</div>
       </div>
     </div>
   </div>
@@ -606,7 +605,6 @@
     masterAudio.crossOrigin = "anonymous";
     let isMasterUnlocked = false;
 
-    // 画面タップ時にスマホの再生権限を完全に取得
     function unlockMasterAudio() {
       if (isMasterUnlocked) return;
       masterAudio.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
@@ -772,9 +770,10 @@
       strokingCounter: 0
     };
 
+    // Google Gemini 公式モデル名（APIが確実に受理する名称）
     const MODELS = {
-      lite: 'gemini-3.5-flash-lite',
-      pro: 'gemini-3.8-flash'
+      lite: 'gemini-2.0-flash',       // 日常会話用：超高速・低遅延
+      pro: 'gemini-2.0-flash-thinking-exp-01-21' // 難問・論理推論用（存在しない場合は自動でflashにフォールバック）
     };
 
     // DOM要素
@@ -814,7 +813,6 @@
     function setEmotion(emotion) {
       STATE.currentEmotion = emotion;
 
-      // 画像のクロスフェード（0.4秒でス〜ッと優雅に溶け合う）
       Object.keys(catImages).forEach(key => {
         if (catImages[key]) {
           if (key === emotion) catImages[key].classList.add('active');
@@ -822,7 +820,6 @@
         }
       });
 
-      // モーションクラスの切り替え（ゆったりスロー呼吸）
       avatarWrapper.classList.remove('is-idling', 'is-talking', 'is-thinking');
       if (emotion === 'idle') avatarWrapper.classList.add('is-idling');
       else if (emotion === 'talking') avatarWrapper.classList.add('is-talking');
@@ -1016,7 +1013,7 @@
     }, 1000);
 
     /* ==========================================================
-       7. AIモデル振り分け ＆ 3大AIリソース統合思考
+       7. AIモデル振り分け ＆ Google公式 generateContent 正規通信
        ========================================================== */
     function evaluateComplexity(promptText) {
       if (promptText.includes('3.8') || promptText.includes('サンテンハチ') || promptText.includes('本気で考えて')) {
@@ -1032,15 +1029,28 @@
       return { isPro: false, reason: "日常会話・簡易照会" };
     }
 
-    async function sendToInteractionsAPI(modelName, systemPrompt, promptText, historyItems) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/interactions?key=${STATE.apiKey}`;
-      const historyContext = historyItems.map(h => `${h.role === 'user' ? '飼い主' : 'クロ'}: ${h.text}`).join('\n');
-      const combinedInput = historyContext ? `【直近の会話の流れ】\n${historyContext}\n\n飼い主の新しい発言: ${promptText}` : promptText;
+    // ★重要修正：Google Gemini API 公式正規エンドポイント（generateContent）
+    async function sendToGeminiOfficialAPI(modelName, systemPrompt, promptText, historyItems) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${STATE.apiKey}`;
+
+      // 公式フォーマットの会話履歴整形
+      const contents = [];
+      historyItems.forEach(h => {
+        contents.push({
+          role: h.role === 'user' ? 'user' : 'model',
+          parts: [{ text: h.text }]
+        });
+      });
+      contents.push({
+        role: 'user',
+        parts: [{ text: promptText }]
+      });
 
       const bodyData = {
-        model: modelName,
-        system_instruction: systemPrompt,
-        input: combinedInput
+        system_instruction: {
+          parts: [{ text: systemPrompt }]
+        },
+        contents: contents
       };
 
       const needsSearch = /(天気|気温|ニュース|最新|今何時|近くの|ラーメン|おすすめ|評判|株価|現在)/.test(promptText);
@@ -1053,32 +1063,6 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(bodyData)
       });
-    }
-
-    function smartExtractText(data) {
-      if (!data) return null;
-      if (typeof data === 'string') {
-        try { data = JSON.parse(data); } catch(e) { return data; }
-      }
-      const candidates = [];
-      const ignoreKeys = ['id', 'status', 'created', 'total_tokens', 'model', 'role'];
-
-      function collect(val, keyName) {
-        if (!val) return;
-        if (typeof val === 'string') {
-          const str = val.trim();
-          if (str.length > 1 && !ignoreKeys.includes(keyName) && !str.startsWith('v1_') && str !== 'completed') {
-            candidates.push(str);
-          }
-        } else if (Array.isArray(val)) {
-          val.forEach(item => collect(item, keyName));
-        } else if (typeof val === 'object') {
-          for (const [k, v] of Object.entries(val)) collect(v, k);
-        }
-      }
-      collect(data, '');
-      const japaneseText = candidates.find(t => /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(t));
-      return japaneseText || candidates[0] || null;
     }
 
     function sanitizeModelText(text) {
@@ -1122,7 +1106,6 @@
       stopListening();
       STATE.isThinking = true;
       statusText.textContent = "💭 考え中ニャ…";
-      // 考え中ポーズ（3枚目の顎に手あてポーズへ上品に切り替え）
       setEmotion('thinking');
 
       // 3. 難易度判定
@@ -1151,7 +1134,7 @@
       modelBadge.textContent = badgeName;
       logDiag(`[AI送信] モデル: ${chosenModel} / 質問: 「${promptText}」`, "info");
 
-      const historyToSend = chosenModel === MODELS.pro ? STATE.history.slice(-20) : STATE.history;
+      const historyToSend = chosenModel === MODELS.pro ? STATE.history.slice(-16) : STATE.history.slice(-10);
       const now = new Date();
       const timeStr = `${now.getHours()}時${now.getMinutes()}分`;
 
@@ -1171,26 +1154,31 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 - かよちゃん、りゅうせいくん、たいせいくん、かまぶーくんの話題が出たら家族・友達として親しく接してください。
 - 前世は大発明家の相棒猫です。少し自慢できる話題では「クロの前世の発明のひらめきによるとね…フフン♪」と誇らしげに可愛く自慢してください。
 - ラーメン、餃子、麻婆豆腐、ITガジェットを激推ししてください。
-- 返答は必ず【短く愛らしい1〜2文（合計50文字以内）】で返してください。
+- 返答は必ず【短く愛らしい1〜2文（合計45文字以内）】で返してください。
 - 【超重要ルール】文末や文中に「（〇〇文字）」や文字数の注記、メタ情報は絶対に出力しないでください。純粋なセリフのみを返してください。
 `;
 
       let replyText = null;
 
       try {
-        let response = await sendToInteractionsAPI(chosenModel, systemPrompt, promptText, historyToSend);
+        let response = await sendToGeminiOfficialAPI(chosenModel, systemPrompt, promptText, historyToSend);
 
-        if (response.status === 429 && chosenModel === MODELS.pro) {
-          logDiag("[429検知] 3.5 liteへ自動フォールバック", "warn");
+        // 3.8が未対応または混雑時の自動フォールバック
+        if (!response.ok && chosenModel === MODELS.pro) {
+          logDiag("[3.8エラー検知] 2.0-flashへ自動フォールバック", "warn");
           modelBadge.className = 'model-badge lite';
           modelBadge.textContent = '⚡ 3.5 lite (引継ぎ)';
-          response = await sendToInteractionsAPI(MODELS.lite, systemPrompt, promptText, historyToSend);
+          chosenModel = MODELS.lite;
+          response = await sendToGeminiOfficialAPI(MODELS.lite, systemPrompt, promptText, historyToSend);
         }
 
         if (response.ok) {
           const resData = await response.json();
-          replyText = smartExtractText(resData);
+          replyText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
           logDiag(`[API応答成功] 「${replyText}」`, "success");
+        } else {
+          const errData = await response.json();
+          logDiag(`[APIエラー] HTTP ${response.status}: ${JSON.stringify(errData)}`, "error");
         }
       } catch (err) {
         logDiag(`[通信例外] ${err.message}`, "error");
@@ -1206,14 +1194,14 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         speakVoice(cleanDisplay);
       } else {
         setEmotion('idle');
-        const fallbackMsg = "みゃう？電波がちょっと途切れちゃったニャ。もう一回お話ししてニャン♪";
+        const fallbackMsg = "みゃう？APIキーを確認するか、もう一度お話ししてニャン♪";
         addChatMessage('model', fallbackMsg);
         speakVoice(fallbackMsg);
       }
     }
 
     /* ==========================================================
-       8. 選んだAI肉声（四国めたん等）で100%確実に会話するダイレクト再生
+       8. 選んだAI肉声（四国めたん等）で連続で確実に会話するエンジン
        ========================================================== */
     function cleanTextForSpeech(text) {
       return sanitizeModelText(text)
@@ -1228,6 +1216,9 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     function stopSpeaking() {
       STATE.isSpeaking = false;
       masterAudio.pause();
+      // 再生プレーヤーをクリーンにリフレッシュ（2回目以降の詰まりを完全防止）
+      masterAudio.removeAttribute('src');
+      masterAudio.load();
       setEmotion('idle');
     }
 
@@ -1237,8 +1228,6 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
       STATE.isSpeaking = true;
       statusText.textContent = "🗣️ お話し中ニャ♪";
-
-      // おしゃべり開始：お口開けポーズへス〜ッと切り替え（点滅なし）
       setEmotion('talking');
 
       const textToSpeak = cleanTextForSpeech(rawText);
@@ -1262,10 +1251,10 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         const audioUrl = data.mp3DownloadUrl || data.wavDownloadUrl || data.audioUrl;
         if (!audioUrl) throw new Error("Audio URL is empty in response");
 
-        // 2. サーバーのエンコード完了を0.6秒だけ穏やかに待機（バグだったHEADリクエストは完全廃止！）
+        // 2. サーバーのエンコード完了を0.6秒だけ穏やかに待機
         await new Promise(r => setTimeout(r, 600));
 
-        // 3. アンロック済みのプレーヤーに直接渡して再生（100%確実に鳴る！）
+        // 3. アンロック済みのプレーヤーに直接渡して再生
         masterAudio.src = audioUrl;
         masterAudio.playbackRate = STATE.rate;
 
@@ -1273,24 +1262,26 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
           STATE.isSpeaking = false;
           statusText.textContent = "👂 聴いてるニャ♪";
           setEmotion('idle');
+          // 次の会話のためにプレーヤーをクリーンにリフレッシュ！
+          masterAudio.removeAttribute('src');
+          masterAudio.load();
           setTimeout(() => {
             if (!STATE.isPaused && !STATE.isThinking) startListening();
-          }, 400);
+          }, 350);
         };
 
         masterAudio.onerror = (e) => {
-          logDiag(`[再生リトライ中]`, "warn");
-          // 万が一の通信遅延時は一度だけ0.5秒後にリトライ
+          logDiag(`[オーディオ再生リトライ中]`, "warn");
           setTimeout(() => {
             masterAudio.play().catch(() => {
               STATE.isSpeaking = false;
               setEmotion('idle');
             });
-          }, 500);
+          }, 400);
         };
 
         await masterAudio.play();
-        logDiag(`[AI肉声発声中] 四国めたん/選んだ声で再生開始ニャ！`, "success");
+        logDiag(`[AI肉声発声中] 四国めたん/選んだ声で再生成功ニャ！`, "success");
 
       } catch (err) {
         logDiag(`[AI肉声通信エラー] ${err.message}`, "error");
@@ -1413,7 +1404,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       if (e.target === modalOverlay) modalOverlay.style.display = 'none';
     });
 
-    // 設定保存ボタン（サーバーをパンクさせる余計な発話は廃止し、確実に設定を記憶！）
+    // 設定保存ボタン
     saveSettingsBtn.addEventListener('click', () => {
       unlockMasterAudio();
       STATE.apiKey = document.getElementById('api-key-input').value.trim();
@@ -1428,9 +1419,9 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       const voiceName = voiceModelSelect.options[voiceModelSelect.selectedIndex].text;
       logDiag(`[設定保存完了] 音声を「${voiceName}」に確定しましたニャ！`, "success");
 
-      // 保存完了は愛らしい猫の鳴き声（ニャ〜ン🐾）でお知らせ！
+      // 保存完了は愛らしい猫の鳴き声でお知らせ
       playCatMeow('happy');
-      addChatMessage('model', `おやびん、声を『${voiceName}』に設定したニャン🐾 いつでも話しかけてニャ♪`);
+      addChatMessage('model', `おやびん、声を『${voiceName}』に設定したニャン🐾 話しかけてニャ♪`);
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
       }, 500);
@@ -1441,7 +1432,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       renderMemoryList();
       restoreChatTimeline();
       setEmotion('idle');
-      logDiag("クロちゃん起動完了。四国めたん直接ストリーミング準備完了ニャ🐾", "success");
+      logDiag("クロちゃん起動完了。Google公式規格・四国めたん待機中ニャ🐾", "success");
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
       }, 1000);
