@@ -140,7 +140,7 @@
       border-bottom-left-radius: 4px;
     }
 
-    /* 3. クロちゃん本体（四角い枠ゼロ・輪っか完全撤廃・クリーンステージ） */
+    /* 3. クロちゃん本体（四角い枠ゼロ・クリーン＆上品アニメーションステージ） */
     .pet-avatar-wrapper {
       position: relative;
       flex-shrink: 0;
@@ -155,7 +155,7 @@
       margin-bottom: -18px; /* 黒い操作台座に接地 */
     }
 
-    /* 猫ちゃんのアニメーションコンテナ（漫画風のオモチャのような跳ね・回転は完全排除） */
+    /* 猫ちゃんのアニメーションコンテナ */
     #cat-stage-box {
       position: relative;
       width: 100%;
@@ -165,17 +165,41 @@
       justify-content: center;
       align-items: flex-end;
       transform-origin: bottom center;
-      /* 静かに息をする本物の猫の穏やかな呼吸ループ */
-      animation: catCalmBreathe 4.5s ease-in-out infinite;
-      transition: transform 0.3s ease-out;
+      transition: transform 0.4s ease-out;
     }
 
-    @keyframes catCalmBreathe {
-      0%, 100% { transform: scale(1, 1) translateY(0); }
-      50% { transform: scale(1.018, 0.985) translateY(-3px); }
+    /* 待機中：4.8秒かけてゆったり深呼吸 ＆ 穏やかな首かしげ（ゆっくり・自然な動き） */
+    .pet-avatar-wrapper.is-idling #cat-stage-box {
+      animation: catSlowCalmBreathe 4.8s ease-in-out infinite;
     }
 
-    /* 4枚のJPEG画像（GitHubから直接読み込み・0.35秒でフワッと自然に切り替え） */
+    @keyframes catSlowCalmBreathe {
+      0%, 100% { transform: scale(1, 1) translateY(0) rotate(0deg); }
+      30% { transform: scale(1.018, 0.985) translateY(-4px) rotate(-1.5deg); }
+      70% { transform: scale(1.018, 0.985) translateY(-4px) rotate(1.5deg); }
+    }
+
+    /* お話し中：点滅は絶対にせず、お口開けポーズのまま1.3秒周期で優しくふわりふわりと息づく */
+    .pet-avatar-wrapper.is-talking #cat-stage-box {
+      animation: catGentleTalkBreath 1.3s ease-in-out infinite alternate;
+    }
+
+    @keyframes catGentleTalkBreath {
+      0% { transform: translateY(0) scale(1); }
+      100% { transform: translateY(-5px) scale(1.02); }
+    }
+
+    /* 考え中：2.6秒周期でゆっくり思索するように傾く */
+    .pet-avatar-wrapper.is-thinking #cat-stage-box {
+      animation: catSlowThinking 2.6s ease-in-out infinite alternate;
+    }
+
+    @keyframes catSlowThinking {
+      0% { transform: scale(1) rotate(-3deg); }
+      100% { transform: scale(1.015) rotate(3deg); }
+    }
+
+    /* 4枚のJPEG画像（GitHubから直接読み込み・0.4秒でス〜ッと優雅に溶け合うクロスフェード） */
     .cat-avatar-img {
       position: absolute;
       bottom: 0;
@@ -186,7 +210,7 @@
       opacity: 0;
       pointer-events: none;
       transform-origin: bottom center;
-      transition: opacity 0.35s ease-in-out;
+      transition: opacity 0.4s ease-in-out;
       background: transparent !important;
     }
 
@@ -230,7 +254,7 @@
       100% { opacity: 0; transform: translate(var(--rx), -100px) scale(1.4); }
     }
 
-    /* 4. 最下部操作バー（輪っかの代わりにボタンが上品にグリーン呼吸発光） */
+    /* 4. 最下部操作バー */
     .bottom-controls {
       width: 100%;
       flex-shrink: 0;
@@ -252,7 +276,7 @@
       transition: box-shadow 0.3s;
     }
 
-    /* 音声認識待機中：台座全体が上品にグリーン発光（四角い写真と一切被らない！） */
+    /* 音声認識待機中：台座全体が上品にグリーン発光 */
     .is-listening .action-bar {
       box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 18px rgba(34, 197, 94, 0.6), 0 0 0 1px rgba(74, 222, 128, 0.4) inset;
     }
@@ -412,31 +436,6 @@
       outline: none;
     }
 
-    /* 🔊 声色プリセットボタン（Androidで1つしか出なくても可愛い声に即変身） */
-    .voice-presets {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 6px;
-      margin-bottom: 8px;
-    }
-    .btn-preset {
-      padding: 7px 4px;
-      background: #f8fafc;
-      border: 1.5px solid #cbd5e1;
-      border-radius: 10px;
-      font-size: 11px;
-      font-weight: bold;
-      color: #334155;
-      cursor: pointer;
-      text-align: center;
-      transition: all 0.15s;
-    }
-    .btn-preset.active {
-      background: #fdf2f8;
-      border-color: #f472b6;
-      color: #be185d;
-    }
-
     .voice-select-row {
       display: flex;
       gap: 8px;
@@ -516,13 +515,12 @@
       </div>
     </div>
 
-    <!-- 3. 中央〜下部：クロちゃん本体（GitHubのJPEG直結・邪魔な輪っかゼロ） -->
-    <div class="pet-avatar-wrapper" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
+    <!-- 3. 中央〜下部：クロちゃん本体（四角い枠ゼロ・ゆっくり優しく動く上品ステージ） -->
+    <div class="pet-avatar-wrapper is-idling" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
       <div class="cat-ground-shadow"></div>
 
-      <!-- アニメーションステージ（穏やかな呼吸） -->
+      <!-- アニメーションステージ（ゆったりとしたスロー呼吸） -->
       <div id="cat-stage-box">
-        <!-- GitHub上のJPEGファイルを直接指定 -->
         <img src="idle.jpg" alt="待機中" class="cat-avatar-img active" id="img-idle">
         <img src="talking.jpg" alt="お話し中" class="cat-avatar-img" id="img-talking">
         <img src="thinking.jpg" alt="考え中" class="cat-avatar-img" id="img-thinking">
@@ -538,7 +536,7 @@
           <span id="pause-text">会話中（話しかけてニャ）</span>
         </button>
 
-        <button class="btn-circle" id="settings-btn" title="記憶帳・声・設定">⚙️</button>
+        <button class="btn-circle" id="settings-btn" title="声の選択・設定・記憶">⚙️</button>
         <button class="btn-circle" id="toggle-diag-btn" title="診断モニタを表示">🩺</button>
       </div>
     </div>
@@ -552,7 +550,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。GitHub JPEG直結・輪っか完全撤廃モード完了ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。スローモーション＆Android高品質AI肉声モード準備完了ニャ！</div>
       </div>
     </div>
   </div>
@@ -560,7 +558,7 @@
   <!-- 6. 設定 ＆ 記憶帳モーダル -->
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal-card">
-      <h3>⚙️ クロちゃんの設定・記憶</h3>
+      <h3>⚙️ クロちゃんの設定・音声・記憶</h3>
       
       <div class="form-group">
         <label>Google Gemini API Key:</label>
@@ -577,31 +575,23 @@
         </div>
       </div>
 
-      <!-- 🔊 音声設定 ＆ 声色プリセット -->
+      <!-- 🔊 PC大好評のAI肉声（Android完全解禁） -->
       <div class="form-group">
-        <label>クロの声のトーン（Android対応ワンタップ切替）:</label>
-        <div class="voice-presets">
-          <div class="btn-preset active" data-pitch="1.30" data-rate="1.06">🌸 女の子</div>
-          <div class="btn-preset" data-pitch="1.48" data-rate="1.08">🐱 子猫・甘え</div>
-          <div class="btn-preset" data-pitch="1.10" data-rate="1.00">🎀 落ち着き</div>
-        </div>
-
+        <label>クロのAI肉声ボイス（PC・Android両対応）:</label>
         <div class="voice-select-row">
-          <select id="voice-select">
-            <option value="">端末の音声を読み込み中ニャ…</option>
+          <select id="voice-model-select">
+            <option value="zundamon-ama">🐱 ずんだもん（あまあま・超キュート子猫声）</option>
+            <option value="metan-ama">🌸 四国めたん（あまあま少女声）</option>
+            <option value="tsumugi">✨ 春日部つむぎ（元気でおしゃまな女の子）</option>
+            <option value="zundamon-norm">🎀 ずんだもん（ノーマル少女声）</option>
           </select>
           <button type="button" class="btn-test-voice" id="test-voice-btn">🔊 試聴</button>
         </div>
       </div>
 
       <div class="form-group">
-        <label>声の高さ（微調整）: <span id="pitch-val">1.30</span></label>
-        <input type="range" id="voice-pitch" min="0.8" max="1.6" step="0.02" value="1.30">
-      </div>
-
-      <div class="form-group">
-        <label>話すスピード: <span id="rate-val">1.06</span></label>
-        <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.02" value="1.06">
+        <label>話すスピード: <span id="rate-val">1.05</span></label>
+        <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.05" value="1.05">
       </div>
 
       <button class="btn-save" id="save-settings-btn">設定と記憶を保存するニャン♪</button>
@@ -610,10 +600,11 @@
 
   <script>
     /* ==========================================================
-       1. 音響エンジン（鳴き声＆喉鳴らし）
+       ★ Androidスマホの音声ブロック完全解除（Autoplay Unlock）
        ========================================================== */
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
+    let isAudioUnlocked = false;
 
     function getAudioContext() {
       if (!audioCtx && AudioContextClass) audioCtx = new AudioContextClass();
@@ -621,6 +612,30 @@
       return audioCtx;
     }
 
+    // Androidスマホで非同期AI音声を確実に鳴らすためのアンロック
+    function unlockAndroidAudio() {
+      if (isAudioUnlocked) return;
+      const ctx = getAudioContext();
+      if (ctx) {
+        // 無音のオシレーターを一瞬鳴らしてAndroidの制限を解除
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        gain.gain.value = 0.001;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(0);
+        osc.stop(0.01);
+      }
+      isAudioUnlocked = true;
+      logDiag("[Audio] Androidスマホの音声ロックを解除完了ニャ！", "info");
+    }
+
+    window.addEventListener('pointerdown', unlockAndroidAudio, { once: true });
+    window.addEventListener('touchstart', unlockAndroidAudio, { once: true });
+
+    /* ==========================================================
+       1. 音響エンジン（鳴き声＆喉鳴らし）
+       ========================================================== */
     function playCatMeow(type = 'normal') {
       const ctx = getAudioContext();
       if (!ctx) return;
@@ -748,9 +763,8 @@
 
     const STATE = {
       apiKey: localStorage.getItem('kuro_api_key') || '',
-      selectedVoiceURI: localStorage.getItem('kuro_voice_uri') || '',
-      pitch: parseFloat(localStorage.getItem('kuro_pitch') || '1.30'),
-      rate: parseFloat(localStorage.getItem('kuro_rate') || '1.06'),
+      voiceModel: localStorage.getItem('kuro_voice_model') || 'zundamon-ama',
+      rate: parseFloat(localStorage.getItem('kuro_rate') || '1.05'),
       proUsedToday: savedCount,
       maxHistoryPairs: 30,
       memories: loadedMemories,
@@ -761,7 +775,8 @@
       isThinking: false,
       isSpeaking: false,
       currentEmotion: 'idle',
-      strokingCounter: 0
+      strokingCounter: 0,
+      currentAudio: null
     };
 
     const MODELS = {
@@ -781,13 +796,10 @@
     const modelBadge = document.getElementById('model-badge');
     const proCounterDisplay = document.getElementById('pro-counter-display');
     const avatarWrapper = document.getElementById('avatar-wrapper');
-    const actionBar = document.getElementById('action-bar');
     const modalOverlay = document.getElementById('modal-overlay');
     const saveSettingsBtn = document.getElementById('save-settings-btn');
-    const voiceSelect = document.getElementById('voice-select');
+    const voiceModelSelect = document.getElementById('voice-model-select');
     const testVoiceBtn = document.getElementById('test-voice-btn');
-    const voicePitch = document.getElementById('voice-pitch');
-    const pitchVal = document.getElementById('pitch-val');
     const voiceRate = document.getElementById('voice-rate');
     const rateVal = document.getElementById('rate-val');
     const diagPanel = document.getElementById('diag-panel');
@@ -796,7 +808,6 @@
     const memoryListContainer = document.getElementById('memory-list-container');
     const newMemoryInput = document.getElementById('new-memory-input');
     const addMemoryBtn = document.getElementById('add-memory-btn');
-    const voicePresets = document.querySelectorAll('.btn-preset');
 
     // 4枚のJPEG画像要素
     const catImages = {
@@ -806,15 +817,23 @@
       happy: document.getElementById('img-happy')
     };
 
-    // 表情のフワッとした自然な切り替え
+    // 表情＆アクションの滑らかな設定（激しい点滅は完全ゼロ）
     function setEmotion(emotion) {
       STATE.currentEmotion = emotion;
+
+      // 1. 画像のクロスフェード（0.4秒でス〜ッと優雅に溶け合う）
       Object.keys(catImages).forEach(key => {
         if (catImages[key]) {
           if (key === emotion) catImages[key].classList.add('active');
           else catImages[key].classList.remove('active');
         }
       });
+
+      // 2. モーションクラスの切り替え（ゆったりスローモーション）
+      avatarWrapper.classList.remove('is-idling', 'is-talking', 'is-thinking');
+      if (emotion === 'idle') avatarWrapper.classList.add('is-idling');
+      else if (emotion === 'talking') avatarWrapper.classList.add('is-talking');
+      else if (emotion === 'thinking') avatarWrapper.classList.add('is-thinking');
     }
 
     function updateProCounterDisplay() {
@@ -962,6 +981,7 @@
        6. なでなで・時計
        ========================================================== */
     avatarWrapper.addEventListener('click', (e) => {
+      unlockAndroidAudio();
       if (STATE.isPaused) { togglePause(); return; }
 
       const rect = avatarWrapper.getBoundingClientRect();
@@ -1200,67 +1220,8 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       8. Android対応・確実な音声合成 ＆ 声色プリセット
+       8. PC大好評のAI肉声エンジン（Android完全解禁・クリア再生）
        ========================================================== */
-    let availableVoices = [];
-
-    function populateVoiceList() {
-      if (!('speechSynthesis' in window)) return;
-      const allVoices = window.speechSynthesis.getVoices();
-      if (!allVoices || allVoices.length === 0) return;
-
-      availableVoices = allVoices.filter(v => v.lang.includes('ja') || v.lang.includes('JP'));
-      if (availableVoices.length === 0) availableVoices = allVoices;
-
-      voiceSelect.innerHTML = '';
-      availableVoices.forEach((voice) => {
-        const option = document.createElement('option');
-        option.value = voice.voiceURI;
-        option.textContent = `🌸 ${voice.name}`;
-        if (voice.voiceURI === STATE.selectedVoiceURI) option.selected = true;
-        voiceSelect.appendChild(option);
-      });
-
-      if (!STATE.selectedVoiceURI && availableVoices.length > 0) {
-        STATE.selectedVoiceURI = availableVoices[0].voiceURI;
-        voiceSelect.value = STATE.selectedVoiceURI;
-      }
-    }
-
-    if ('speechSynthesis' in window) {
-      populateVoiceList();
-      window.speechSynthesis.onvoiceschanged = populateVoiceList;
-      setTimeout(populateVoiceList, 300);
-      setTimeout(populateVoiceList, 800);
-    }
-
-    function getSelectedVoice() {
-      const currentURI = voiceSelect.value || STATE.selectedVoiceURI;
-      if (currentURI && availableVoices.length > 0) {
-        const found = availableVoices.find(v => v.voiceURI === currentURI);
-        if (found) return found;
-      }
-      return availableVoices[0] || null;
-    }
-
-    // プリセットボタン選択
-    voicePresets.forEach(btn => {
-      btn.addEventListener('click', () => {
-        voicePresets.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const p = parseFloat(btn.dataset.pitch);
-        const r = parseFloat(btn.dataset.rate);
-        voicePitch.value = p;
-        pitchVal.textContent = p.toFixed(2);
-        voiceRate.value = r;
-        rateVal.textContent = r.toFixed(2);
-        STATE.pitch = p;
-        STATE.rate = r;
-        playCatMeow('happy');
-        speakVoice("おやびん、この声だニャン🐾");
-      });
-    });
-
     function cleanTextForSpeech(text) {
       return sanitizeModelText(text)
         .replace(/```[\s\S]*?```/g, '')
@@ -1273,42 +1234,92 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
     function stopSpeaking() {
       STATE.isSpeaking = false;
+      if (STATE.currentAudio) {
+        STATE.currentAudio.pause();
+        STATE.currentAudio = null;
+      }
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
       setEmotion('idle');
     }
 
-    function speakVoice(rawText) {
-      if (!('speechSynthesis' in window)) return;
+    async function speakVoice(rawText) {
       stopSpeaking();
+      unlockAndroidAudio();
 
       STATE.isSpeaking = true;
       statusText.textContent = "🗣️ お話し中ニャ♪";
 
-      // おしゃべり開始：お口開けポーズへ上品に切り替え
+      // おしゃべり開始：お口開けポーズへス〜ッと切り替え（点滅なし）
       setEmotion('talking');
 
       const textToSpeak = cleanTextForSpeech(rawText);
-      logDiag(`[音声読み上げ] 「${textToSpeak}」`, "info");
+      logDiag(`[AI肉声開始] モデル: ${STATE.voiceModel} / 「${textToSpeak}」`, "info");
 
-      const uttr = new SpeechSynthesisUtterance(textToSpeak + "……。");
+      // スピーカーID決定（ずんだもん あまあま: 3, 四国めたん あまあま: 0, つむぎ: 8, ずんだもん ノーマル: 1）
+      let speakerId = 3;
+      if (STATE.voiceModel === 'metan-ama') speakerId = 0;
+      else if (STATE.voiceModel === 'tsumugi') speakerId = 8;
+      else if (STATE.voiceModel === 'zundamon-norm') speakerId = 1;
+
+      try {
+        const encodedText = encodeURIComponent(textToSpeak);
+        const directApiUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=${speakerId}`;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6500);
+
+        const res = await fetch(directApiUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
+
+        const data = await res.json();
+        const audioUrl = data.mp3DownloadUrl || data.wavDownloadUrl || data.audioUrl;
+        if (!audioUrl) throw new Error("Audio URL is empty in response");
+
+        const audio = new Audio();
+        audio.crossOrigin = "anonymous";
+        audio.src = audioUrl;
+        audio.playbackRate = STATE.rate;
+        STATE.currentAudio = audio;
+
+        audio.onended = () => {
+          STATE.isSpeaking = false;
+          statusText.textContent = "👂 聴いてるニャ♪";
+          // おしゃべり終了：フワッとお座り待機ポーズに戻る
+          setEmotion('idle');
+          setTimeout(() => {
+            if (!STATE.isPaused && !STATE.isThinking) startListening();
+          }, 400);
+        };
+
+        audio.onerror = () => {
+          logDiag("[AI肉声エラー] 端末TTSで安全代行", "warn");
+          speakBrowserTTSFallback(textToSpeak);
+        };
+
+        await audio.play();
+        logDiag(`[AI肉声再生中] Android・PCでクリアに発声成功ニャ！`, "success");
+      } catch (err) {
+        logDiag(`[通信注意: ${err.message}] 端末TTSで安全代行`, "warn");
+        speakBrowserTTSFallback(textToSpeak);
+      }
+    }
+
+    // 音割れのない自然な端末TTSフォールバック
+    function speakBrowserTTSFallback(textToSpeak) {
+      if (!('speechSynthesis' in window)) {
+        STATE.isSpeaking = false;
+        return;
+      }
+      window.speechSynthesis.cancel();
+
+      const uttr = new SpeechSynthesisUtterance(textToSpeak);
       uttr.lang = 'ja-JP';
-      uttr.pitch = STATE.pitch;
+      uttr.pitch = 1.15; // 音割れしない自然な高さ
       uttr.rate = STATE.rate;
 
-      const chosenVoice = getSelectedVoice();
-      if (chosenVoice) uttr.voice = chosenVoice;
-
-      uttr.onend = () => {
-        STATE.isSpeaking = false;
-        statusText.textContent = "👂 聴いてるニャ♪";
-        // おしゃべり終了：フワッとお座り待機ポーズに戻る
-        setEmotion('idle');
-        setTimeout(() => {
-          if (!STATE.isPaused && !STATE.isThinking) startListening();
-        }, 400);
-      };
-
-      uttr.onerror = () => {
+      uttr.onend = uttr.onerror = () => {
         STATE.isSpeaking = false;
         statusText.textContent = "👂 聴いてるニャ♪";
         setEmotion('idle');
@@ -1322,11 +1333,12 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
     // 🔊 試聴ボタン
     testVoiceBtn.addEventListener('click', () => {
-      populateVoiceList();
-      STATE.selectedVoiceURI = voiceSelect.value;
-      STATE.pitch = parseFloat(voicePitch.value);
+      unlockAndroidAudio();
+      STATE.voiceModel = voiceModelSelect.value;
       STATE.rate = parseFloat(voiceRate.value);
       playCatMeow('happy');
+      const voiceName = voiceModelSelect.options[voiceModelSelect.selectedIndex].text;
+      logDiag(`[試聴テスト開始] ${voiceName}`, "info");
       speakVoice("おやびん！クロの声はこれだニャン🐾 聞き取りやすいかニャ？");
     });
 
@@ -1343,7 +1355,6 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
       recognition.onstart = () => {
         STATE.isListening = true;
-        // 邪魔な輪っかではなく、操作台座が上品にグリーン発光
         document.body.classList.add('is-listening');
         statusText.textContent = "👂 聴いてるニャ♪";
       };
@@ -1385,6 +1396,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     function togglePause() {
+      unlockAndroidAudio();
       STATE.isPaused = !STATE.isPaused;
       if (STATE.isPaused) {
         pauseBtn.classList.add('is-paused');
@@ -1411,19 +1423,14 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
        ========================================================== */
     pauseBtn.addEventListener('click', togglePause);
 
-    voicePitch.addEventListener('input', (e) => {
-      pitchVal.textContent = parseFloat(e.target.value).toFixed(2);
-    });
     voiceRate.addEventListener('input', (e) => {
       rateVal.textContent = parseFloat(e.target.value).toFixed(2);
     });
 
     settingsBtn.addEventListener('click', () => {
-      populateVoiceList();
+      unlockAndroidAudio();
       document.getElementById('api-key-input').value = STATE.apiKey;
-      voiceSelect.value = STATE.selectedVoiceURI;
-      voicePitch.value = STATE.pitch;
-      pitchVal.textContent = STATE.pitch.toFixed(2);
+      voiceModelSelect.value = STATE.voiceModel;
       voiceRate.value = STATE.rate;
       rateVal.textContent = STATE.rate.toFixed(2);
       renderMemoryList();
@@ -1436,17 +1443,15 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
     saveSettingsBtn.addEventListener('click', () => {
       STATE.apiKey = document.getElementById('api-key-input').value.trim();
-      STATE.selectedVoiceURI = voiceSelect.value;
-      STATE.pitch = parseFloat(voicePitch.value);
+      STATE.voiceModel = voiceModelSelect.value;
       STATE.rate = parseFloat(voiceRate.value);
 
       localStorage.setItem('kuro_api_key', STATE.apiKey);
-      localStorage.setItem('kuro_voice_uri', STATE.selectedVoiceURI);
-      localStorage.setItem('kuro_pitch', STATE.pitch);
+      localStorage.setItem('kuro_voice_model', STATE.voiceModel);
       localStorage.setItem('kuro_rate', STATE.rate);
 
       modalOverlay.style.display = 'none';
-      logDiag(`[設定保存] 音声設定を保存完了ニャ！`, "success");
+      logDiag(`[設定保存] 音声「${STATE.voiceModel}」を保存完了ニャ！`, "success");
       const msg = "おやびん、設定をしっかり覚えたニャン♪";
       addChatMessage('model', msg);
       speakVoice(msg);
@@ -1456,9 +1461,8 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       initGPS();
       renderMemoryList();
       restoreChatTimeline();
-      populateVoiceList();
       setEmotion('idle');
-      logDiag("クロちゃん起動完了。GitHub JPEG直結モードニャ🐾", "success");
+      logDiag("クロちゃん起動完了。GitHub JPEG直結・スローアニメ待機中ニャ🐾", "success");
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
       }, 1000);
