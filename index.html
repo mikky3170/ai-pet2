@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -435,6 +436,34 @@
       outline: none;
     }
 
+    /* 🔊 試聴ボタン付きコンテナ */
+    .voice-select-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .btn-test-voice {
+      flex-shrink: 0;
+      padding: 9px 14px;
+      background: #fdf2f8;
+      border: 1.5px solid #fbcfe8;
+      color: #be185d;
+      border-radius: 12px;
+      font-weight: bold;
+      font-size: 12.5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.15s;
+    }
+
+    .btn-test-voice:active {
+      background: #fce7f3;
+      transform: scale(0.96);
+    }
+
     .memory-list {
       background: #f9fafb;
       border-radius: 14px;
@@ -585,7 +614,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。超肉声Natural音声エンジン待機完了ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。Android対応・音声試聴エンジン待機完了ニャ！</div>
       </div>
     </div>
   </div>
@@ -615,11 +644,15 @@
         <input type="range" id="history-slider" min="10" max="100" step="5" value="30">
       </div>
 
+      <!-- 🔊 音声選択 ＆ 試聴ボタン -->
       <div class="form-group">
-        <label>クロの声色（✨おすすめ＝超肉声・リアル）:</label>
-        <select id="voice-select">
-          <option value="">音声エンジンを読み込み中ニャ…</option>
-        </select>
+        <label>クロの声色（Android自動再同期対応）:</label>
+        <div class="voice-select-row">
+          <select id="voice-select">
+            <option value="">音声を読み込み中ニャ…</option>
+          </select>
+          <button type="button" class="btn-test-voice" id="test-voice-btn" title="この声でサンプルを聴いてみる">🔊 試聴</button>
+        </div>
       </div>
 
       <div class="form-group">
@@ -639,7 +672,7 @@
           <li><strong>⚡ Flash 3.5 lite (日常会話)</strong>: 日常会話やあいさつ、ちょっとした質問に超高速・省エネで即答します。</li>
           <li><strong>🧠 Flash 3.8 (難問・深い推論)</strong>: 複雑な論理問題、長文比較、プログラミング、または「3.8で考えて」と話しかけた時に自動起動します（<strong>1日20回</strong>上限）。</li>
           <li><strong>🌐 リアルタイムWeb検索</strong>: 「今日の天気」「最新ニュース」「近くの美味しいラーメン」なども最新情報から調べて回答します。</li>
-          <li><strong>📔 記憶帳の登録方法</strong>: 音声で「クロ、覚えて。好きな食べ物は〇〇」「記憶帳に書いて」と話しかけるか、この画面で自由に追加・削除ができます。</li>
+          <li><strong>📱 Androidでさらに高音質にする裏技</strong>: スマホの「設定」→「Google」→「言語と入力」→「テキスト読み上げ」→「Google音声合成エンジン」で「日本語の音声データ」をダウンロードすると、さらに自然な女の子の声が増えます。</li>
         </ul>
       </details>
 
@@ -809,7 +842,7 @@
     const STATE = {
       apiKey: localStorage.getItem('kuro_api_key') || localStorage.getItem('miichu_api_key') || '',
       selectedVoiceURI: localStorage.getItem('kuro_voice_uri') || '',
-      pitch: parseFloat(localStorage.getItem('kuro_pitch') || '1.10'), // 人間の女の子らしい自然なトーン
+      pitch: parseFloat(localStorage.getItem('kuro_pitch') || '1.10'),
       rate: parseFloat(localStorage.getItem('kuro_rate') || '1.06'),
       proUsedToday: savedCount,
       maxHistoryPairs: parseInt(localStorage.getItem('kuro_max_history') || '30', 10),
@@ -851,6 +884,7 @@
     const modalOverlay = document.getElementById('modal-overlay');
     const saveSettingsBtn = document.getElementById('save-settings-btn');
     const voiceSelect = document.getElementById('voice-select');
+    const testVoiceBtn = document.getElementById('test-voice-btn');
     const voicePitch = document.getElementById('voice-pitch');
     const voiceRate = document.getElementById('voice-rate');
     const pitchVal = document.getElementById('pitch-val');
@@ -1026,9 +1060,7 @@
     function sanitizeModelText(text) {
       if (!text) return "";
       return text
-        // 「（30文字）」「(45文字)」「【30文字】」「30文字」などのカウント表記を完全消去
         .replace(/[（\(【\[]?\s*\d{1,3}\s*文字(?:以内|程度)?\s*[）\)】\]]?/g, '')
-        // メタ注記の除去
         .replace(/[（\(][^）\)]*(?:文字数|カウント)[^）\)]*[）\)]/g, '')
         .replace(/[*#_~`]/g, '')
         .trim();
@@ -1301,7 +1333,6 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       STATE.isThinking = false;
 
       if (replyText) {
-        // 「何文字」を完全除去したクリーンテキスト
         const cleanDisplay = sanitizeModelText(replyText);
         addChatMessage('model', cleanDisplay);
         saveChatHistory(promptText, cleanDisplay);
@@ -1324,11 +1355,10 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       9. 超肉声Natural音声エンジンの優先選択 ＆ 音声合成
+       9. Android対応・音声強制リフレッシュ ＆ 試聴機能
        ========================================================== */
     let availableVoices = [];
 
-    // 音声の肉声度・リアル度を判定するスコアリング関数
     function scoreVoice(voice) {
       let score = 0;
       const name = voice.name.toLowerCase();
@@ -1336,20 +1366,22 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
       if (!lang.includes('ja') && !lang.includes('jp')) return -100;
 
-      // 1. 次世代AI肉声・Natural音声（最高品質）
+      // 次世代AI肉声・Natural音声
       if (name.includes('natural') || name.includes('online') || name.includes('neural')) score += 50;
       if (name.includes('premium') || name.includes('enhanced')) score += 40;
 
-      // 2. 有名な高品質日本語女性ボイス
+      // 有名な高品質日本語女性ボイス
       const topFemale = ['nanami', 'ayumi', 'haruka', 'sayaka', 'kyoko', 'aoi', 'shiori', 'mei', 'siri'];
       for (const f of topFemale) {
         if (name.includes(f)) { score += 25; break; }
       }
 
-      // 3. 一般的なGoogle・Appleクラウド音声
-      if (name.includes('google') || name.includes('apple')) score += 10;
+      // Android Google TTS女性系判定
+      if (name.includes('google') || name.includes('ja-jp-x')) {
+        score += 15;
+      }
 
-      // 4. 明確な男性ボイスの減点
+      // 明確な男性ボイスの減点
       const maleList = ['ichiro', 'keita', 'otoya', 'kenji', 'takumi', 'daichi', 'naoki'];
       for (const m of maleList) {
         if (name.includes(m)) { score -= 40; break; }
@@ -1358,14 +1390,15 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       return score;
     }
 
+    // Androidスマホでの非同期ロード対策：何回でも強制再取得できる関数
     function populateVoiceList() {
       if (!('speechSynthesis' in window)) return;
       const allVoices = window.speechSynthesis.getVoices();
-      availableVoices = allVoices.filter(v => v.lang.includes('ja') || v.lang.includes('JP'));
+      if (!allVoices || allVoices.length === 0) return;
 
+      availableVoices = allVoices.filter(v => v.lang.includes('ja') || v.lang.includes('JP'));
       if (availableVoices.length === 0) availableVoices = allVoices;
 
-      // 肉声度が高い順にソート
       availableVoices.sort((a, b) => scoreVoice(b) - scoreVoice(a));
 
       voiceSelect.innerHTML = '';
@@ -1378,21 +1411,50 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         if (voice.voiceURI === STATE.selectedVoiceURI) option.selected = true;
         voiceSelect.appendChild(option);
       });
+
+      if (!STATE.selectedVoiceURI && availableVoices.length > 0) {
+        STATE.selectedVoiceURI = availableVoices[0].voiceURI;
+        voiceSelect.value = STATE.selectedVoiceURI;
+      }
     }
 
+    // 初期化時・イベント時・ポーリング時の多段リトライ（Android確実表示）
     if ('speechSynthesis' in window) {
       populateVoiceList();
       window.speechSynthesis.onvoiceschanged = populateVoiceList;
+      setTimeout(populateVoiceList, 300);
+      setTimeout(populateVoiceList, 800);
+      setTimeout(populateVoiceList, 1600);
     }
 
     function getSelectedVoice() {
-      if (STATE.selectedVoiceURI) {
-        const found = availableVoices.find(v => v.voiceURI === STATE.selectedVoiceURI);
+      const currentSelectedURI = voiceSelect.value || STATE.selectedVoiceURI;
+      if (currentSelectedURI && availableVoices.length > 0) {
+        const found = availableVoices.find(v => v.voiceURI === currentSelectedURI);
         if (found) return found;
       }
-      // 最もスコアの高い肉声ボイスを自動選択
       return availableVoices[0] || null;
     }
+
+    // 🔊 試聴ボタンのハンドラー
+    testVoiceBtn.addEventListener('click', () => {
+      if (!('speechSynthesis' in window)) return;
+
+      window.speechSynthesis.cancel();
+      const testText = "おやびん、クロの声はこれだニャン🐾 聞き取りやすいかニャ？";
+      const uttr = new SpeechSynthesisUtterance(testText);
+      uttr.lang = 'ja-JP';
+      uttr.pitch = parseFloat(voicePitch.value);
+      uttr.rate = parseFloat(voiceRate.value);
+
+      const chosenVoice = getSelectedVoice();
+      if (chosenVoice) uttr.voice = chosenVoice;
+
+      playCatMeow('happy');
+      setTimeout(() => {
+        window.speechSynthesis.speak(uttr);
+      }, 250);
+    });
 
     function speakVoice(rawText) {
       if (!('speechSynthesis' in window)) return;
@@ -1403,7 +1465,6 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       window.speechSynthesis.cancel();
       window._speechLockHolder = [];
 
-      // 「何文字」などの余計なメタ情報を完全排除
       const textToSpeak = cleanTextForSpeech(rawText);
       const safeSpokenText = textToSpeak + "……。";
 
@@ -1411,7 +1472,6 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
       const uttr = new SpeechSynthesisUtterance(safeSpokenText);
       uttr.lang = 'ja-JP';
-      // 人間の自然なイントネーションに合わせたピッチ＆速度
       uttr.pitch = STATE.pitch; 
       uttr.rate = STATE.rate;
 
@@ -1537,7 +1597,9 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       historyVal.textContent = `${e.target.value}往復`;
     });
 
+    // 設定ボタンタップ時（ユーザー操作トリガー）でAndroid音声リストを即時再同期
     settingsBtn.addEventListener('click', () => {
+      populateVoiceList();
       document.getElementById('api-key-input').value = STATE.apiKey;
       voicePitch.value = STATE.pitch;
       pitchVal.textContent = STATE.pitch.toFixed(2);
@@ -1546,9 +1608,11 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       historySlider.value = STATE.maxHistoryPairs;
       historyVal.textContent = `${STATE.maxHistoryPairs}往復`;
       renderMemoryList();
-      populateVoiceList();
       modalOverlay.style.display = 'flex';
     });
+
+    voiceSelect.addEventListener('focus', populateVoiceList);
+    voiceSelect.addEventListener('pointerdown', populateVoiceList);
 
     modalOverlay.addEventListener('click', (e) => {
       if (e.target === modalOverlay) modalOverlay.style.display = 'none';
@@ -1578,6 +1642,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       initGPS();
       renderMemoryList();
       restoreChatTimeline();
+      populateVoiceList();
       logDiag("クロちゃん起動完了。おやびんの声をお待ちしてますニャ🐾", "success");
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
