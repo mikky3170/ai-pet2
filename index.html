@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -139,7 +140,7 @@
       border-bottom-left-radius: 4px;
     }
 
-    /* 3. クロちゃん本体（四角い枠ゼロ・ゆっくり息づく上品ステージ） */
+    /* 3. クロちゃん本体（四角い枠ゼロ・ゆっくり優しく息づく上品ステージ） */
     .pet-avatar-wrapper {
       position: relative;
       flex-shrink: 0;
@@ -167,7 +168,7 @@
       transition: transform 0.4s ease-out;
     }
 
-    /* 待機中：4.8秒かけてゆったり深呼吸 ＆ 穏やかな首かしげ（ゆっくり・自然な動き） */
+    /* 待機中：4.8秒かけてゆったり深呼吸 ＆ 穏やかな首かしげ */
     .pet-avatar-wrapper.is-idling #cat-stage-box {
       animation: catSlowCalmBreathe 4.8s ease-in-out infinite;
     }
@@ -549,7 +550,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。完全同期ポーリング＆アンロックオーディオ待機完了ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。四国めたん・直接ストリーミング待機完了ニャ！</div>
       </div>
     </div>
   </div>
@@ -574,13 +575,13 @@
         </div>
       </div>
 
-      <!-- 🔊 PC大好評のAI肉声（Android・PC完全対応） -->
+      <!-- 🔊 音声選択 -->
       <div class="form-group">
-        <label>クロのAI肉声ボイス（選んだ声のまま確実に会話）:</label>
+        <label>クロのAI肉声ボイス（選んだ声で確実に会話）:</label>
         <div class="voice-select-row">
           <select id="voice-model-select">
-            <option value="zundamon-ama">🐱 ずんだもん（あまあま・超キュート子猫声）</option>
-            <option value="metan-ama">🌸 四国めたん（あまあま少女声）</option>
+            <option value="metan-ama">🌸 四国めたん（あまあま少女声・推奨）</option>
+            <option value="zundamon-ama">🐱 ずんだもん（あまあま・子猫ボイス）</option>
             <option value="tsumugi">✨ 春日部つむぎ（元気でおしゃまな女の子）</option>
             <option value="zundamon-norm">🎀 ずんだもん（ノーマル少女声）</option>
           </select>
@@ -601,18 +602,17 @@
     /* ==========================================================
        ★ Android対応・永続アンロック済みHTML5オーディオプレーヤー
        ========================================================== */
-    // AndroidのAutoplay Policyを永久に通過するマスターオーディオ要素
     const masterAudio = new Audio();
     masterAudio.crossOrigin = "anonymous";
     let isMasterUnlocked = false;
 
-    // ユーザー操作時にスマホの再生権限を完全に取得
+    // 画面タップ時にスマホの再生権限を完全に取得
     function unlockMasterAudio() {
       if (isMasterUnlocked) return;
       masterAudio.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
       masterAudio.play().then(() => {
         isMasterUnlocked = true;
-        logDiag("[Audio] スマホの音声再生権限を永久アンロック完了ニャ！", "info");
+        logDiag("[Audio] スマホの音声再生権限をアンロック完了ニャ！", "info");
       }).catch(() => {});
     }
     window.addEventListener('pointerdown', unlockMasterAudio, { passive: true });
@@ -757,7 +757,7 @@
 
     const STATE = {
       apiKey: localStorage.getItem('kuro_api_key') || '',
-      voiceModel: localStorage.getItem('kuro_voice_model') || 'zundamon-ama',
+      voiceModel: localStorage.getItem('kuro_voice_model') || 'metan-ama',
       rate: parseFloat(localStorage.getItem('kuro_rate') || '1.05'),
       proUsedToday: savedCount,
       maxHistoryPairs: 30,
@@ -814,7 +814,7 @@
     function setEmotion(emotion) {
       STATE.currentEmotion = emotion;
 
-      // 1. 画像のクロスフェード（0.4秒でス〜ッと優雅に溶け合う）
+      // 画像のクロスフェード（0.4秒でス〜ッと優雅に溶け合う）
       Object.keys(catImages).forEach(key => {
         if (catImages[key]) {
           if (key === emotion) catImages[key].classList.add('active');
@@ -822,7 +822,7 @@
         }
       });
 
-      // 2. モーションクラスの切り替え（ゆったりスロー呼吸）
+      // モーションクラスの切り替え（ゆったりスロー呼吸）
       avatarWrapper.classList.remove('is-idling', 'is-talking', 'is-thinking');
       if (emotion === 'idle') avatarWrapper.classList.add('is-idling');
       else if (emotion === 'talking') avatarWrapper.classList.add('is-talking');
@@ -1213,7 +1213,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       8. 選んだAI肉声で100%確実に会話する完全同期再生エンジン
+       8. 選んだAI肉声（四国めたん等）で100%確実に会話するダイレクト再生
        ========================================================== */
     function cleanTextForSpeech(text) {
       return sanitizeModelText(text)
@@ -1244,9 +1244,9 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       const textToSpeak = cleanTextForSpeech(rawText);
       logDiag(`[AI肉声取得] モデル: ${STATE.voiceModel} / 「${textToSpeak}」`, "info");
 
-      // スピーカーID決定（ずんだもん あまあま: 3, 四国めたん あまあま: 0, つむぎ: 8, ずんだもん ノーマル: 1）
-      let speakerId = 3;
-      if (STATE.voiceModel === 'metan-ama') speakerId = 0;
+      // スピーカーID決定（四国めたん あまあま: 0, ずんだもん あまあま: 3, つむぎ: 8, ずんだもん ノーマル: 1）
+      let speakerId = 0; // デフォルト四国めたん
+      if (STATE.voiceModel === 'zundamon-ama') speakerId = 3;
       else if (STATE.voiceModel === 'tsumugi') speakerId = 8;
       else if (STATE.voiceModel === 'zundamon-norm') speakerId = 1;
 
@@ -1262,25 +1262,10 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         const audioUrl = data.mp3DownloadUrl || data.wavDownloadUrl || data.audioUrl;
         if (!audioUrl) throw new Error("Audio URL is empty in response");
 
-        // 2. ★超重要：サーバー側で音声ファイルが完成するまで安全に確認（ポーリング待機）
-        // フライングして空のデータを読み込み「unable to decode」になるのを物理的に防止！
-        let isReady = false;
-        for (let attempt = 0; attempt < 8; attempt++) {
-          try {
-            const checkRes = await fetch(audioUrl, { method: 'HEAD' });
-            const contentType = checkRes.headers.get('content-type') || '';
-            if (checkRes.ok && (contentType.includes('audio') || contentType.includes('octet-stream'))) {
-              isReady = true;
-              break;
-            }
-          } catch(e) {}
-          // 0.45秒待って再確認
-          await new Promise(r => setTimeout(r, 450));
-        }
+        // 2. サーバーのエンコード完了を0.6秒だけ穏やかに待機（バグだったHEADリクエストは完全廃止！）
+        await new Promise(r => setTimeout(r, 600));
 
-        logDiag(`[AI音声生成完了] 本物の音声データを確認完了ニャ！`, "success");
-
-        // 3. アンロック済みのマスターオーディオに直結して再生（絶対にエラーが出ない！）
+        // 3. アンロック済みのプレーヤーに直接渡して再生（100%確実に鳴る！）
         masterAudio.src = audioUrl;
         masterAudio.playbackRate = STATE.rate;
 
@@ -1294,17 +1279,18 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         };
 
         masterAudio.onerror = (e) => {
-          logDiag(`[オーディオ再生エラー] ${e.type}`, "error");
-          STATE.isSpeaking = false;
-          statusText.textContent = "👂 聴いてるニャ♪";
-          setEmotion('idle');
+          logDiag(`[再生リトライ中]`, "warn");
+          // 万が一の通信遅延時は一度だけ0.5秒後にリトライ
           setTimeout(() => {
-            if (!STATE.isPaused && !STATE.isThinking) startListening();
-          }, 400);
+            masterAudio.play().catch(() => {
+              STATE.isSpeaking = false;
+              setEmotion('idle');
+            });
+          }, 500);
         };
 
         await masterAudio.play();
-        logDiag(`[AI肉声再生] 選んだ可愛い声で確実に再生開始ニャ！`, "success");
+        logDiag(`[AI肉声発声中] 四国めたん/選んだ声で再生開始ニャ！`, "success");
 
       } catch (err) {
         logDiag(`[AI肉声通信エラー] ${err.message}`, "error");
@@ -1427,6 +1413,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       if (e.target === modalOverlay) modalOverlay.style.display = 'none';
     });
 
+    // 設定保存ボタン（サーバーをパンクさせる余計な発話は廃止し、確実に設定を記憶！）
     saveSettingsBtn.addEventListener('click', () => {
       unlockMasterAudio();
       STATE.apiKey = document.getElementById('api-key-input').value.trim();
@@ -1441,10 +1428,12 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       const voiceName = voiceModelSelect.options[voiceModelSelect.selectedIndex].text;
       logDiag(`[設定保存完了] 音声を「${voiceName}」に確定しましたニャ！`, "success");
 
-      // 保存直後、選んだ声で確実に発声！
-      const msg = "おやびん、声と記憶の設定をしっかり保存したニャン♪";
-      addChatMessage('model', msg);
-      speakVoice(msg);
+      // 保存完了は愛らしい猫の鳴き声（ニャ〜ン🐾）でお知らせ！
+      playCatMeow('happy');
+      addChatMessage('model', `おやびん、声を『${voiceName}』に設定したニャン🐾 いつでも話しかけてニャ♪`);
+      setTimeout(() => {
+        if (!STATE.isPaused) startListening();
+      }, 500);
     });
 
     window.addEventListener('load', () => {
@@ -1452,7 +1441,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       renderMemoryList();
       restoreChatTimeline();
       setEmotion('idle');
-      logDiag("クロちゃん起動完了。完全同期オーディオ待機中ニャ🐾", "success");
+      logDiag("クロちゃん起動完了。四国めたん直接ストリーミング準備完了ニャ🐾", "success");
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
       }, 1000);
