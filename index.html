@@ -80,7 +80,7 @@
     .top-header-left {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       flex-shrink: 0;
     }
     .top-header-right {
@@ -90,26 +90,25 @@
       flex-shrink: 0;
     }
 
-    /* ★ 変身ボタン */
-    .btn-transform {
-      background: linear-gradient(135deg, #fbcfe8, #f472b6);
-      border: 1px solid #f472b6;
-      color: #831843;
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-size: 10.5px;
+    /* ★ 丸い黒ボタン・白抜き文字の「変身」ボタン */
+    .btn-transform-black {
+      background: #111827;
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 4px 10px;
+      border-radius: 18px;
+      font-size: 11px;
       font-weight: 800;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 3px;
-      box-shadow: 0 1px 4px rgba(244, 114, 182, 0.3);
-      transition: all 0.2s;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      transition: transform 0.15s, background 0.2s;
     }
-    .btn-transform:active {
+    .btn-transform-black:active {
       transform: scale(0.92);
-      background: #f472b6;
-      color: white;
+      background: #374151;
     }
 
     .model-badge {
@@ -236,10 +235,7 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .link-action-card:active {
-      transform: scale(0.97);
-      background: #f8fafc;
-    }
+    .link-action-card:active { transform: scale(0.97); background: #f8fafc; }
     .link-action-card.map-card { border-color: #bbf7d0; background: #f0fdf4; }
     .link-action-card.news-card { border-color: #bae6fd; background: #f0f9ff; }
     .card-left {
@@ -281,7 +277,7 @@
       background: transparent;
     }
 
-    /* 待機アニメーション（ステージ全体の微動） */
+    /* 待機アニメーション */
     .pet-avatar-wrapper.is-idling #cat-stage-box {
       animation: catStageBreathe 4.8s ease-in-out infinite;
     }
@@ -318,7 +314,7 @@
       opacity: 0;
       pointer-events: none;
       transform-origin: bottom center;
-      transition: opacity 0.4s ease-in-out;
+      transition: opacity 0.35s ease-in-out;
       background: transparent !important;
       mix-blend-mode: multiply;
       display: block;
@@ -328,9 +324,7 @@
       pointer-events: auto;
     }
 
-    /* ==========================================================
-       ★ 完全スムーズ独自アニメーション猫（ベクターペット）
-       ========================================================== */
+    /* 完全スムーズ独自アニメーション猫（ベクターペット） */
     #cat-vector-avatar {
       width: 250px;
       height: 285px;
@@ -344,7 +338,6 @@
       display: block;
     }
 
-    /* 1. 呼吸（胴体の伸縮） */
     .anim-body-group {
       transform-origin: 100px 220px;
       animation: catVectorBreathe 4.2s ease-in-out infinite;
@@ -354,7 +347,6 @@
       50% { transform: scale(1.025, 0.98) translateY(-2px); }
     }
 
-    /* 2. 尻尾のしなやかなゆらゆらスイング */
     .anim-tail {
       transform-origin: 145px 205px;
       animation: catVectorTail 3.2s ease-in-out infinite;
@@ -365,7 +357,6 @@
       75% { transform: rotate(-10deg) scaleY(0.97); }
     }
 
-    /* 3. 耳のピクピク動作 */
     .anim-ear-left {
       transform-origin: 65px 70px;
       animation: catVectorEarLeft 4.5s ease-in-out infinite;
@@ -386,7 +377,6 @@
       86% { transform: rotate(-4deg); }
     }
 
-    /* 4. 自然なまばたき */
     .anim-eye {
       transform-origin: center;
       animation: catVectorBlink 3.8s ease-in-out infinite;
@@ -396,7 +386,6 @@
       96%, 98% { transform: scaleY(0.08); opacity: 0.9; }
     }
 
-    /* 5. お話し中の口パク */
     .cat-mouth-closed { display: block; }
     .cat-mouth-open { display: none; }
 
@@ -411,7 +400,6 @@
       100% { transform: scale(1.15, 1.25); }
     }
 
-    /* 6. なでなで時の喜び表情（目を細める） */
     .pet-avatar-wrapper.is-stroked #cat-vector-avatar .anim-eye {
       animation: none !important;
       transform: scaleY(0.12) scaleX(1.1) !important;
@@ -446,6 +434,69 @@
       0% { opacity: 1; transform: translate(0, 0) scale(0.6); }
       50% { opacity: 0.9; transform: translate(var(--rx), -50px) scale(1.2); }
       100% { opacity: 0; transform: translate(var(--rx), -100px) scale(1.4); }
+    }
+
+    /* ==========================================================
+       ★【案A】変身演出：ドロン！モコモコ煙 ＆ 肉球スター爆発
+       ========================================================== */
+    /* 1. 変身直前のギュッと縮むアニメーション */
+    .pet-transform-shrink {
+      animation: transformSquish 0.28s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards !important;
+    }
+    @keyframes transformSquish {
+      0% { transform: scale(1, 1); }
+      40% { transform: scale(1.15, 0.8) translateY(12px); }
+      100% { transform: scale(0.4, 0.4) translateY(-20px); opacity: 0; }
+    }
+
+    /* 2. 変身完了時のバーンッ！と弾んで着地 */
+    .pet-transform-bounce {
+      animation: transformPopIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+    }
+    @keyframes transformPopIn {
+      0% { transform: scale(0.5, 0.5) translateY(-50px); opacity: 0; }
+      60% { transform: scale(1.15, 0.92) translateY(5px); opacity: 1; }
+      80% { transform: scale(0.95, 1.05) translateY(-2px); }
+      100% { transform: scale(1, 1) translateY(0); opacity: 1; }
+    }
+
+    /* 3. モコモコ煙クラウドの爆発エフェクト */
+    .smoke-cloud-container {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 280px;
+      height: 240px;
+      pointer-events: none;
+      z-index: 50;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .smoke-puff {
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.98) 40%, rgba(254, 215, 226, 0.85) 80%, rgba(244, 114, 182, 0.3) 100%);
+      box-shadow: 0 4px 15px rgba(244, 114, 182, 0.25);
+      animation: puffExpand 0.75s ease-out forwards;
+    }
+    @keyframes puffExpand {
+      0% { transform: translate(0, 0) scale(0.2); opacity: 0.95; }
+      50% { opacity: 0.9; }
+      100% { transform: translate(var(--dx), var(--dy)) scale(var(--scale)); opacity: 0; }
+    }
+
+    /* 4. 飛び散る肉球＆星パーティクル */
+    .sparkle-pop {
+      position: absolute;
+      font-size: var(--sz);
+      pointer-events: none;
+      animation: sparkleFly 0.7s ease-out forwards;
+    }
+    @keyframes sparkleFly {
+      0% { transform: translate(0, 0) scale(0.3) rotate(0deg); opacity: 1; }
+      100% { transform: translate(var(--dx), var(--dy)) scale(1.3) rotate(var(--rot)); opacity: 0; }
     }
 
     /* 4. 最下部操作バー */
@@ -664,7 +715,7 @@
       background: #fce7f3;
     }
 
-    /* 記憶帳（編集・削除両対応＆誤操作防止デザイン） */
+    /* 記憶帳 */
     .memory-list {
       background: #f8fafc;
       border-radius: 14px;
@@ -769,13 +820,13 @@
 <body>
 
   <div id="pet-container">
-    <!-- 1. 最上部ステータスバー（★変身ボタン搭載） -->
+    <!-- 1. 最上部ステータスバー（★黒丸白抜きの変身ボタン） -->
     <div class="top-header">
       <div class="top-header-left">
         <span id="clock-display">00:00</span>
-        <button class="btn-transform" id="transform-btn" title="リアル画像とスムーズアニメを切り替えるニャ！">
-          <span id="transform-icon">✨</span>
-          <span id="transform-label">変身</span>
+        <button class="btn-transform-black" id="transform-btn" title="ドロン！と変身するニャ！">
+          <span>✨</span>
+          <span>変身</span>
         </button>
       </div>
 
@@ -807,28 +858,22 @@
         <img src="thinking.jpg" alt="考え中" class="cat-avatar-img" id="img-thinking" onerror="this.style.display='none';">
         <img src="happy.jpg" alt="大喜び" class="cat-avatar-img" id="img-happy" onerror="this.style.display='none';">
 
-        <!-- B. ★ 完全スムーズ独自アニメーション猫（ベクターペット） -->
+        <!-- B. 完全スムーズ独自アニメーション猫（ベクターペット） -->
         <svg viewBox="0 0 200 240" id="cat-vector-avatar">
-          <!-- 1. ふさふさ尻尾（ゆらゆら揺れる） -->
           <g class="anim-tail">
             <path d="M140 195 Q185 180 180 130 Q175 95 195 75 Q185 85 165 125 Q150 160 135 195 Z" fill="#1e222d"/>
             <path d="M145 190 Q175 175 170 135 Q165 110 180 95 Q170 105 155 135 Q145 165 140 190 Z" fill="#475569" opacity="0.6"/>
           </g>
 
-          <!-- 2. 胴体・胸元の毛並み（呼吸で伸縮） -->
           <g class="anim-body-group">
-            <!-- 胴体ベース（黒・ダークチャコール） -->
             <path d="M45 225 Q25 170 38 125 Q20 85 45 68 Q65 18 90 45 Q100 40 110 45 Q135 18 155 68 Q180 85 162 125 Q175 170 155 225 Z" fill="#181a24"/>
-            <!-- ノルウェージャン特有のゴージャスなシルバー胸毛 -->
             <path d="M68 135 Q100 115 132 135 Q148 185 100 220 Q52 185 68 135 Z" fill="#94a3b8"/>
             <path d="M78 145 Q100 130 122 145 Q135 185 100 210 Q65 185 78 145 Z" fill="#cbd5e1"/>
           </g>
 
-          <!-- 3. 耳（ピクピク動く） -->
           <g class="anim-ear-left">
             <polygon points="50,65 72,30 82,65" fill="#f472b6" opacity="0.85"/>
             <polygon points="46,67 72,26 84,67" stroke="#181a24" stroke-width="3" fill="none"/>
-            <!-- 耳のふさふさ飾り毛 -->
             <path d="M55 58 Q68 45 75 58" stroke="#cbd5e1" stroke-width="2.5" fill="none"/>
           </g>
 
@@ -838,31 +883,22 @@
             <path d="M145 58 Q132 45 125 58" stroke="#cbd5e1" stroke-width="2.5" fill="none"/>
           </g>
 
-          <!-- 4. まんまるエメラルドグリーンの瞳（パチパチまばたき） -->
           <g class="anim-eye" style="transform-origin: 100px 95px;">
-            <!-- 左目 -->
             <ellipse cx="74" cy="95" rx="13" ry="16" fill="#10b981"/>
             <ellipse cx="74" cy="95" rx="5" ry="13" fill="#090d16"/>
             <circle cx="70" cy="90" r="4" fill="#ffffff"/>
             <circle cx="76" cy="100" r="1.8" fill="#ffffff" opacity="0.8"/>
             
-            <!-- 右目 -->
             <ellipse cx="126" cy="95" rx="13" ry="16" fill="#10b981"/>
             <ellipse cx="126" cy="95" rx="5" ry="13" fill="#090d16"/>
             <circle cx="122" cy="90" r="4" fill="#ffffff"/>
             <circle cx="128" cy="100" r="1.8" fill="#ffffff" opacity="0.8"/>
           </g>
 
-          <!-- 5. ピンクのお鼻 -->
           <polygon points="100,108 94,102 106,102" fill="#f472b6"/>
-
-          <!-- 6. 口（通常時 ＆ お話し中口パク） -->
-          <!-- 通常の閉じ口 -->
           <path d="M94 111 Q100 117 100 111 Q100 117 106 111" stroke="#475569" stroke-width="2.5" fill="none" class="cat-mouth-closed"/>
-          <!-- お話し中のパクパク口 -->
           <ellipse cx="100" cy="115" rx="7" ry="5.5" fill="#e11d48" class="cat-mouth-open"/>
 
-          <!-- 7. かわいいヒゲ -->
           <path d="M55 105 Q35 102 20 106" stroke="#cbd5e1" stroke-width="1.8" fill="none"/>
           <path d="M54 112 Q35 114 22 120" stroke="#cbd5e1" stroke-width="1.8" fill="none"/>
           <path d="M145 105 Q165 102 180 106" stroke="#cbd5e1" stroke-width="1.8" fill="none"/>
@@ -893,7 +929,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。四国めたん（あまあま）最適化＆変身機能 稼働中ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。先行アンカー音声＆変身演出（案A）スタンバイ完了ニャ！</div>
       </div>
     </div>
   </div>
@@ -939,25 +975,40 @@
 
   <script>
     /* ==========================================================
-       ★ 音声再生アンロック（iOS / Android永続権限）
+       ★【スマホOS完全突破】先行アンカー型 音声アンロックエンジン
        ========================================================== */
     const masterAudio = new Audio();
     masterAudio.crossOrigin = "anonymous";
     let isMasterUnlocked = false;
 
+    // スマホのUser Activation（タップ権限）を保持する無音WAV
+    const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+
     function unlockMasterAudio() {
       if (isMasterUnlocked) return;
-      masterAudio.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+      masterAudio.src = SILENT_WAV;
       masterAudio.play().then(() => {
         isMasterUnlocked = true;
-        logDiag("[Audio] 音声再生権限をアンロック完了ニャ！", "info");
-      }).catch(() => {});
+        logDiag("[Audio] 音声再生権限（先行アンカー）を確立完了ニャ！", "info");
+      }).catch((e) => {
+        logDiag(`[Audio待機] タップ検出待ち: ${e.message}`, "warn");
+      });
     }
-    window.addEventListener('pointerdown', unlockMasterAudio, { passive: true });
-    window.addEventListener('touchstart', unlockMasterAudio, { passive: true });
+
+    // ユーザー操作の瞬間にオーディオパイプを常時アクティブ化
+    function keepAudioActive() {
+      if (!isMasterUnlocked) unlockMasterAudio();
+      // 音声再生直前にブラウザがアイドル化するのを防ぐ
+      if (masterAudio.paused && masterAudio.src === SILENT_WAV) {
+        masterAudio.play().catch(() => {});
+      }
+    }
+
+    window.addEventListener('pointerdown', keepAudioActive, { passive: true });
+    window.addEventListener('touchstart', keepAudioActive, { passive: true });
 
     /* ==========================================================
-       1. 音響効果（即時相槌・鳴き声・喉鳴らし）
+       1. 音響効果（即時相槌・鳴き声・喉鳴らし・変身音）
        ========================================================== */
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
@@ -966,6 +1017,40 @@
       if (!audioCtx && AudioContextClass) audioCtx = new AudioContextClass();
       if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
       return audioCtx;
+    }
+
+    // ★【案A専用】ドロン！変身サウンド（ポフッ♪ ＆ ピキーン✨）
+    function playTransformSound() {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      // 1. ポフッ！という煙の低音パフ
+      const puffOsc = ctx.createOscillator();
+      const puffGain = ctx.createGain();
+      puffOsc.type = 'triangle';
+      puffOsc.frequency.setValueAtTime(320, now);
+      puffOsc.frequency.exponentialRampToValueAtTime(70, now + 0.22);
+      puffGain.gain.setValueAtTime(0.3, now);
+      puffGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      puffOsc.connect(puffGain);
+      puffGain.connect(ctx.destination);
+      puffOsc.start(now);
+      puffOsc.stop(now + 0.25);
+
+      // 2. キラキラ〜ン！という星の魔法音
+      [587.33, 880, 1174.66, 1760].forEach((freq, i) => {
+        const starOsc = ctx.createOscillator();
+        const starGain = ctx.createGain();
+        starOsc.type = 'sine';
+        starOsc.frequency.setValueAtTime(freq, now + 0.08 + (i * 0.05));
+        starGain.gain.setValueAtTime(0.12, now + 0.08 + (i * 0.05));
+        starGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45 + (i * 0.05));
+        starOsc.connect(starGain);
+        starGain.connect(ctx.destination);
+        starOsc.start(now + 0.08 + (i * 0.05));
+        starOsc.stop(now + 0.5 + (i * 0.05));
+      });
     }
 
     function playCatAizuchi() {
@@ -1088,8 +1173,7 @@
       "苦手なもの：大きな音、お水、掃除機",
       "前世：世界的に有名な大発明家の相棒猫。難しい話になるとたまに得意げに自慢しちゃう癖がある",
       "飼い主さん：ミッキーさん、または「おやびん」",
-      "飼い主さんのご家族：奥さんはかよちゃん、息子はりゅうせいくん、たいせいくん。友達はかまぶーくん",
-      "飼い主さんの大好物：ラーメン、餃子、麻婆豆腐、最新のITガジェット"
+      "飼い主さんのご家族：奥さんはかよちゃん、息子はりゅうせいくん、たいせいくん。友達はかまぶーくん"
     ];
 
     function getTodayString() {
@@ -1146,8 +1230,9 @@
       lastTopic: null,
       editingMemoryIndex: null,
 
-      // ★ アバターモード ('real' | 'vector')
-      avatarMode: localStorage.getItem('kuro_avatar_mode') || 'vector'
+      // アバターモード ('real' | 'vector')
+      avatarMode: localStorage.getItem('kuro_avatar_mode') || 'vector',
+      isTransforming: false
     };
 
     // DOM要素
@@ -1162,6 +1247,7 @@
     const modelBadge = document.getElementById('model-badge');
     const proCounterDisplay = document.getElementById('pro-counter-display');
     const avatarWrapper = document.getElementById('avatar-wrapper');
+    const catStageBox = document.getElementById('cat-stage-box');
     const modalOverlay = document.getElementById('modal-overlay');
     const saveSettingsBtn = document.getElementById('save-settings-btn');
     const testVoiceBtn = document.getElementById('test-voice-btn');
@@ -1174,7 +1260,6 @@
     const newMemoryInput = document.getElementById('new-memory-input');
     const addMemoryBtn = document.getElementById('add-memory-btn');
     const transformBtn = document.getElementById('transform-btn');
-    const transformLabel = document.getElementById('transform-label');
 
     const catImages = {
       idle: document.getElementById('img-idle'),
@@ -1185,35 +1270,99 @@
     const catVectorAvatar = document.getElementById('cat-vector-avatar');
 
     /* ==========================================================
-       ★ 変身トグル（リアル画像 ⇔ スムーズアニメ）
+       ★【案A】ドロン！モコモコ煙＆肉球スター変身トリガー
        ========================================================== */
-    function applyAvatarMode() {
-      if (STATE.avatarMode === 'vector') {
-        // ベクターアニメモード
-        Object.keys(catImages).forEach(k => {
-          if (catImages[k]) catImages[k].style.display = 'none';
-        });
-        catVectorAvatar.classList.add('active-mode');
-        transformLabel.textContent = "リアルへ";
-        logDiag("[アバター切替] スムーズアニメ猫モード稼働中ニャ🐾", "info");
-      } else {
-        // リアル実写モード
-        catVectorAvatar.classList.remove('active-mode');
-        Object.keys(catImages).forEach(k => {
-          if (catImages[k]) catImages[k].style.display = 'block';
-        });
-        setEmotion(STATE.currentEmotion);
-        transformLabel.textContent = "アニメへ";
-        logDiag("[アバター切替] リアル画像モード稼働中ニャ🐾", "info");
+    function triggerSmokeAndStars() {
+      const container = document.createElement('div');
+      container.className = 'smoke-cloud-container';
+      avatarWrapper.appendChild(container);
+
+      // モコモコ煙ボール（8個のクラウドパーツ）
+      for (let i = 0; i < 8; i++) {
+        const puff = document.createElement('div');
+        puff.className = 'smoke-puff';
+        const size = Math.floor(65 + Math.random() * 45);
+        puff.style.width = `${size}px`;
+        puff.style.height = `${size}px`;
+        const angle = (i / 8) * (Math.PI * 2) + (Math.random() * 0.4);
+        const dist = 40 + Math.random() * 55;
+        puff.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+        puff.style.setProperty('--dy', `${Math.sin(angle) * dist - 15}px`);
+        puff.style.setProperty('--scale', `${1.3 + Math.random() * 0.5}`);
+        container.appendChild(puff);
       }
+
+      // キラキラ星＆肉球パーティクル
+      const icons = ['🐾', '✨', '💖', '⭐', '🐾', '✨'];
+      for (let i = 0; i < 9; i++) {
+        const sp = document.createElement('div');
+        sp.className = 'sparkle-pop';
+        sp.textContent = icons[i % icons.length];
+        sp.style.setProperty('--sz', `${18 + Math.random() * 12}px`);
+        const angle = (i / 9) * (Math.PI * 2) + (Math.random() * 0.3);
+        const dist = 70 + Math.random() * 65;
+        sp.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+        sp.style.setProperty('--dy', `${Math.sin(angle) * dist - 25}px`);
+        sp.style.setProperty('--rot', `${(Math.random() - 0.5) * 360}deg`);
+        container.appendChild(sp);
+      }
+
+      setTimeout(() => container.remove(), 800);
+    }
+
+    function applyAvatarMode(isInitial = false) {
+      if (isInitial) {
+        if (STATE.avatarMode === 'vector') {
+          Object.keys(catImages).forEach(k => { if (catImages[k]) catImages[k].style.display = 'none'; });
+          catVectorAvatar.classList.add('active-mode');
+        } else {
+          catVectorAvatar.classList.remove('active-mode');
+          Object.keys(catImages).forEach(k => { if (catImages[k]) catImages[k].style.display = 'block'; });
+          setEmotion(STATE.currentEmotion);
+        }
+        return;
+      }
+
+      // ★ 案A変身シーケンス
+      STATE.isTransforming = true;
+      playTransformSound();
+
+      // 1. ギュッと縮む
+      catStageBox.classList.add('pet-transform-shrink');
+
+      setTimeout(() => {
+        // 2. モコモコ煙＆肉球スター炸裂
+        triggerSmokeAndStars();
+
+        // 3. アバター切り替え
+        if (STATE.avatarMode === 'vector') {
+          Object.keys(catImages).forEach(k => { if (catImages[k]) catImages[k].style.display = 'none'; });
+          catVectorAvatar.classList.add('active-mode');
+          logDiag("[変身完了] スムーズアニメ猫モードに変身したニャ！", "success");
+        } else {
+          catVectorAvatar.classList.remove('active-mode');
+          Object.keys(catImages).forEach(k => { if (catImages[k]) catImages[k].style.display = 'block'; });
+          setEmotion(STATE.currentEmotion);
+          logDiag("[変身完了] リアル画像モードに変身したニャ！", "success");
+        }
+
+        // 4. バーンッ！と弾んで着地
+        catStageBox.classList.remove('pet-transform-shrink');
+        catStageBox.classList.add('pet-transform-bounce');
+
+        setTimeout(() => {
+          catStageBox.classList.remove('pet-transform-bounce');
+          STATE.isTransforming = false;
+        }, 520);
+      }, 260);
     }
 
     transformBtn.addEventListener('click', () => {
-      unlockMasterAudio();
+      keepAudioActive();
+      if (STATE.isTransforming) return;
       STATE.avatarMode = (STATE.avatarMode === 'vector') ? 'real' : 'vector';
       localStorage.setItem('kuro_avatar_mode', STATE.avatarMode);
-      applyAvatarMode();
-      playCatMeow('happy');
+      applyAvatarMode(false);
     });
 
     function setEmotion(emotion) {
@@ -1559,7 +1708,7 @@
        7. なでなで＆時計
        ========================================================== */
     avatarWrapper.addEventListener('click', (e) => {
-      unlockMasterAudio();
+      keepAudioActive();
       if (STATE.isPaused) { togglePause(); return; }
 
       const rect = avatarWrapper.getBoundingClientRect();
@@ -1639,10 +1788,12 @@
       chatTimeline.scrollTop = chatTimeline.scrollHeight;
 
       document.getElementById('btn-approve-38').onclick = () => {
+        keepAudioActive();
         addChatMessage('user', "お願いニャ！");
         handleApprovalResponse(true);
       };
       document.getElementById('btn-deny-38').onclick = () => {
+        keepAudioActive();
         addChatMessage('user', "3.5 liteでいいよ");
         handleApprovalResponse(false);
       };
@@ -1683,7 +1834,7 @@
     }
 
     /* ==========================================================
-       9. Gemini API通信 ＆ 複合AI思考エンジン
+       9. Gemini API通信 ＆ 複合AI思考エンジン（★好物の固定強制を完全排除）
        ========================================================== */
     async function executeGeminiRequestWithFallback(modelCandidates, systemPrompt, promptText, historyItems) {
       const contents = [];
@@ -1750,6 +1901,7 @@
     }
 
     async function askGemini(promptText) {
+      keepAudioActive();
       addChatMessage('user', promptText);
       playCatAizuchi();
 
@@ -1848,6 +2000,7 @@
       const now = new Date();
       const timeStr = `${now.getHours()}時${now.getMinutes()}分`;
 
+      // ★ システムプロンプトから好物の強制を削除。記憶帳（STATE.memories）の内容に100%従う！
       const systemPrompt = `
 あなたはノルウェージャンフォレストキャットの愛らしくて賢い女の子の子猫「クロ」（約1歳）です。
 【クロの記憶帳】
@@ -1864,8 +2017,8 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 - 一人称は「わたし」または「クロ」。
 - 語尾は女の子らしく可愛く「〜ニャ」「〜ニャン♪」「〜だニャ！」「〜なのニャ」。
 - かよちゃん、りゅうせいくん、たいせいくん、かまぶーくんの話題が出たら家族・親友として親しく接してください。
+- 飼い主さんの好みや家族の情報、好きな食べ物は【クロの記憶帳】に書いてある内容のみを真実として扱ってください（記憶帳にない好物は勝手に決めつけないこと）。
 - 前世は大発明家の相棒猫です。少し自慢できる話題では「クロの前世の発明のひらめきによるとね…フフン♪」と誇らしげに自慢してください。
-- ラーメン、餃子、麻婆豆腐、ITガジェットを激推ししてください。
 - 返答は必ず【短く愛らしい1文（20文字〜28文字程度）】で返してください。長文は絶対に禁止です。
 - 【超重要ルール】文末や文中に「（〇〇文字）」や注記、メタ情報、URL文字列は絶対に出力しないでください。純粋なセリフのみを返してください。
 `;
@@ -1890,7 +2043,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       10. ★【完全安定化】四国めたん（あまあま）専用 音声合成エンジン
+       10. ★【スマホOSブロック完全突破】四国めたん（あまあま）専用エンジン
        ========================================================== */
     function cleanTextForSpeech(text) {
       if (!text) return "";
@@ -1898,7 +2051,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         .replace(/```[\s\S]*?```/g, '')
         .replace(/<[^>]*>/g, '')
         .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}\uFE0F\u200D]/gu, '')
-        .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️]/gu, '')
+        .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥]/gu, '')
         .replace(/[（\(【\[][^）\)】\]]*[）\)】\]]/g, '')
         .replace(/\n+/g, ' ')
         .trim();
@@ -1911,15 +2064,14 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       setEmotion('idle');
     }
 
-    // ★ 安定ポーリングエンジン（最長8.4秒粘って確実に四国めたんを取得）
     async function getMetanMp3Url(text) {
       const encodedText = encodeURIComponent(text);
       // 四国めたん（あまあま）speaker=0
       const apiUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=0`;
 
-      logDiag("[音声合成] 四国めたんサーバーに音声リクエスト送信中…", "info");
+      logDiag("[音声合成] 四国めたんAPIに問い合わせ開始…", "info");
 
-      // 600ms間隔で最大14回（最大8.4秒）
+      // 600ms間隔で最大14回（約8.4秒）
       for (let i = 0; i < 14; i++) {
         try {
           const res = await fetch(apiUrl);
@@ -1927,14 +2079,18 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
             const data = await res.json();
             if (data.isAudioError) throw new Error("VoiceVox synthesis error");
             if (data.isAudioReady && data.mp3DownloadUrl) {
-              logDiag(`[四国めたん完成] 音声準備OKニャ！（${i + 1}回目の確認で完了）`, "success");
+              logDiag(`[四国めたん完成] 音声準備OKニャ！（試行${i + 1}回目 / HTTP 200）`, "success");
               return data.mp3DownloadUrl;
             }
+          } else {
+            logDiag(`[音声サーバー応答] HTTP ${res.status}`, "warn");
           }
-        } catch (e) {}
+        } catch (e) {
+          logDiag(`[音声ポーリング待機中] 試行${i + 1}回目`, "info");
+        }
         await new Promise(r => setTimeout(r, 600));
       }
-      throw new Error("8秒タイムアウト（サーバー混雑中）");
+      throw new Error("8.4秒タイムアウト（音声サーバー混雑）");
     }
 
     function speakWithNativeVoice(cleanDisplay, syncBubble, actionCards = []) {
@@ -1985,7 +2141,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
     async function speakVoice(rawText, syncBubble = false, actionCards = []) {
       stopSpeaking();
-      unlockMasterAudio();
+      keepAudioActive(); // ★ スマホの自動再生権限を確実に確保
 
       const textToSpeak = cleanTextForSpeech(rawText);
 
@@ -2015,23 +2171,24 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
           }, 800);
         };
 
-        masterAudio.onerror = () => {
-          logDiag("[音声再生例外] 端末標準ボイスで代行発声ニャ", "warn");
+        masterAudio.onerror = (e) => {
+          logDiag(`[音声再生ブロック検知] スマホOSにより遮断されたため標準ボイスで代行発声ニャ`, "warn");
           speakWithNativeVoice(rawText, syncBubble, actionCards);
         };
 
+        // 先行アンカーされたaudioインスタンスで確実に再生
         await masterAudio.play();
-        logDiag("[発声開始] 四国めたんの声で同期再生完了ニャ！", "success");
+        logDiag("[発声開始] 四国めたん（あまあま）の肉声で再生成功ニャ！🐾", "success");
 
       } catch (err) {
-        logDiag(`[セーフティ発動] 四国めたん待機タイムアウト。端末ボイスで代行発声ニャ（${err.message}）`, "warn");
+        logDiag(`[四国めたんタイムアウト] 端末ボイスで代行発声ニャ（${err.message}）`, "warn");
         speakWithNativeVoice(rawText, syncBubble, actionCards);
       }
     }
 
-    // ★ 声テストボタン（他とバッティングさせずダイレクト再生）
+    // ★ 声テストボタン
     testVoiceBtn.addEventListener('click', () => {
-      unlockMasterAudio();
+      keepAudioActive();
       speakVoice("おやびん、クロだニャン！今日もいっぱいお話ししてニャ🐾", false);
     });
 
@@ -2089,7 +2246,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     function togglePause() {
-      unlockMasterAudio();
+      keepAudioActive();
       STATE.isPaused = !STATE.isPaused;
       if (STATE.isPaused) {
         pauseBtn.classList.add('is-paused');
@@ -2113,7 +2270,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
     function handleAppResume() {
       logDiag("[アプリ復帰検知] 音声対話を再起動ニャ", "info");
-      unlockMasterAudio();
+      keepAudioActive();
       if (!STATE.isPaused && !STATE.isSpeaking && !STATE.isThinking) {
         setTimeout(() => startListening(), 600);
       }
@@ -2125,7 +2282,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
     /* ==========================================================
        12. 初期化 ＆ 設定保存
-       ========================================================= */
+       ========================================================== */
     pauseBtn.addEventListener('click', togglePause);
 
     voiceRate.addEventListener('input', (e) => {
@@ -2133,7 +2290,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     });
 
     settingsBtn.addEventListener('click', () => {
-      unlockMasterAudio();
+      keepAudioActive();
       STATE.editingMemoryIndex = null;
       document.getElementById('api-key-input').value = STATE.apiKey;
       voiceRate.value = STATE.rate;
@@ -2147,7 +2304,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     });
 
     saveSettingsBtn.addEventListener('click', async () => {
-      unlockMasterAudio();
+      keepAudioActive();
       STATE.apiKey = document.getElementById('api-key-input').value.trim();
       STATE.rate = parseFloat(voiceRate.value);
 
@@ -2172,7 +2329,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       initGPS();
       renderMemoryList();
       restoreChatTimeline();
-      applyAvatarMode();
+      applyAvatarMode(true); // 初期描画
 
       if (STATE.apiKey) {
         await scanAvailableGeminiModels(STATE.apiKey);
@@ -2180,7 +2337,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         resolveBestModels();
       }
 
-      logDiag("クロちゃん起動完了。変身機能＆四国めたんスタンバイOKニャ🐾", "success");
+      logDiag("クロちゃん起動完了。案A変身＆四国めたんスタンバイOKニャ🐾", "success");
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
       }, 1000);
@@ -2188,3 +2345,4 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
   </script>
 </body>
 </html>
+
