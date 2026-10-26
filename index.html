@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -230,7 +231,7 @@
     .confirm-btn.yes { background: linear-gradient(135deg, #c026d3, #9333ea); color: white; box-shadow: 0 2px 6px rgba(192, 38, 211, 0.3); }
     .confirm-btn.no { background: #e2e8f0; color: #475569; }
 
-    /* スマート連携アクションカード */
+    /* スマート連携アクションカード（明示的に検索した時だけ出現） */
     .action-card-box {
       margin-top: 6px;
       display: flex;
@@ -977,7 +978,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。四国めたん安定通信＆安心記憶エンジン 稼働中ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。Web Audio四国めたん＆高精度記憶エンジン 稼働開始ニャ！</div>
       </div>
     </div>
   </div>
@@ -1000,11 +1001,15 @@
           </div>
           <div class="guide-item">
             <strong>📒 記録帳への追加方法（重要）</strong>
-            日常会話と区別するため、以下の合言葉で登録します：<br>
-            ・<b>「〜を記録帳に書いて」</b><br>
+            日常会話としっかり区別するため、以下の方法で登録します：<br>
+            ・<b>「〜を記載帳（記録帳）に書いて」</b><br>
             ・<b>「〜を覚えて」</b><br>
             ・または<b>「記録帳に登録して」</b>と言うと、クロちゃんが「何を登録するニャ？」と聞き返してきます。<br>
             ※登録に成功すると、タイムライン上に<span style="color:#be185d;font-weight:bold;">【📒 記録帳に追加：〇〇】</span>バッジが表示されます！バッジが出ない時は普通の雑談として聞いています。
+          </div>
+          <div class="guide-item">
+            <strong>🗺️ 地図やニュースのリンクについて</strong>
+            単なる食べ物の話（例：「ラーメン好き」）ではボタンは出ません。<b>「〜の場所を教えて」「〜の地図を見せて」「〜のニュースを調べて」</b>と頼んだ時だけ、参照先ボタンが表示されます。
           </div>
           <div class="guide-item">
             <strong>✨ 変身ボタン</strong>
@@ -1017,10 +1022,6 @@
           <div class="guide-item">
             <strong>🧠 本気モード（Flash 3.8）</strong>
             難しい質問や最新の調べ物は、1日20回まで「3.8で考えていいかニャ？」とクロちゃんが確認してくれます。
-          </div>
-          <div class="guide-item">
-            <strong>🗺️ 連動スマート検索</strong>
-            おすすめのお店やニュースを聞くと、GoogleマップやGoogleニュースへの連携カードが自動で届きます。
           </div>
         </div>
       </div>
@@ -1061,44 +1062,38 @@
 
   <script>
     /* ==========================================================
-       ★ 先行アンカー型 音声アンロックエンジン
+       ★ Web Audio API 統合音声エンジン（Android Chrome 完全対応）
        ========================================================== */
-    const masterAudio = new Audio();
-    masterAudio.crossOrigin = "anonymous";
-    let isMasterUnlocked = false;
-    const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    let globalAudioCtx = null;
+    let currentSourceNode = null;
 
-    function unlockMasterAudio() {
-      if (isMasterUnlocked) return;
-      masterAudio.src = SILENT_WAV;
-      masterAudio.play().then(() => {
-        isMasterUnlocked = true;
-        logDiag("[Audio] 音声再生権限（先行アンカー）を確立完了ニャ！", "info");
-      }).catch((e) => {});
+    function getAudioContext() {
+      if (!globalAudioCtx && AudioContextClass) {
+        globalAudioCtx = new AudioContextClass();
+      }
+      if (globalAudioCtx && globalAudioCtx.state === 'suspended') {
+        globalAudioCtx.resume();
+      }
+      return globalAudioCtx;
     }
 
-    function keepAudioActive() {
-      if (!isMasterUnlocked) unlockMasterAudio();
-      if (masterAudio.paused && masterAudio.src === SILENT_WAV) {
-        masterAudio.play().catch(() => {});
+    // Androidの自動再生制限を1タップで完全に解除するアンカー
+    function unlockAudioContext() {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      if (ctx.state === 'suspended') {
+        ctx.resume().then(() => {
+          logDiag("[Audio] Web Audio Context 権限を完全にアンロック完了ニャ！", "info");
+        });
       }
     }
-
-    window.addEventListener('pointerdown', keepAudioActive, { passive: true });
-    window.addEventListener('touchstart', keepAudioActive, { passive: true });
+    window.addEventListener('pointerdown', unlockAudioContext, { passive: true });
+    window.addEventListener('touchstart', unlockAudioContext, { passive: true });
 
     /* ==========================================================
        1. 音響効果（即時相槌・鳴き声・喉鳴らし・変身音）
        ========================================================== */
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    let audioCtx = null;
-
-    function getAudioContext() {
-      if (!audioCtx && AudioContextClass) audioCtx = new AudioContextClass();
-      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-      return audioCtx;
-    }
-
     function playTransformSound() {
       const ctx = getAudioContext();
       if (!ctx) return;
@@ -1351,7 +1346,7 @@
     const catVectorAvatar = document.getElementById('cat-vector-avatar');
 
     /* ==========================================================
-       取扱説明書（アコーディオン）
+       取扱説明書（アコーディオン開閉）
        ========================================================== */
     if (guideHeader && guideBox) {
       guideHeader.addEventListener('click', () => {
@@ -1360,7 +1355,7 @@
     }
 
     /* ==========================================================
-       ★ 変身演出（ドロン！モコモコ煙 ＆ 肉球スター）
+       変身演出（ドロン！モコモコ煙 ＆ 肉球スター）
        ========================================================== */
     function triggerSmokeAndStars() {
       const container = document.createElement('div');
@@ -1440,7 +1435,7 @@
     }
 
     transformBtn.addEventListener('click', () => {
-      keepAudioActive();
+      unlockAudioContext();
       if (STATE.isTransforming) return;
       STATE.avatarMode = (STATE.avatarMode === 'vector') ? 'real' : 'vector';
       localStorage.setItem('kuro_avatar_mode', STATE.avatarMode);
@@ -1537,45 +1532,24 @@
     }
 
     /* ==========================================================
-       4. 記憶帳連動スマート検索エンジン（マップ・ニュース）
+       4. ★【整理済】明示的リクエスト時のみリンクボタンを生成
        ========================================================== */
     function detectActionCards(userText, modelReply) {
       const cards = [];
-      const combined = `${userText} ${modelReply}`;
 
-      const memoryKeywords = [];
-      STATE.memories.forEach(mem => {
-        const match = mem.match(/(?:好物|好き|趣味|興味|愛好)[：:は\s]*(.+)/);
-        if (match && match[1]) {
-          match[1].split(/[、,・\s]+/).forEach(k => {
-            const trimmed = k.trim();
-            if (trimmed.length > 1) memoryKeywords.push(trimmed);
-          });
-        }
-      });
+      // 1. 地図・マップ判定（ユーザーが「場所」「地図」「マップ」「どこ」「案内して」と明示的に頼んだ時だけ！）
+      const isExplicitMapRequest = /(?:場所|どこ|地図|マップ|行き方|案内して|道順|探して|教えて).*(?:マップ|地図|場所|店|どこ|案内)/.test(userText)
+        || /(?:マップで|地図で|場所を|どこにある|近くの)/.test(userText);
 
-      // 1. 飲食店・場所・地図判定
-      const placePatterns = /(?:ラーメン|餃子|麻婆豆腐|カフェ|居酒屋|レストラン|ランチ|ディナー|定食|うどん|そば|カレー|焼肉|寿司|パン屋|中華|イタリアン|美味しい|おすすめ|場所|どこ|マップ|地図)/;
-      if (placePatterns.test(combined)) {
+      if (isExplicitMapRequest) {
         let queryTarget = "";
-
         const quoteMatch = modelReply.match(/[「『]([^」』]+)[」』]/);
         if (quoteMatch) {
           queryTarget = quoteMatch[1];
         } else {
-          const foodMatch = modelReply.match(/(ラーメン|餃子|麻婆豆腐|カレー|焼肉|寿司|カフェ|うどん|そば|中華|イタリアン|ピザ|スイーツ)/);
-          if (foodMatch) {
-            queryTarget = `${STATE.location.city || ''} ${foodMatch[0]}`.trim();
-          } else if (userText.includes('好きな') && memoryKeywords.length > 0) {
-            const fav = memoryKeywords.find(k => /(?:ラーメン|餃子|麻婆|カレー|肉|寿司|麺)/.test(k)) || memoryKeywords[0];
-            queryTarget = `${STATE.location.city || ''} ${fav}`.trim();
-          } else {
-            queryTarget = STATE.location.city ? `${STATE.location.city} 美味しいお店` : "おすすめのお店";
-          }
+          const cleanUser = userText.replace(/(?:場所|どこ|地図|マップ|教えて|調べて|探して|近くの|おすすめの)/g, '').trim();
+          queryTarget = cleanUser.length > 1 ? `${STATE.location.city || ''} ${cleanUser}`.trim() : (STATE.location.city ? `${STATE.location.city} おすすめスポット` : "おすすめスポット");
         }
-
-        queryTarget = queryTarget.replace(/(?:僕の好きな|私の好きな|おすすめの|美味しい|人気の|近くの)/g, '').trim();
-        if (!queryTarget) queryTarget = "美味しいお店";
 
         const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryTarget)}`;
         cards.push({
@@ -1586,26 +1560,18 @@
         STATE.lastTopic = { type: 'map', title: queryTarget, url: mapUrl };
       }
 
-      // 2. ニュース判定
-      const newsPatterns = /(?:ニュース|出来事|トレンド|話題|事件|速報|最新情報)/;
-      if (newsPatterns.test(combined)) {
+      // 2. ニュース判定（ユーザーが「ニュース」「出来事」「最新情報」を求めた時だけ！）
+      const isExplicitNewsRequest = /(?:ニュース|出来事|トレンド|速報|話題|最新情報).*(?:教えて|調べて|見せて|ある|何)/.test(userText)
+        || /(?:今日のニュース|最新ニュース|最近の話題)/.test(userText);
+
+      if (isExplicitNewsRequest) {
         let newsQuery = "";
-
-        if (userText.includes('好きな') || userText.includes('興味')) {
-          if (memoryKeywords.length > 0) {
-            const techFav = memoryKeywords.find(k => /(?:ガジェット|IT|スマホ|AI|車|ゲーム|ドライブ)/.test(k));
-            newsQuery = techFav || memoryKeywords[0];
-          }
-        }
-
-        if (!newsQuery) {
-          const quoteMatch = modelReply.match(/[「『]([^」』]+)[」』]/);
-          if (quoteMatch) {
-            newsQuery = quoteMatch[1];
-          } else {
-            const clean = userText.replace(/(?:ニュース|出来事|教えて|最新|今日の|について|僕の好きな|私の好きな|おすすめの)/g, '').trim();
-            newsQuery = clean.length > 1 ? clean : "主要ニュース";
-          }
+        const quoteMatch = modelReply.match(/[「『]([^」』]+)[」』]/);
+        if (quoteMatch) {
+          newsQuery = quoteMatch[1];
+        } else {
+          const clean = userText.replace(/(?:ニュース|出来事|教えて|最新|今日の|について|調べて)/g, '').trim();
+          newsQuery = clean.length > 1 ? clean : "主要ニュース";
         }
 
         const newsUrl = `https://news.google.com/search?q=${encodeURIComponent(newsQuery)}&hl=ja&gl=JP&ceid=JP:ja`;
@@ -1628,7 +1594,7 @@
       bubble.className = 'chat-bubble';
       bubble.textContent = text;
 
-      // 📒 記憶帳登録バッジの表示
+      // 📒 記録帳登録バッジ（登録成功時のみ表示）
       if (savedBadgeText) {
         const badge = document.createElement('div');
         badge.className = 'memory-badge-card';
@@ -1782,83 +1748,103 @@
     }
 
     /* ==========================================================
-       5. ★【安全・誤爆防止】記憶登録エンジン ＆ 登録判定
+       5. ★【完全整理】記録帳（記載帳）登録＆誤爆・呼びかけ排除エンジン
        ========================================================== */
     function saveToMemoryNotebook(content) {
-      let clean = content.trim()
-        .replace(/^(飼い主さんの|僕の|私の)?(趣味|名前|好物|好きな食べ物)(は|：|:)?\s*/, '')
-        .trim();
+      let clean = content.trim();
+      // プレフィックスの整理
+      clean = clean.replace(/^(飼い主さんの|僕の|私の)?(趣味|名前|好物|好きな食べ物|好きなもの)(は|：|:)?\s*/, (match, p1, p2) => {
+        return `飼い主さんの${p2}：`;
+      });
 
       // 先頭に追加して、設定画面を開いた時に即座に確認できるようにする
       STATE.memories.unshift(clean);
       localStorage.setItem('kuro_notebook_memories', JSON.stringify(STATE.memories));
       renderMemoryList();
-      logDiag(`[記憶帳に登録完了] 「${clean}」`, "success");
+      logDiag(`[記録帳に登録完了] 「${clean}」`, "success");
       return clean;
     }
 
-    function handleMemoryVoiceCommand(text) {
-      // 1. 【2ステップ待機中】「何を登録するニャ？」の返事を待っていた時
+    function handleMemoryVoiceCommand(rawText) {
+      // 1. 文頭の呼びかけ「クロちゃん」「クロ」「ねえ」などを綺麗にトリミング
+      let text = rawText.replace(/^(?:ねえ|あのね|おーい)?\s*(?:クロちゃん|くろちゃん|クロ|くろ)[、,\s]*/i, '').trim();
+
+      // 2. 【2ステップ待機中】「何を登録するニャ？」の返事を待っていた時
       if (STATE.isWaitingForMemoryInput) {
         STATE.isWaitingForMemoryInput = false;
-        const clean = text.trim();
-        if (clean.length >= 2) {
-          const saved = saveToMemoryNotebook(clean);
+        // 「やめた」「キャンセル」などの場合は取り消し
+        if (/^(?:やめた|キャンセル|いいや|なんでもない)/.test(text)) {
+          return { speech: "了解ニャ！メモはやめておくニャン🐾", savedText: null };
+        }
+        if (text.length >= 2) {
+          const saved = saveToMemoryNotebook(text);
           return {
-            speech: `了解ニャン！記憶帳に『${saved}』ってしっかりメモしたニャ🐾 設定画面で確認してみてニャン！`,
+            speech: `了解ニャン！記録帳に『${saved}』ってしっかりメモしたニャ🐾 設定画面で確認してみてニャン！`,
             savedText: saved
           };
         }
       }
 
-      // 2. 「記録帳に登録して」「メモして」と単体で言われた場合（聞き返しモードへ）
-      const triggerPatterns = [
-        /^(?:記録帳|記憶帳|ノート|メモ)(?:に)?(?:登録|追加|メモ|書いて|記録|覚えて)/,
-        /^(?:これ|次のこと)(?:を)?(?:覚えて|登録|追加|メモ)/
+      // 3. 「記録帳（記載帳）に登録して」「メモして」とだけ言われた場合（聞き返しモードへ直行）
+      const emptyTriggers = [
+        /^(?:クロちゃん)?(?:の)?(?:記録帳|記憶帳|記載帳|きさいちょう|きろくちょう|ノート|メモ)(?:に)?(?:登録|追加|メモ|書いて|記録|残して|覚えて)(?:して|おいて|ちょうだい)?$/,
+        /^(?:これ|次のこと|今から言うこと)(?:を)?(?:覚えて|登録|追加|メモ|記録)/
       ];
-      for (const p of triggerPatterns) {
+
+      for (const p of emptyTriggers) {
         if (p.test(text)) {
-          const rest = text.replace(p, '').replace(/[：:、\s]/g, '').trim();
-          if (rest.length <= 1) {
-            STATE.isWaitingForMemoryInput = true;
-            statusText.textContent = "📝 メモを待ってるニャ…";
-            return {
-              speech: "了解ニャン！何を記録帳に登録するニャ？話してニャン🐾",
-              savedText: null
-            };
-          }
+          STATE.isWaitingForMemoryInput = true;
+          statusText.textContent = "📝 メモを待ってるニャ…";
+          logDiag("[記録帳] 聞き返し待機モードに突入ニャ", "info");
+          return {
+            speech: "了解ニャン！何を記録帳に書くか教えてニャ🐾",
+            savedText: null
+          };
         }
       }
 
-      // 3. 1文で明示された場合のみ登録（雑談誤爆防止）
-      // 「記録帳」「記憶帳」「ノート」「メモ」または「覚えておいて/覚えて」が文末にある場合
+      // 4. 1文で「〜を記録帳（記載帳）に書いて」「〜って覚えて」と中身が指定された場合
       const explicitAddPatterns = [
-        /(.+?)(?:って|だと|と|を)?(?:記録帳|記憶帳|ノート|メモ)(?:に)?(?:書いて|登録して|追加して|メモして|記録して|残して)/,
-        /(?:記録帳|記憶帳|ノート|メモ)(?:に)[：:、\s]*(.+?)(?:を)?(?:書いて|登録して|追加して|メモして|覚えて)/,
+        // 例：「僕の好きなものはラーメンって記載帳に書いて」
+        /(.+?)(?:って|だと|と|を)?(?:記録帳|記憶帳|記載帳|きさいちょう|きろくちょう|ノート|メモ)(?:に)?(?:書いて|登録して|追加して|メモして|記録して|残して)/,
+        // 例：「記載帳に僕の好きなものはラーメンって書いて」
+        /(?:記録帳|記憶帳|記載帳|きさいちょう|きろくちょう|ノート|メモ)(?:に)[：:、\s]*(.+?)(?:を)?(?:書いて|登録して|追加して|メモして|覚えて)/,
+        // 例：「僕の好きなものはラーメンって覚えて」
         /(.+?)(?:って|だと|と)?(?:覚えておいて|覚えて|忘れにゃいで|忘れないで)/
       ];
 
       for (const p of explicitAddPatterns) {
         const match = text.match(p);
         if (match && match[1]) {
-          let content = match[1].replace(/(?:記録帳|記憶帳|ノート|メモ|に|を|って)$/g, '').trim();
-          // 疑問形（〜覚えてる？等）は除外
-          if (content.length >= 2 && !/(?:何|どれ|誰|どこ|いつ|どう|教えて)/.test(text)) {
+          let content = match[1].replace(/(?:記録帳|記憶帳|記載帳|きさいちょう|ノート|メモ|に|を|って)$/g, '').trim();
+
+          // 万が一呼びかけだけ（「クロちゃん」「クロ」等）だった場合は登録せず聞き返しモードへ
+          if (/^(?:クロちゃん|くろちゃん|クロ|くろ)$/i.test(content) || content.length <= 1) {
+            STATE.isWaitingForMemoryInput = true;
+            statusText.textContent = "📝 メモを待ってるニャ…";
+            return {
+              speech: "了解ニャン！クロちゃんじゃなくて、何を記録帳に書くニャ？話してニャ🐾",
+              savedText: null
+            };
+          }
+
+          // 疑問形（〜覚えてる？等）は登録ではないのでスキップ
+          if (!/(?:何|どれ|誰|どこ|いつ|どう|教えて)/.test(text)) {
             const saved = saveToMemoryNotebook(content);
             return {
-              speech: `了解ニャン！記憶帳に『${saved}』ってしっかりメモしたニャ🐾`,
+              speech: `了解ニャン！記録帳に『${saved}』ってしっかりメモしたニャ🐾`,
               savedText: saved
             };
           }
         }
       }
 
-      // 4. 「記憶帳教えて」「何覚えてる？」の確認
-      if (/(?:記録帳|記憶帳|ノート).*(?:教えて|見せて|何がある|何覚えてる)/.test(text) || text.includes('何覚えてる')) {
+      // 5. 「記録帳教えて」「何覚えてる？」の確認コマンド
+      if (/(?:記録帳|記憶帳|記載帳|ノート).*(?:教えて|見せて|何がある|何覚えてる)/.test(text) || text.includes('何覚えてる')) {
         const count = STATE.memories.length;
         const latest = STATE.memories[0] || "まだないニャ";
         return {
-          speech: `クロの記憶帳には全部で${count}個メモしてあるニャ！最新のは「${latest}」だニャン🐾`,
+          speech: `クロの記録帳には全部で${count}個メモしてあるニャ！最新のは「${latest}」だニャン🐾`,
           savedText: null
         };
       }
@@ -1894,7 +1880,7 @@
        7. なでなで＆時計
        ========================================================== */
     avatarWrapper.addEventListener('click', (e) => {
-      keepAudioActive();
+      unlockAudioContext();
       if (STATE.isPaused) { togglePause(); return; }
 
       const rect = avatarWrapper.getBoundingClientRect();
@@ -1974,12 +1960,12 @@
       chatTimeline.scrollTop = chatTimeline.scrollHeight;
 
       document.getElementById('btn-approve-38').onclick = () => {
-        keepAudioActive();
+        unlockAudioContext();
         addChatMessage('user', "お願いニャ！");
         handleApprovalResponse(true);
       };
       document.getElementById('btn-deny-38').onclick = () => {
-        keepAudioActive();
+        unlockAudioContext();
         addChatMessage('user', "3.5 liteでいいよ");
         handleApprovalResponse(false);
       };
@@ -2087,7 +2073,7 @@
     }
 
     async function askGemini(promptText) {
-      keepAudioActive();
+      unlockAudioContext();
       addChatMessage('user', promptText);
       playCatAizuchi();
 
@@ -2100,25 +2086,12 @@
         return;
       }
 
-      // ★ 音声記憶コマンド（安全・誤爆防止判定）
+      // ★ 記録帳・記載帳コマンド（誤爆・名前誤認防止処理）
       const memResult = handleMemoryVoiceCommand(promptText);
       if (memResult) {
         addChatMessage('model', memResult.speech, [], memResult.savedText);
         playCatMeow('happy');
         speakVoice(memResult.speech, false);
-        return;
-      }
-
-      const openFollowPattern = /(?:開いて|見せて|詳細|地図|マップ|詳しく見たい)/;
-      if (openFollowPattern.test(promptText) && STATE.lastTopic) {
-        const topic = STATE.lastTopic;
-        const replyMsg = `画面のボタンをタップしてくれたらすぐ開くニャン🐾`;
-        addChatMessage('model', replyMsg, [{
-          type: topic.type,
-          title: topic.type === 'map' ? `📍 Googleマップで「${topic.title}」を開く` : `📰 ニュースで「${topic.title}」を開く`,
-          url: topic.url
-        }]);
-        speakVoice(replyMsg, false);
         return;
       }
 
@@ -2230,7 +2203,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       10. ★【完全刷新】四国めたん（あまあま）専用通信エンジン
+       10. ★【Web Audio完全直結】四国めたん（Android Chrome完全対応）
        ========================================================== */
     function cleanTextForSpeech(text) {
       if (!text) return "";
@@ -2246,64 +2219,84 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
     function stopSpeaking() {
       STATE.isSpeaking = false;
-      masterAudio.pause();
+      if (currentSourceNode) {
+        try { currentSourceNode.stop(); } catch(e) {}
+        currentSourceNode = null;
+      }
       window.speechSynthesis.cancel();
       setEmotion('idle');
     }
 
-    // ★ サーバーに優しい公式推奨の2ステップ通信（連続連打を防止）
-    async function getMetanMp3Url(text) {
-      const clean = text.slice(0, 70); // 安定した合成のための上限
+    // Androidの制限を突破するWeb Audio APIバッファ再生
+    async function playAudioBuffer(arrayBuffer, onStart, onEnded) {
+      const ctx = getAudioContext();
+      if (!ctx) throw new Error("AudioContext利用不可");
+
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.playbackRate.value = STATE.rate;
+      source.connect(ctx.destination);
+
+      currentSourceNode = source;
+
+      source.onended = () => {
+        currentSourceNode = null;
+        if (onEnded) onEnded();
+      };
+
+      if (onStart) onStart();
+      source.start(0);
+    }
+
+    // 四国めたん音声合成（公式推奨のキュー監視型）
+    async function fetchMetanAudioArrayBuffer(text) {
+      const clean = text.slice(0, 65);
       const encodedText = encodeURIComponent(clean);
       const initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=0`;
 
-      logDiag("[四国めたん] 音声合成リクエストを送信中…", "info");
+      logDiag("[四国めたん] 音声合成リクエスト送信…", "info");
 
-      // ステップ1: 合成タスクの初回登録（1回のみ送信）
-      let initRes = null;
-      try {
-        initRes = await fetch(initUrl);
-      } catch (e) {
-        throw new Error("ネットワーク接続エラー");
-      }
-
-      if (!initRes.ok) {
-        throw new Error(`サーバー応答エラー HTTP ${initRes.status}`);
-      }
+      const initRes = await fetch(initUrl);
+      if (!initRes.ok) throw new Error(`HTTP ${initRes.status}`);
 
       const initData = await initRes.json();
-      if (initData.isAudioError) throw new Error("音声合成エラー");
+      if (initData.isAudioError) throw new Error("VoiceVoxエラー");
 
-      // 既にキャッシュなどで即時完成している場合
+      let mp3Url = null;
       if (initData.isAudioReady && initData.mp3DownloadUrl) {
-        logDiag("[四国めたん] 即時音声取得完了ニャ！", "success");
-        return initData.mp3DownloadUrl;
-      }
-
-      // ステップ2: 生成ステータスURLをポーリング（最大9秒間、過負荷をかけずに待機）
-      const statusUrl = initData.audioStatusUrl || initUrl;
-      logDiag("[四国めたん] 音声生成中…待機中ニャ", "info");
-
-      for (let i = 0; i < 9; i++) {
-        await new Promise(r => setTimeout(r, 1000));
-        try {
-          const statusRes = await fetch(statusUrl);
-          if (statusRes.ok) {
-            const statusData = await statusRes.json();
-            if (statusData.isAudioReady && statusData.mp3DownloadUrl) {
-              logDiag(`[四国めたん完成] 音声準備OKニャ！（待機 ${i + 1}秒）`, "success");
-              return statusData.mp3DownloadUrl;
+        mp3Url = initData.mp3DownloadUrl;
+      } else {
+        const statusUrl = initData.audioStatusUrl || initUrl;
+        for (let i = 0; i < 8; i++) {
+          await new Promise(r => setTimeout(r, 900));
+          try {
+            const sRes = await fetch(statusUrl);
+            if (sRes.ok) {
+              const sData = await sRes.json();
+              if (sData.isAudioReady && sData.mp3DownloadUrl) {
+                mp3Url = sData.mp3DownloadUrl;
+                break;
+              }
             }
-          }
-        } catch (e) {
-          // 待機継続
+          } catch(e) {}
         }
       }
 
-      throw new Error("音声生成待機タイムアウト");
+      if (!mp3Url) throw new Error("音声生成待機タイムアウト");
+
+      // MP3データをArrayBufferとして直接ダウンロード
+      logDiag("[四国めたん] 音声バッファを取得中…", "info");
+      const audioRes = await fetch(mp3Url);
+      if (!audioRes.ok) throw new Error("MP3取得エラー");
+      return await audioRes.arrayBuffer();
     }
 
-    // バックアップ用標準ボイス（最高ピッチの可愛い子猫トーン）
+    // 端末標準ボイス（最高ピッチの子猫風代行）
     function speakWithNativeVoice(cleanDisplay, syncBubble, actionCards = [], savedBadgeText = null) {
       if (!window.speechSynthesis) return;
       window.speechSynthesis.cancel();
@@ -2312,7 +2305,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       const uttr = new SpeechSynthesisUtterance(speakText);
       uttr.lang = 'ja-JP';
       uttr.rate = STATE.rate;
-      uttr.pitch = 1.45; // 子猫らしい高めのかわいいピッチ
+      uttr.pitch = 1.45;
 
       const voices = window.speechSynthesis.getVoices();
       const cuteVoice = voices.find(v => v.lang.includes('ja') && (v.name.includes('Kyoko') || v.name.includes('Google 日本語') || v.name.includes('Nanami') || v.name.includes('Haruka') || v.name.includes('女性')));
@@ -2352,52 +2345,46 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
     async function speakVoice(rawText, syncBubble = false, actionCards = [], savedBadgeText = null) {
       stopSpeaking();
-      keepAudioActive();
+      unlockAudioContext();
 
       const textToSpeak = cleanTextForSpeech(rawText);
 
       try {
-        const mp3Url = await getMetanMp3Url(textToSpeak);
+        const arrayBuffer = await fetchMetanAudioArrayBuffer(textToSpeak);
 
-        masterAudio.src = mp3Url;
-        masterAudio.playbackRate = STATE.rate;
-
-        masterAudio.oncanplay = () => {
-          if (syncBubble) {
-            removeThinkingBubble();
-            addChatMessage('model', rawText, actionCards, savedBadgeText);
+        await playAudioBuffer(
+          arrayBuffer,
+          () => {
+            // 再生開始時
+            if (syncBubble) {
+              removeThinkingBubble();
+              addChatMessage('model', rawText, actionCards, savedBadgeText);
+            }
+            STATE.isThinking = false;
+            STATE.isSpeaking = true;
+            statusText.textContent = "🗣️ お話し中ニャ♪";
+            setEmotion('talking');
+            logDiag("[発声開始] 四国めたん（あまあま）の肉声で再生成功ニャ！🐾", "success");
+          },
+          () => {
+            // 再生終了時
+            STATE.isSpeaking = false;
+            statusText.textContent = "👂 聴いてるニャ♪";
+            setEmotion('idle');
+            setTimeout(() => {
+              if (!STATE.isPaused && !STATE.isThinking && !STATE.isAwaiting38Approval) startListening();
+            }, 800);
           }
-          STATE.isThinking = false;
-          STATE.isSpeaking = true;
-          statusText.textContent = "🗣️ お話し中ニャ♪";
-          setEmotion('talking');
-        };
-
-        masterAudio.onended = () => {
-          STATE.isSpeaking = false;
-          statusText.textContent = "👂 聴いてるニャ♪";
-          setEmotion('idle');
-          setTimeout(() => {
-            if (!STATE.isPaused && !STATE.isThinking && !STATE.isAwaiting38Approval) startListening();
-          }, 800);
-        };
-
-        masterAudio.onerror = (e) => {
-          logDiag(`[音声再生ブロック検知] スマホOSにより遮断されたため標準ボイスで代行発声ニャ`, "warn");
-          speakWithNativeVoice(rawText, syncBubble, actionCards, savedBadgeText);
-        };
-
-        await masterAudio.play();
-        logDiag("[発声開始] 四国めたん（あまあま）の肉声で再生成功ニャ！🐾", "success");
+        );
 
       } catch (err) {
-        logDiag(`[四国めたん待機終了] 端末ボイスで代行発声ニャ（${err.message}）`, "warn");
+        logDiag(`[四国めたん代替発声] 端末ボイスで代行ニャ（${err.message}）`, "warn");
         speakWithNativeVoice(rawText, syncBubble, actionCards, savedBadgeText);
       }
     }
 
     testVoiceBtn.addEventListener('click', () => {
-      keepAudioActive();
+      unlockAudioContext();
       speakVoice("おやびん、クロだニャン！今日もいっぱいお話ししてニャ🐾", false);
     });
 
@@ -2459,7 +2446,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     function togglePause() {
-      keepAudioActive();
+      unlockAudioContext();
       STATE.isPaused = !STATE.isPaused;
       if (STATE.isPaused) {
         pauseBtn.classList.add('is-paused');
@@ -2483,7 +2470,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
     function handleAppResume() {
       logDiag("[アプリ復帰検知] 音声対話を再起動ニャ", "info");
-      keepAudioActive();
+      unlockAudioContext();
       if (!STATE.isPaused && !STATE.isSpeaking && !STATE.isThinking) {
         setTimeout(() => startListening(), 600);
       }
@@ -2503,7 +2490,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     });
 
     settingsBtn.addEventListener('click', () => {
-      keepAudioActive();
+      unlockAudioContext();
       STATE.editingMemoryIndex = null;
       document.getElementById('api-key-input').value = STATE.apiKey;
       voiceRate.value = STATE.rate;
@@ -2517,7 +2504,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     });
 
     saveSettingsBtn.addEventListener('click', async () => {
-      keepAudioActive();
+      unlockAudioContext();
       STATE.apiKey = document.getElementById('api-key-input').value.trim();
       STATE.rate = parseFloat(voiceRate.value);
 
