@@ -235,7 +235,7 @@
       100% { transform: scale(1.015) rotate(3.5deg); }
     }
 
-    /* ★ 白背景を完全同化（境界線100%消去） */
+    /* ★ 画像と背景の白を完全に同化（境界線100%消去） */
     .cat-avatar-img {
       position: absolute;
       bottom: 0;
@@ -429,7 +429,7 @@
     .log-error { color: #f87171; font-weight: bold; }
     .log-info { color: #94a3b8; }
 
-    /* 6. 設定モーダル（四国めたん固定表示） */
+    /* 6. 設定モーダル */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -477,17 +477,40 @@
       outline: none;
     }
 
+    /* 四国めたん専用バッジ ＆ 声テストボタン */
+    .voice-control-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
     .voice-badge-box {
-      padding: 10px 14px;
+      flex: 1;
+      padding: 9px 12px;
       background: #fdf2f8;
       border: 1.5px solid #fbcfe8;
       border-radius: 12px;
       color: #9d174d;
       font-weight: bold;
-      font-size: 13px;
+      font-size: 12px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
+    }
+    .btn-voice-test {
+      padding: 9px 12px;
+      background: #fdf2f8;
+      border: 1.5px solid #f472b6;
+      color: #db2777;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 11.5px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .btn-voice-test:active {
+      transform: scale(0.95);
+      background: #fce7f3;
     }
 
     .memory-list {
@@ -602,7 +625,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。四国めたん（実績ポーリング）＆動的モデル解決モード稼働中ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。四国めたん（テスト機能付）稼働中ニャ！</div>
       </div>
     </div>
   </div>
@@ -617,11 +640,14 @@
         <input type="password" id="api-key-input" placeholder="AIzaSy...">
       </div>
 
-      <!-- 四国めたん専用固定 -->
+      <!-- ★ 四国めたん専用固定 ＆ 声テストボタン -->
       <div class="form-group">
         <label>クロの肉声ボイス:</label>
-        <div class="voice-badge-box">
-          🌸 四国めたん（あまあま少女声・専用固定）
+        <div class="voice-control-row">
+          <div class="voice-badge-box">
+            🌸 四国めたん（あまあま・専用固定）
+          </div>
+          <button type="button" class="btn-voice-test" id="test-voice-btn">🔊 声テスト</button>
         </div>
       </div>
 
@@ -870,6 +896,7 @@
     const avatarWrapper = document.getElementById('avatar-wrapper');
     const modalOverlay = document.getElementById('modal-overlay');
     const saveSettingsBtn = document.getElementById('save-settings-btn');
+    const testVoiceBtn = document.getElementById('test-voice-btn');
     const voiceRate = document.getElementById('voice-rate');
     const rateVal = document.getElementById('rate-val');
     const diagPanel = document.getElementById('diag-panel');
@@ -954,14 +981,12 @@
 
     function resolveBestModels() {
       if (STATE.availableModels.length > 0) {
-        // Lite系（日常会話）の自動選定
         const liteCand = STATE.availableModels.find(m => /flash.*lite|3\.5.*lite|3\.1.*lite/i.test(m))
                       || STATE.availableModels.find(m => /2\.0.*flash.*lite|flash-8b/i.test(m))
                       || STATE.availableModels.find(m => /flash/i.test(m))
                       || STATE.availableModels[0];
         STATE.activeLiteModel = liteCand;
 
-        // Pro系（高度推論）の自動選定
         const proCand = STATE.availableModels.find(m => /3\.8|pro|exp/i.test(m))
                      || STATE.availableModels.find(m => /2\.0.*flash(?!.*lite)/i.test(m))
                      || STATE.availableModels.find(m => /flash/i.test(m))
@@ -1237,18 +1262,16 @@
     }
 
     /* ==========================================================
-       9. 【実績完全回帰】Gemini API通信（純粋プロンプト＋フォールバック）
+       9. 【実績完全回帰】Gemini API通信（ロール厳格維持＋安定フォールバック）
        ========================================================== */
     async function executeGeminiRequestWithFallback(modelCandidates, systemPrompt, promptText, historyItems) {
-      // ロール整合性（userとmodelが交互）を厳格に保持
       const contents = [];
       let lastRole = null;
 
       historyItems.forEach(h => {
         const role = h.role === 'user' ? 'user' : 'model';
-        if (contents.length === 0 && role !== 'user') return; // 初回は必ずuserから
+        if (contents.length === 0 && role !== 'user') return;
         if (role === lastRole) {
-          // 同一ロールが連続したら結合
           contents[contents.length - 1].parts[0].text += `\n${h.text}`;
         } else {
           contents.push({ role: role, parts: [{ text: h.text }] });
@@ -1256,7 +1279,6 @@
         }
       });
 
-      // 最新のプロンプトを追加
       if (lastRole === 'user') {
         contents[contents.length - 1].parts[0].text += `\n${promptText}`;
       } else {
@@ -1310,8 +1332,9 @@
       addChatMessage('user', promptText);
       playCatAizuchi();
 
-      // ★ 声がおかしいよリアクション（風邪気味トーク）
-      if (promptText.includes('声がおかしい') || promptText.includes('声変') || promptText.includes('声が違う') || promptText.includes('その声')) {
+      // ★【強化版】声が違う・おかしい判定（あらゆる言い回しを100%キャッチ）
+      const voiceAbnormalPattern = /(?:声|こえ|喉|のど).*(?:違|変|おかしい|どうした|枯れ|ガラガラ|ヘン|いつもと)|(?:違|変|おかしい|どうした|ヘン).*(?:声|こえ|喉|のど)/;
+      if (voiceAbnormalPattern.test(promptText)) {
         const coldReply = "ごめんニャ…今ちょっと風邪気味で喉の調子がおかしいニャ🐾 もう少ししたら治ると思うニャ！";
         addChatMessage('model', coldReply);
         speakVoice(coldReply, false);
@@ -1378,7 +1401,6 @@
       }
       modelBadge.textContent = badgeName;
 
-      // 自動検出した確実なモデル候補リストを使用
       const candidates = [];
       if (isProMode) {
         if (STATE.activeProModel) candidates.push(STATE.activeProModel);
@@ -1439,7 +1461,6 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       return sanitizeModelText(text)
         .replace(/```[\s\S]*?```/g, '')
         .replace(/<[^>]*>/g, '')
-        // ★ あらゆる絵文字・特殊記号を100%完全除去
         .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}\uFE0F\u200D]/gu, '')
         .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟]/gu, '')
         .replace(/[（\(【\[][^）\)】\]]*[）\)】\]]/g, '')
@@ -1454,7 +1475,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       setEmotion('idle');
     }
 
-    // ★ 実績のある同一API URLポーリングループ（最大14回・約4秒）
+    // 同一API URLポーリングループ（最大14回・約4秒）
     async function getMetanMp3Url(text) {
       const encodedText = encodeURIComponent(text);
       // 四国めたん（あまあま）speaker=0
@@ -1462,7 +1483,6 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
       logDiag("[音声合成] 四国めたんAPIに問い合わせ中…", "info");
 
-      // 最大14回（約3.9秒）同一URLをポーリング
       for (let i = 0; i < 14; i++) {
         try {
           const res = await fetch(apiUrl);
@@ -1482,7 +1502,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       throw new Error("4秒タイムアウト超過");
     }
 
-    // 📱 端末標準ボイス（高めピッチ1.35・安全フォールバック）
+    // 📱 端末標準ボイス（高めピッチ1.35・フォールバック用）
     function speakWithNativeVoice(cleanDisplay, syncBubble) {
       if (!window.speechSynthesis) return;
       window.speechSynthesis.cancel();
@@ -1491,7 +1511,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       const uttr = new SpeechSynthesisUtterance(speakText);
       uttr.lang = 'ja-JP';
       uttr.rate = STATE.rate;
-      uttr.pitch = 1.35; // 愛らしい高めピッチ
+      uttr.pitch = 1.35;
 
       const voices = window.speechSynthesis.getVoices();
       const cuteVoice = voices.find(v => v.lang.includes('ja') && (v.name.includes('Kyoko') || v.name.includes('Google') || v.name.includes('Nanami') || v.name.includes('女性')));
@@ -1549,7 +1569,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
           }
           STATE.isThinking = false;
           STATE.isSpeaking = true;
-          STATE.isVoiceColdMode = false; // 四国めたん成功時は風邪モード解除
+          STATE.isVoiceColdMode = false;
           statusText.textContent = "🗣️ お話し中ニャ♪";
           setEmotion('talking');
         };
@@ -1573,11 +1593,18 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         logDiag("[発声開始] 四国めたんの声で同期再生完了ニャ！", "success");
 
       } catch (err) {
-        logDiag(`[4秒セーフティ発動] 四国めたん待機タイムアウト。可愛い端末ボイスで代行発声ニャ（${err.message}）`, "warn");
-        STATE.isVoiceColdMode = true; // 風邪モードON
+        logDiag(`[4秒セーフティ発動] 四国めたん待機タイムアウト。端末ボイスで代行発声ニャ（${err.message}）`, "warn");
+        STATE.isVoiceColdMode = true;
         speakWithNativeVoice(rawText, syncBubble);
       }
     }
+
+    // ★ 声テストボタンのイベントリスナー
+    testVoiceBtn.addEventListener('click', () => {
+      unlockMasterAudio();
+      playCatMeow('happy');
+      speakVoice("おやびん、クロだニャン！", false);
+    });
 
     /* ==========================================================
        11. 音声認識（常時対話・ハウリング遮断）
@@ -1693,7 +1720,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       logDiag(`[設定保存完了] APIキーと速度（${STATE.rate}）を保存完了ニャ！`, "success");
 
       playCatMeow('happy');
-      addChatMessage('model', `設定バッチリ保存したニャ！四国めたんの声でいつでも話しかけてニャン🐾`);
+      addChatMessage('model', `設定バッチリ保存したニャ！いつでも話しかけてニャン🐾`);
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
       }, 500);
