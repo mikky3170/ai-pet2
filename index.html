@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -164,7 +165,7 @@
       transition: transform 0.4s ease-out;
     }
 
-    /* 待機中の深呼吸アニメーション */
+    /* 待機中の深呼吸 */
     .pet-avatar-wrapper.is-idling #cat-stage-box {
       animation: catSlowCalmBreathe 4.8s ease-in-out infinite;
     }
@@ -535,7 +536,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。Google AI Studio 404自動検知＆多角検索統合モード稼働ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。四国めたん完全ポーリング＆多角推論モード準備完了ニャ！</div>
       </div>
     </div>
   </div>
@@ -550,7 +551,6 @@
         <input type="password" id="api-key-input" placeholder="AIzaSy...">
       </div>
 
-      <!-- Google AI Studioモデル自動検出 -->
       <div class="form-group">
         <label>日常思考モデル（Flash 3.5 lite / 3.1 lite系）:
           <button type="button" class="btn-aux" id="scan-models-btn" style="padding:2px 8px; font-size:11px;">🔍 自動検出</button>
@@ -573,7 +573,7 @@
         </div>
       </div>
 
-      <!-- 🔊 音声選択 -->
+      <!-- 🔊 音声選択（四国めたんを最上位推奨） -->
       <div class="form-group">
         <label>クロのAI肉声ボイス:</label>
         <div class="voice-select-row">
@@ -598,7 +598,7 @@
 
   <script>
     /* ==========================================================
-       ★ Android/iOS 音声再生アンロック
+       ★ Android/iOS 音声再生の永続アンロック
        ========================================================== */
     const masterAudio = new Audio();
     masterAudio.crossOrigin = "anonymous";
@@ -706,7 +706,7 @@
     }
 
     /* ==========================================================
-       2. 状態管理・記憶帳
+       2. 状態管理・長期記憶帳
        ========================================================== */
     const DEFAULT_MEMORIES = [
       "わたしの名前：クロ（ノルウェージャンフォレストキャットの女の子、約1歳）",
@@ -844,7 +844,7 @@
     diagPanel.addEventListener('click', (e) => { if (e.target === diagPanel) diagPanel.classList.remove('expanded'); });
 
     /* ==========================================================
-       3. 404完全根絶！Google AI Studio モデル自動検出エンジン
+       3. Google AI Studio モデル自動検出エンジン（404完全根絶）
        ========================================================== */
     async function scanAvailableGeminiModels(apiKey) {
       if (!apiKey) return [];
@@ -861,9 +861,8 @@
           .map(m => m.name.replace(/^models\//, ''));
 
         STATE.availableModels = models;
-        logDiag(`[Discovery成功] 検出モデル数: ${models.length}個 (${models.slice(0, 4).join(', ')}...)`, "success");
+        logDiag(`[Discovery成功] 検出モデル: ${models.length}個 (${models.slice(0, 4).join(', ')}...)`, "success");
 
-        // プルダウン更新
         liteModelSelect.innerHTML = `<option value="auto">🌟 自動最適化（Lite系を自動検出）</option>`;
         models.forEach(m => {
           const opt = document.createElement('option');
@@ -872,7 +871,6 @@
           liteModelSelect.appendChild(opt);
         });
 
-        // 最適モデルの決定
         resolveBestModels();
         return models;
       } catch (e) {
@@ -882,12 +880,10 @@
     }
 
     function resolveBestModels() {
-      // ユーザーの手動指定があればそれを最優先
       if (STATE.customLiteModel && STATE.customLiteModel.trim()) {
         STATE.activeLiteModel = STATE.customLiteModel.trim();
         logDiag(`[モデル確定] 手動設定Lite: ${STATE.activeLiteModel}`, "info");
       } else if (STATE.availableModels.length > 0) {
-        // Lite系、Flash系を優先検索
         const liteCand = STATE.availableModels.find(m => /flash.*lite|lite.*flash|3\.5.*lite|3\.1.*lite/i.test(m))
                       || STATE.availableModels.find(m => /2\.0.*flash.*lite|flash-8b/i.test(m))
                       || STATE.availableModels.find(m => /flash/i.test(m))
@@ -895,11 +891,9 @@
         STATE.activeLiteModel = liteCand;
         logDiag(`[モデル確定] 自動判定Flash 3.5 lite: ${STATE.activeLiteModel}`, "success");
       } else {
-        // フォールバックデフォルト候補
         STATE.activeLiteModel = "gemini-2.0-flash-lite";
       }
 
-      // Pro / 3.8 難問用モデルの決定
       if (STATE.availableModels.length > 0) {
         const proCand = STATE.availableModels.find(m => /3\.8|pro|exp/i.test(m))
                      || STATE.availableModels.find(m => /2\.0.*flash(?!.*lite)/i.test(m))
@@ -1084,7 +1078,7 @@
     }, 1000);
 
     /* ==========================================================
-       8. 難易度判定（Flash 3.5 lite / Flash 3.8）＆ 統合プロンプト
+       8. 難易度判定（Flash 3.5 lite / Flash 3.8）＆ 3大検索リソース統合
        ========================================================== */
     function evaluateComplexity(promptText) {
       if (promptText.includes('3.8') || promptText.includes('サンテンハチ') || promptText.includes('本気で考えて') || promptText.includes('詳しく')) {
@@ -1100,7 +1094,6 @@
       return { isPro: false, reason: "日常会話" };
     }
 
-    // ★ 404エラー完全防止：候補モデルを順次自動リトライする安全通信
     async function executeGeminiRequestWithFallback(modelCandidates, systemPrompt, promptText, historyItems) {
       const contents = [];
       let hasStartedUser = false;
@@ -1167,7 +1160,6 @@
     async function askGemini(promptText) {
       addChatMessage('user', promptText);
 
-      // 記憶帳コマンド
       const memReply = handleMemoryVoiceCommand(promptText);
       if (memReply) {
         addChatMessage('model', memReply);
@@ -1176,7 +1168,6 @@
         return;
       }
 
-      // 残り回数確認
       if (promptText.includes('あと何回') || promptText.includes('残り何回')) {
         const remaining = Math.max(0, 20 - STATE.proUsedToday);
         const reply = `今日3.8フラッシュで考えられるのは、あと【${remaining}回】だニャ🐾 何でも聞いてニャン！`;
@@ -1198,7 +1189,6 @@
       statusText.textContent = "💭 考え中ニャ…";
       setEmotion('thinking');
 
-      // 難易度判定
       const complexity = evaluateComplexity(promptText);
       let isProMode = false;
       let badgeName = "⚡ Flash 3.5 lite";
@@ -1222,7 +1212,6 @@
       }
       modelBadge.textContent = badgeName;
 
-      // フォールバック付き候補リスト生成
       const candidates = [];
       if (isProMode) {
         if (STATE.activeProModel) candidates.push(STATE.activeProModel);
@@ -1231,7 +1220,6 @@
         if (STATE.activeLiteModel) candidates.push(STATE.activeLiteModel);
         candidates.push("gemini-2.0-flash-lite", "gemini-1.5-flash-8b", "gemini-2.0-flash", "gemini-1.5-flash");
       }
-      // 重複排除
       const uniqueCandidates = [...new Set(candidates)];
 
       const historyToSend = isProMode ? STATE.history.slice(-16) : STATE.history.slice(-8);
@@ -1279,7 +1267,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       9. AI肉声音声合成（四国めたん等）
+       9. ★完全修正：四国めたん等の音声生成完了ポーリング監視＆再生
        ========================================================== */
     function cleanTextForSpeech(text) {
       return sanitizeModelText(text)
@@ -1294,9 +1282,78 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     function stopSpeaking() {
       STATE.isSpeaking = false;
       masterAudio.pause();
-      masterAudio.removeAttribute('src');
-      masterAudio.load();
+      window.speechSynthesis.cancel();
       setEmotion('idle');
+    }
+
+    // 四国めたん等の音声ファイルが生成完了するまで待機（ポーリング）してBlobで確実に受け取る
+    async function fetchVoiceVoxAudioBlob(text, speakerId) {
+      const encodedText = encodeURIComponent(text);
+      const apiUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=${speakerId}`;
+
+      logDiag("[音声合成] 四国めたんサーバーに音声合成リクエスト送信…", "info");
+      const res = await fetch(apiUrl);
+      if (!res.ok) throw new Error(`Synthesis API error: HTTP ${res.status}`);
+
+      const data = await res.json();
+      const downloadUrl = data.mp3DownloadUrl || data.wavDownloadUrl || data.audioUrl;
+      if (!downloadUrl) throw new Error("音声ダウンロードURLが空です");
+
+      logDiag("[音声待機] 音声ファイルの生成完了を監視中…", "info");
+
+      // 最大15回（約5秒）ポーリングし、サーバー上のMP3ファイル完成を100%待つ
+      for (let attempt = 0; attempt < 15; attempt++) {
+        try {
+          const checkRes = await fetch(downloadUrl, { method: 'GET' });
+          if (checkRes.ok && checkRes.status === 200) {
+            const blob = await checkRes.blob();
+            // 音声ファイルとして実体があるかチェック
+            if (blob.size > 200) {
+              logDiag(`[音声完成] 四国めたんの音声ファイル生成完了！(${Math.round(blob.size / 1024)}KB)`, "success");
+              return blob;
+            }
+          }
+        } catch (e) {
+          // 生成中につき待機
+        }
+        await new Promise(r => setTimeout(r, 350));
+      }
+
+      throw new Error("音声生成待機がタイムアウトしました");
+    }
+
+    // ブラウザ標準の女の子ボイスによる保険（万が一の回線切断フリーズ防止）
+    function speakWithNativeFallback(text) {
+      if (!window.speechSynthesis) return;
+      window.speechSynthesis.cancel();
+      const uttr = new SpeechSynthesisUtterance(text);
+      uttr.lang = 'ja-JP';
+      uttr.rate = STATE.rate;
+      uttr.pitch = 1.35; // 高めの愛らしい子猫トーン
+
+      const voices = window.speechSynthesis.getVoices();
+      const cuteVoice = voices.find(v => v.lang.includes('ja') && (v.name.includes('Kyoko') || v.name.includes('Google') || v.name.includes('Nanami') || v.name.includes('Otoya') || v.name.includes('女性')));
+      if (cuteVoice) uttr.voice = cuteVoice;
+
+      uttr.onend = () => {
+        STATE.isSpeaking = false;
+        statusText.textContent = "👂 聴いてるニャ♪";
+        setEmotion('idle');
+        setTimeout(() => {
+          if (!STATE.isPaused && !STATE.isThinking) startListening();
+        }, 350);
+      };
+
+      uttr.onerror = () => {
+        STATE.isSpeaking = false;
+        statusText.textContent = "👂 聴いてるニャ♪";
+        setEmotion('idle');
+        setTimeout(() => {
+          if (!STATE.isPaused && !STATE.isThinking) startListening();
+        }, 350);
+      };
+
+      window.speechSynthesis.speak(uttr);
     }
 
     async function speakVoice(rawText) {
@@ -1308,58 +1365,43 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       setEmotion('talking');
 
       const textToSpeak = cleanTextForSpeech(rawText);
-      let speakerId = 0; // デフォルト四国めたん
+
+      // スピーカーID決定（四国めたん あまあま: 0, ずんだもん あまあま: 3, つむぎ: 8, ずんだもん ノーマル: 1）
+      let speakerId = 0; // デフォルト四国めたん（あまあま）
       if (STATE.voiceModel === 'zundamon-ama') speakerId = 3;
       else if (STATE.voiceModel === 'tsumugi') speakerId = 8;
       else if (STATE.voiceModel === 'zundamon-norm') speakerId = 1;
 
       try {
-        const encodedText = encodeURIComponent(textToSpeak);
-        const directApiUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=${speakerId}`;
+        // 音声ファイルがサーバー側で完成するのを確実に待ってからBlobとして取得
+        const audioBlob = await fetchVoiceVoxAudioBlob(textToSpeak, speakerId);
+        const blobUrl = URL.createObjectURL(audioBlob);
 
-        const res = await fetch(directApiUrl);
-        if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
-
-        const data = await res.json();
-        const audioUrl = data.mp3DownloadUrl || data.wavDownloadUrl || data.audioUrl;
-        if (!audioUrl) throw new Error("Audio URL is empty");
-
-        await new Promise(r => setTimeout(r, 550));
-
-        masterAudio.src = audioUrl;
+        masterAudio.src = blobUrl;
         masterAudio.playbackRate = STATE.rate;
 
         masterAudio.onended = () => {
+          URL.revokeObjectURL(blobUrl);
           STATE.isSpeaking = false;
           statusText.textContent = "👂 聴いてるニャ♪";
           setEmotion('idle');
-          masterAudio.removeAttribute('src');
-          masterAudio.load();
           setTimeout(() => {
             if (!STATE.isPaused && !STATE.isThinking) startListening();
           }, 350);
         };
 
-        masterAudio.onerror = () => {
-          setTimeout(() => {
-            masterAudio.play().catch(() => {
-              STATE.isSpeaking = false;
-              setEmotion('idle');
-            });
-          }, 400);
+        masterAudio.onerror = (e) => {
+          logDiag("[オーディオ再生例外] 保険音声へ切り替えます", "warn");
+          speakWithNativeFallback(textToSpeak);
         };
 
         await masterAudio.play();
-        logDiag(`[AI肉声発声中] 音声再生成功ニャ！`, "success");
+        logDiag(`[四国めたん発声中] 音声をクリアに再生中ニャ！`, "success");
 
       } catch (err) {
-        logDiag(`[AI肉声エラー] ${err.message}`, "error");
-        STATE.isSpeaking = false;
-        statusText.textContent = "👂 聴いてるニャ♪";
-        setEmotion('idle');
-        setTimeout(() => {
-          if (!STATE.isPaused && !STATE.isThinking) startListening();
-        }, 400);
+        logDiag(`[外部音声遅延] 保険の端末ボイスで瞬時に発声します: ${err.message}`, "warn");
+        // 外部サーバーが混雑していても無音にならず確実に発声する
+        speakWithNativeFallback(textToSpeak);
       }
     }
 
@@ -1369,7 +1411,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       STATE.rate = parseFloat(voiceRate.value);
       playCatMeow('happy');
       const voiceName = voiceModelSelect.options[voiceModelSelect.selectedIndex].text;
-      speakVoice("おやびん！クロの声はこれだニャン🐾 よく聞こえるかニャ？");
+      speakVoice("おやびん！クロの声はこれだニャン🐾 聞き取りやすいかニャ？");
     });
 
     /* ==========================================================
@@ -1488,7 +1530,6 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       localStorage.setItem('kuro_rate', STATE.rate);
       localStorage.setItem('kuro_custom_lite_model', STATE.customLiteModel);
 
-      // モデルスキャン実行
       if (STATE.apiKey) {
         await scanAvailableGeminiModels(STATE.apiKey);
       }
@@ -1498,7 +1539,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       logDiag(`[設定保存] 思考モデル: ${STATE.activeLiteModel} / 音声: ${voiceName}`, "success");
 
       playCatMeow('happy');
-      addChatMessage('model', `設定バッチリだニャ！『${STATE.activeLiteModel}』でいつでもお話しできるニャン🐾`);
+      addChatMessage('model', `設定バッチリだニャ！『${voiceName}』でいつでもお話しできるニャン🐾`);
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
       }, 500);
@@ -1512,7 +1553,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       if (STATE.apiKey) {
         await scanAvailableGeminiModels(STATE.apiKey);
       }
-      logDiag("クロちゃん起動完了。Flash 3.5 lite & 3.8 待機中ニャ🐾", "success");
+      logDiag("クロちゃん起動完了。四国めたん＆Flash 3.5 lite待機中ニャ🐾", "success");
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
       }, 1000);
@@ -1520,5 +1561,3 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
   </script>
 </body>
 </html>
-
-
