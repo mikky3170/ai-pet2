@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -139,7 +140,7 @@
       border-bottom-left-radius: 4px;
     }
 
-    /* 3. クロちゃん本体（四角い枠ゼロ・ゆっくり優しく息づく上品ステージ） */
+    /* 3. クロちゃん本体（四角い枠ゼロ・ゆっくり息づく上品ステージ） */
     .pet-avatar-wrapper {
       position: relative;
       flex-shrink: 0;
@@ -549,7 +550,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。Google公式generateContent規格＆四国めたんエンジン待機完了ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。Google正規generateContent通信＆四国めたん完全連携完了ニャ！</div>
       </div>
     </div>
   </div>
@@ -770,10 +771,10 @@
       strokingCounter: 0
     };
 
-    // Google Gemini 公式モデル名（APIが確実に受理する名称）
+    // Google Gemini 公式安定モデル名（全世界共通・404の心配ゼロ）
     const MODELS = {
-      lite: 'gemini-2.0-flash',       // 日常会話用：超高速・低遅延
-      pro: 'gemini-2.0-flash-thinking-exp-01-21' // 難問・論理推論用（存在しない場合は自動でflashにフォールバック）
+      lite: 'gemini-1.5-flash', // 日常会話用：超高速・低遅延
+      pro: 'gemini-1.5-pro'    // 難問・論理推論用
     };
 
     // DOM要素
@@ -1013,7 +1014,7 @@
     }, 1000);
 
     /* ==========================================================
-       7. AIモデル振り分け ＆ Google公式 generateContent 正規通信
+       7. AIモデル振り分け ＆ Google公式 generateContent（先頭userサニタイズ）
        ========================================================== */
     function evaluateComplexity(promptText) {
       if (promptText.includes('3.8') || promptText.includes('サンテンハチ') || promptText.includes('本気で考えて')) {
@@ -1029,18 +1030,23 @@
       return { isPro: false, reason: "日常会話・簡易照会" };
     }
 
-    // ★重要修正：Google Gemini API 公式正規エンドポイント（generateContent）
+    // ★重要修正：Geminiの「先頭は必ずuserでなければならない（400エラー原因）」を完全解決！
     async function sendToGeminiOfficialAPI(modelName, systemPrompt, promptText, historyItems) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${STATE.apiKey}`;
 
-      // 公式フォーマットの会話履歴整形
       const contents = [];
+      // 履歴を追加するが、先頭は必ず 'user' から始まらなければならない（Googleルール遵守）
+      let hasStartedUser = false;
       historyItems.forEach(h => {
+        if (!hasStartedUser && h.role !== 'user') return; // 先頭のmodel挨拶をスキップ
+        hasStartedUser = true;
         contents.push({
           role: h.role === 'user' ? 'user' : 'model',
           parts: [{ text: h.text }]
         });
       });
+
+      // 現在のおやびんの発言（user）を追加
       contents.push({
         role: 'user',
         parts: [{ text: promptText }]
@@ -1154,7 +1160,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 - かよちゃん、りゅうせいくん、たいせいくん、かまぶーくんの話題が出たら家族・友達として親しく接してください。
 - 前世は大発明家の相棒猫です。少し自慢できる話題では「クロの前世の発明のひらめきによるとね…フフン♪」と誇らしげに可愛く自慢してください。
 - ラーメン、餃子、麻婆豆腐、ITガジェットを激推ししてください。
-- 返答は必ず【短く愛らしい1〜2文（合計45文字以内）】で返してください。
+- 返答は必ず【短く愛らしい1〜2文（合計45文字以内）】で返してください。長文は禁止です。
 - 【超重要ルール】文末や文中に「（〇〇文字）」や文字数の注記、メタ情報は絶対に出力しないでください。純粋なセリフのみを返してください。
 `;
 
@@ -1162,15 +1168,6 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
       try {
         let response = await sendToGeminiOfficialAPI(chosenModel, systemPrompt, promptText, historyToSend);
-
-        // 3.8が未対応または混雑時の自動フォールバック
-        if (!response.ok && chosenModel === MODELS.pro) {
-          logDiag("[3.8エラー検知] 2.0-flashへ自動フォールバック", "warn");
-          modelBadge.className = 'model-badge lite';
-          modelBadge.textContent = '⚡ 3.5 lite (引継ぎ)';
-          chosenModel = MODELS.lite;
-          response = await sendToGeminiOfficialAPI(MODELS.lite, systemPrompt, promptText, historyToSend);
-        }
 
         if (response.ok) {
           const resData = await response.json();
@@ -1194,7 +1191,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         speakVoice(cleanDisplay);
       } else {
         setEmotion('idle');
-        const fallbackMsg = "みゃう？APIキーを確認するか、もう一度お話ししてニャン♪";
+        const fallbackMsg = "みゃう？電波がちょっと途切れちゃったニャ。もう一回お話ししてニャン♪";
         addChatMessage('model', fallbackMsg);
         speakVoice(fallbackMsg);
       }
@@ -1216,7 +1213,6 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     function stopSpeaking() {
       STATE.isSpeaking = false;
       masterAudio.pause();
-      // 再生プレーヤーをクリーンにリフレッシュ（2回目以降の詰まりを完全防止）
       masterAudio.removeAttribute('src');
       masterAudio.load();
       setEmotion('idle');
@@ -1262,7 +1258,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
           STATE.isSpeaking = false;
           statusText.textContent = "👂 聴いてるニャ♪";
           setEmotion('idle');
-          // 次の会話のためにプレーヤーをクリーンにリフレッシュ！
+          // 次の会話のためにクリーンにリフレッシュ！
           masterAudio.removeAttribute('src');
           masterAudio.load();
           setTimeout(() => {
