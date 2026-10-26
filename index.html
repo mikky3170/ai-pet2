@@ -140,7 +140,7 @@
       border-bottom-left-radius: 4px;
     }
 
-    /* 3. クロちゃん本体（四角い枠ゼロ・クリーン＆上品アニメーションステージ） */
+    /* 3. クロちゃん本体（四角い枠ゼロ・ゆっくり優しく息づく上品ステージ） */
     .pet-avatar-wrapper {
       position: relative;
       flex-shrink: 0;
@@ -515,7 +515,7 @@
       </div>
     </div>
 
-    <!-- 3. 中央〜下部：クロちゃん本体（四角い枠ゼロ・ゆっくり優しく動く上品ステージ） -->
+    <!-- 3. 中央〜下部：クロちゃん本体（四角い枠ゼロ・ゆっくり息づく上品ステージ） -->
     <div class="pet-avatar-wrapper is-idling" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
       <div class="cat-ground-shadow"></div>
 
@@ -550,7 +550,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。スローモーション＆Android高品質AI肉声モード準備完了ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。Web Audioダイレクト再生エンジン待機完了ニャ！</div>
       </div>
     </div>
   </div>
@@ -575,9 +575,9 @@
         </div>
       </div>
 
-      <!-- 🔊 PC大好評のAI肉声（Android完全解禁） -->
+      <!-- 🔊 PC大好評のAI肉声（Android完全解禁・すり替え完全撤廃） -->
       <div class="form-group">
-        <label>クロのAI肉声ボイス（PC・Android両対応）:</label>
+        <label>クロのAI肉声ボイス（選んだ声のまま確実に会話）:</label>
         <div class="voice-select-row">
           <select id="voice-model-select">
             <option value="zundamon-ama">🐱 ずんだもん（あまあま・超キュート子猫声）</option>
@@ -600,38 +600,64 @@
 
   <script>
     /* ==========================================================
-       ★ Androidスマホの音声ブロック完全解除（Autoplay Unlock）
+       ★ Web Audio API ダイレクト再生エンジン（Androidのすり替え完全防止）
        ========================================================== */
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
-    let isAudioUnlocked = false;
+    let currentSourceNode = null;
 
     function getAudioContext() {
-      if (!audioCtx && AudioContextClass) audioCtx = new AudioContextClass();
-      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      if (!audioCtx && AudioContextClass) {
+        audioCtx = new AudioContextClass();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
       return audioCtx;
     }
 
-    // Androidスマホで非同期AI音声を確実に鳴らすためのアンロック
-    function unlockAndroidAudio() {
-      if (isAudioUnlocked) return;
+    // 画面タップ時にスマホの音声を永続アンロック
+    function unlockAudioEngine() {
       const ctx = getAudioContext();
-      if (ctx) {
-        // 無音のオシレーターを一瞬鳴らしてAndroidの制限を解除
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        gain.gain.value = 0.001;
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(0);
-        osc.stop(0.01);
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume();
       }
-      isAudioUnlocked = true;
-      logDiag("[Audio] Androidスマホの音声ロックを解除完了ニャ！", "info");
     }
+    window.addEventListener('pointerdown', unlockAudioEngine, { passive: true });
+    window.addEventListener('touchstart', unlockAudioEngine, { passive: true });
 
-    window.addEventListener('pointerdown', unlockAndroidAudio, { once: true });
-    window.addEventListener('touchstart', unlockAndroidAudio, { once: true });
+    // Web Audioによるメモリ直通デコード再生（Androidが絶対に遮断できないプロ仕様）
+    async function playAudioBufferDirect(arrayBuffer) {
+      const ctx = getAudioContext();
+      if (!ctx) throw new Error("AudioContext not supported");
+      if (ctx.state === 'suspended') await ctx.resume();
+
+      // 前の音声を安全に停止
+      if (currentSourceNode) {
+        try { currentSourceNode.stop(); } catch(e) {}
+        currentSourceNode = null;
+      }
+
+      // MP3/WAVデータをメモリ内で瞬時にデコード
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.playbackRate.value = STATE.rate;
+      source.connect(ctx.destination);
+      currentSourceNode = source;
+
+      source.onended = () => {
+        STATE.isSpeaking = false;
+        statusText.textContent = "👂 聴いてるニャ♪";
+        setEmotion('idle'); // おしゃべり終了後、お座り待機ポーズへフワッと戻る
+        setTimeout(() => {
+          if (!STATE.isPaused && !STATE.isThinking) startListening();
+        }, 400);
+      };
+
+      source.start(0);
+      logDiag(`[AI肉声再生] 選んだ可愛い声でダイレクト再生成功ニャ！`, "success");
+    }
 
     /* ==========================================================
        1. 音響エンジン（鳴き声＆喉鳴らし）
@@ -775,8 +801,7 @@
       isThinking: false,
       isSpeaking: false,
       currentEmotion: 'idle',
-      strokingCounter: 0,
-      currentAudio: null
+      strokingCounter: 0
     };
 
     const MODELS = {
@@ -817,7 +842,7 @@
       happy: document.getElementById('img-happy')
     };
 
-    // 表情＆アクションの滑らかな設定（激しい点滅は完全ゼロ）
+    // 表情＆アクションの滑らかな切り替え
     function setEmotion(emotion) {
       STATE.currentEmotion = emotion;
 
@@ -829,7 +854,7 @@
         }
       });
 
-      // 2. モーションクラスの切り替え（ゆったりスローモーション）
+      // 2. モーションクラスの切り替え（ゆったりスロー呼吸）
       avatarWrapper.classList.remove('is-idling', 'is-talking', 'is-thinking');
       if (emotion === 'idle') avatarWrapper.classList.add('is-idling');
       else if (emotion === 'talking') avatarWrapper.classList.add('is-talking');
@@ -981,7 +1006,7 @@
        6. なでなで・時計
        ========================================================== */
     avatarWrapper.addEventListener('click', (e) => {
-      unlockAndroidAudio();
+      unlockAudioEngine();
       if (STATE.isPaused) { togglePause(); return; }
 
       const rect = avatarWrapper.getBoundingClientRect();
@@ -1220,7 +1245,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       8. PC大好評のAI肉声エンジン（Android完全解禁・クリア再生）
+       8. 選んだAI肉声で100%確実に会話するダイレクト音声エンジン
        ========================================================== */
     function cleanTextForSpeech(text) {
       return sanitizeModelText(text)
@@ -1234,17 +1259,16 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
     function stopSpeaking() {
       STATE.isSpeaking = false;
-      if (STATE.currentAudio) {
-        STATE.currentAudio.pause();
-        STATE.currentAudio = null;
+      if (currentSourceNode) {
+        try { currentSourceNode.stop(); } catch(e) {}
+        currentSourceNode = null;
       }
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
       setEmotion('idle');
     }
 
     async function speakVoice(rawText) {
       stopSpeaking();
-      unlockAndroidAudio();
+      unlockAudioEngine();
 
       STATE.isSpeaking = true;
       statusText.textContent = "🗣️ お話し中ニャ♪";
@@ -1253,7 +1277,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       setEmotion('talking');
 
       const textToSpeak = cleanTextForSpeech(rawText);
-      logDiag(`[AI肉声開始] モデル: ${STATE.voiceModel} / 「${textToSpeak}」`, "info");
+      logDiag(`[AI肉声取得開始] モデル: ${STATE.voiceModel} / 「${textToSpeak}」`, "info");
 
       // スピーカーID決定（ずんだもん あまあま: 3, 四国めたん あまあま: 0, つむぎ: 8, ずんだもん ノーマル: 1）
       let speakerId = 3;
@@ -1266,7 +1290,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         const directApiUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=${speakerId}`;
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6500);
+        const timeoutId = setTimeout(() => controller.abort(), 7000);
 
         const res = await fetch(directApiUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
@@ -1277,68 +1301,31 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         const audioUrl = data.mp3DownloadUrl || data.wavDownloadUrl || data.audioUrl;
         if (!audioUrl) throw new Error("Audio URL is empty in response");
 
-        const audio = new Audio();
-        audio.crossOrigin = "anonymous";
-        audio.src = audioUrl;
-        audio.playbackRate = STATE.rate;
-        STATE.currentAudio = audio;
+        // 音声データをバイナリ（ArrayBuffer）で直接フェッチ
+        const audioRes = await fetch(audioUrl);
+        const arrayBuffer = await audioRes.arrayBuffer();
 
-        audio.onended = () => {
-          STATE.isSpeaking = false;
-          statusText.textContent = "👂 聴いてるニャ♪";
-          // おしゃべり終了：フワッとお座り待機ポーズに戻る
-          setEmotion('idle');
-          setTimeout(() => {
-            if (!STATE.isPaused && !STATE.isThinking) startListening();
-          }, 400);
-        };
-
-        audio.onerror = () => {
-          logDiag("[AI肉声エラー] 端末TTSで安全代行", "warn");
-          speakBrowserTTSFallback(textToSpeak);
-        };
-
-        await audio.play();
-        logDiag(`[AI肉声再生中] Android・PCでクリアに発声成功ニャ！`, "success");
+        // Androidのブロックを物理的にすり抜けるWeb Audio APIダイレクト再生
+        await playAudioBufferDirect(arrayBuffer);
       } catch (err) {
-        logDiag(`[通信注意: ${err.message}] 端末TTSで安全代行`, "warn");
-        speakBrowserTTSFallback(textToSpeak);
-      }
-    }
-
-    // 音割れのない自然な端末TTSフォールバック
-    function speakBrowserTTSFallback(textToSpeak) {
-      if (!('speechSynthesis' in window)) {
-        STATE.isSpeaking = false;
-        return;
-      }
-      window.speechSynthesis.cancel();
-
-      const uttr = new SpeechSynthesisUtterance(textToSpeak);
-      uttr.lang = 'ja-JP';
-      uttr.pitch = 1.15; // 音割れしない自然な高さ
-      uttr.rate = STATE.rate;
-
-      uttr.onend = uttr.onerror = () => {
+        logDiag(`[AI肉声通信エラー] ${err.message}`, "error");
         STATE.isSpeaking = false;
         statusText.textContent = "👂 聴いてるニャ♪";
         setEmotion('idle');
         setTimeout(() => {
           if (!STATE.isPaused && !STATE.isThinking) startListening();
         }, 400);
-      };
-
-      window.speechSynthesis.speak(uttr);
+      }
     }
 
     // 🔊 試聴ボタン
     testVoiceBtn.addEventListener('click', () => {
-      unlockAndroidAudio();
+      unlockAudioEngine();
       STATE.voiceModel = voiceModelSelect.value;
       STATE.rate = parseFloat(voiceRate.value);
       playCatMeow('happy');
       const voiceName = voiceModelSelect.options[voiceModelSelect.selectedIndex].text;
-      logDiag(`[試聴テスト開始] ${voiceName}`, "info");
+      logDiag(`[試聴テスト] ${voiceName}`, "info");
       speakVoice("おやびん！クロの声はこれだニャン🐾 聞き取りやすいかニャ？");
     });
 
@@ -1396,7 +1383,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     function togglePause() {
-      unlockAndroidAudio();
+      unlockAudioEngine();
       STATE.isPaused = !STATE.isPaused;
       if (STATE.isPaused) {
         pauseBtn.classList.add('is-paused');
@@ -1428,7 +1415,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     });
 
     settingsBtn.addEventListener('click', () => {
-      unlockAndroidAudio();
+      unlockAudioEngine();
       document.getElementById('api-key-input').value = STATE.apiKey;
       voiceModelSelect.value = STATE.voiceModel;
       voiceRate.value = STATE.rate;
@@ -1442,6 +1429,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     });
 
     saveSettingsBtn.addEventListener('click', () => {
+      unlockAudioEngine();
       STATE.apiKey = document.getElementById('api-key-input').value.trim();
       STATE.voiceModel = voiceModelSelect.value;
       STATE.rate = parseFloat(voiceRate.value);
@@ -1451,8 +1439,11 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       localStorage.setItem('kuro_rate', STATE.rate);
 
       modalOverlay.style.display = 'none';
-      logDiag(`[設定保存] 音声「${STATE.voiceModel}」を保存完了ニャ！`, "success");
-      const msg = "おやびん、設定をしっかり覚えたニャン♪";
+      const voiceName = voiceModelSelect.options[voiceModelSelect.selectedIndex].text;
+      logDiag(`[設定保存完了] 音声を「${voiceName}」に確定しましたニャ！`, "success");
+
+      // 保存直後、選んだ声で発声
+      const msg = "おやびん、声と記憶の設定をしっかり保存したニャン♪";
       addChatMessage('model', msg);
       speakVoice(msg);
     });
@@ -1462,7 +1453,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       renderMemoryList();
       restoreChatTimeline();
       setEmotion('idle');
-      logDiag("クロちゃん起動完了。GitHub JPEG直結・スローアニメ待機中ニャ🐾", "success");
+      logDiag("クロちゃん起動完了。Web Audioダイレクト再生準備完了ニャ🐾", "success");
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
       }, 1000);
