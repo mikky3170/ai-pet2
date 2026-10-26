@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -125,6 +124,7 @@
       line-height: 1.5;
       word-break: break-word;
       box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+      transition: all 0.25s ease-out;
     }
     .chat-row.user .chat-bubble {
       background: #0284c7;
@@ -136,6 +136,19 @@
       color: #2d3748;
       border: 1.5px solid #fbcfe8;
       border-bottom-left-radius: 4px;
+    }
+
+    /* 💭 思考中バブル（ぷかぷかアニメーション） */
+    .chat-bubble.thinking-bubble {
+      background: #f3f4f6;
+      border: 1.5px dashed #d1d5db;
+      color: #6b7280;
+      font-style: italic;
+      animation: bubblePulse 1.4s ease-in-out infinite alternate;
+    }
+    @keyframes bubblePulse {
+      0% { transform: scale(0.98); opacity: 0.75; }
+      100% { transform: scale(1.02); opacity: 1; }
     }
 
     /* 3. クロちゃん本体ステージ */
@@ -184,13 +197,13 @@
       100% { transform: translateY(-5px) scale(1.02); }
     }
 
-    /* 考え中のアニメーション */
+    /* 考え中の首かしげ */
     .pet-avatar-wrapper.is-thinking #cat-stage-box {
-      animation: catSlowThinking 2.6s ease-in-out infinite alternate;
+      animation: catSlowThinking 2.4s ease-in-out infinite alternate;
     }
     @keyframes catSlowThinking {
-      0% { transform: scale(1) rotate(-3deg); }
-      100% { transform: scale(1.015) rotate(3deg); }
+      0% { transform: scale(1) rotate(-3.5deg); }
+      100% { transform: scale(1.015) rotate(3.5deg); }
     }
 
     .cat-avatar-img {
@@ -536,7 +549,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。四国めたん完全ポーリング＆多角推論モード準備完了ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。四国めたん＆思考演出ハイブリッド稼働完了ニャ！</div>
       </div>
     </div>
   </div>
@@ -573,7 +586,7 @@
         </div>
       </div>
 
-      <!-- 🔊 音声選択（四国めたんを最上位推奨） -->
+      <!-- 🔊 音声選択（Google標準ボイスも選択可能） -->
       <div class="form-group">
         <label>クロのAI肉声ボイス:</label>
         <div class="voice-select-row">
@@ -582,6 +595,7 @@
             <option value="zundamon-ama">🐱 ずんだもん（あまあま・子猫ボイス）</option>
             <option value="tsumugi">✨ 春日部つむぎ（元気でおしゃまな女の子）</option>
             <option value="zundamon-norm">🎀 ずんだもん（ノーマル少女声）</option>
+            <option value="native-device">📱 Google / 端末標準ボイス（即答・遅延ゼロ・超安定）</option>
           </select>
           <button type="button" class="btn-aux" id="test-voice-btn">🔊 試聴</button>
         </div>
@@ -616,7 +630,7 @@
     window.addEventListener('touchstart', unlockMasterAudio, { passive: true });
 
     /* ==========================================================
-       1. 音響エンジン（猫の鳴き声＆喉鳴らし）
+       1. 音響エンジン（即時相槌「ニャン♪」＆喉鳴らし）
        ========================================================== */
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
@@ -625,6 +639,39 @@
       if (!audioCtx && AudioContextClass) audioCtx = new AudioContextClass();
       if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
       return audioCtx;
+    }
+
+    // 0.1秒で即座に鳴く「相槌ニャン♪」
+    function playCatAizuchi() {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      osc.type = 'triangle';
+      filter.type = 'bandpass';
+      filter.Q.value = 3.0;
+
+      // 愛らしく短く「ニャッ♪」と首を傾げる鳴き声
+      osc.frequency.setValueAtTime(680, now);
+      osc.frequency.exponentialRampToValueAtTime(920, now + 0.07);
+      osc.frequency.exponentialRampToValueAtTime(700, now + 0.18);
+
+      filter.frequency.setValueAtTime(1400, now);
+      filter.frequency.linearRampToValueAtTime(1700, now + 0.08);
+      filter.frequency.linearRampToValueAtTime(1200, now + 0.18);
+
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.24, now + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.20);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.20);
     }
 
     function playCatMeow(type = 'normal') {
@@ -707,7 +754,7 @@
 
     /* ==========================================================
        2. 状態管理・長期記憶帳
-       ========================================================== */
+       ========================================================= */
     const DEFAULT_MEMORIES = [
       "わたしの名前：クロ（ノルウェージャンフォレストキャットの女の子、約1歳）",
       "見た目：黒とシルバーのふわふわでゴージャスな毛並み、まんまるで愛らしいエメラルドグリーンの瞳",
@@ -913,7 +960,7 @@
     });
 
     /* ==========================================================
-       4. チャットタイムライン ＆ 記憶帳
+       4. チャットタイムライン ＆ 思考バブル演出
        ========================================================== */
     function addChatMessage(role, text) {
       const row = document.createElement('div');
@@ -924,6 +971,29 @@
       row.appendChild(bubble);
       chatTimeline.appendChild(row);
       chatTimeline.scrollTop = chatTimeline.scrollHeight;
+      return row;
+    }
+
+    // 💭 ぷかぷか思考バブルを追加
+    let currentThinkingBubbleRow = null;
+    function showThinkingBubble() {
+      removeThinkingBubble();
+      const row = document.createElement('div');
+      row.className = 'chat-row model';
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-bubble thinking-bubble';
+      bubble.textContent = '💭 クロちゃんが考え中ニャ…';
+      row.appendChild(bubble);
+      chatTimeline.appendChild(row);
+      chatTimeline.scrollTop = chatTimeline.scrollHeight;
+      currentThinkingBubbleRow = row;
+    }
+
+    function removeThinkingBubble() {
+      if (currentThinkingBubbleRow && currentThinkingBubbleRow.parentNode) {
+        currentThinkingBubbleRow.remove();
+        currentThinkingBubbleRow = null;
+      }
     }
 
     function restoreChatTimeline() {
@@ -991,7 +1061,7 @@
             localStorage.setItem('kuro_notebook_memories', JSON.stringify(STATE.memories));
             renderMemoryList();
             logDiag(`[音声自動記憶] 「${content}」`, 'success');
-            return `了解ニャン！記憶帳に『${content}』ってしっかりメモしたニャ🐾 クロはずっと覚えてるニャ♪`;
+            return `了解ニャン！記憶帳に『${content}』ってしっかりメモしたニャ🐾`;
           }
         }
       }
@@ -1060,15 +1130,15 @@
       if (STATE.strokingCounter >= 3) {
         STATE.strokingCounter = 0;
         playCatPurr();
-        const msg = "ゴロゴロ…おやびんになでられて幸せニャン♡ クロ、おやびんが大好きニャ🐾";
+        const msg = "ゴロゴロ…おやびん大好きニャン♡";
         addChatMessage('model', msg);
-        speakVoice(msg);
+        speakVoice(msg, false); // なでなでは即時再生
         return;
       }
 
       playCatMeow('happy');
       if (STATE.isSpeaking) stopSpeaking();
-      addChatMessage('model', "ニャン！起きてるニャ♪ おやびん、声で何でも話しかけてニャ🐾");
+      addChatMessage('model', "ニャン！起きてるニャ♪ おやびん、何でも話しかけてニャ🐾");
       startListening();
     });
 
@@ -1121,7 +1191,6 @@
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${STATE.apiKey}`;
 
         try {
-          logDiag(`[通信試行] モデル『${modelName}』へリクエスト送信…`, "info");
           const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1136,9 +1205,6 @@
             }
           } else if (res.status === 404) {
             logDiag(`[404検知] 『${modelName}』は利用不可。次候補へフォールバック…`, "warn");
-          } else {
-            const errData = await res.json();
-            logDiag(`[API HTTP ${res.status}] ${JSON.stringify(errData)}`, "warn");
           }
         } catch (e) {
           logDiag(`[通信例外: ${modelName}] ${e.message}`, "warn");
@@ -1158,29 +1224,34 @@
     }
 
     async function askGemini(promptText) {
+      // 1. おやびんの発言を表示
       addChatMessage('user', promptText);
 
+      // ★ 即座の可愛い相槌（0.1秒でニャン♪とお返事！）
+      playCatAizuchi();
+
+      // 記憶帳コマンド
       const memReply = handleMemoryVoiceCommand(promptText);
       if (memReply) {
         addChatMessage('model', memReply);
         playCatMeow('happy');
-        speakVoice(memReply);
+        speakVoice(memReply, false);
         return;
       }
 
       if (promptText.includes('あと何回') || promptText.includes('残り何回')) {
         const remaining = Math.max(0, 20 - STATE.proUsedToday);
-        const reply = `今日3.8フラッシュで考えられるのは、あと【${remaining}回】だニャ🐾 何でも聞いてニャン！`;
+        const reply = `今日3.8フラッシュで考えられるのは、あと【${remaining}回】だニャ🐾`;
         addChatMessage('model', reply);
         playCatMeow('normal');
-        speakVoice(reply);
+        speakVoice(reply, false);
         return;
       }
 
       if (!STATE.apiKey) {
         const msg = "⚙️ 歯車ボタンからGoogle AI Studio APIキーを設定してニャン♪";
         addChatMessage('model', msg);
-        speakVoice("歯車ボタンからAPIキーを入れてニャン！");
+        speakVoice("歯車ボタンからAPIキーを入れてニャン！", false);
         return;
       }
 
@@ -1188,6 +1259,9 @@
       STATE.isThinking = true;
       statusText.textContent = "💭 考え中ニャ…";
       setEmotion('thinking');
+
+      // ★ 思考バブル（💭）を表示して考え中の演出を開始！
+      showThinkingBubble();
 
       const complexity = evaluateComplexity(promptText);
       let isProMode = false;
@@ -1226,6 +1300,7 @@
       const now = new Date();
       const timeStr = `${now.getHours()}時${now.getMinutes()}分`;
 
+      // ★ 四国めたんが約1秒で即座に合成できるように、30文字前後のワンフレーズ徹底指定
       const systemPrompt = `
 あなたはノルウェージャンフォレストキャットの愛らしくて賢い女の子の子猫「クロ」（約1歳）です。
 【クロの記憶帳】
@@ -1243,31 +1318,30 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 - かよちゃん、りゅうせいくん、たいせいくん、かまぶーくんの話題が出たら家族・親友として親しく接してください。
 - 前世は大発明家の相棒猫です。少し自慢できる話題では「クロの前世の発明のひらめきによるとね…フフン♪」と誇らしげに自慢してください。
 - ラーメン、餃子、麻婆豆腐、ITガジェットを激推ししてください。
-- 返答は必ず【短く愛らしい1〜2文（合計45文字以内）】で返してください。長文は禁止です。
+- 返答は必ず【短く愛らしい1文（25文字〜35文字前後）】で返してください。長い文章は禁止です。
 - 【超重要ルール】文末や文中に「（〇〇文字）」や文字数の注記、メタ情報は絶対に出力しないでください。純粋なセリフのみを返してください。
 `;
 
       const result = await executeGeminiRequestWithFallback(uniqueCandidates, systemPrompt, promptText, historyToSend);
 
-      STATE.isThinking = false;
-
       if (result.success && result.text) {
         const cleanDisplay = sanitizeModelText(result.text);
-        logDiag(`[API成功] モデル『${result.modelUsed}』で受信: 「${cleanDisplay}」`, "success");
-        addChatMessage('model', cleanDisplay);
+        logDiag(`[API成功] セリフ決定: 「${cleanDisplay}」`, "success");
         saveChatHistory(promptText, cleanDisplay);
-        playCatMeow('happy');
-        speakVoice(cleanDisplay);
+        // ★ ここではまだ画面に出さず、音声の再生準備が整った瞬間に同時出現させる！
+        speakVoice(cleanDisplay, true);
       } else {
+        removeThinkingBubble();
+        STATE.isThinking = false;
         setEmotion('idle');
         const fallbackMsg = "みゃう？Google AI Studioでモデルを検出中ニャ。歯車ボタンの『自動検出』を押してみてニャン！";
         addChatMessage('model', fallbackMsg);
-        speakVoice(fallbackMsg);
+        speakVoice(fallbackMsg, false);
       }
     }
 
     /* ==========================================================
-       9. ★完全修正：四国めたん等の音声生成完了ポーリング監視＆再生
+       9. ★完全同期音声エンジン（セリフと音声を同時に出す）
        ========================================================== */
     function cleanTextForSpeech(text) {
       return sanitizeModelText(text)
@@ -1286,47 +1360,39 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       setEmotion('idle');
     }
 
-    // 四国めたん等の音声ファイルが生成完了するまで待機（ポーリング）してBlobで確実に受け取る
-    async function fetchVoiceVoxAudioBlob(text, speakerId) {
+    // 四国めたんのサーバーに問い合わせて、準備が整ったMP3の直接URLを取得
+    async function getVoiceVoxMp3Url(text, speakerId) {
       const encodedText = encodeURIComponent(text);
       const apiUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=${speakerId}`;
 
-      logDiag("[音声合成] 四国めたんサーバーに音声合成リクエスト送信…", "info");
-      const res = await fetch(apiUrl);
-      if (!res.ok) throw new Error(`Synthesis API error: HTTP ${res.status}`);
+      logDiag("[音声合成] 四国めたんサーバーに問い合わせ中…", "info");
 
-      const data = await res.json();
-      const downloadUrl = data.mp3DownloadUrl || data.wavDownloadUrl || data.audioUrl;
-      if (!downloadUrl) throw new Error("音声ダウンロードURLが空です");
-
-      logDiag("[音声待機] 音声ファイルの生成完了を監視中…", "info");
-
-      // 最大15回（約5秒）ポーリングし、サーバー上のMP3ファイル完成を100%待つ
-      for (let attempt = 0; attempt < 15; attempt++) {
+      // 最大12回（約3.5秒）ポーリングして準備完了を待つ
+      for (let i = 0; i < 12; i++) {
         try {
-          const checkRes = await fetch(downloadUrl, { method: 'GET' });
-          if (checkRes.ok && checkRes.status === 200) {
-            const blob = await checkRes.blob();
-            // 音声ファイルとして実体があるかチェック
-            if (blob.size > 200) {
-              logDiag(`[音声完成] 四国めたんの音声ファイル生成完了！(${Math.round(blob.size / 1024)}KB)`, "success");
-              return blob;
+          const res = await fetch(apiUrl);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.isAudioError) throw new Error("VoiceVox synthesis error");
+            if (data.isAudioReady && data.mp3DownloadUrl) {
+              logDiag("[音声完成] 四国めたんの音声準備完了ニャ！", "success");
+              return data.mp3DownloadUrl;
             }
           }
         } catch (e) {
-          // 生成中につき待機
+          // リトライ
         }
-        await new Promise(r => setTimeout(r, 350));
+        await new Promise(r => setTimeout(r, 280));
       }
-
-      throw new Error("音声生成待機がタイムアウトしました");
+      throw new Error("音声生成がタイムアウトしました");
     }
 
-    // ブラウザ標準の女の子ボイスによる保険（万が一の回線切断フリーズ防止）
-    function speakWithNativeFallback(text) {
+    // 📱 Google / 端末標準ボイスでの発声（遅延ゼロ・超安定）
+    function speakWithNativeVoice(cleanText, syncBubble) {
       if (!window.speechSynthesis) return;
       window.speechSynthesis.cancel();
-      const uttr = new SpeechSynthesisUtterance(text);
+
+      const uttr = new SpeechSynthesisUtterance(cleanText);
       uttr.lang = 'ja-JP';
       uttr.rate = STATE.rate;
       uttr.pitch = 1.35; // 高めの愛らしい子猫トーン
@@ -1334,6 +1400,17 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       const voices = window.speechSynthesis.getVoices();
       const cuteVoice = voices.find(v => v.lang.includes('ja') && (v.name.includes('Kyoko') || v.name.includes('Google') || v.name.includes('Nanami') || v.name.includes('Otoya') || v.name.includes('女性')));
       if (cuteVoice) uttr.voice = cuteVoice;
+
+      uttr.onstart = () => {
+        if (syncBubble) {
+          removeThinkingBubble();
+          addChatMessage('model', cleanText);
+        }
+        STATE.isThinking = false;
+        STATE.isSpeaking = true;
+        statusText.textContent = "🗣️ お話し中ニャ♪";
+        setEmotion('talking');
+      };
 
       uttr.onend = () => {
         STATE.isSpeaking = false;
@@ -1356,32 +1433,45 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       window.speechSynthesis.speak(uttr);
     }
 
-    async function speakVoice(rawText) {
+    // メイン音声発声関数（同期フラグ: syncBubble）
+    async function speakVoice(rawText, syncBubble = false) {
       stopSpeaking();
       unlockMasterAudio();
 
-      STATE.isSpeaking = true;
-      statusText.textContent = "🗣️ お話し中ニャ♪";
-      setEmotion('talking');
-
       const textToSpeak = cleanTextForSpeech(rawText);
 
-      // スピーカーID決定（四国めたん あまあま: 0, ずんだもん あまあま: 3, つむぎ: 8, ずんだもん ノーマル: 1）
-      let speakerId = 0; // デフォルト四国めたん（あまあま）
+      // 【選択肢5】「Google / 端末標準ボイス」が選ばれている場合は即座に発声
+      if (STATE.voiceModel === 'native-device') {
+        speakWithNativeVoice(rawText, syncBubble);
+        return;
+      }
+
+      // 四国めたん等のキャラクターID決定
+      let speakerId = 0; // 四国めたん（あまあま）
       if (STATE.voiceModel === 'zundamon-ama') speakerId = 3;
       else if (STATE.voiceModel === 'tsumugi') speakerId = 8;
       else if (STATE.voiceModel === 'zundamon-norm') speakerId = 1;
 
       try {
-        // 音声ファイルがサーバー側で完成するのを確実に待ってからBlobとして取得
-        const audioBlob = await fetchVoiceVoxAudioBlob(textToSpeak, speakerId);
-        const blobUrl = URL.createObjectURL(audioBlob);
+        const mp3Url = await getVoiceVoxMp3Url(textToSpeak, speakerId);
 
-        masterAudio.src = blobUrl;
+        // CORSを物理的に回避するため、Audioタグに直接URLを渡す
+        masterAudio.src = mp3Url;
         masterAudio.playbackRate = STATE.rate;
 
+        // ★ 音声の再生準備が100%整った「その瞬間」に、セリフ出現と表情切り替えを完全同期！
+        masterAudio.oncanplay = () => {
+          if (syncBubble) {
+            removeThinkingBubble();
+            addChatMessage('model', rawText);
+          }
+          STATE.isThinking = false;
+          STATE.isSpeaking = true;
+          statusText.textContent = "🗣️ お話し中ニャ♪";
+          setEmotion('talking');
+        };
+
         masterAudio.onended = () => {
-          URL.revokeObjectURL(blobUrl);
           STATE.isSpeaking = false;
           statusText.textContent = "👂 聴いてるニャ♪";
           setEmotion('idle');
@@ -1390,28 +1480,28 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
           }, 350);
         };
 
-        masterAudio.onerror = (e) => {
-          logDiag("[オーディオ再生例外] 保険音声へ切り替えます", "warn");
-          speakWithNativeFallback(textToSpeak);
+        masterAudio.onerror = () => {
+          logDiag("[音声再生エラー] 端末ボイスで安全に発声します", "warn");
+          speakWithNativeVoice(rawText, syncBubble);
         };
 
         await masterAudio.play();
-        logDiag(`[四国めたん発声中] 音声をクリアに再生中ニャ！`, "success");
+        logDiag("[発声中] 四国めたんの声で完全同期再生ニャ！", "success");
 
       } catch (err) {
-        logDiag(`[外部音声遅延] 保険の端末ボイスで瞬時に発声します: ${err.message}`, "warn");
-        // 外部サーバーが混雑していても無音にならず確実に発声する
-        speakWithNativeFallback(textToSpeak);
+        logDiag(`[四国めたん待機タイムアウト] 端末ボイスで即座に代行発声します: ${err.message}`, "warn");
+        speakWithNativeVoice(rawText, syncBubble);
       }
     }
 
+    // 🔊 試聴ボタン
     testVoiceBtn.addEventListener('click', () => {
       unlockMasterAudio();
       STATE.voiceModel = voiceModelSelect.value;
       STATE.rate = parseFloat(voiceRate.value);
       playCatMeow('happy');
       const voiceName = voiceModelSelect.options[voiceModelSelect.selectedIndex].text;
-      speakVoice("おやびん！クロの声はこれだニャン🐾 聞き取りやすいかニャ？");
+      speakVoice("おやびん！クロの声はこれだニャン🐾 よく聞こえるかニャ？", false);
     });
 
     /* ==========================================================
@@ -1553,7 +1643,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       if (STATE.apiKey) {
         await scanAvailableGeminiModels(STATE.apiKey);
       }
-      logDiag("クロちゃん起動完了。四国めたん＆Flash 3.5 lite待機中ニャ🐾", "success");
+      logDiag("クロちゃん起動完了。四国めたん＆同期演出モード待機中ニャ🐾", "success");
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
       }, 1000);
