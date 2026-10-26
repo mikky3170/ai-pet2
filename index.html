@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -28,7 +27,7 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* 背景を完全な純白（#ffffff）に統一 */
+    /* 背景を純白（#ffffff）に完全統一 */
     body {
       margin: 0;
       padding: 0;
@@ -155,7 +154,7 @@
       100% { transform: scale(1.02); opacity: 1; }
     }
 
-    /* 3.8承認確認ボタン */
+    /* 3.8承認確認ボタングループ */
     .confirm-actions {
       display: flex;
       gap: 8px;
@@ -208,7 +207,7 @@
       background: transparent;
     }
 
-    /* 待機呼吸 */
+    /* 待機アニメーション */
     .pet-avatar-wrapper.is-idling #cat-stage-box {
       animation: catSlowCalmBreathe 4.8s ease-in-out infinite;
     }
@@ -218,7 +217,7 @@
       70% { transform: scale(1.018, 0.985) translateY(-4px) rotate(1.5deg); }
     }
 
-    /* お話し中息づき */
+    /* お話し中アニメーション */
     .pet-avatar-wrapper.is-talking #cat-stage-box {
       animation: catGentleTalkBreath 1.3s ease-in-out infinite alternate;
     }
@@ -227,7 +226,7 @@
       100% { transform: translateY(-5px) scale(1.02); }
     }
 
-    /* 考え中かしげ */
+    /* 考え中アニメーション */
     .pet-avatar-wrapper.is-thinking #cat-stage-box {
       animation: catSlowThinking 2.4s ease-in-out infinite alternate;
     }
@@ -236,7 +235,7 @@
       100% { transform: scale(1.015) rotate(3.5deg); }
     }
 
-    /* ★ 画像と背景の境目を100%消去（mix-blend-mode: multiply） */
+    /* ★ 画像と背景の白を完全に同化（境界線100%消去） */
     .cat-avatar-img {
       position: absolute;
       bottom: 0;
@@ -249,14 +248,14 @@
       transform-origin: bottom center;
       transition: opacity 0.4s ease-in-out;
       background: transparent !important;
-      mix-blend-mode: multiply; /* 白背景をアプリの背景と分子レベルで同化 */
+      mix-blend-mode: multiply; /* 白背景をアプリの背景と完全にブレンド */
     }
     .cat-avatar-img.active {
       opacity: 1;
       pointer-events: auto;
     }
 
-    /* 画像未配置時のSVGフォールバック */
+    /* 画像未配置時SVGフォールバック */
     .cat-fallback-svg {
       width: 220px;
       height: 250px;
@@ -430,7 +429,7 @@
     .log-error { color: #f87171; font-weight: bold; }
     .log-info { color: #94a3b8; }
 
-    /* 6. 設定モーダル */
+    /* 6. 設定モーダル（音声選択を廃止しスッキリ整理） */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -478,21 +477,17 @@
       outline: none;
     }
 
-    .voice-select-row, .model-select-row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    .btn-aux {
-      flex-shrink: 0;
-      padding: 9px 12px;
-      background: #f0fdf4;
-      border: 1.5px solid #bbf7d0;
-      color: #166534;
+    .voice-badge-box {
+      padding: 10px 14px;
+      background: #fdf2f8;
+      border: 1.5px solid #fbcfe8;
       border-radius: 12px;
+      color: #9d174d;
       font-weight: bold;
-      font-size: 12px;
-      cursor: pointer;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .memory-list {
@@ -593,7 +588,7 @@
           <span id="pause-text">会話中（話しかけてニャ）</span>
         </button>
 
-        <button class="btn-circle" id="settings-btn" title="声の選択・設定・記憶">⚙️</button>
+        <button class="btn-circle" id="settings-btn" title="設定・記憶">⚙️</button>
         <button class="btn-circle" id="toggle-diag-btn" title="診断モニタを表示">🩺</button>
       </div>
     </div>
@@ -607,7 +602,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。四国めたん（4秒セーフティ）＆完全白ブレンド完了ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。四国めたん（あまあま）専用音声エンジン稼働ニャ！</div>
       </div>
     </div>
   </div>
@@ -615,23 +610,24 @@
   <!-- 6. 設定モーダル -->
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal-card">
-      <h3>⚙️ クロちゃんの設定・モデル・記憶</h3>
+      <h3>⚙️ クロちゃんの設定・記憶</h3>
       
       <div class="form-group">
         <label>Google AI Studio API Key:</label>
         <input type="password" id="api-key-input" placeholder="AIzaSy...">
       </div>
 
+      <!-- ★ 四国めたん専用バッジ表示 -->
       <div class="form-group">
-        <label>日常思考モデル（Flash 3.5 lite系）:
-          <button type="button" class="btn-aux" id="scan-models-btn" style="padding:2px 8px; font-size:11px;">🔍 自動検出</button>
-        </label>
-        <div class="model-select-row">
-          <select id="lite-model-select">
-            <option value="auto">🌟 自動最適化（Lite系を自動検出）</option>
-          </select>
+        <label>クロの肉声ボイス:</label>
+        <div class="voice-badge-box">
+          🌸 四国めたん（あまあま少女声・専用固定）
         </div>
-        <input type="text" id="custom-lite-model" placeholder="直接モデル名を入力する場合（例: gemini-2.0-flash-lite等）" style="margin-top:5px; font-size:11.5px;">
+      </div>
+
+      <div class="form-group">
+        <label>話すスピード: <span id="rate-val">1.05</span></label>
+        <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.05" value="1.05">
       </div>
 
       <!-- 📔 記憶帳 -->
@@ -642,26 +638,6 @@
           <input type="text" id="new-memory-input" placeholder="新しい記憶（例: 趣味はドライブ）">
           <button id="add-memory-btn">追加</button>
         </div>
-      </div>
-
-      <!-- 🔊 音声選択 -->
-      <div class="form-group">
-        <label>クロのAI肉声ボイス:</label>
-        <div class="voice-select-row">
-          <select id="voice-model-select">
-            <option value="metan-ama">🌸 四国めたん（あまあま少女声・推奨）</option>
-            <option value="zundamon-ama">🐱 ずんだもん（あまあま・子猫ボイス）</option>
-            <option value="tsumugi">✨ 春日部つむぎ（元気でおしゃまな女の子）</option>
-            <option value="zundamon-norm">🎀 ずんだもん（ノーマル少女声）</option>
-            <option value="native-device">📱 端末標準ボイス（高めピッチ即答）</option>
-          </select>
-          <button type="button" class="btn-aux" id="test-voice-btn">🔊 試聴</button>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>話すスピード: <span id="rate-val">1.05</span></label>
-        <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.05" value="1.05">
       </div>
 
       <button class="btn-save" id="save-settings-btn">設定と記憶を保存するニャン♪</button>
@@ -809,7 +785,7 @@
     }
 
     /* ==========================================================
-       2. 状態管理（長期記憶・承認保留・風邪モード）
+       2. 状態管理（長期記憶・3.8制限・風邪モード）
        ========================================================== */
     const DEFAULT_MEMORIES = [
       "わたしの名前：クロ（ノルウェージャンフォレストキャットの女の子、約1歳）",
@@ -857,12 +833,9 @@
 
     const STATE = {
       apiKey: localStorage.getItem('kuro_api_key') || '',
-      voiceModel: localStorage.getItem('kuro_voice_model') || 'metan-ama',
       rate: parseFloat(localStorage.getItem('kuro_rate') || '1.05'),
-      customLiteModel: localStorage.getItem('kuro_custom_lite_model') || '',
-      activeLiteModel: '',
-      activeProModel: '',
-      availableModels: [],
+      activeLiteModel: "gemini-2.0-flash-lite",
+      activeProModel: "gemini-2.0-flash",
       proUsedToday: savedCount,
       memories: loadedMemories,
       history: loadedHistory,
@@ -896,8 +869,6 @@
     const avatarWrapper = document.getElementById('avatar-wrapper');
     const modalOverlay = document.getElementById('modal-overlay');
     const saveSettingsBtn = document.getElementById('save-settings-btn');
-    const voiceModelSelect = document.getElementById('voice-model-select');
-    const testVoiceBtn = document.getElementById('test-voice-btn');
     const voiceRate = document.getElementById('voice-rate');
     const rateVal = document.getElementById('rate-val');
     const diagPanel = document.getElementById('diag-panel');
@@ -906,9 +877,6 @@
     const memoryListContainer = document.getElementById('memory-list-container');
     const newMemoryInput = document.getElementById('new-memory-input');
     const addMemoryBtn = document.getElementById('add-memory-btn');
-    const scanModelsBtn = document.getElementById('scan-models-btn');
-    const liteModelSelect = document.getElementById('lite-model-select');
-    const customLiteModelInput = document.getElementById('custom-lite-model');
 
     const catImages = {
       idle: document.getElementById('img-idle'),
@@ -956,72 +924,7 @@
     diagPanel.addEventListener('click', (e) => { if (e.target === diagPanel) diagPanel.classList.remove('expanded'); });
 
     /* ==========================================================
-       3. モデル自動解決エンジン
-       ========================================================== */
-    async function scanAvailableGeminiModels(apiKey) {
-      if (!apiKey) return [];
-      try {
-        logDiag("[Discovery] Google AI Studioの利用可能モデルを照会中…", "info");
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-        if (!res.ok) return [];
-        const data = await res.json();
-        const models = (data.models || [])
-          .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
-          .map(m => m.name.replace(/^models\//, ''));
-
-        STATE.availableModels = models;
-        logDiag(`[Discovery成功] 検出モデル: ${models.length}個`, "success");
-
-        liteModelSelect.innerHTML = `<option value="auto">🌟 自動最適化（Lite系を自動検出）</option>`;
-        models.forEach(m => {
-          const opt = document.createElement('option');
-          opt.value = m;
-          opt.textContent = m;
-          liteModelSelect.appendChild(opt);
-        });
-
-        resolveBestModels();
-        return models;
-      } catch (e) {
-        logDiag(`[Discovery例外] ${e.message}`, "error");
-        return [];
-      }
-    }
-
-    function resolveBestModels() {
-      if (STATE.customLiteModel && STATE.customLiteModel.trim()) {
-        STATE.activeLiteModel = STATE.customLiteModel.trim();
-      } else if (STATE.availableModels.length > 0) {
-        const liteCand = STATE.availableModels.find(m => /flash.*lite|3\.5.*lite|3\.1.*lite/i.test(m))
-                      || STATE.availableModels.find(m => /2\.0.*flash.*lite|flash-8b/i.test(m))
-                      || STATE.availableModels.find(m => /flash/i.test(m))
-                      || STATE.availableModels[0];
-        STATE.activeLiteModel = liteCand;
-      } else {
-        STATE.activeLiteModel = "gemini-2.0-flash-lite";
-      }
-
-      if (STATE.availableModels.length > 0) {
-        const proCand = STATE.availableModels.find(m => /3\.8|pro|exp/i.test(m))
-                     || STATE.availableModels.find(m => /2\.0.*flash(?!.*lite)/i.test(m))
-                     || STATE.availableModels.find(m => /flash/i.test(m))
-                     || STATE.availableModels[0];
-        STATE.activeProModel = proCand;
-      } else {
-        STATE.activeProModel = "gemini-2.0-flash";
-      }
-      logDiag(`[モデル確定] Lite: ${STATE.activeLiteModel} | 3.8: ${STATE.activeProModel}`, "info");
-    }
-
-    scanModelsBtn.addEventListener('click', async () => {
-      const key = document.getElementById('api-key-input').value.trim() || STATE.apiKey;
-      if (!key) { alert("APIキーを入力してニャ！"); return; }
-      await scanAvailableGeminiModels(key);
-      alert(`Google AI Studioから ${STATE.availableModels.length} 個の利用可能モデルを自動取得しましたニャ🐾`);
-    });
-
-    /* ==========================================================
-       4. 会話タイムライン ＆ 思考バブル
+       3. 会話ログ・記憶帳
        ========================================================== */
     function addChatMessage(role, text) {
       const row = document.createElement('div');
@@ -1100,7 +1003,7 @@
     }
 
     /* ==========================================================
-       5. 音声記憶コマンド判定
+       4. 音声記憶コマンド判定
        ========================================================== */
     function handleMemoryVoiceCommand(text) {
       const rememberPatterns = [
@@ -1132,7 +1035,7 @@
     }
 
     /* ==========================================================
-       6. GPS現在地取得
+       5. GPS現在地取得
        ========================================================== */
     function initGPS() {
       if ('geolocation' in navigator) {
@@ -1156,7 +1059,7 @@
     }
 
     /* ==========================================================
-       7. なでなで＆時計
+       6. なでなで＆時計
        ========================================================== */
     avatarWrapper.addEventListener('click', (e) => {
       unlockMasterAudio();
@@ -1200,7 +1103,7 @@
     }, 1000);
 
     /* ==========================================================
-       8. 難易度判定 ＆ Flash 3.8承認制インターロック
+       7. 難易度判定 ＆ Flash 3.8承認制インターロック
        ========================================================== */
     function evaluateNeedsPro(promptText) {
       if (promptText.includes('3.8') || promptText.includes('サンテンハチ') || promptText.includes('本気で考えて') || promptText.includes('詳しく')) {
@@ -1216,7 +1119,6 @@
       return { needsPro: false, reason: "日常会話" };
     }
 
-    // 飼い主さんにワンクッション確認
     function askUserFor38Approval(originalPrompt) {
       STATE.pending38Prompt = originalPrompt;
       STATE.isAwaiting38Approval = true;
@@ -1284,7 +1186,7 @@
     }
 
     /* ==========================================================
-       9. Gemini API 実行エンジン
+       8. Gemini API 実行エンジン
        ========================================================== */
     async function executeGeminiRequestWithFallback(modelCandidates, systemPrompt, promptText, historyItems, useSearch = false) {
       const contents = [];
@@ -1329,8 +1231,6 @@
             if (text) {
               return { success: true, text: text, modelUsed: modelName };
             }
-          } else if (res.status === 404) {
-            logDiag(`[404検知] 『${modelName}』不可。次候補へ…`, "warn");
           }
         } catch (e) {
           logDiag(`[通信例外: ${modelName}] ${e.message}`, "warn");
@@ -1361,12 +1261,10 @@
         return;
       }
 
-      // 3.8承認待ち判定
       if (STATE.isAwaiting38Approval) {
         if (checkVoiceApproval(promptText)) return;
       }
 
-      // 記憶帳コマンド
       const memReply = handleMemoryVoiceCommand(promptText);
       if (memReply) {
         addChatMessage('model', memReply);
@@ -1375,7 +1273,6 @@
         return;
       }
 
-      // 3.8残回数確認
       if (promptText.includes('あと何回') || promptText.includes('残り何回')) {
         const remaining = Math.max(0, 20 - STATE.proUsedToday);
         const reply = `今日3.8フラッシュで考えられるのは、あと【${remaining}回】だニャ🐾`;
@@ -1392,7 +1289,6 @@
         return;
       }
 
-      // 難易度判定
       const evalResult = evaluateNeedsPro(promptText);
       if (evalResult.needsPro) {
         if (STATE.proUsedToday < 20) {
@@ -1425,20 +1321,15 @@
       }
       modelBadge.textContent = badgeName;
 
-      const candidates = [];
-      if (isProMode) {
-        if (STATE.activeProModel) candidates.push(STATE.activeProModel);
-        candidates.push("gemini-2.0-flash", "gemini-1.5-pro", "gemini-pro");
-      } else {
-        if (STATE.activeLiteModel) candidates.push(STATE.activeLiteModel);
-        candidates.push("gemini-2.0-flash-lite", "gemini-1.5-flash-8b", "gemini-2.0-flash");
-      }
-      const uniqueCandidates = [...new Set(candidates)];
+      const candidates = isProMode
+        ? ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-pro"]
+        : ["gemini-2.0-flash-lite", "gemini-1.5-flash-8b", "gemini-2.0-flash"];
 
       const historyToSend = isProMode ? STATE.history.slice(-16) : STATE.history.slice(-8);
       const now = new Date();
       const timeStr = `${now.getHours()}時${now.getMinutes()}分`;
 
+      // ★ 四国めたんが1〜2秒で即座に合成できるように、20〜28文字程度の愛らしい超短文を徹底指定
       const systemPrompt = `
 あなたはノルウェージャンフォレストキャットの愛らしくて賢い女の子の子猫「クロ」（約1歳）です。
 【クロの記憶帳】
@@ -1456,11 +1347,11 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 - かよちゃん、りゅうせいくん、たいせいくん、かまぶーくんの話題が出たら家族・親友として親しく接してください。
 - 前世は大発明家の相棒猫です。少し自慢できる話題では「クロの前世の発明のひらめきによるとね…フフン♪」と誇らしげに自慢してください。
 - ラーメン、餃子、麻婆豆腐、ITガジェットを激推ししてください。
-- 返答は必ず【短く愛らしい1文（25文字〜35文字前後）】で返してください。長い文章は禁止です。
-- 【超重要ルール】文末や文中に「（〇〇文字）」や文字数の注記、メタ情報は絶対に出力しないでください。純粋なセリフのみを返してください。
+- 返答は必ず【短く愛らしい1文（20文字〜28文字程度）】で返してください。長文は絶対に禁止です。
+- 【超重要ルール】文末や文中に「（〇〇文字）」や注記、メタ情報は絶対に出力しないでください。純粋なセリフのみを返してください。
 `;
 
-      const result = await executeGeminiRequestWithFallback(uniqueCandidates, systemPrompt, promptText, historyToSend, isProMode);
+      const result = await executeGeminiRequestWithFallback(candidates, systemPrompt, promptText, historyToSend, isProMode);
 
       if (result.success && result.text) {
         const cleanDisplay = sanitizeModelText(result.text);
@@ -1478,14 +1369,14 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       10. ★完全同期音声エンジン（絵文字完全除去 ＆ 4秒セーフティ）
+       9. ★四国めたん（あまあま）専用 音声合成エンジン（4秒セーフティ）
        ========================================================== */
     function cleanTextForSpeech(text) {
       if (!text) return "";
       return sanitizeModelText(text)
         .replace(/```[\s\S]*?```/g, '')
         .replace(/<[^>]*>/g, '')
-        // ★ あらゆる絵文字・特殊記号・アイコンを100%完全除去
+        // ★ あらゆる絵文字・アイコン・記号を100%完全除去
         .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}\uFE0F\u200D]/gu, '')
         .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟]/gu, '')
         .replace(/[（\(【\[][^）\)】\]]*[）\)】\]]/g, '')
@@ -1500,34 +1391,40 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       setEmotion('idle');
     }
 
-    // ★ 正しい公式スピーカーIDで四国めたん等を生成（4.0秒タイムアウト）
-    async function getVoiceVoxMp3UrlWithTimeout(text, speakerId, timeoutMs = 4000) {
+    // 四国めたん（あまあま：speaker=0）専用の音声取得（タイムアウト：4.0秒）
+    async function getMetanMp3UrlWithTimeout(text, timeoutMs = 4000) {
       const encodedText = encodeURIComponent(text);
-      const apiUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=${speakerId}`;
+      // 四国めたん（あまあま）は speaker=0
+      const apiUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=0`;
 
-      logDiag("[外部音声] 四国めたんAPIに問い合わせ中（上限4秒）…", "info");
+      logDiag("[音声合成] 四国めたん（あまあま）サーバーにリクエスト中…", "info");
 
       const startTime = Date.now();
+      let statusUrl = apiUrl;
+
       while (Date.now() - startTime < timeoutMs) {
         try {
-          const res = await fetch(apiUrl);
+          const res = await fetch(statusUrl);
           if (res.ok) {
             const data = await res.json();
             if (data.isAudioError) throw new Error("VoiceVox synthesis error");
             if (data.isAudioReady && data.mp3DownloadUrl) {
-              logDiag(`[外部音声完成] 四国めたんの音声生成成功！（${((Date.now() - startTime)/1000).toFixed(1)}秒）`, "success");
+              logDiag(`[四国めたん完成] 生成成功ニャ！（${((Date.now() - startTime)/1000).toFixed(1)}秒）`, "success");
               return data.mp3DownloadUrl;
+            }
+            if (data.audioStatusUrl) {
+              statusUrl = data.audioStatusUrl;
             }
           }
         } catch (e) {
           // リトライ
         }
-        await new Promise(r => setTimeout(r, 200));
+        await new Promise(r => setTimeout(r, 250));
       }
       throw new Error("4秒タイムアウト超過");
     }
 
-    // 📱 端末標準ボイス（高めピッチ：1.35・遅延ゼロ）
+    // 📱 端末標準ボイス（高めピッチ：1.35・遅延ゼロ・フォールバック用）
     function speakWithNativeVoice(cleanDisplay, syncBubble) {
       if (!window.speechSynthesis) return;
       window.speechSynthesis.cancel();
@@ -1574,27 +1471,16 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       window.speechSynthesis.speak(uttr);
     }
 
-    // メイン音声発声関数
+    // メイン音声発声関数（四国めたん最優先）
     async function speakVoice(rawText, syncBubble = false) {
       stopSpeaking();
       unlockMasterAudio();
 
       const textToSpeak = cleanTextForSpeech(rawText);
 
-      if (STATE.voiceModel === 'native-device') {
-        speakWithNativeVoice(rawText, syncBubble);
-        return;
-      }
-
-      // ★ 公式Speaker ID完全対応
-      let speakerId = 0; // 四国めたん（あまあま）
-      if (STATE.voiceModel === 'zundamon-ama') speakerId = 1;      // ずんだもん（あまあま）
-      else if (STATE.voiceModel === 'tsumugi') speakerId = 8;     // 春日部つむぎ（ノーマル）
-      else if (STATE.voiceModel === 'zundamon-norm') speakerId = 3;// ずんだもん（ノーマル）
-
       try {
-        // ★ 4秒タイムアウトで外部音声を最優先実行
-        const mp3Url = await getVoiceVoxMp3UrlWithTimeout(textToSpeak, speakerId, 4000);
+        // ★ 四国めたん（あまあま）で最優先生成（4秒待機）
+        const mp3Url = await getMetanMp3UrlWithTimeout(textToSpeak, 4000);
 
         masterAudio.src = mp3Url;
         masterAudio.playbackRate = STATE.rate;
@@ -1621,32 +1507,23 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         };
 
         masterAudio.onerror = () => {
-          logDiag("[音声再生例外] 端末標準ボイスに切り替え", "warn");
+          logDiag("[音声再生例外] 端末標準ボイスに切り替えて発声ニャ", "warn");
           STATE.isVoiceColdMode = true;
           speakWithNativeVoice(rawText, syncBubble);
         };
 
         await masterAudio.play();
-        logDiag("[発声開始] 四国めたんボイスで同期再生中ニャ！", "success");
+        logDiag("[発声開始] 四国めたんの声で同期再生中ニャ！", "success");
 
       } catch (err) {
-        logDiag(`[4秒セーフティ発動] 外部音声が混雑（${err.message}）。可愛い端末ボイスで代行発声ニャ！`, "warn");
+        logDiag(`[4秒セーフティ発動] 四国めたんサーバー混雑のため、可愛い標準ボイスで代行発声ニャ（${err.message}）`, "warn");
         STATE.isVoiceColdMode = true; // 風邪モードON
         speakWithNativeVoice(rawText, syncBubble);
       }
     }
 
-    // 🔊 試聴ボタン
-    testVoiceBtn.addEventListener('click', () => {
-      unlockMasterAudio();
-      STATE.voiceModel = voiceModelSelect.value;
-      STATE.rate = parseFloat(voiceRate.value);
-      playCatMeow('happy');
-      speakVoice("おやびん！クロの声はこれだニャン🐾 よく聞こえるかニャ？", false);
-    });
-
     /* ==========================================================
-       11. 音声認識（常時対話・ハウリング遮断）
+       10. 音声認識（常時対話・ハウリング遮断）
        ========================================================== */
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
@@ -1722,7 +1599,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       12. 初期化 ＆ 設定保存
+       11. 初期化 ＆ 設定保存
        ========================================================== */
     pauseBtn.addEventListener('click', togglePause);
 
@@ -1733,10 +1610,8 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     settingsBtn.addEventListener('click', () => {
       unlockMasterAudio();
       document.getElementById('api-key-input').value = STATE.apiKey;
-      voiceModelSelect.value = STATE.voiceModel;
       voiceRate.value = STATE.rate;
       rateVal.textContent = STATE.rate.toFixed(2);
-      customLiteModelInput.value = STATE.customLiteModel;
       renderMemoryList();
       modalOverlay.style.display = 'flex';
     });
@@ -1745,51 +1620,30 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       if (e.target === modalOverlay) modalOverlay.style.display = 'none';
     });
 
-    saveSettingsBtn.addEventListener('click', async () => {
+    saveSettingsBtn.addEventListener('click', () => {
       unlockMasterAudio();
       STATE.apiKey = document.getElementById('api-key-input').value.trim();
-      STATE.voiceModel = voiceModelSelect.value;
       STATE.rate = parseFloat(voiceRate.value);
-      STATE.customLiteModel = customLiteModelInput.value.trim();
-
-      if (liteModelSelect.value !== 'auto') {
-        STATE.customLiteModel = liteModelSelect.value;
-      }
 
       localStorage.setItem('kuro_api_key', STATE.apiKey);
-      localStorage.setItem('kuro_voice_model', STATE.voiceModel);
       localStorage.setItem('kuro_rate', STATE.rate);
-      localStorage.setItem('kuro_custom_lite_model', STATE.customLiteModel);
-
-      if (STATE.apiKey) {
-        await scanAvailableGeminiModels(STATE.apiKey);
-      }
 
       modalOverlay.style.display = 'none';
-      const voiceName = voiceModelSelect.options[voiceModelSelect.selectedIndex].text;
-      logDiag(`[設定保存完了] 思考: ${STATE.activeLiteModel} / 音声設定: ${voiceName}`, "success");
+      logDiag(`[設定保存] APIキーと速度（${STATE.rate}）を保存完了ニャ！`, "success");
 
       playCatMeow('happy');
-      addChatMessage('model', `設定バッチリ保存したニャ！いつでも話しかけてニャン🐾`);
+      addChatMessage('model', `設定バッチリ保存したニャ！四国めたんの声でいつでも話しかけてニャン🐾`);
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
       }, 500);
     });
 
-    window.addEventListener('load', async () => {
+    window.addEventListener('load', () => {
       initGPS();
       renderMemoryList();
       restoreChatTimeline();
       setEmotion('idle');
-      
-      voiceModelSelect.value = STATE.voiceModel;
-
-      if (STATE.apiKey) {
-        await scanAvailableGeminiModels(STATE.apiKey);
-      } else {
-        resolveBestModels();
-      }
-      logDiag("クロちゃん起動完了。四国めたん（4秒セーフティ）待機中ニャ🐾", "success");
+      logDiag("クロちゃん起動完了。四国めたん（あまあま）専用モード待機中ニャ🐾", "success");
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
       }, 1000);
