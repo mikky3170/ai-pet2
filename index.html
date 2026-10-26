@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -188,6 +187,23 @@
     @keyframes bubblePulse {
       0% { transform: scale(0.98); opacity: 0.75; }
       100% { transform: scale(1.02); opacity: 1; }
+    }
+
+    /* 📒 記録帳登録完了バッジ */
+    .memory-badge-card {
+      margin-top: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #fdf2f8;
+      border: 1.5px solid #f472b6;
+      border-radius: 12px;
+      padding: 6px 12px;
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #be185d;
+      animation: fadeIn 0.25s ease-out;
+      box-shadow: 0 2px 6px rgba(244, 114, 182, 0.15);
     }
 
     /* 3.8承認確認ボタン */
@@ -434,7 +450,7 @@
       100% { opacity: 0; transform: translate(var(--rx), -100px) scale(1.4); }
     }
 
-    /* 案A変身アニメーション */
+    /* 変身アニメーション */
     .pet-transform-shrink {
       animation: transformSquish 0.28s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards !important;
     }
@@ -624,7 +640,7 @@
     .log-error { color: #f87171; font-weight: bold; }
     .log-info { color: #94a3b8; }
 
-    /* 6. 設定モーダル */
+    /* 6. 設定モーダル & 取扱説明書 */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -639,7 +655,7 @@
     .modal-card {
       background: white;
       width: 100%;
-      max-width: 440px;
+      max-width: 450px;
       max-height: 88vh;
       overflow-y: auto;
       border-radius: 24px;
@@ -653,7 +669,50 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      margin-bottom: 12px;
     }
+
+    /* 📖 取扱説明書（アコーディオン） */
+    .guide-box {
+      margin-bottom: 16px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 16px;
+      background: #f8fafc;
+      overflow: hidden;
+    }
+    .guide-header {
+      padding: 10px 14px;
+      background: #f1f5f9;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 12.5px;
+      color: #334155;
+      user-select: none;
+    }
+    .guide-header:active { background: #e2e8f0; }
+    .guide-content {
+      padding: 12px 14px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #475569;
+      display: none;
+      border-top: 1px solid #e2e8f0;
+    }
+    .guide-box.is-open .guide-content { display: block; }
+    .guide-box.is-open .guide-toggle-icon { transform: rotate(180deg); }
+    .guide-toggle-icon { transition: transform 0.2s; font-size: 11px; }
+
+    .guide-item {
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed #cbd5e1;
+    }
+    .guide-item:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+    .guide-item strong { color: #0f172a; display: block; margin-bottom: 2px; }
+
     .form-group { margin-bottom: 14px; }
     .form-group label {
       display: flex;
@@ -904,7 +963,7 @@
           <span id="pause-text">会話中（話しかけてニャ）</span>
         </button>
 
-        <button class="btn-circle" id="settings-btn" title="設定・記憶">⚙️</button>
+        <button class="btn-circle" id="settings-btn" title="設定・記憶・説明書">⚙️</button>
         <button class="btn-circle" id="toggle-diag-btn" title="診断モニタを表示">🩺</button>
       </div>
     </div>
@@ -918,7 +977,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。対話型記憶＆連動スマート検索 稼働中ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。四国めたん安定通信＆安心記憶エンジン 稼働中ニャ！</div>
       </div>
     </div>
   </div>
@@ -927,6 +986,44 @@
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal-card">
       <h3>⚙️ クロちゃんの設定・記憶</h3>
+
+      <!-- 📖 取扱説明書（アコーディオン） -->
+      <div class="guide-box" id="guide-box">
+        <div class="guide-header" id="guide-header">
+          <span>📖 クロちゃんの飼い方（取扱説明書）</span>
+          <span class="guide-toggle-icon">▼</span>
+        </div>
+        <div class="guide-content">
+          <div class="guide-item">
+            <strong>🐾 基本のお話し・お昼寝</strong>
+            画面に向かって話しかけるだけで会話できます。マイクを止めたい時は一番下のボタンを押すと「お昼寝」します。
+          </div>
+          <div class="guide-item">
+            <strong>📒 記録帳への追加方法（重要）</strong>
+            日常会話と区別するため、以下の合言葉で登録します：<br>
+            ・<b>「〜を記録帳に書いて」</b><br>
+            ・<b>「〜を覚えて」</b><br>
+            ・または<b>「記録帳に登録して」</b>と言うと、クロちゃんが「何を登録するニャ？」と聞き返してきます。<br>
+            ※登録に成功すると、タイムライン上に<span style="color:#be185d;font-weight:bold;">【📒 記録帳に追加：〇〇】</span>バッジが表示されます！バッジが出ない時は普通の雑談として聞いています。
+          </div>
+          <div class="guide-item">
+            <strong>✨ 変身ボタン</strong>
+            画面左上の「✨ 変身」ボタンを押すと、スムーズアニメ猫とリアル猫がドロン！と入れ替わります。
+          </div>
+          <div class="guide-item">
+            <strong>💖 なでなで</strong>
+            クロちゃんをタップするとゴロゴロ甘えます。3回連続で撫でると大喜びします！
+          </div>
+          <div class="guide-item">
+            <strong>🧠 本気モード（Flash 3.8）</strong>
+            難しい質問や最新の調べ物は、1日20回まで「3.8で考えていいかニャ？」とクロちゃんが確認してくれます。
+          </div>
+          <div class="guide-item">
+            <strong>🗺️ 連動スマート検索</strong>
+            おすすめのお店やニュースを聞くと、GoogleマップやGoogleニュースへの連携カードが自動で届きます。
+          </div>
+        </div>
+      </div>
       
       <div class="form-group">
         <label>Google AI Studio API Key:</label>
@@ -1213,7 +1310,7 @@
       avatarMode: localStorage.getItem('kuro_avatar_mode') || 'vector',
       isTransforming: false,
 
-      // ★ 対話型記憶登録フラグ（「記録帳に登録して」と言われた後の聞き取り待ち）
+      // 対話型記憶登録フラグ
       isWaitingForMemoryInput: false
     };
 
@@ -1242,6 +1339,8 @@
     const newMemoryInput = document.getElementById('new-memory-input');
     const addMemoryBtn = document.getElementById('add-memory-btn');
     const transformBtn = document.getElementById('transform-btn');
+    const guideBox = document.getElementById('guide-box');
+    const guideHeader = document.getElementById('guide-header');
 
     const catImages = {
       idle: document.getElementById('img-idle'),
@@ -1252,7 +1351,16 @@
     const catVectorAvatar = document.getElementById('cat-vector-avatar');
 
     /* ==========================================================
-       ★ 変身演出（案A：ドロン！モコモコ煙 ＆ 肉球スター）
+       取扱説明書（アコーディオン）
+       ========================================================== */
+    if (guideHeader && guideBox) {
+      guideHeader.addEventListener('click', () => {
+        guideBox.classList.toggle('is-open');
+      });
+    }
+
+    /* ==========================================================
+       ★ 変身演出（ドロン！モコモコ煙 ＆ 肉球スター）
        ========================================================== */
     function triggerSmokeAndStars() {
       const container = document.createElement('div');
@@ -1429,13 +1537,12 @@
     }
 
     /* ==========================================================
-       4. ★【記憶帳連動スマート検索エンジン】公式リンクカード生成
+       4. 記憶帳連動スマート検索エンジン（マップ・ニュース）
        ========================================================== */
     function detectActionCards(userText, modelReply) {
       const cards = [];
       const combined = `${userText} ${modelReply}`;
 
-      // 記憶帳から「好物・興味」を抽出してストック
       const memoryKeywords = [];
       STATE.memories.forEach(mem => {
         const match = mem.match(/(?:好物|好き|趣味|興味|愛好)[：:は\s]*(.+)/);
@@ -1452,17 +1559,14 @@
       if (placePatterns.test(combined)) {
         let queryTarget = "";
 
-        // クロちゃんのセリフから「」や『』で囲まれた店名や料理名を最優先
         const quoteMatch = modelReply.match(/[「『]([^」』]+)[」』]/);
         if (quoteMatch) {
           queryTarget = quoteMatch[1];
         } else {
-          // セリフ内の料理名を探す
           const foodMatch = modelReply.match(/(ラーメン|餃子|麻婆豆腐|カレー|焼肉|寿司|カフェ|うどん|そば|中華|イタリアン|ピザ|スイーツ)/);
           if (foodMatch) {
             queryTarget = `${STATE.location.city || ''} ${foodMatch[0]}`.trim();
           } else if (userText.includes('好きな') && memoryKeywords.length > 0) {
-            // 「僕の好きな〜」かつ記憶帳に好物がある場合
             const fav = memoryKeywords.find(k => /(?:ラーメン|餃子|麻婆|カレー|肉|寿司|麺)/.test(k)) || memoryKeywords[0];
             queryTarget = `${STATE.location.city || ''} ${fav}`.trim();
           } else {
@@ -1470,7 +1574,6 @@
           }
         }
 
-        // 曖昧語のクレンジング
         queryTarget = queryTarget.replace(/(?:僕の好きな|私の好きな|おすすめの|美味しい|人気の|近くの)/g, '').trim();
         if (!queryTarget) queryTarget = "美味しいお店";
 
@@ -1483,21 +1586,18 @@
         STATE.lastTopic = { type: 'map', title: queryTarget, url: mapUrl };
       }
 
-      // 2. ニュース・最新情報判定（★「僕の好きな」を記憶帳と照合して完全解決）
+      // 2. ニュース判定
       const newsPatterns = /(?:ニュース|出来事|トレンド|話題|事件|速報|最新情報)/;
       if (newsPatterns.test(combined)) {
         let newsQuery = "";
 
-        // ユーザーが「好きなニュース」と言った場合、記憶帳の趣味・好物と連動！
         if (userText.includes('好きな') || userText.includes('興味')) {
           if (memoryKeywords.length > 0) {
-            // ITガジェットや趣味などを優先的に割り当て
             const techFav = memoryKeywords.find(k => /(?:ガジェット|IT|スマホ|AI|車|ゲーム|ドライブ)/.test(k));
             newsQuery = techFav || memoryKeywords[0];
           }
         }
 
-        // 記憶連動がない場合は、クロちゃんが返答したセリフからメインキーワードを抽出
         if (!newsQuery) {
           const quoteMatch = modelReply.match(/[「『]([^」』]+)[」』]/);
           if (quoteMatch) {
@@ -1520,13 +1620,23 @@
       return cards;
     }
 
-    function addChatMessage(role, text, actionCards = []) {
+    function addChatMessage(role, text, actionCards = [], savedBadgeText = null) {
       const row = document.createElement('div');
       row.className = `chat-row ${role}`;
 
       const bubble = document.createElement('div');
       bubble.className = 'chat-bubble';
       bubble.textContent = text;
+
+      // 📒 記憶帳登録バッジの表示
+      if (savedBadgeText) {
+        const badge = document.createElement('div');
+        badge.className = 'memory-badge-card';
+        badge.innerHTML = `<span>📒</span><span>記録帳に追加：${savedBadgeText}</span>`;
+        bubble.appendChild(document.createElement('br'));
+        bubble.appendChild(badge);
+      }
+
       row.appendChild(bubble);
 
       if (actionCards && actionCards.length > 0) {
@@ -1585,7 +1695,7 @@
     }
 
     /* ==========================================================
-       記憶帳レンダラー（✏️修正・🗑️安全削除 完備）
+       記憶帳レンダラー（先頭表示・✏️修正・🗑️安全削除 完備）
        ========================================================== */
     function renderMemoryList() {
       memoryListContainer.innerHTML = '';
@@ -1657,7 +1767,7 @@
     addMemoryBtn.addEventListener('click', () => {
       const val = newMemoryInput.value.trim();
       if (val) {
-        STATE.memories.push(val);
+        STATE.memories.unshift(val);
         localStorage.setItem('kuro_notebook_memories', JSON.stringify(STATE.memories));
         newMemoryInput.value = '';
         renderMemoryList();
@@ -1672,69 +1782,85 @@
     }
 
     /* ==========================================================
-       5. ★【対話型対応】音声記憶コマンド判定エンジン
+       5. ★【安全・誤爆防止】記憶登録エンジン ＆ 登録判定
        ========================================================== */
+    function saveToMemoryNotebook(content) {
+      let clean = content.trim()
+        .replace(/^(飼い主さんの|僕の|私の)?(趣味|名前|好物|好きな食べ物)(は|：|:)?\s*/, '')
+        .trim();
+
+      // 先頭に追加して、設定画面を開いた時に即座に確認できるようにする
+      STATE.memories.unshift(clean);
+      localStorage.setItem('kuro_notebook_memories', JSON.stringify(STATE.memories));
+      renderMemoryList();
+      logDiag(`[記憶帳に登録完了] 「${clean}」`, "success");
+      return clean;
+    }
+
     function handleMemoryVoiceCommand(text) {
-      // 1. 【2ステップ待機中】直前に「登録してね」と言われて待っていた場合
+      // 1. 【2ステップ待機中】「何を登録するニャ？」の返事を待っていた時
       if (STATE.isWaitingForMemoryInput) {
-        STATE.isWaitingForMemoryInput = false; // 待機解除
-        let content = text.trim();
-        if (content.length > 1) {
-          if (content.includes('名前は')) content = `飼い主さんの名前：${content}`;
-          STATE.memories.push(content);
-          localStorage.setItem('kuro_notebook_memories', JSON.stringify(STATE.memories));
-          renderMemoryList();
-          logDiag(`[対話記憶登録成功] 「${content}」`, "success");
-          return `了解ニャン！記憶帳に『${content}』ってしっかりメモしたニャ🐾`;
+        STATE.isWaitingForMemoryInput = false;
+        const clean = text.trim();
+        if (clean.length >= 2) {
+          const saved = saveToMemoryNotebook(clean);
+          return {
+            speech: `了解ニャン！記憶帳に『${saved}』ってしっかりメモしたニャ🐾 設定画面で確認してみてニャン！`,
+            savedText: saved
+          };
         }
       }
 
-      // 2. 「記録帳に登録してね」「記憶帳に書いて」と単体で言われた場合 ➔ 待機モードへ突入！
+      // 2. 「記録帳に登録して」「メモして」と単体で言われた場合（聞き返しモードへ）
       const triggerPatterns = [
-        /(?:記録帳|記憶帳|ノート|メモ)(?:に)?(?:登録して|メモして|書いて|記録して|覚えて)/,
-        /(?:これ|今から言うこと|次のこと)(?:を)?(?:覚えて|登録して|メモして)/,
-        /(?:新しいこと|新しい情報)(?:を)?(?:登録|覚えて)/
+        /^(?:記録帳|記憶帳|ノート|メモ)(?:に)?(?:登録|追加|メモ|書いて|記録|覚えて)/,
+        /^(?:これ|次のこと)(?:を)?(?:覚えて|登録|追加|メモ)/
       ];
-
-      for (const pattern of triggerPatterns) {
-        if (pattern.test(text)) {
-          // もし文章の後ろに具体的な内容が続いていない場合は対話待機モードにする
-          const stripped = text.replace(pattern, '').replace(/[：:、\s]/g, '').trim();
-          if (stripped.length === 0) {
+      for (const p of triggerPatterns) {
+        if (p.test(text)) {
+          const rest = text.replace(p, '').replace(/[：:、\s]/g, '').trim();
+          if (rest.length <= 1) {
             STATE.isWaitingForMemoryInput = true;
             statusText.textContent = "📝 メモを待ってるニャ…";
-            logDiag("[対話記憶登録] 記憶モード待機中…", "info");
-            return "了解ニャン！何を記録帳に登録するニャ？話してニャン🐾";
+            return {
+              speech: "了解ニャン！何を記録帳に登録するニャ？話してニャン🐾",
+              savedText: null
+            };
           }
         }
       }
 
-      // 3. 1文でまとめて言われた場合（例:「私の趣味はゴルフって覚えて」など）
-      const rememberPatterns = [
-        /(?:これ|このこと|次のこと)?(?:を)?(?:記憶帳|記録帳|ノート|メモ)?(?:に)?(?:覚えて|登録して|記録して|メモして)[：:、\s]*(.+)/,
-        /(.+?)(?:って|だと|と)?(?:覚えて|記憶して|ノートに書いて|記録帳に書いて)/,
-        /(?:ボク|私|わたし|俺|僕)の名前は\s*(.+?)(?:だ|です|だよ|ニャ)/
+      // 3. 1文で明示された場合のみ登録（雑談誤爆防止）
+      // 「記録帳」「記憶帳」「ノート」「メモ」または「覚えておいて/覚えて」が文末にある場合
+      const explicitAddPatterns = [
+        /(.+?)(?:って|だと|と|を)?(?:記録帳|記憶帳|ノート|メモ)(?:に)?(?:書いて|登録して|追加して|メモして|記録して|残して)/,
+        /(?:記録帳|記憶帳|ノート|メモ)(?:に)[：:、\s]*(.+?)(?:を)?(?:書いて|登録して|追加して|メモして|覚えて)/,
+        /(.+?)(?:って|だと|と)?(?:覚えておいて|覚えて|忘れにゃいで|忘れないで)/
       ];
 
-      for (const pattern of rememberPatterns) {
-        const match = text.match(pattern);
+      for (const p of explicitAddPatterns) {
+        const match = text.match(p);
         if (match && match[1]) {
-          let content = match[1].trim();
-          if (content.length > 1) {
-            if (text.includes('名前は')) content = `飼い主さんの名前：${content}`;
-            STATE.memories.push(content);
-            localStorage.setItem('kuro_notebook_memories', JSON.stringify(STATE.memories));
-            renderMemoryList();
-            logDiag(`[即時記憶登録成功] 「${content}」`, "success");
-            return `了解ニャン！記憶帳に『${content}』ってしっかりメモしたニャ🐾`;
+          let content = match[1].replace(/(?:記録帳|記憶帳|ノート|メモ|に|を|って)$/g, '').trim();
+          // 疑問形（〜覚えてる？等）は除外
+          if (content.length >= 2 && !/(?:何|どれ|誰|どこ|いつ|どう|教えて)/.test(text)) {
+            const saved = saveToMemoryNotebook(content);
+            return {
+              speech: `了解ニャン！記憶帳に『${saved}』ってしっかりメモしたニャ🐾`,
+              savedText: saved
+            };
           }
         }
       }
 
-      if (text.includes('記憶帳見せて') || text.includes('記録帳見せて') || text.includes('何覚えてる') || text.includes('記憶帳教えて')) {
+      // 4. 「記憶帳教えて」「何覚えてる？」の確認
+      if (/(?:記録帳|記憶帳|ノート).*(?:教えて|見せて|何がある|何覚えてる)/.test(text) || text.includes('何覚えてる')) {
         const count = STATE.memories.length;
-        const sample = STATE.memories.slice(-2).join('、');
-        return `クロの記憶帳には全部で${count}個メモしてあるニャ！例えば「${sample}」などを覚えてるニャン🐾`;
+        const latest = STATE.memories[0] || "まだないニャ";
+        return {
+          speech: `クロの記憶帳には全部で${count}個メモしてあるニャ！最新のは「${latest}」だニャン🐾`,
+          savedText: null
+        };
       }
 
       return null;
@@ -1974,12 +2100,12 @@
         return;
       }
 
-      // ★ 音声記憶コマンド（対話型＆即時型の両方を完全処理）
-      const memReply = handleMemoryVoiceCommand(promptText);
-      if (memReply) {
-        addChatMessage('model', memReply);
+      // ★ 音声記憶コマンド（安全・誤爆防止判定）
+      const memResult = handleMemoryVoiceCommand(promptText);
+      if (memResult) {
+        addChatMessage('model', memResult.speech, [], memResult.savedText);
         playCatMeow('happy');
-        speakVoice(memReply, false);
+        speakVoice(memResult.speech, false);
         return;
       }
 
@@ -2104,7 +2230,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       10. 四国めたん（あまあま）専用エンジン
+       10. ★【完全刷新】四国めたん（あまあま）専用通信エンジン
        ========================================================== */
     function cleanTextForSpeech(text) {
       if (!text) return "";
@@ -2112,7 +2238,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         .replace(/```[\s\S]*?```/g, '')
         .replace(/<[^>]*>/g, '')
         .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}\uFE0F\u200D]/gu, '')
-        .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥]/gu, '')
+        .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒]/gu, '')
         .replace(/[（\(【\[][^）\)】\]]*[）\)】\]]/g, '')
         .replace(/\n+/g, ' ')
         .trim();
@@ -2125,34 +2251,60 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       setEmotion('idle');
     }
 
+    // ★ サーバーに優しい公式推奨の2ステップ通信（連続連打を防止）
     async function getMetanMp3Url(text) {
-      const encodedText = encodeURIComponent(text);
-      const apiUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=0`;
+      const clean = text.slice(0, 70); // 安定した合成のための上限
+      const encodedText = encodeURIComponent(clean);
+      const initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=0`;
 
-      logDiag("[音声合成] 四国めたんAPIに問い合わせ開始…", "info");
+      logDiag("[四国めたん] 音声合成リクエストを送信中…", "info");
 
-      for (let i = 0; i < 14; i++) {
+      // ステップ1: 合成タスクの初回登録（1回のみ送信）
+      let initRes = null;
+      try {
+        initRes = await fetch(initUrl);
+      } catch (e) {
+        throw new Error("ネットワーク接続エラー");
+      }
+
+      if (!initRes.ok) {
+        throw new Error(`サーバー応答エラー HTTP ${initRes.status}`);
+      }
+
+      const initData = await initRes.json();
+      if (initData.isAudioError) throw new Error("音声合成エラー");
+
+      // 既にキャッシュなどで即時完成している場合
+      if (initData.isAudioReady && initData.mp3DownloadUrl) {
+        logDiag("[四国めたん] 即時音声取得完了ニャ！", "success");
+        return initData.mp3DownloadUrl;
+      }
+
+      // ステップ2: 生成ステータスURLをポーリング（最大9秒間、過負荷をかけずに待機）
+      const statusUrl = initData.audioStatusUrl || initUrl;
+      logDiag("[四国めたん] 音声生成中…待機中ニャ", "info");
+
+      for (let i = 0; i < 9; i++) {
+        await new Promise(r => setTimeout(r, 1000));
         try {
-          const res = await fetch(apiUrl);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.isAudioError) throw new Error("VoiceVox synthesis error");
-            if (data.isAudioReady && data.mp3DownloadUrl) {
-              logDiag(`[四国めたん完成] 音声準備OKニャ！（試行${i + 1}回目 / HTTP 200）`, "success");
-              return data.mp3DownloadUrl;
+          const statusRes = await fetch(statusUrl);
+          if (statusRes.ok) {
+            const statusData = await statusRes.json();
+            if (statusData.isAudioReady && statusData.mp3DownloadUrl) {
+              logDiag(`[四国めたん完成] 音声準備OKニャ！（待機 ${i + 1}秒）`, "success");
+              return statusData.mp3DownloadUrl;
             }
-          } else {
-            logDiag(`[音声サーバー応答] HTTP ${res.status}`, "warn");
           }
         } catch (e) {
-          logDiag(`[音声ポーリング待機中] 試行${i + 1}回目`, "info");
+          // 待機継続
         }
-        await new Promise(r => setTimeout(r, 600));
       }
-      throw new Error("8.4秒タイムアウト（音声サーバー混雑）");
+
+      throw new Error("音声生成待機タイムアウト");
     }
 
-    function speakWithNativeVoice(cleanDisplay, syncBubble, actionCards = []) {
+    // バックアップ用標準ボイス（最高ピッチの可愛い子猫トーン）
+    function speakWithNativeVoice(cleanDisplay, syncBubble, actionCards = [], savedBadgeText = null) {
       if (!window.speechSynthesis) return;
       window.speechSynthesis.cancel();
 
@@ -2160,16 +2312,16 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       const uttr = new SpeechSynthesisUtterance(speakText);
       uttr.lang = 'ja-JP';
       uttr.rate = STATE.rate;
-      uttr.pitch = 1.35;
+      uttr.pitch = 1.45; // 子猫らしい高めのかわいいピッチ
 
       const voices = window.speechSynthesis.getVoices();
-      const cuteVoice = voices.find(v => v.lang.includes('ja') && (v.name.includes('Kyoko') || v.name.includes('Google') || v.name.includes('Nanami') || v.name.includes('女性')));
+      const cuteVoice = voices.find(v => v.lang.includes('ja') && (v.name.includes('Kyoko') || v.name.includes('Google 日本語') || v.name.includes('Nanami') || v.name.includes('Haruka') || v.name.includes('女性')));
       if (cuteVoice) uttr.voice = cuteVoice;
 
       uttr.onstart = () => {
         if (syncBubble) {
           removeThinkingBubble();
-          addChatMessage('model', cleanDisplay, actionCards);
+          addChatMessage('model', cleanDisplay, actionCards, savedBadgeText);
         }
         STATE.isThinking = false;
         STATE.isSpeaking = true;
@@ -2198,7 +2350,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       window.speechSynthesis.speak(uttr);
     }
 
-    async function speakVoice(rawText, syncBubble = false, actionCards = []) {
+    async function speakVoice(rawText, syncBubble = false, actionCards = [], savedBadgeText = null) {
       stopSpeaking();
       keepAudioActive();
 
@@ -2213,7 +2365,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         masterAudio.oncanplay = () => {
           if (syncBubble) {
             removeThinkingBubble();
-            addChatMessage('model', rawText, actionCards);
+            addChatMessage('model', rawText, actionCards, savedBadgeText);
           }
           STATE.isThinking = false;
           STATE.isSpeaking = true;
@@ -2232,15 +2384,15 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
         masterAudio.onerror = (e) => {
           logDiag(`[音声再生ブロック検知] スマホOSにより遮断されたため標準ボイスで代行発声ニャ`, "warn");
-          speakWithNativeVoice(rawText, syncBubble, actionCards);
+          speakWithNativeVoice(rawText, syncBubble, actionCards, savedBadgeText);
         };
 
         await masterAudio.play();
         logDiag("[発声開始] 四国めたん（あまあま）の肉声で再生成功ニャ！🐾", "success");
 
       } catch (err) {
-        logDiag(`[四国めたんタイムアウト] 端末ボイスで代行発声ニャ（${err.message}）`, "warn");
-        speakWithNativeVoice(rawText, syncBubble, actionCards);
+        logDiag(`[四国めたん待機終了] 端末ボイスで代行発声ニャ（${err.message}）`, "warn");
+        speakWithNativeVoice(rawText, syncBubble, actionCards, savedBadgeText);
       }
     }
 
@@ -2398,7 +2550,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         resolveBestModels();
       }
 
-      logDiag("クロちゃん起動完了。対話型記憶＆連動スマート検索スタンバイOKニャ🐾", "success");
+      logDiag("クロちゃん起動完了。四国めたん＆安全記憶エンジン稼働開始ニャ🐾", "success");
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
       }, 1000);
@@ -2406,5 +2558,3 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
   </script>
 </body>
 </html>
-
-
