@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -231,7 +230,7 @@
     .confirm-btn.yes { background: linear-gradient(135deg, #c026d3, #9333ea); color: white; box-shadow: 0 2px 6px rgba(192, 38, 211, 0.3); }
     .confirm-btn.no { background: #e2e8f0; color: #475569; }
 
-    /* スマート連携アクションカード（明示的に検索した時だけ出現） */
+    /* スマート連携アクションカード（明示的リクエスト時のみ表示） */
     .action-card-box {
       margin-top: 6px;
       display: flex;
@@ -978,7 +977,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。Web Audio四国めたん＆高精度記憶エンジン 稼働開始ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。四国めたん完全再生＆高精度記憶エンジン 稼働中ニャ！</div>
       </div>
     </div>
   </div>
@@ -1062,38 +1061,47 @@
 
   <script>
     /* ==========================================================
-       ★ Web Audio API 統合音声エンジン（Android Chrome 完全対応）
+       ★【ハイブリッド・アンカー方式】音声再生基盤
+       （Android Chromeの自動再生ブロック ＆ CORS制約を完全突破）
        ========================================================== */
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    let globalAudioCtx = null;
-    let currentSourceNode = null;
+    const masterAudio = new Audio();
+    masterAudio.preload = "auto";
+    let isMasterUnlocked = false;
 
-    function getAudioContext() {
-      if (!globalAudioCtx && AudioContextClass) {
-        globalAudioCtx = new AudioContextClass();
-      }
-      if (globalAudioCtx && globalAudioCtx.state === 'suspended') {
-        globalAudioCtx.resume();
-      }
-      return globalAudioCtx;
+    // 1サンプルのみの完全無音WAV（Base64）
+    const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+
+    // ユーザー操作時に1度だけ無音再生してAndroidの再生権限（User Gesture Token）を掴む
+    function unlockMasterAudio() {
+      if (isMasterUnlocked) return;
+      masterAudio.src = SILENT_WAV;
+      masterAudio.play().then(() => {
+        isMasterUnlocked = true;
+        logDiag("[Audio] Android音声再生権限（先行アンカー）を確立完了ニャ！", "info");
+      }).catch(() => {});
     }
 
-    // Androidの自動再生制限を1タップで完全に解除するアンカー
-    function unlockAudioContext() {
+    function keepAudioActive() {
+      if (!isMasterUnlocked) unlockMasterAudio();
       const ctx = getAudioContext();
-      if (!ctx) return;
-      if (ctx.state === 'suspended') {
-        ctx.resume().then(() => {
-          logDiag("[Audio] Web Audio Context 権限を完全にアンロック完了ニャ！", "info");
-        });
-      }
+      if (ctx && ctx.state === 'suspended') ctx.resume();
     }
-    window.addEventListener('pointerdown', unlockAudioContext, { passive: true });
-    window.addEventListener('touchstart', unlockAudioContext, { passive: true });
+
+    window.addEventListener('pointerdown', keepAudioActive, { passive: true });
+    window.addEventListener('touchstart', keepAudioActive, { passive: true });
 
     /* ==========================================================
-       1. 音響効果（即時相槌・鳴き声・喉鳴らし・変身音）
+       1. 効果音（即時相槌・鳴き声・喉鳴らし・変身音）
        ========================================================== */
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function getAudioContext() {
+      if (!audioCtx && AudioContextClass) audioCtx = new AudioContextClass();
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+
     function playTransformSound() {
       const ctx = getAudioContext();
       if (!ctx) return;
@@ -1435,7 +1443,7 @@
     }
 
     transformBtn.addEventListener('click', () => {
-      unlockAudioContext();
+      keepAudioActive();
       if (STATE.isTransforming) return;
       STATE.avatarMode = (STATE.avatarMode === 'vector') ? 'real' : 'vector';
       localStorage.setItem('kuro_avatar_mode', STATE.avatarMode);
@@ -1532,12 +1540,12 @@
     }
 
     /* ==========================================================
-       4. ★【整理済】明示的リクエスト時のみリンクボタンを生成
+       4. スマート検索連携（明示的リクエスト時のみカード生成）
        ========================================================== */
     function detectActionCards(userText, modelReply) {
       const cards = [];
 
-      // 1. 地図・マップ判定（ユーザーが「場所」「地図」「マップ」「どこ」「案内して」と明示的に頼んだ時だけ！）
+      // 1. 地図・場所判定（ユーザーが「場所」「地図」「マップ」「どこ」と明示的に頼んだ時だけ！）
       const isExplicitMapRequest = /(?:場所|どこ|地図|マップ|行き方|案内して|道順|探して|教えて).*(?:マップ|地図|場所|店|どこ|案内)/.test(userText)
         || /(?:マップで|地図で|場所を|どこにある|近くの)/.test(userText);
 
@@ -1748,7 +1756,7 @@
     }
 
     /* ==========================================================
-       5. ★【完全整理】記録帳（記載帳）登録＆誤爆・呼びかけ排除エンジン
+       5. ★【意図解析パイプライン】記憶帳・記載帳の安全切り出し
        ========================================================== */
     function saveToMemoryNotebook(content) {
       let clean = content.trim();
@@ -1772,7 +1780,6 @@
       // 2. 【2ステップ待機中】「何を登録するニャ？」の返事を待っていた時
       if (STATE.isWaitingForMemoryInput) {
         STATE.isWaitingForMemoryInput = false;
-        // 「やめた」「キャンセル」などの場合は取り消し
         if (/^(?:やめた|キャンセル|いいや|なんでもない)/.test(text)) {
           return { speech: "了解ニャ！メモはやめておくニャン🐾", savedText: null };
         }
@@ -1818,7 +1825,7 @@
         if (match && match[1]) {
           let content = match[1].replace(/(?:記録帳|記憶帳|記載帳|きさいちょう|ノート|メモ|に|を|って)$/g, '').trim();
 
-          // 万が一呼びかけだけ（「クロちゃん」「クロ」等）だった場合は登録せず聞き返しモードへ
+          // 呼びかけのみ（「クロちゃん」「クロ」等）の誤登録を防止
           if (/^(?:クロちゃん|くろちゃん|クロ|くろ)$/i.test(content) || content.length <= 1) {
             STATE.isWaitingForMemoryInput = true;
             statusText.textContent = "📝 メモを待ってるニャ…";
@@ -1828,7 +1835,6 @@
             };
           }
 
-          // 疑問形（〜覚えてる？等）は登録ではないのでスキップ
           if (!/(?:何|どれ|誰|どこ|いつ|どう|教えて)/.test(text)) {
             const saved = saveToMemoryNotebook(content);
             return {
@@ -1880,7 +1886,7 @@
        7. なでなで＆時計
        ========================================================== */
     avatarWrapper.addEventListener('click', (e) => {
-      unlockAudioContext();
+      keepAudioActive();
       if (STATE.isPaused) { togglePause(); return; }
 
       const rect = avatarWrapper.getBoundingClientRect();
@@ -1960,12 +1966,12 @@
       chatTimeline.scrollTop = chatTimeline.scrollHeight;
 
       document.getElementById('btn-approve-38').onclick = () => {
-        unlockAudioContext();
+        keepAudioActive();
         addChatMessage('user', "お願いニャ！");
         handleApprovalResponse(true);
       };
       document.getElementById('btn-deny-38').onclick = () => {
-        unlockAudioContext();
+        keepAudioActive();
         addChatMessage('user', "3.5 liteでいいよ");
         handleApprovalResponse(false);
       };
@@ -2073,7 +2079,7 @@
     }
 
     async function askGemini(promptText) {
-      unlockAudioContext();
+      keepAudioActive();
       addChatMessage('user', promptText);
       playCatAizuchi();
 
@@ -2086,7 +2092,7 @@
         return;
       }
 
-      // ★ 記録帳・記載帳コマンド（誤爆・名前誤認防止処理）
+      // ★ 記録帳・記載帳コマンド判定
       const memResult = handleMemoryVoiceCommand(promptText);
       if (memResult) {
         addChatMessage('model', memResult.speech, [], memResult.savedText);
@@ -2203,7 +2209,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       10. ★【Web Audio完全直結】四国めたん（Android Chrome完全対応）
+       10. ★【完全体系化】四国めたん（あまあま）専用通信エンジン
        ========================================================== */
     function cleanTextForSpeech(text) {
       if (!text) return "";
@@ -2219,42 +2225,13 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
     function stopSpeaking() {
       STATE.isSpeaking = false;
-      if (currentSourceNode) {
-        try { currentSourceNode.stop(); } catch(e) {}
-        currentSourceNode = null;
-      }
+      masterAudio.pause();
       window.speechSynthesis.cancel();
       setEmotion('idle');
     }
 
-    // Androidの制限を突破するWeb Audio APIバッファ再生
-    async function playAudioBuffer(arrayBuffer, onStart, onEnded) {
-      const ctx = getAudioContext();
-      if (!ctx) throw new Error("AudioContext利用不可");
-
-      if (ctx.state === 'suspended') {
-        await ctx.resume();
-      }
-
-      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-      const source = ctx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.playbackRate.value = STATE.rate;
-      source.connect(ctx.destination);
-
-      currentSourceNode = source;
-
-      source.onended = () => {
-        currentSourceNode = null;
-        if (onEnded) onEnded();
-      };
-
-      if (onStart) onStart();
-      source.start(0);
-    }
-
-    // 四国めたん音声合成（公式推奨のキュー監視型）
-    async function fetchMetanAudioArrayBuffer(text) {
+    // 四国めたん音声合成URL取得（CORSフリー＆過負荷防止の安全ポーリング）
+    async function getMetanMp3Url(text) {
       const clean = text.slice(0, 65);
       const encodedText = encodeURIComponent(clean);
       const initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=0`;
@@ -2267,33 +2244,31 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       const initData = await initRes.json();
       if (initData.isAudioError) throw new Error("VoiceVoxエラー");
 
-      let mp3Url = null;
+      // 既に準備ができている場合
       if (initData.isAudioReady && initData.mp3DownloadUrl) {
-        mp3Url = initData.mp3DownloadUrl;
-      } else {
-        const statusUrl = initData.audioStatusUrl || initUrl;
-        for (let i = 0; i < 8; i++) {
-          await new Promise(r => setTimeout(r, 900));
-          try {
-            const sRes = await fetch(statusUrl);
-            if (sRes.ok) {
-              const sData = await sRes.json();
-              if (sData.isAudioReady && sData.mp3DownloadUrl) {
-                mp3Url = sData.mp3DownloadUrl;
-                break;
-              }
-            }
-          } catch(e) {}
-        }
+        logDiag("[四国めたん] 音声準備OKニャ！", "success");
+        return initData.mp3DownloadUrl;
       }
 
-      if (!mp3Url) throw new Error("音声生成待機タイムアウト");
+      // 未完了時はステータスURLを優しく監視（1秒間隔、最大9回）
+      const statusUrl = initData.audioStatusUrl || initUrl;
+      logDiag("[四国めたん] 音声生成中…待機中ニャ", "info");
 
-      // MP3データをArrayBufferとして直接ダウンロード
-      logDiag("[四国めたん] 音声バッファを取得中…", "info");
-      const audioRes = await fetch(mp3Url);
-      if (!audioRes.ok) throw new Error("MP3取得エラー");
-      return await audioRes.arrayBuffer();
+      for (let i = 0; i < 9; i++) {
+        await new Promise(r => setTimeout(r, 1000));
+        try {
+          const sRes = await fetch(statusUrl);
+          if (sRes.ok) {
+            const sData = await sRes.json();
+            if (sData.isAudioReady && sData.mp3DownloadUrl) {
+              logDiag(`[四国めたん完成] 音声準備完了ニャ！（待機 ${i + 1}秒）`, "success");
+              return sData.mp3DownloadUrl;
+            }
+          }
+        } catch(e) {}
+      }
+
+      throw new Error("音声生成待機タイムアウト");
     }
 
     // 端末標準ボイス（最高ピッチの子猫風代行）
@@ -2305,7 +2280,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       const uttr = new SpeechSynthesisUtterance(speakText);
       uttr.lang = 'ja-JP';
       uttr.rate = STATE.rate;
-      uttr.pitch = 1.45;
+      uttr.pitch = 1.45; // 子猫らしい高めのかわいいピッチ
 
       const voices = window.speechSynthesis.getVoices();
       const cuteVoice = voices.find(v => v.lang.includes('ja') && (v.name.includes('Kyoko') || v.name.includes('Google 日本語') || v.name.includes('Nanami') || v.name.includes('Haruka') || v.name.includes('女性')));
@@ -2345,37 +2320,44 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
     async function speakVoice(rawText, syncBubble = false, actionCards = [], savedBadgeText = null) {
       stopSpeaking();
-      unlockAudioContext();
+      keepAudioActive();
 
       const textToSpeak = cleanTextForSpeech(rawText);
 
       try {
-        const arrayBuffer = await fetchMetanAudioArrayBuffer(textToSpeak);
+        const mp3Url = await getMetanMp3Url(textToSpeak);
 
-        await playAudioBuffer(
-          arrayBuffer,
-          () => {
-            // 再生開始時
-            if (syncBubble) {
-              removeThinkingBubble();
-              addChatMessage('model', rawText, actionCards, savedBadgeText);
-            }
-            STATE.isThinking = false;
-            STATE.isSpeaking = true;
-            statusText.textContent = "🗣️ お話し中ニャ♪";
-            setEmotion('talking');
-            logDiag("[発声開始] 四国めたん（あまあま）の肉声で再生成功ニャ！🐾", "success");
-          },
-          () => {
-            // 再生終了時
-            STATE.isSpeaking = false;
-            statusText.textContent = "👂 聴いてるニャ♪";
-            setEmotion('idle');
-            setTimeout(() => {
-              if (!STATE.isPaused && !STATE.isThinking && !STATE.isAwaiting38Approval) startListening();
-            }, 800);
+        // 先行アンカー済みの masterAudio に流し込んで再生（CORS無縁＆Androidブロック回避）
+        masterAudio.src = mp3Url;
+        masterAudio.playbackRate = STATE.rate;
+
+        masterAudio.oncanplay = () => {
+          if (syncBubble) {
+            removeThinkingBubble();
+            addChatMessage('model', rawText, actionCards, savedBadgeText);
           }
-        );
+          STATE.isThinking = false;
+          STATE.isSpeaking = true;
+          statusText.textContent = "🗣️ お話し中ニャ♪";
+          setEmotion('talking');
+        };
+
+        masterAudio.onended = () => {
+          STATE.isSpeaking = false;
+          statusText.textContent = "👂 聴いてるニャ♪";
+          setEmotion('idle');
+          setTimeout(() => {
+            if (!STATE.isPaused && !STATE.isThinking && !STATE.isAwaiting38Approval) startListening();
+          }, 800);
+        };
+
+        masterAudio.onerror = (e) => {
+          logDiag("[音声再生ブロック検知] 端末ボイスで代行発声ニャ", "warn");
+          speakWithNativeVoice(rawText, syncBubble, actionCards, savedBadgeText);
+        };
+
+        await masterAudio.play();
+        logDiag("[発声開始] 四国めたん（あまあま）の肉声で再生成功ニャ！🐾", "success");
 
       } catch (err) {
         logDiag(`[四国めたん代替発声] 端末ボイスで代行ニャ（${err.message}）`, "warn");
@@ -2384,7 +2366,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     testVoiceBtn.addEventListener('click', () => {
-      unlockAudioContext();
+      keepAudioActive();
       speakVoice("おやびん、クロだニャン！今日もいっぱいお話ししてニャ🐾", false);
     });
 
@@ -2446,7 +2428,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     function togglePause() {
-      unlockAudioContext();
+      keepAudioActive();
       STATE.isPaused = !STATE.isPaused;
       if (STATE.isPaused) {
         pauseBtn.classList.add('is-paused');
@@ -2470,7 +2452,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
     function handleAppResume() {
       logDiag("[アプリ復帰検知] 音声対話を再起動ニャ", "info");
-      unlockAudioContext();
+      keepAudioActive();
       if (!STATE.isPaused && !STATE.isSpeaking && !STATE.isThinking) {
         setTimeout(() => startListening(), 600);
       }
@@ -2490,7 +2472,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     });
 
     settingsBtn.addEventListener('click', () => {
-      unlockAudioContext();
+      keepAudioActive();
       STATE.editingMemoryIndex = null;
       document.getElementById('api-key-input').value = STATE.apiKey;
       voiceRate.value = STATE.rate;
@@ -2504,7 +2486,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     });
 
     saveSettingsBtn.addEventListener('click', async () => {
-      unlockAudioContext();
+      keepAudioActive();
       STATE.apiKey = document.getElementById('api-key-input').value.trim();
       STATE.rate = parseFloat(voiceRate.value);
 
