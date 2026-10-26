@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>AIペット クロちゃん🐾</title>
 
-  <!-- PWA（スマホのホーム画面追加で本物のアプリ化）設定 -->
+  <!-- PWA（ホーム画面追加で本物のアプリ化）設定 -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="クロちゃん🐾">
@@ -17,7 +17,7 @@
       --primary-color: #f472b6;
       --secondary-color: #38bdf8;
       --bubble-bg: rgba(255, 255, 255, 0.96);
-      --text-color: #2d3748;
+      --text-color: #1f2937;
       --shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
     }
 
@@ -42,7 +42,7 @@
       align-items: center;
     }
 
-    /* メインコンテナ：縦全画面で絶対に崩れないフレックス構造 */
+    /* メインコンテナ：縦全画面で崩れないフレックス構造 */
     #pet-container {
       position: absolute;
       width: 100%;
@@ -56,7 +56,7 @@
       box-sizing: border-box;
     }
 
-    /* 1. 最上部ヘッダー（ステータスバー） */
+    /* 1. 最上部ステータスバー */
     .top-header {
       width: 100%;
       flex-shrink: 0;
@@ -85,9 +85,9 @@
     .model-badge.lite { background: #e0f2fe; color: #0284c7; }
     .model-badge.pro { background: #fdf4ff; color: #c026d3; }
 
-    /* 2. 会話タイムライン（時計バー直下〜猫の頭上まで最大拡張） */
+    /* 2. 会話タイムライン（猫の頭上まで最大拡張） */
     #chat-timeline {
-      flex: 1; /* 余白スペースを全て使ってスクロール領域化 */
+      flex: 1;
       width: 100%;
       overflow-y: auto;
       padding: 4px 6px 12px 6px;
@@ -99,15 +99,12 @@
       z-index: 10;
     }
 
-    #chat-timeline::-webkit-scrollbar {
-      width: 4px;
-    }
+    #chat-timeline::-webkit-scrollbar { width: 4px; }
     #chat-timeline::-webkit-scrollbar-thumb {
       background: rgba(244, 114, 182, 0.35);
       border-radius: 4px;
     }
 
-    /* チャット吹き出し */
     .chat-row {
       display: flex;
       width: 100%;
@@ -130,13 +127,11 @@
       word-break: break-word;
       box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
     }
-
     .chat-row.user .chat-bubble {
       background: #0284c7;
       color: #ffffff;
       border-bottom-right-radius: 4px;
     }
-
     .chat-row.model .chat-bubble {
       background: #ffffff;
       color: #2d3748;
@@ -144,55 +139,79 @@
       border-bottom-left-radius: 4px;
     }
 
-    /* 3. 猫ちゃん本体アバター（黒いバーの上に隙間なくぴったり乗る構図） */
+    /* 3. 猫ちゃん本体（4枚の画像が滑らかに溶け合い息づくステージ） */
     .pet-avatar-wrapper {
       position: relative;
       flex-shrink: 0;
       width: 100%;
-      height: 290px;
+      height: 310px;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
       align-items: center;
       cursor: pointer;
       z-index: 20;
-      /* 黒バーの天面と隙間ゼロで完全に接地 */
-      margin-bottom: -18px; 
+      margin-bottom: -18px; /* 黒い操作バーにぴったり接地 */
     }
 
-    .pet-avatar {
-      height: 100%;
+    /* 60fps 有機的呼吸アニメーションコンテナ */
+    #cat-anim-layer {
+      position: relative;
       width: 100%;
       max-width: 380px;
-      max-height: 290px;
-      object-fit: contain;
-      object-position: bottom center;
-      filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.28));
-      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      animation: cat-breathe 3.5s ease-in-out infinite;
+      height: 300px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
       transform-origin: bottom center;
-      z-index: 2;
+      animation: catBreathAnim 4.2s ease-in-out infinite;
+      transition: transform 0.15s ease-out;
     }
 
-    /* 接地シャドウ（浮遊感を完全消去） */
+    @keyframes catBreathAnim {
+      0%, 100% { transform: scale(1, 1) translateY(0); }
+      50% { transform: scale(1.025, 0.98) translateY(-4px); }
+    }
+
+    /* 4枚の画像を完全同位置に重ね、クロスフェード（透過ブレンド） */
+    .cat-avatar-img {
+      position: absolute;
+      bottom: 0;
+      height: 100%;
+      max-height: 300px;
+      object-fit: contain;
+      object-position: bottom center;
+      opacity: 0;
+      pointer-events: none;
+      /* 白背景を透明化しアプリ背景と完璧に融合させるデザイナーブレンド */
+      mix-blend-mode: multiply;
+      filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.18));
+      transition: opacity 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+      transform-origin: bottom center;
+    }
+
+    /* アクティブな表情のみ滑らかに表示 */
+    .cat-avatar-img.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* 接地シャドウ */
     .cat-ground-shadow {
       position: absolute;
-      bottom: 16px;
+      bottom: 15px;
       width: 250px;
       height: 18px;
-      background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0) 75%);
+      background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 75%);
       border-radius: 50%;
       pointer-events: none;
       z-index: 1;
     }
 
-    @keyframes cat-breathe {
-      0%, 100% { transform: translateY(0) scale(1); }
-      50% { transform: translateY(-4px) scale(1.02, 0.98); }
-    }
-
-    .pet-avatar-wrapper:active .pet-avatar {
-      transform: scale(0.96);
+    /* なでなで時の幸せアクション */
+    .pet-avatar-wrapper.is-stroked #cat-anim-layer {
+      animation: none;
+      transform: scale(0.96) rotate(4deg);
     }
 
     /* なでなでハート演出 */
@@ -205,38 +224,35 @@
       z-index: 25;
       bottom: 80px;
     }
-
     @keyframes float-heart {
       0% { opacity: 1; transform: translate(0, 0) scale(0.6); }
       50% { opacity: 0.9; transform: translate(var(--rx), -50px) scale(1.2); }
       100% { opacity: 0; transform: translate(var(--rx), -100px) scale(1.4); }
     }
 
-    /* 音声認識待機中の波紋アニメーション */
+    /* 音声認識待機中の波紋 */
     .listening-ring {
       position: absolute;
       width: 310px;
       height: 310px;
       border-radius: 50%;
       border: 3.5px solid var(--primary-color);
-      bottom: 15px;
+      bottom: 12px;
       left: 50%;
       transform: translateX(-50%) scale(0.8);
       opacity: 0;
       pointer-events: none;
       z-index: 0;
     }
-
     .is-listening .listening-ring {
       animation: pulse 1.4s infinite ease-out;
     }
-
     @keyframes pulse {
       0% { transform: translateX(-50%) scale(0.8); opacity: 0.85; }
       100% { transform: translateX(-50%) scale(1.25); opacity: 0; }
     }
 
-    /* 4. 最下部：黒い楕円バー（猫が立つ台座 ＆ 白文字操作ボタン） */
+    /* 4. 最下部操作バー */
     .bottom-controls {
       width: 100%;
       flex-shrink: 0;
@@ -266,7 +282,7 @@
       gap: 8px;
       border-radius: 28px;
       border: 1px solid rgba(255, 255, 255, 0.16);
-      font-size: 14.5px;
+      font-size: 14px;
       font-weight: 800;
       cursor: pointer;
       background: #1f2937;
@@ -274,17 +290,8 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
-
-    .btn-action:active {
-      transform: scale(0.97);
-      background: #374151;
-    }
-
-    .btn-action.is-paused {
-      background: #450a0a;
-      color: #fca5a5;
-      border: 1px solid #7f1d1d;
-    }
+    .btn-action:active { transform: scale(0.97); background: #374151; }
+    .btn-action.is-paused { background: #450a0a; color: #fca5a5; border-color: #7f1d1d; }
 
     .btn-circle {
       width: 44px;
@@ -304,13 +311,9 @@
       margin-left: 8px;
       transition: transform 0.15s, background 0.2s;
     }
+    .btn-circle:active { transform: scale(0.92); background: #374151; }
 
-    .btn-circle:active {
-      transform: scale(0.92);
-      background: #374151;
-    }
-
-    /* 5. 🩺 診断モニタ（右下🩺ボタンでポップアップ展開） */
+    /* 5. 診断モニタ */
     #diag-panel {
       position: fixed;
       inset: 0;
@@ -321,10 +324,7 @@
       justify-content: center;
       align-items: flex-end;
     }
-
-    #diag-panel.expanded {
-      display: flex;
-    }
+    #diag-panel.expanded { display: flex; }
 
     .diag-modal-content {
       width: 100%;
@@ -341,7 +341,6 @@
       overflow: hidden;
       animation: slideUp 0.25s ease-out;
     }
-
     @keyframes slideUp {
       from { transform: translateY(100%); }
       to { transform: translateY(0); }
@@ -357,7 +356,6 @@
       color: #38bdf8;
       border-bottom: 1px solid #334155;
     }
-
     .diag-close-btn {
       background: #334155;
       border: none;
@@ -367,7 +365,6 @@
       font-size: 12px;
       cursor: pointer;
     }
-
     .diag-logs {
       padding: 12px 16px;
       overflow-y: auto;
@@ -377,7 +374,6 @@
       gap: 6px;
       color: #cbd5e1;
     }
-
     .log-row { line-height: 1.45; word-break: break-all; }
     .log-success { color: #4ade80; }
     .log-warn { color: #facc15; }
@@ -396,7 +392,6 @@
       z-index: 200;
       padding: 14px;
     }
-
     .modal-card {
       background: white;
       width: 100%;
@@ -407,7 +402,6 @@
       padding: 20px;
       box-shadow: var(--shadow);
     }
-
     .modal-card h3 {
       margin-top: 0;
       color: #1f2937;
@@ -416,7 +410,6 @@
       align-items: center;
       gap: 6px;
     }
-
     .form-group { margin-bottom: 14px; }
     .form-group label {
       display: flex;
@@ -426,7 +419,6 @@
       color: #4b5563;
       margin-bottom: 5px;
     }
-
     .form-group input, .form-group select {
       width: 100%;
       padding: 9px 12px;
@@ -435,14 +427,11 @@
       font-size: 13.5px;
       outline: none;
     }
-
-    /* 🔊 試聴ボタン付きコンテナ */
     .voice-select-row {
       display: flex;
       gap: 8px;
       align-items: center;
     }
-
     .btn-test-voice {
       flex-shrink: 0;
       padding: 9px 14px;
@@ -453,22 +442,13 @@
       font-weight: bold;
       font-size: 12.5px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      transition: background 0.15s;
-    }
-
-    .btn-test-voice:active {
-      background: #fce7f3;
-      transform: scale(0.96);
     }
 
     .memory-list {
       background: #f9fafb;
       border-radius: 14px;
       padding: 8px;
-      max-height: 140px;
+      max-height: 130px;
       overflow-y: auto;
       border: 1px solid #e5e7eb;
       display: flex;
@@ -476,7 +456,6 @@
       gap: 6px;
       font-size: 11.5px;
     }
-
     .memory-item {
       display: flex;
       justify-content: space-between;
@@ -486,46 +465,11 @@
       border-radius: 8px;
       border: 1px solid #e5e7eb;
     }
-
-    .memory-item span {
-      flex: 1;
-      word-break: break-all;
-      color: #374151;
-    }
-
-    .memory-item button {
-      background: none;
-      border: none;
-      color: #ef4444;
-      cursor: pointer;
-      font-size: 14px;
-      padding: 2px 6px;
-    }
-
-    .memory-add-box {
-      display: flex;
-      gap: 6px;
-      margin-top: 6px;
-    }
-
-    .memory-add-box input {
-      flex: 1;
-      padding: 7px 10px;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      font-size: 12px;
-    }
-
-    .memory-add-box button {
-      background: var(--primary-color);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      padding: 0 12px;
-      font-size: 12px;
-      font-weight: bold;
-      cursor: pointer;
-    }
+    .memory-item span { flex: 1; word-break: break-all; color: #374151; }
+    .memory-item button { background: none; border: none; color: #ef4444; cursor: pointer; }
+    .memory-add-box { display: flex; gap: 6px; margin-top: 6px; }
+    .memory-add-box input { flex: 1; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; }
+    .memory-add-box button { background: var(--primary-color); color: white; border: none; border-radius: 8px; padding: 0 12px; font-weight: bold; }
 
     .help-section {
       background: #f8fafc;
@@ -536,19 +480,8 @@
       line-height: 1.6;
       color: #475569;
     }
-
-    .help-section summary {
-      font-weight: bold;
-      color: #1e293b;
-      cursor: pointer;
-      user-select: none;
-      outline: none;
-    }
-
-    .help-section ul {
-      margin: 6px 0 0 0;
-      padding-left: 18px;
-    }
+    .help-section summary { font-weight: bold; color: #1e293b; cursor: pointer; }
+    .help-section ul { margin: 6px 0 0 0; padding-left: 18px; }
 
     .btn-save {
       width: 100%;
@@ -576,7 +509,7 @@
       <span id="model-badge" class="model-badge lite">⚡ 3.5 lite</span>
     </div>
 
-    <!-- 2. 上部〜猫のすぐ上まで：最大拡張された会話タイムライン -->
+    <!-- 2. 会話タイムライン -->
     <div id="chat-timeline">
       <div class="chat-row model">
         <div class="chat-bubble">
@@ -585,14 +518,21 @@
       </div>
     </div>
 
-    <!-- 3. 中央〜下部：クロちゃん本体（黒バーの上に隙間なく乗る構図） -->
+    <!-- 3. 中央〜下部：クロちゃん本体（4枚の画像が滑らかに溶け合い呼吸するステージ） -->
     <div class="pet-avatar-wrapper" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
       <div class="listening-ring"></div>
       <div class="cat-ground-shadow"></div>
-      <img src="idle.jpg" alt="クロ" class="pet-avatar" id="pet-image" onerror="handleImageError(this)">
+
+      <!-- 60fps 呼吸 ＆ リップシンク・バウンス層 -->
+      <div id="cat-anim-layer">
+        <img src="idle.jpg" alt="待機中" class="cat-avatar-img active" id="img-idle" onerror="handleImageFallback(this)">
+        <img src="thinking.jpg" alt="考え中" class="cat-avatar-img" id="img-thinking" onerror="handleImageFallback(this)">
+        <img src="talking.jpg" alt="お話し中" class="cat-avatar-img" id="img-talking" onerror="handleImageFallback(this)">
+        <img src="happy.jpg" alt="大喜び" class="cat-avatar-img" id="img-happy" onerror="handleImageFallback(this)">
+      </div>
     </div>
 
-    <!-- 4. 最下部：黒い楕円バー（文字は白・猫が立つ台座） -->
+    <!-- 4. 最下部操作バー -->
     <div class="bottom-controls">
       <div class="action-bar">
         <button class="btn-action" id="pause-btn">
@@ -606,7 +546,7 @@
     </div>
   </div>
 
-  <!-- 5. 🩺 診断モニタ（右下🩺ボタンでポップアップ表示） -->
+  <!-- 5. 診断モニタ -->
   <div id="diag-panel">
     <div class="diag-modal-content">
       <div class="diag-header">
@@ -614,12 +554,12 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。Android対応・音声試聴エンジン待機完了ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。4枚画像クロスフェード＆AI肉声エンジン準備完了ニャ！</div>
       </div>
     </div>
   </div>
 
-  <!-- 6. 設定 ＆ 記憶帳 ＆ ヘルプモーダル -->
+  <!-- 6. 設定 ＆ 記憶帳モーダル -->
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal-card">
       <h3>⚙️ クロちゃんの設定・記憶・ヘルプ</h3>
@@ -629,7 +569,7 @@
         <input type="password" id="api-key-input" placeholder="AIzaSy...">
       </div>
 
-      <!-- 📔 記憶帳セクション -->
+      <!-- 📔 記憶帳 -->
       <div class="form-group">
         <label>📔 クロの記憶帳（忘れない長期記憶）:</label>
         <div class="memory-list" id="memory-list-container"></div>
@@ -644,35 +584,33 @@
         <input type="range" id="history-slider" min="10" max="100" step="5" value="30">
       </div>
 
-      <!-- 🔊 音声選択 ＆ 試聴ボタン -->
+      <!-- 🔊 完全無料AI肉声ボイス設定 -->
       <div class="form-group">
-        <label>クロの声色（Android自動再同期対応）:</label>
+        <label>クロのAI肉声ボイス（無料）:</label>
         <div class="voice-select-row">
-          <select id="voice-select">
-            <option value="">音声を読み込み中ニャ…</option>
+          <select id="voice-model-select">
+            <option value="metan-ama">🌸 四国めたん（あまあま・ロリ可愛ボイス）</option>
+            <option value="tsumugi">✨ 春日部つむぎ（元気でおしゃまな女の子）</option>
+            <option value="metan-norm">🎀 四国めたん（ノーマル少女声）</option>
+            <option value="fallback-browser">📱 端末内蔵TTS（オフライン互換）</option>
           </select>
-          <button type="button" class="btn-test-voice" id="test-voice-btn" title="この声でサンプルを聴いてみる">🔊 試聴</button>
+          <button type="button" class="btn-test-voice" id="test-voice-btn">🔊 試聴</button>
         </div>
       </div>
 
       <div class="form-group">
-        <label>声の高さ（推奨: 1.10 = 人間の女の子の自然なトーン）: <span id="pitch-val">1.10</span></label>
-        <input type="range" id="voice-pitch" min="0.8" max="1.4" step="0.01" value="1.10">
+        <label>話すスピード: <span id="rate-val">1.05</span></label>
+        <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.05" value="1.05">
       </div>
 
-      <div class="form-group">
-        <label>話すスピード: <span id="rate-val">1.06</span></label>
-        <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.02" value="1.06">
-      </div>
-
-      <!-- 📖 ヘルプ＆インフォメーション -->
+      <!-- 📖 ヘルプ -->
       <details class="help-section">
-        <summary>💡 AIモデルの仕組み・制限・使い方ヘルプ</summary>
+        <summary>💡 AIモデルと仕組みのヘルプ</summary>
         <ul>
-          <li><strong>⚡ Flash 3.5 lite (日常会話)</strong>: 日常会話やあいさつ、ちょっとした質問に超高速・省エネで即答します。</li>
-          <li><strong>🧠 Flash 3.8 (難問・深い推論)</strong>: 複雑な論理問題、長文比較、プログラミング、または「3.8で考えて」と話しかけた時に自動起動します（<strong>1日20回</strong>上限）。</li>
-          <li><strong>🌐 リアルタイムWeb検索</strong>: 「今日の天気」「最新ニュース」「近くの美味しいラーメン」なども最新情報から調べて回答します。</li>
-          <li><strong>📱 Androidでさらに高音質にする裏技</strong>: スマホの「設定」→「Google」→「言語と入力」→「テキスト読み上げ」→「Google音声合成エンジン」で「日本語の音声データ」をダウンロードすると、さらに自然な女の子の声が増えます。</li>
+          <li><strong>⚡ Flash 3.5 lite</strong>: 日常会話や挨拶に超高速・低遅延で即答します。</li>
+          <li><strong>🧠 Flash 3.8</strong>: 複雑な論理問題、長文プログラミング、深い思考指示に自動切替（1日20回）。</li>
+          <li><strong>🌐 3大AIリソース統合</strong>: Gemini（Google検索）・Copilot（Web要約）・ChatGPT（論理と女の子言葉の構成）を統合。</li>
+          <li><strong>🎬 4枚画像アニメーション</strong>: 待機・考え中・お話し中・大喜びが滑らかに溶け合い、声の抑揚に合わせてリアルに弾みます。</li>
         </ul>
       </details>
 
@@ -682,14 +620,18 @@
 
   <script>
     /* ==========================================================
-       1. Web Audio API 音響エンジン（猫の鳴き声・喉鳴らし）
+       1. Web Audio 音響 ＆ 音声連動バウンス（リップシンク）エンジン
        ========================================================== */
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
+    let analyserNode = null;
+    let animFrameId = null;
 
     function getAudioContext() {
       if (!audioCtx && AudioContextClass) {
         audioCtx = new AudioContextClass();
+        analyserNode = audioCtx.createAnalyser();
+        analyserNode.fftSize = 256;
       }
       if (audioCtx && audioCtx.state === 'suspended') {
         audioCtx.resume();
@@ -697,10 +639,50 @@
       return audioCtx;
     }
 
+    const catAnimLayer = document.getElementById('cat-anim-layer');
+
+    // 音声の抑揚・音量に応じたリアルタイム・躍動バウンスループ
+    function startVoiceBounce() {
+      if (!analyserNode) return;
+      const bufferLength = analyserNode.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      function updateBounce() {
+        if (!STATE.isSpeaking) {
+          catAnimLayer.style.transform = '';
+          return;
+        }
+
+        analyserNode.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+        const average = sum / bufferLength;
+
+        if (average > 16) {
+          // 声の大きさに合わせて体が生き生きと微細に弾み、首を振る
+          const bounceScale = 1 + (average - 16) * 0.0016;
+          const bounceY = -(average - 16) * 0.14;
+          const bounceRot = Math.sin(Date.now() * 0.012) * 1.8;
+          catAnimLayer.style.transform = `scale(${bounceScale}) translateY(${bounceY}px) rotate(${bounceRot}deg)`;
+        } else {
+          catAnimLayer.style.transform = '';
+        }
+
+        animFrameId = requestAnimationFrame(updateBounce);
+      }
+      cancelAnimationFrame(animFrameId);
+      updateBounce();
+    }
+
+    function stopVoiceBounce() {
+      cancelAnimationFrame(animFrameId);
+      if (catAnimLayer) catAnimLayer.style.transform = '';
+    }
+
+    // 子猫の鳴き声（Web Audio合成）
     function playCatMeow(type = 'normal') {
       const ctx = getAudioContext();
       if (!ctx) return;
-
       const now = ctx.currentTime;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -714,38 +696,30 @@
         osc.frequency.setValueAtTime(580, now);
         osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
         osc.frequency.exponentialRampToValueAtTime(640, now + 0.42);
-
         filter.frequency.setValueAtTime(1100, now);
         filter.frequency.linearRampToValueAtTime(1600, now + 0.15);
         filter.frequency.linearRampToValueAtTime(1000, now + 0.42);
-
         gain.gain.setValueAtTime(0, now);
         gain.gain.linearRampToValueAtTime(0.28, now + 0.08);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-
         osc.connect(filter);
         filter.connect(gain);
         gain.connect(ctx.destination);
-
         osc.start(now);
         osc.stop(now + 0.45);
       } else {
         osc.frequency.setValueAtTime(620, now);
         osc.frequency.exponentialRampToValueAtTime(820, now + 0.08);
         osc.frequency.exponentialRampToValueAtTime(540, now + 0.25);
-
         filter.frequency.setValueAtTime(1200, now);
         filter.frequency.linearRampToValueAtTime(1500, now + 0.1);
         filter.frequency.linearRampToValueAtTime(900, now + 0.25);
-
         gain.gain.setValueAtTime(0, now);
         gain.gain.linearRampToValueAtTime(0.22, now + 0.05);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-
         osc.connect(filter);
         filter.connect(gain);
         gain.connect(ctx.destination);
-
         osc.start(now);
         osc.stop(now + 0.28);
       }
@@ -754,28 +728,21 @@
     function playCatPurr() {
       const ctx = getAudioContext();
       if (!ctx) return;
-
       const now = ctx.currentTime;
       const bufferSize = ctx.sampleRate * 1.2;
       const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const output = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        output[i] = Math.random() * 2 - 1;
-      }
+      for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
 
       const whiteNoise = ctx.createBufferSource();
       whiteNoise.buffer = buffer;
-
       const filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
       filter.frequency.value = 110;
-
       const lfo = ctx.createOscillator();
       lfo.frequency.value = 26;
-
       const lfoGain = ctx.createGain();
       lfoGain.gain.value = 0.35;
-
       const gain = ctx.createGain();
       gain.gain.setValueAtTime(0, now);
       gain.gain.linearRampToValueAtTime(0.3, now + 0.15);
@@ -785,7 +752,6 @@
       whiteNoise.connect(filter);
       filter.connect(gain);
       gain.connect(ctx.destination);
-
       whiteNoise.start(now);
       lfo.start(now);
       whiteNoise.stop(now + 1.2);
@@ -793,7 +759,7 @@
     }
 
     /* ==========================================================
-       2. 状態管理・記憶帳（クロ・女の子設定）
+       2. 状態管理・記憶帳
        ========================================================== */
     const DEFAULT_MEMORIES = [
       "わたしの名前：クロ（ノルウェージャンフォレストキャットの女の子、約1歳）",
@@ -840,28 +806,22 @@
     } catch(e) {}
 
     const STATE = {
-      apiKey: localStorage.getItem('kuro_api_key') || localStorage.getItem('miichu_api_key') || '',
-      selectedVoiceURI: localStorage.getItem('kuro_voice_uri') || '',
-      pitch: parseFloat(localStorage.getItem('kuro_pitch') || '1.10'),
-      rate: parseFloat(localStorage.getItem('kuro_rate') || '1.06'),
+      apiKey: localStorage.getItem('kuro_api_key') || '',
+      voiceModel: localStorage.getItem('kuro_voice_model') || 'metan-ama',
+      rate: parseFloat(localStorage.getItem('kuro_rate') || '1.05'),
       proUsedToday: savedCount,
       maxHistoryPairs: parseInt(localStorage.getItem('kuro_max_history') || '30', 10),
       memories: loadedMemories,
       history: loadedHistory,
-      location: {
-        lat: null,
-        lon: null,
-        address: "取得中…",
-        city: ""
-      },
+      location: { lat: null, lon: null, address: "取得中…", city: "" },
       isPaused: false,
       isListening: false,
       isThinking: false,
       isSpeaking: false,
-      strokingCounter: 0
+      currentEmotion: 'idle',
+      strokingCounter: 0,
+      currentAudioElement: null
     };
-
-    window._speechLockHolder = [];
 
     const MODELS = {
       lite: 'gemini-3.5-flash-lite',
@@ -869,7 +829,6 @@
     };
 
     // DOM要素
-    const petImage = document.getElementById('pet-image');
     const chatTimeline = document.getElementById('chat-timeline');
     const pauseBtn = document.getElementById('pause-btn');
     const pauseIcon = document.getElementById('pause-icon');
@@ -883,11 +842,9 @@
     const avatarWrapper = document.getElementById('avatar-wrapper');
     const modalOverlay = document.getElementById('modal-overlay');
     const saveSettingsBtn = document.getElementById('save-settings-btn');
-    const voiceSelect = document.getElementById('voice-select');
+    const voiceModelSelect = document.getElementById('voice-model-select');
     const testVoiceBtn = document.getElementById('test-voice-btn');
-    const voicePitch = document.getElementById('voice-pitch');
     const voiceRate = document.getElementById('voice-rate');
-    const pitchVal = document.getElementById('pitch-val');
     const rateVal = document.getElementById('rate-val');
     const diagPanel = document.getElementById('diag-panel');
     const diagCloseBtn = document.getElementById('diag-close-btn');
@@ -897,6 +854,40 @@
     const addMemoryBtn = document.getElementById('add-memory-btn');
     const historySlider = document.getElementById('history-slider');
     const historyVal = document.getElementById('history-val');
+
+    // 4枚の画像要素
+    const catImages = {
+      idle: document.getElementById('img-idle'),
+      thinking: document.getElementById('img-thinking'),
+      talking: document.getElementById('img-talking'),
+      happy: document.getElementById('img-happy')
+    };
+
+    function setEmotion(emotion) {
+      STATE.currentEmotion = emotion;
+      Object.keys(catImages).forEach(key => {
+        if (catImages[key]) {
+          if (key === emotion) {
+            catImages[key].classList.add('active');
+          } else {
+            catImages[key].classList.remove('active');
+          }
+        }
+      });
+    }
+
+    function handleImageFallback(img) {
+      // 画像が見つからない場合のフォールバック（SVG）
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+          <circle cx="150" cy="150" r="100" fill="#1e293b"/>
+          <circle cx="120" cy="130" r="14" fill="#10b981"/>
+          <circle cx="180" cy="130" r="14" fill="#10b981"/>
+          <polygon points="150,160 142,150 158,150" fill="#f472b6"/>
+          <text x="150" y="275" font-size="16" fill="#f472b6" font-family="sans-serif" font-weight="bold" text-anchor="middle">クロちゃん🐾</text>
+        </svg>
+      `);
+    }
 
     function updateProCounterDisplay() {
       const remaining = Math.max(0, 20 - STATE.proUsedToday);
@@ -914,15 +905,9 @@
       diagLogs.scrollTop = diagLogs.scrollHeight;
     }
 
-    toggleDiagBtn.addEventListener('click', () => {
-      diagPanel.classList.add('expanded');
-    });
-    diagCloseBtn.addEventListener('click', () => {
-      diagPanel.classList.remove('expanded');
-    });
-    diagPanel.addEventListener('click', (e) => {
-      if (e.target === diagPanel) diagPanel.classList.remove('expanded');
-    });
+    toggleDiagBtn.addEventListener('click', () => diagPanel.classList.add('expanded'));
+    diagCloseBtn.addEventListener('click', () => diagPanel.classList.remove('expanded'));
+    diagPanel.addEventListener('click', (e) => { if (e.target === diagPanel) diagPanel.classList.remove('expanded'); });
 
     /* ==========================================================
        3. チャットタイムライン ＆ 記憶帳
@@ -979,18 +964,13 @@
     function saveChatHistory(userText, modelReply) {
       STATE.history.push({ role: 'user', text: userText });
       STATE.history.push({ role: 'model', text: modelReply });
-
       const maxItems = STATE.maxHistoryPairs * 2;
-      while (STATE.history.length > maxItems) {
-        STATE.history.shift();
-      }
-      try {
-        localStorage.setItem('kuro_chat_history', JSON.stringify(STATE.history));
-      } catch(e) {}
+      while (STATE.history.length > maxItems) STATE.history.shift();
+      try { localStorage.setItem('kuro_chat_history', JSON.stringify(STATE.history)); } catch(e) {}
     }
 
     /* ==========================================================
-       4. 音声コマンド判定（記憶帳）
+       4. 音声コマンド自動判定（記憶帳）
        ========================================================== */
     function handleMemoryVoiceCommand(text) {
       const rememberPatterns = [
@@ -1019,7 +999,6 @@
         const sample = STATE.memories.slice(-2).join('、');
         return `クロの記憶帳には全部で${count}個メモしてあるニャ！例えば「${sample}」などを覚えてるニャン🐾`;
       }
-
       return null;
     }
 
@@ -1041,9 +1020,7 @@
                 STATE.location.city = addr.city || addr.ward || addr.town || addr.province || "現在地周辺";
                 logDiag(`[現在地特定] ${STATE.location.city}`, "success");
               }
-            } catch (e) {
-              STATE.location.city = "現在地周辺";
-            }
+            } catch (e) { STATE.location.city = "現在地周辺"; }
           },
           (err) => {
             STATE.location.city = "東京周辺";
@@ -1055,49 +1032,7 @@
     }
 
     /* ==========================================================
-       6. 「何文字」完全排除 ＆ 読み上げ最適化
-       ========================================================== */
-    function sanitizeModelText(text) {
-      if (!text) return "";
-      return text
-        .replace(/[（\(【\[]?\s*\d{1,3}\s*文字(?:以内|程度)?\s*[）\)】\]]?/g, '')
-        .replace(/[（\(][^）\)]*(?:文字数|カウント)[^）\)]*[）\)]/g, '')
-        .replace(/[*#_~`]/g, '')
-        .trim();
-    }
-
-    function normalizeNumbersForSpeech(str) {
-      const numMap = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
-      function convert2Digit(n) {
-        n = parseInt(n, 10);
-        if (n === 0) return '〇';
-        if (n < 10) return numMap[n];
-        const tens = Math.floor(n / 10);
-        const ones = n % 10;
-        let res = tens > 1 ? numMap[tens] + '十' : '十';
-        if (ones > 0) res += numMap[ones];
-        return res;
-      }
-      return str.replace(/(\d{1,2})時(\d{1,2})分/g, (match, h, m) => `${convert2Digit(h)}時${convert2Digit(m)}分`)
-                .replace(/(\d{1,2})時/g, (match, h) => `${convert2Digit(h)}時`)
-                .replace(/(\d{1,2})分/g, (match, m) => `${convert2Digit(m)}分`)
-                .replace(/(\d{1,2})度/g, (match, d) => `${convert2Digit(d)}度`)
-                .replace(/あと(\d{1,2})回/g, (match, c) => `あと${convert2Digit(c)}回`);
-    }
-
-    function cleanTextForSpeech(text) {
-      let cleaned = sanitizeModelText(text)
-        .replace(/```[\s\S]*?```/g, '')
-        .replace(/<[^>]*>/g, '')
-        .replace(/[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
-        .replace(/[*#_~`🐾❤️💖✨🐱🥟🍜🎀]/g, '')
-        .replace(/\n+/g, ' ')
-        .trim();
-      return normalizeNumbersForSpeech(cleaned);
-    }
-
-    /* ==========================================================
-       7. なでなで・表情・時計
+       6. なでなで・時計
        ========================================================== */
     avatarWrapper.addEventListener('click', (e) => {
       if (STATE.isPaused) { togglePause(); return; }
@@ -1111,6 +1046,9 @@
       avatarWrapper.appendChild(heart);
       setTimeout(() => heart.remove(), 1100);
 
+      avatarWrapper.classList.add('is-stroked');
+      setTimeout(() => avatarWrapper.classList.remove('is-stroked'), 450);
+
       STATE.strokingCounter++;
       if (STATE.strokingCounter >= 3) {
         STATE.strokingCounter = 0;
@@ -1123,33 +1061,11 @@
       }
 
       playCatMeow('happy');
-      STATE.isThinking = false;
-      STATE.isSpeaking = false;
-      window.speechSynthesis.cancel();
+      if (STATE.isSpeaking) stopSpeaking();
       setEmotion('idle');
       addChatMessage('model', "ニャン！起きてるニャ♪ おやびん、声で何でも話しかけてニャ🐾");
       startListening();
     });
-
-    function handleImageError(img) {
-      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="380" height="290" viewBox="0 0 380 290">
-          <ellipse cx="190" cy="180" rx="95" ry="85" fill="#1e293b"/>
-          <circle cx="190" cy="95" r="70" fill="#0f172a"/>
-          <polygon points="135,65 158,15 180,55" fill="#334155"/>
-          <polygon points="200,55 222,15 245,65" fill="#334155"/>
-          <circle cx="165" cy="90" r="9" fill="#10b981"/>
-          <circle cx="215" cy="90" r="9" fill="#10b981"/>
-          <polygon points="190,110 180,100 200,100" fill="#f472b6"/>
-          <text x="190" y="270" font-size="19" font-family="sans-serif" font-weight="bold" fill="#f472b6" text-anchor="middle">クロちゃん🐾</text>
-        </svg>
-      `);
-    }
-
-    function setEmotion(state) {
-      const images = { idle: 'idle.jpg', thinking: 'thinking.jpg', talking: 'talking.jpg', happy: 'happy.jpg' };
-      petImage.src = images[state] || images.idle;
-    }
 
     setInterval(() => {
       const now = new Date();
@@ -1157,13 +1073,13 @@
     }, 1000);
 
     /* ==========================================================
-       8. 思考モデル振り分け ＆ リアルタイムWeb検索連携
+       7. AIモデル振り分け ＆ 3大AIリソース統合思考
        ========================================================== */
     function evaluateComplexity(promptText) {
-      if (promptText.includes('3.8') || promptText.includes('サンテンハチ') || promptText.includes('フラッシュで') || promptText.includes('本気で考えて')) {
+      if (promptText.includes('3.8') || promptText.includes('サンテンハチ') || promptText.includes('本気で考えて')) {
         return { isPro: true, reason: "明示的指示" };
       }
-      const complexKeywords = ['計算して', 'プログラミング', 'コード書いて', '違いを教えて', '比較して', '論理的', 'なぜなら', '理由を3つ', '考察', '歴史的背景', '設計して', '分析'];
+      const complexKeywords = ['計算して', 'プログラミング', 'コード書いて', '違いを教えて', '比較して', '論理的', 'なぜなら', '理由を3つ', '考察', '歴史', '設計', '分析'];
       const hasComplexWord = complexKeywords.some(kw => promptText.includes(kw));
       const isLongPrompt = promptText.length >= 45;
 
@@ -1219,14 +1135,22 @@
       }
       collect(data, '');
       const japaneseText = candidates.find(t => /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(t));
-      if (japaneseText) return japaneseText;
-      return candidates[0] || null;
+      return japaneseText || candidates[0] || null;
+    }
+
+    function sanitizeModelText(text) {
+      if (!text) return "";
+      return text
+        .replace(/[（\(【\[]?\s*\d{1,3}\s*文字(?:以内|程度)?\s*[）\)】\]]?/g, '')
+        .replace(/[（\(][^）\)]*(?:文字数|カウント)[^）\)]*[）\)]/g, '')
+        .replace(/[*#_~`]/g, '')
+        .trim();
     }
 
     async function askGemini(promptText) {
       addChatMessage('user', promptText);
 
-      // 1. 記憶帳コマンド判定
+      // 1. 記憶帳コマンド
       const memReply = handleMemoryVoiceCommand(promptText);
       if (memReply) {
         addChatMessage('model', memReply);
@@ -1236,8 +1160,8 @@
         return;
       }
 
-      // 2. 残り回数判定
-      if (promptText.includes('あと何回') || promptText.includes('制限何回') || promptText.includes('残り何回')) {
+      // 2. 残り回数確認
+      if (promptText.includes('あと何回') || promptText.includes('残り何回')) {
         const remaining = Math.max(0, 20 - STATE.proUsedToday);
         const reply = `今日3.8フラッシュで考えられるのは、あと【${remaining}回】だニャ🐾 何でも聞いてニャン！`;
         addChatMessage('model', reply);
@@ -1256,6 +1180,7 @@
       stopListening();
       STATE.isThinking = true;
       statusText.textContent = "💭 考え中ニャ…";
+      setEmotion('thinking'); // 3枚目の顎に手ポーズへシームレス遷移！
 
       // 3. 難易度判定
       const complexity = evaluateComplexity(promptText);
@@ -1272,7 +1197,7 @@
           updateProCounterDisplay();
           logDiag(`[難易度検知] 3.8起動: ${complexity.reason} (本日${STATE.proUsedToday}/20回目)`, "warn");
         } else {
-          logDiag("[3.8上限到達] 本日の20回上限終了のため3.5 liteで自動回答", "warn");
+          logDiag("[3.8上限到達] 本日の上限終了のため3.5 liteで自動回答", "warn");
           badgeName = "⚡ 3.5 lite (3.8上限)";
           modelBadge.className = "model-badge lite";
         }
@@ -1281,11 +1206,9 @@
       }
 
       modelBadge.textContent = badgeName;
-      setEmotion('thinking');
       logDiag(`[AI送信] モデル: ${chosenModel} / 質問: 「${promptText}」`, "info");
 
       const historyToSend = chosenModel === MODELS.pro ? STATE.history.slice(-20) : STATE.history;
-
       const now = new Date();
       const timeStr = `${now.getHours()}時${now.getMinutes()}分`;
 
@@ -1295,8 +1218,8 @@
 ${STATE.memories.map(m => `・${m}`).join('\n')}
 【現在地情報】${STATE.location.city || "現在地周辺"}（住所：${STATE.location.address}）、現在時刻：${timeStr}
 
-【知識・検索リファレンス】
-- Gemini、Copilot、ChatGPTと同等以上の賢さで物事を論理的かつ的確に把握し、最新情報や天気・スポット情報も正確に親しみやすく解説してください。
+【知識・思考統合リファレンス】
+- Gemini（Googleリアルタイム検索と事実性）、Copilot（Web要約力）、ChatGPT（高度な論理構成と情緒豊かな会話）の3つの強みを併せ持ち、どんな難問でも的確かつ分かりやすく答えます。
 
 【性格とロールプレイ設定】
 - 飼い主さんのことは「おやびん」または「ミッキーさん」と呼びます。
@@ -1305,8 +1228,8 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 - かよちゃん、りゅうせいくん、たいせいくん、かまぶーくんの話題が出たら家族・友達として親しく接してください。
 - 前世は大発明家の相棒猫です。少し自慢できる話題では「クロの前世の発明のひらめきによるとね…フフン♪」と誇らしげに可愛く自慢してください。
 - ラーメン、餃子、麻婆豆腐、ITガジェットを激推ししてください。
-- 返答は必ず【短く愛らしい1〜2文（合計50文字以内）】で返してください。長文は絶対に禁止です。
-- 【超重要ルール】文末や文中に「（〇〇文字）」や文字数の注記、カウント、メタ情報は絶対に出力しないでください。純粋なセリフのみを返してください。
+- 返答は必ず【短く愛らしい1〜2文（合計50文字以内）】で返してください。
+- 【超重要ルール】文末や文中に「（〇〇文字）」や文字数の注記、メタ情報は絶対に出力しないでください。純粋なセリフのみを返してください。
 `;
 
       let replyText = null;
@@ -1337,11 +1260,12 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         addChatMessage('model', cleanDisplay);
         saveChatHistory(promptText, cleanDisplay);
 
-        if (cleanDisplay.includes('！') || cleanDisplay.includes('好き') || cleanDisplay.includes('おやびん') || cleanDisplay.includes('発明') || cleanDisplay.includes('ニャン')) {
-          setEmotion('happy');
+        // 喜ぶ内容か通常の会話かでポーズを切り替え
+        if (cleanDisplay.includes('好き') || cleanDisplay.includes('嬉しい') || cleanDisplay.includes('大好物') || cleanDisplay.includes('発明')) {
+          setEmotion('happy'); // 1枚目のバンザイポーズへ！
           playCatMeow('happy');
         } else {
-          setEmotion('talking');
+          setEmotion('talking'); // 4枚目のお口開けポーズへ！
           playCatMeow('normal');
         }
 
@@ -1355,156 +1279,145 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       9. Android対応・音声強制リフレッシュ ＆ 試聴機能
+       8. 完全無料AI肉声エンジン ＆ リアルタイムバウンス再生
        ========================================================== */
-    let availableVoices = [];
-
-    function scoreVoice(voice) {
-      let score = 0;
-      const name = voice.name.toLowerCase();
-      const lang = voice.lang.toLowerCase();
-
-      if (!lang.includes('ja') && !lang.includes('jp')) return -100;
-
-      // 次世代AI肉声・Natural音声
-      if (name.includes('natural') || name.includes('online') || name.includes('neural')) score += 50;
-      if (name.includes('premium') || name.includes('enhanced')) score += 40;
-
-      // 有名な高品質日本語女性ボイス
-      const topFemale = ['nanami', 'ayumi', 'haruka', 'sayaka', 'kyoko', 'aoi', 'shiori', 'mei', 'siri'];
-      for (const f of topFemale) {
-        if (name.includes(f)) { score += 25; break; }
-      }
-
-      // Android Google TTS女性系判定
-      if (name.includes('google') || name.includes('ja-jp-x')) {
-        score += 15;
-      }
-
-      // 明確な男性ボイスの減点
-      const maleList = ['ichiro', 'keita', 'otoya', 'kenji', 'takumi', 'daichi', 'naoki'];
-      for (const m of maleList) {
-        if (name.includes(m)) { score -= 40; break; }
-      }
-
-      return score;
+    function cleanTextForSpeech(text) {
+      return sanitizeModelText(text)
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/<[^>]*>/g, '')
+        .replace(/[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+        .replace(/[*#_~`🐾❤️💖✨🐱🥟🍜🎀]/g, '')
+        .replace(/\n+/g, ' ')
+        .trim();
     }
 
-    // Androidスマホでの非同期ロード対策：何回でも強制再取得できる関数
-    function populateVoiceList() {
-      if (!('speechSynthesis' in window)) return;
-      const allVoices = window.speechSynthesis.getVoices();
-      if (!allVoices || allVoices.length === 0) return;
-
-      availableVoices = allVoices.filter(v => v.lang.includes('ja') || v.lang.includes('JP'));
-      if (availableVoices.length === 0) availableVoices = allVoices;
-
-      availableVoices.sort((a, b) => scoreVoice(b) - scoreVoice(a));
-
-      voiceSelect.innerHTML = '';
-      availableVoices.forEach((voice) => {
-        const option = document.createElement('option');
-        option.value = voice.voiceURI;
-        const score = scoreVoice(voice);
-        const badge = score >= 40 ? '✨ 超肉声: ' : (score >= 10 ? '🌸 女の子: ' : '');
-        option.textContent = `${badge}${voice.name}`;
-        if (voice.voiceURI === STATE.selectedVoiceURI) option.selected = true;
-        voiceSelect.appendChild(option);
-      });
-
-      if (!STATE.selectedVoiceURI && availableVoices.length > 0) {
-        STATE.selectedVoiceURI = availableVoices[0].voiceURI;
-        voiceSelect.value = STATE.selectedVoiceURI;
+    function stopSpeaking() {
+      STATE.isSpeaking = false;
+      stopVoiceBounce();
+      if (STATE.currentAudioElement) {
+        STATE.currentAudioElement.pause();
+        STATE.currentAudioElement = null;
+      }
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
       }
     }
 
-    // 初期化時・イベント時・ポーリング時の多段リトライ（Android確実表示）
-    if ('speechSynthesis' in window) {
-      populateVoiceList();
-      window.speechSynthesis.onvoiceschanged = populateVoiceList;
-      setTimeout(populateVoiceList, 300);
-      setTimeout(populateVoiceList, 800);
-      setTimeout(populateVoiceList, 1600);
-    }
-
-    function getSelectedVoice() {
-      const currentSelectedURI = voiceSelect.value || STATE.selectedVoiceURI;
-      if (currentSelectedURI && availableVoices.length > 0) {
-        const found = availableVoices.find(v => v.voiceURI === currentSelectedURI);
-        if (found) return found;
-      }
-      return availableVoices[0] || null;
-    }
-
-    // 🔊 試聴ボタンのハンドラー
-    testVoiceBtn.addEventListener('click', () => {
-      if (!('speechSynthesis' in window)) return;
-
-      window.speechSynthesis.cancel();
-      const testText = "おやびん、クロの声はこれだニャン🐾 聞き取りやすいかニャ？";
-      const uttr = new SpeechSynthesisUtterance(testText);
-      uttr.lang = 'ja-JP';
-      uttr.pitch = parseFloat(voicePitch.value);
-      uttr.rate = parseFloat(voiceRate.value);
-
-      const chosenVoice = getSelectedVoice();
-      if (chosenVoice) uttr.voice = chosenVoice;
-
-      playCatMeow('happy');
-      setTimeout(() => {
-        window.speechSynthesis.speak(uttr);
-      }, 250);
-    });
-
-    function speakVoice(rawText) {
-      if (!('speechSynthesis' in window)) return;
+    async function speakVoice(rawText) {
+      stopSpeaking();
 
       STATE.isSpeaking = true;
       statusText.textContent = "🗣️ お話し中ニャ♪";
 
-      window.speechSynthesis.cancel();
-      window._speechLockHolder = [];
-
       const textToSpeak = cleanTextForSpeech(rawText);
-      const safeSpokenText = textToSpeak + "……。";
+      logDiag(`[AI肉声生成] 「${textToSpeak}」`, "info");
 
-      logDiag(`[音声読み上げ] 肉声ボイス: 「${textToSpeak}」`, "info");
+      // スピーカーID決定（四国めたん あまあま: 0, 春日部つむぎ: 8, ノーマル: 2）
+      let speakerId = 0;
+      if (STATE.voiceModel === 'tsumugi') speakerId = 8;
+      else if (STATE.voiceModel === 'metan-norm') speakerId = 2;
 
-      const uttr = new SpeechSynthesisUtterance(safeSpokenText);
+      // 端末TTS指定の場合は直接フォールバックへ
+      if (STATE.voiceModel === 'fallback-browser') {
+        speakBrowserTTS(textToSpeak);
+        return;
+      }
+
+      try {
+        // 完全無料・登録不要のオープンVOICEVOX Web API
+        const encodedText = encodeURIComponent(textToSpeak);
+        const apiUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=${speakerId}`;
+
+        const res = await fetch(apiUrl);
+        if (!res.ok) throw new Error("Voice API response not ok");
+
+        const data = await res.json();
+        if (!data.mp3DownloadUrl) throw new Error("Audio URL not found");
+
+        const audio = new Audio();
+        audio.crossOrigin = "anonymous";
+        audio.src = data.mp3DownloadUrl;
+        audio.playbackRate = STATE.rate;
+        STATE.currentAudioElement = audio;
+
+        // Web Audio Analyserに接続して声の音量バウンス同期
+        const ctx = getAudioContext();
+        if (ctx) {
+          const source = ctx.createMediaElementSource(audio);
+          source.connect(analyserNode);
+          analyserNode.connect(ctx.destination);
+        }
+
+        audio.onplay = () => {
+          startVoiceBounce();
+        };
+
+        audio.onended = () => {
+          stopVoiceBounce();
+          STATE.isSpeaking = false;
+          statusText.textContent = "👂 聴いてるニャ♪";
+          setEmotion('idle'); // 会話終了後はお座りポーズに戻る
+          setTimeout(() => {
+            if (!STATE.isPaused && !STATE.isThinking) startListening();
+          }, 400);
+        };
+
+        audio.onerror = () => {
+          logDiag("[AI肉声再生エラー] 端末TTSへ自動フォールバック", "warn");
+          speakBrowserTTS(textToSpeak);
+        };
+
+        await audio.play();
+      } catch (err) {
+        logDiag(`[AI肉声通信失敗: ${err.message}] 端末TTSで安全代行`, "warn");
+        speakBrowserTTS(textToSpeak);
+      }
+    }
+
+    // セーフティ用・端末内蔵ブラウザTTS
+    function speakBrowserTTS(textToSpeak) {
+      if (!('speechSynthesis' in window)) {
+        STATE.isSpeaking = false;
+        return;
+      }
+      window.speechSynthesis.cancel();
+
+      const uttr = new SpeechSynthesisUtterance(textToSpeak);
       uttr.lang = 'ja-JP';
-      uttr.pitch = STATE.pitch; 
+      uttr.pitch = 1.15;
       uttr.rate = STATE.rate;
 
-      const chosenVoice = getSelectedVoice();
-      if (chosenVoice) uttr.voice = chosenVoice;
+      let bounceInterval = setInterval(() => {
+        const bounceScale = 1 + Math.random() * 0.02;
+        const bounceRot = (Math.random() - 0.5) * 2;
+        catAnimLayer.style.transform = `scale(${bounceScale}) rotate(${bounceRot}deg)`;
+      }, 140);
 
-      window._speechLockHolder.push(uttr);
-
-      uttr.onend = () => {
-        window._speechLockHolder = [];
+      uttr.onend = uttr.onerror = () => {
+        clearInterval(bounceInterval);
+        stopVoiceBounce();
         STATE.isSpeaking = false;
+        statusText.textContent = "👂 聴いてるニャ♪";
+        setEmotion('idle');
         setTimeout(() => {
-          if (!STATE.isPaused && !STATE.isThinking) {
-            setEmotion('idle');
-            startListening();
-          }
-        }, 650);
-      };
-
-      uttr.onerror = (e) => {
-        window._speechLockHolder = [];
-        STATE.isSpeaking = false;
-        if (!STATE.isPaused) {
-          setEmotion('idle');
-          startListening();
-        }
+          if (!STATE.isPaused && !STATE.isThinking) startListening();
+        }, 400);
       };
 
       window.speechSynthesis.speak(uttr);
     }
 
+    // 🔊 試聴ボタン
+    testVoiceBtn.addEventListener('click', () => {
+      STATE.voiceModel = voiceModelSelect.value;
+      STATE.rate = parseFloat(voiceRate.value);
+      playCatMeow('happy');
+      setEmotion('talking');
+      speakVoice("おやびん！クロの声はこれだニャン🐾 聞き取りやすいかニャ？");
+    });
+
     /* ==========================================================
-       10. 音声認識（常時待機）
+       9. 音声認識（常時待機）
        ========================================================== */
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
@@ -1528,21 +1441,17 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         }
       };
 
-      recognition.onerror = (e) => {
+      recognition.onerror = () => {
         stopListening();
         if (!STATE.isPaused && !STATE.isThinking && !STATE.isSpeaking) {
-          setTimeout(() => {
-            if (!STATE.isPaused && !STATE.isThinking && !STATE.isSpeaking) startListening();
-          }, 400);
+          setTimeout(() => { if (!STATE.isPaused && !STATE.isThinking && !STATE.isSpeaking) startListening(); }, 400);
         }
       };
 
       recognition.onend = () => {
         stopListening();
         if (!STATE.isPaused && !STATE.isThinking && !STATE.isSpeaking) {
-          setTimeout(() => {
-            if (!STATE.isPaused && !STATE.isThinking && !STATE.isSpeaking) startListening();
-          }, 300);
+          setTimeout(() => { if (!STATE.isPaused && !STATE.isThinking && !STATE.isSpeaking) startListening(); }, 300);
         }
       };
     }
@@ -1570,7 +1479,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         addChatMessage('model', "クロはお昼寝するニャ…💤 お話しする時はボタンを押してニャン♪");
         setEmotion('idle');
         stopListening();
-        window.speechSynthesis.cancel();
+        stopSpeaking();
       } else {
         pauseBtn.classList.remove('is-paused');
         pauseIcon.textContent = "🟢";
@@ -1583,13 +1492,10 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       11. 設定モーダル・イベント連携
+       10. 設定モーダル・初期化
        ========================================================== */
     pauseBtn.addEventListener('click', togglePause);
 
-    voicePitch.addEventListener('input', (e) => {
-      pitchVal.textContent = parseFloat(e.target.value).toFixed(2);
-    });
     voiceRate.addEventListener('input', (e) => {
       rateVal.textContent = parseFloat(e.target.value).toFixed(2);
     });
@@ -1597,12 +1503,9 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       historyVal.textContent = `${e.target.value}往復`;
     });
 
-    // 設定ボタンタップ時（ユーザー操作トリガー）でAndroid音声リストを即時再同期
     settingsBtn.addEventListener('click', () => {
-      populateVoiceList();
       document.getElementById('api-key-input').value = STATE.apiKey;
-      voicePitch.value = STATE.pitch;
-      pitchVal.textContent = STATE.pitch.toFixed(2);
+      voiceModelSelect.value = STATE.voiceModel;
       voiceRate.value = STATE.rate;
       rateVal.textContent = STATE.rate.toFixed(2);
       historySlider.value = STATE.maxHistoryPairs;
@@ -1611,23 +1514,18 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       modalOverlay.style.display = 'flex';
     });
 
-    voiceSelect.addEventListener('focus', populateVoiceList);
-    voiceSelect.addEventListener('pointerdown', populateVoiceList);
-
     modalOverlay.addEventListener('click', (e) => {
       if (e.target === modalOverlay) modalOverlay.style.display = 'none';
     });
 
     saveSettingsBtn.addEventListener('click', () => {
       STATE.apiKey = document.getElementById('api-key-input').value.trim();
-      STATE.selectedVoiceURI = voiceSelect.value;
-      STATE.pitch = parseFloat(voicePitch.value);
+      STATE.voiceModel = voiceModelSelect.value;
       STATE.rate = parseFloat(voiceRate.value);
       STATE.maxHistoryPairs = parseInt(historySlider.value, 10);
 
       localStorage.setItem('kuro_api_key', STATE.apiKey);
-      localStorage.setItem('kuro_voice_uri', STATE.selectedVoiceURI);
-      localStorage.setItem('kuro_pitch', STATE.pitch);
+      localStorage.setItem('kuro_voice_model', STATE.voiceModel);
       localStorage.setItem('kuro_rate', STATE.rate);
       localStorage.setItem('kuro_max_history', STATE.maxHistoryPairs);
 
@@ -1642,7 +1540,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       initGPS();
       renderMemoryList();
       restoreChatTimeline();
-      populateVoiceList();
+      setEmotion('idle');
       logDiag("クロちゃん起動完了。おやびんの声をお待ちしてますニャ🐾", "success");
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
