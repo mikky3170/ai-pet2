@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -41,7 +42,7 @@
       align-items: center;
     }
 
-    /* メインコンテナ：縦全画面で絶対に各パーツが破綻しないレイアウト */
+    /* メインコンテナ */
     #pet-container {
       position: absolute;
       width: 100%;
@@ -50,12 +51,12 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: env(safe-area-inset-top, 10px) 14px env(safe-area-inset-bottom, 16px) 14px;
+      padding: env(safe-area-inset-top, 8px) 14px env(safe-area-inset-bottom, 16px) 14px;
       z-index: 50;
       box-sizing: border-box;
     }
 
-    /* 1. 上部ヘッダー（ステータスバー） */
+    /* 1. 最上部ヘッダー（ステータスバー） */
     .top-header {
       width: 100%;
       flex-shrink: 0;
@@ -84,11 +85,11 @@
     .model-badge.lite { background: #e0f2fe; color: #0284c7; }
     .model-badge.pro { background: #fdf4ff; color: #c026d3; }
 
-    /* 2. チャット履歴タイムライン（自動伸縮・スクロール） */
+    /* 2. チャット履歴タイムライン */
     #chat-timeline {
       flex: 1;
-      min-height: 70px;
-      max-height: 220px;
+      min-height: 60px;
+      max-height: 200px;
       width: 100%;
       overflow-y: auto;
       padding: 4px 4px;
@@ -145,32 +146,47 @@
       border-bottom-left-radius: 4px;
     }
 
-    /* 3. 猫ちゃん本体アバター（黒いバーの上にちょこんと乗る立体レイアウト） */
+    /* 3. 猫ちゃん本体アバター（黒いバーの上にしっかり立つ構図） */
     .pet-avatar-wrapper {
       position: relative;
       flex: 2;
       width: 100%;
-      min-height: 270px;
-      max-height: 380px;
+      min-height: 280px;
+      max-height: 400px;
       display: flex;
-      justify-content: center;
-      align-items: flex-end; /* 下部基準にして黒バーに接地 */
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
       cursor: pointer;
-      z-index: 15;
-      margin-bottom: -14px; /* 黒い楕円バーにちょこんと自然に乗っかる位置調整 */
+      z-index: 20;
+      /* 黒バーの天面にしっかり足をつけるネガティブマージン */
+      margin-bottom: -30px; 
     }
 
     .pet-avatar {
       height: 100%;
       width: 100%;
-      max-width: 380px; /* 従来比1.8倍の大型サイズ */
-      max-height: 360px;
+      max-width: 390px;
+      max-height: 370px;
       object-fit: contain;
       object-position: bottom center;
-      filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.22));
+      filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.28));
       transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       animation: cat-breathe 3.5s ease-in-out infinite;
       transform-origin: bottom center;
+      z-index: 2;
+    }
+
+    /* 黒バーの上に落ちる足元の接地影 */
+    .cat-ground-shadow {
+      position: absolute;
+      bottom: 22px;
+      width: 240px;
+      height: 22px;
+      background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0) 75%);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 1;
     }
 
     @keyframes cat-breathe {
@@ -190,7 +206,7 @@
       pointer-events: none;
       animation: float-heart 1.1s ease-out forwards;
       z-index: 25;
-      bottom: 60px;
+      bottom: 80px;
     }
 
     @keyframes float-heart {
@@ -202,15 +218,16 @@
     /* 音声認識待機中の波紋アニメーション */
     .listening-ring {
       position: absolute;
-      width: 310px;
-      height: 310px;
+      width: 320px;
+      height: 320px;
       border-radius: 50%;
       border: 3.5px solid var(--primary-color);
-      bottom: 25px;
+      bottom: 20px;
       left: 50%;
       transform: translateX(-50%) scale(0.8);
       opacity: 0;
       pointer-events: none;
+      z-index: 0;
     }
 
     .is-listening .listening-ring {
@@ -222,29 +239,28 @@
       100% { transform: translateX(-50%) scale(1.25); opacity: 0; }
     }
 
-    /* 4. 最下部：黒い楕円バー（文字は白、猫が乗る台座として機能） */
+    /* 4. 最下部：黒い楕円バー（猫が立つ足場 ＆ 白文字操作ボタン） */
     .bottom-controls {
       width: 100%;
       flex-shrink: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
-      z-index: 30; /* 猫の手前にしっかり配置しタップ誤爆を防止 */
+      z-index: 30; /* 猫の手前に確実に配置 */
     }
 
-    /* 黒い楕円バー本体 */
     .action-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
       width: 100%;
-      background: #111827; /* 上品で深いディープブラック */
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+      background: #111827; /* 上品なディープブラック */
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
       padding: 8px 12px;
       border-radius: 38px;
     }
 
-    /* 音声会話ボタン（文字は白・押しやすいデザイン） */
+    /* 音声会話ボタン（白文字・押しやすい） */
     .btn-action {
       flex: 1;
       height: 48px;
@@ -253,7 +269,7 @@
       justify-content: center;
       gap: 8px;
       border-radius: 28px;
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.16);
       font-size: 14.5px;
       font-weight: 800;
       cursor: pointer;
@@ -275,13 +291,13 @@
       border: 1px solid #7f1d1d;
     }
 
-    /* 右側の円形ボタン（黒バーに馴染むダークガラス調） */
+    /* 右側の円形ボタン */
     .btn-circle {
       width: 44px;
       height: 44px;
       flex-shrink: 0;
       border-radius: 50%;
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.16);
       outline: none;
       cursor: pointer;
       display: flex;
@@ -300,7 +316,7 @@
       background: #374151;
     }
 
-    /* 5. 🩺 診断モニタ（右下の🩺ボタンでポップアップ展開・通常時は完全非表示） */
+    /* 5. 🩺 診断モニタ（右下🩺ボタンでポップアップ展開） */
     #diag-panel {
       position: fixed;
       inset: 0;
@@ -547,13 +563,14 @@
       </div>
     </div>
 
-    <!-- 3. 中央〜下部：クロちゃん本体（黒いバーの上にちょこんと乗る） -->
+    <!-- 3. 中央〜下部：クロちゃん本体（黒バーの上に立っている構図） -->
     <div class="pet-avatar-wrapper" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
       <div class="listening-ring"></div>
+      <div class="cat-ground-shadow"></div>
       <img src="idle.jpg" alt="クロ" class="pet-avatar" id="pet-image" onerror="handleImageError(this)">
     </div>
 
-    <!-- 4. 最下部：黒い楕円バー（文字は白・親指で押しやすい設計） -->
+    <!-- 4. 最下部：黒い楕円バー（文字は白・猫が立つ台座） -->
     <div class="bottom-controls">
       <div class="action-bar">
         <button class="btn-action" id="pause-btn">
@@ -575,7 +592,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。クロの記憶帳・音声環境をロード完了ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。Web Audio音響エンジン＆Web検索ツール待機完了ニャ！</div>
       </div>
     </div>
   </div>
@@ -628,8 +645,8 @@
         <ul>
           <li><strong>⚡ Flash 3.5 lite (日常会話)</strong>: 日常会話やあいさつ、ちょっとした質問に超高速・省エネで即答します。</li>
           <li><strong>🧠 Flash 3.8 (難問・深い推論)</strong>: 複雑な論理問題、長文比較、プログラミング、または「3.8で考えて」と話しかけた時に自動起動します。上位モデルのため<strong>【1日20回】</strong>の上限を設けて安全に管理しています（毎日午前0時リセット）。</li>
+          <li><strong>🌐 リアルタイムWeb検索</strong>: 「今日の天気」「最新ニュース」「近くの美味しいラーメン」なども最新情報から調べて回答します。</li>
           <li><strong>📔 記憶帳の登録方法</strong>: 音声で「クロ、覚えて。好きな食べ物は〇〇」「記憶帳に書いて」と話しかけるか、この画面で自由に追加・削除ができます。</li>
-          <li><strong>💬 会話ストック</strong>: 設定した往復数を超えると古い会話から押し出され、トークン消費を抑えながらスムーズに長期間会話が続けられます。</li>
         </ul>
       </details>
 
@@ -639,7 +656,122 @@
 
   <script>
     /* ==========================================================
-       1. 状態管理・初期記憶帳（クロちゃん・女の子設定）
+       1. Web Audio API 音響エンジン（リアルな猫効果音）
+       ========================================================== */
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function getAudioContext() {
+      if (!audioCtx && AudioContextClass) {
+        audioCtx = new AudioContextClass();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    // 🐾 猫の鳴き声（ミャ〜オ♪）シンセサイザー
+    function playCatMeow(type = 'normal') {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      osc.type = 'triangle';
+      filter.type = 'bandpass';
+      filter.Q.value = 3.5;
+
+      if (type === 'happy') {
+        // 高めの甘えた「ニャ〜ン♡」
+        osc.frequency.setValueAtTime(580, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+        osc.frequency.exponentialRampToValueAtTime(640, now + 0.42);
+
+        filter.frequency.setValueAtTime(1100, now);
+        filter.frequency.linearRampToValueAtTime(1600, now + 0.15);
+        filter.frequency.linearRampToValueAtTime(1000, now + 0.42);
+
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.28, now + 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.45);
+      } else {
+        // 短い「ニャッ♪」
+        osc.frequency.setValueAtTime(620, now);
+        osc.frequency.exponentialRampToValueAtTime(820, now + 0.08);
+        osc.frequency.exponentialRampToValueAtTime(540, now + 0.25);
+
+        filter.frequency.setValueAtTime(1200, now);
+        filter.frequency.linearRampToValueAtTime(1500, now + 0.1);
+        filter.frequency.linearRampToValueAtTime(900, now + 0.25);
+
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.22, now + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.28);
+      }
+    }
+
+    // 🐾 喉鳴らし（ゴロゴロ…）シンセサイザー
+    function playCatPurr() {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+
+      const now = ctx.currentTime;
+      const bufferSize = ctx.sampleRate * 1.2;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+
+      const whiteNoise = ctx.createBufferSource();
+      whiteNoise.buffer = buffer;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 110;
+
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 26; // ゴロゴロ周波数
+
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.value = 0.35;
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.3, now + 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+      lfo.connect(lfoGain.gain);
+      whiteNoise.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      whiteNoise.start(now);
+      lfo.start(now);
+      whiteNoise.stop(now + 1.2);
+      lfo.stop(now + 1.2);
+    }
+
+    /* ==========================================================
+       2. 状態管理・記憶帳（クロ・女の子設定）
        ========================================================== */
     const DEFAULT_MEMORIES = [
       "わたしの名前：クロ（ノルウェージャンフォレストキャットの女の子、約1歳）",
@@ -669,7 +801,6 @@
       localStorage.setItem('kuro_pro_usage_count', '0');
     }
 
-    // 記憶帳のロード
     let loadedMemories = null;
     try {
       const rawMem = localStorage.getItem('kuro_notebook_memories');
@@ -680,7 +811,6 @@
       localStorage.setItem('kuro_notebook_memories', JSON.stringify(loadedMemories));
     }
 
-    // 会話履歴のロード
     let loadedHistory = [];
     try {
       const rawHist = localStorage.getItem('kuro_chat_history');
@@ -761,7 +891,6 @@
       diagLogs.scrollTop = diagLogs.scrollHeight;
     }
 
-    // 診断モニタのポップアップ表示/非表示（通常時は完全に隠れる）
     toggleDiagBtn.addEventListener('click', () => {
       diagPanel.classList.add('expanded');
     });
@@ -773,7 +902,7 @@
     });
 
     /* ==========================================================
-       2. チャットタイムライン ＆ 記憶帳管理
+       3. チャットタイムライン ＆ 記憶帳
        ========================================================== */
     function addChatMessage(role, text) {
       const row = document.createElement('div');
@@ -838,7 +967,7 @@
     }
 
     /* ==========================================================
-       3. 音声コマンド判定（記憶帳）
+       4. 音声コマンド判定（記憶帳）
        ========================================================== */
     function handleMemoryVoiceCommand(text) {
       const rememberPatterns = [
@@ -872,7 +1001,7 @@
     }
 
     /* ==========================================================
-       4. GPS位置情報取得
+       5. GPS位置情報取得
        ========================================================== */
     function initGPS() {
       if ('geolocation' in navigator) {
@@ -903,7 +1032,7 @@
     }
 
     /* ==========================================================
-       5. 絵文字完全除外 ＆ 読み上げ最適化
+       6. 絵文字完全除外 ＆ 読み上げ最適化
        ========================================================== */
     function normalizeNumbersForSpeech(str) {
       const numMap = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
@@ -936,7 +1065,7 @@
     }
 
     /* ==========================================================
-       6. なでなで・表情・時計
+       7. なでなで・表情・時計
        ========================================================== */
     avatarWrapper.addEventListener('click', (e) => {
       if (STATE.isPaused) { togglePause(); return; }
@@ -953,6 +1082,7 @@
       STATE.strokingCounter++;
       if (STATE.strokingCounter >= 3) {
         STATE.strokingCounter = 0;
+        playCatPurr(); // ゴロゴロ音
         setEmotion('happy');
         const msg = "ゴロゴロ…おやびんになでられて幸せニャン♡ クロ、おやびんが大好きニャ🐾";
         addChatMessage('model', msg);
@@ -960,6 +1090,7 @@
         return;
       }
 
+      playCatMeow('happy'); // 甘えたニャ〜ン♪
       STATE.isThinking = false;
       STATE.isSpeaking = false;
       window.speechSynthesis.cancel();
@@ -994,7 +1125,7 @@
     }, 1000);
 
     /* ==========================================================
-       7. 思考モデル振り分け（Flash 3.5 lite ⇔ 3.8 Flash）
+       8. 思考モデル振り分け ＆ リアルタイムWeb検索連携
        ========================================================== */
     function evaluateComplexity(promptText) {
       if (promptText.includes('3.8') || promptText.includes('サンテンハチ') || promptText.includes('フラッシュで') || promptText.includes('本気で考えて')) {
@@ -1010,19 +1141,28 @@
       return { isPro: false, reason: "日常会話・簡易照会" };
     }
 
+    // GoogleリアルタイムWeb検索ツール付き Interactions API 送信
     async function sendToInteractionsAPI(modelName, systemPrompt, promptText, historyItems) {
       const url = `https://generativelanguage.googleapis.com/v1beta/interactions?key=${STATE.apiKey}`;
       const historyContext = historyItems.map(h => `${h.role === 'user' ? '飼い主' : 'クロ'}: ${h.text}`).join('\n');
       const combinedInput = historyContext ? `【直近の会話の流れ】\n${historyContext}\n\n飼い主の新しい発言: ${promptText}` : promptText;
 
+      const bodyData = {
+        model: modelName,
+        system_instruction: systemPrompt,
+        input: combinedInput
+      };
+
+      // 🌐 天気、ニュース、最新情報、スポット等の質問でWeb検索ツールを適用
+      const needsSearch = /(天気|気温|ニュース|最新|今何時|近くの|ラーメン|おすすめ|評判|株価|現在)/.test(promptText);
+      if (needsSearch) {
+        bodyData.tools = [{ googleSearch: {} }];
+      }
+
       return await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: modelName,
-          system_instruction: systemPrompt,
-          input: combinedInput
-        })
+        body: JSON.stringify(bodyData)
       });
     }
 
@@ -1060,6 +1200,7 @@
       const memReply = handleMemoryVoiceCommand(promptText);
       if (memReply) {
         addChatMessage('model', memReply);
+        playCatMeow('happy');
         setEmotion('happy');
         speakVoice(memReply);
         return;
@@ -1070,6 +1211,7 @@
         const remaining = Math.max(0, 20 - STATE.proUsedToday);
         const reply = `今日3.8フラッシュで考えられるのは、あと【${remaining}回】だニャ🐾 何でも聞いてニャン！`;
         addChatMessage('model', reply);
+        playCatMeow('normal');
         speakVoice(reply);
         return;
       }
@@ -1124,7 +1266,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 【現在地情報】${STATE.location.city || "現在地周辺"}（住所：${STATE.location.address}）、現在時刻：${timeStr}
 
 【知識・検索リファレンス】
-- Gemini、Copilot、ChatGPTなど現代の主要な生成AIリソースと同等以上の賢さで物事を論理的かつ的確に把握し、親しみやすく解説してください。
+- Gemini、Copilot、ChatGPTと同等以上の賢さで物事を論理的かつ的確に把握し、最新情報や天気・スポット情報も正確に親しみやすく解説してください。
 
 【性格とロールプレイ設定】
 - 飼い主さんのことは「おやびん」または「ミッキーさん」と呼びます。
@@ -1166,8 +1308,10 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
         if (cleanDisplay.includes('！') || cleanDisplay.includes('好き') || cleanDisplay.includes('おやびん') || cleanDisplay.includes('発明') || cleanDisplay.includes('ニャン')) {
           setEmotion('happy');
+          playCatMeow('happy');
         } else {
           setEmotion('talking');
+          playCatMeow('normal');
         }
 
         speakVoice(cleanDisplay);
@@ -1180,7 +1324,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       8. 女の子音声の自動優先選択 ＆ 音声合成
+       9. 女の子音声の自動優先選択 ＆ 音声合成
        ========================================================== */
     let availableVoices = [];
 
@@ -1274,7 +1418,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       9. 音声認識（常時待機）
+       10. 音声認識（常時待機）
        ========================================================== */
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
@@ -1347,12 +1491,13 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         pauseText.textContent = "会話中（話しかけてニャ）";
         addChatMessage('model', "起きたニャ！おやびん、いつでも声で呼んでニャ🐾");
         setEmotion('idle');
+        playCatMeow('happy');
         startListening();
       }
     }
 
     /* ==========================================================
-       10. 設定モーダル・イベント連携
+       11. 設定モーダル・イベント連携
        ========================================================== */
     pauseBtn.addEventListener('click', togglePause);
 
