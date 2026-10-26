@@ -27,7 +27,7 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* 背景を純白（#ffffff）に完全統一 */
+    /* 背景を完全な純白（#ffffff）に統一 */
     body {
       margin: 0;
       padding: 0;
@@ -154,7 +154,7 @@
       100% { transform: scale(1.02); opacity: 1; }
     }
 
-    /* 3.8承認確認ボタングループ */
+    /* 3.8承認確認ボタン */
     .confirm-actions {
       display: flex;
       gap: 8px;
@@ -235,7 +235,7 @@
       100% { transform: scale(1.015) rotate(3.5deg); }
     }
 
-    /* ★ 画像と背景の白を完全に同化（境界線100%消去） */
+    /* ★ 白背景を完全同化（境界線100%消去） */
     .cat-avatar-img {
       position: absolute;
       bottom: 0;
@@ -248,7 +248,7 @@
       transform-origin: bottom center;
       transition: opacity 0.4s ease-in-out;
       background: transparent !important;
-      mix-blend-mode: multiply; /* 白背景をアプリの背景と完全にブレンド */
+      mix-blend-mode: multiply;
     }
     .cat-avatar-img.active {
       opacity: 1;
@@ -429,7 +429,7 @@
     .log-error { color: #f87171; font-weight: bold; }
     .log-info { color: #94a3b8; }
 
-    /* 6. 設定モーダル（音声選択を廃止しスッキリ整理） */
+    /* 6. 設定モーダル（四国めたん固定表示） */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -602,7 +602,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。四国めたん（あまあま）専用音声エンジン稼働ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。四国めたん（実績ポーリング）＆動的モデル解決モード稼働中ニャ！</div>
       </div>
     </div>
   </div>
@@ -617,7 +617,7 @@
         <input type="password" id="api-key-input" placeholder="AIzaSy...">
       </div>
 
-      <!-- ★ 四国めたん専用バッジ表示 -->
+      <!-- 四国めたん専用固定 -->
       <div class="form-group">
         <label>クロの肉声ボイス:</label>
         <div class="voice-badge-box">
@@ -646,7 +646,7 @@
 
   <script>
     /* ==========================================================
-       ★ 音声再生アンロック ＆ クールダウン制御
+       ★ 音声再生アンロック（iOS / Android永続権限）
        ========================================================== */
     const masterAudio = new Audio();
     masterAudio.crossOrigin = "anonymous";
@@ -664,7 +664,7 @@
     window.addEventListener('touchstart', unlockMasterAudio, { passive: true });
 
     /* ==========================================================
-       1. 効果音（相槌・鳴き声・喉鳴らし）
+       1. 音響効果（即時相槌・鳴き声・喉鳴らし）
        ========================================================== */
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
@@ -834,8 +834,9 @@
     const STATE = {
       apiKey: localStorage.getItem('kuro_api_key') || '',
       rate: parseFloat(localStorage.getItem('kuro_rate') || '1.05'),
-      activeLiteModel: "gemini-2.0-flash-lite",
-      activeProModel: "gemini-2.0-flash",
+      activeLiteModel: "gemini-1.5-flash",
+      activeProModel: "gemini-1.5-pro",
+      availableModels: [],
       proUsedToday: savedCount,
       memories: loadedMemories,
       history: loadedHistory,
@@ -851,7 +852,7 @@
       pending38Prompt: null,
       isAwaiting38Approval: false,
 
-      // ★ 音声タイムアウト・風邪モードフラグ
+      // 音声タイムアウト・風邪モードフラグ
       isVoiceColdMode: false
     };
 
@@ -924,7 +925,57 @@
     diagPanel.addEventListener('click', (e) => { if (e.target === diagPanel) diagPanel.classList.remove('expanded'); });
 
     /* ==========================================================
-       3. 会話ログ・記憶帳
+       3. 【実績完全回帰】Google AI Studio モデル自動検出エンジン
+       ========================================================== */
+    async function scanAvailableGeminiModels(apiKey) {
+      if (!apiKey) return [];
+      try {
+        logDiag("[Discovery] Google AI Studioの利用可能モデルを照会中…", "info");
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        if (!res.ok) {
+          logDiag(`[Discoveryエラー] HTTP ${res.status}`, "warn");
+          return [];
+        }
+        const data = await res.json();
+        const models = (data.models || [])
+          .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
+          .map(m => m.name.replace(/^models\//, ''));
+
+        STATE.availableModels = models;
+        logDiag(`[Discovery成功] 検出モデル: ${models.length}個 (${models.slice(0, 3).join(', ')}...)`, "success");
+
+        resolveBestModels();
+        return models;
+      } catch (e) {
+        logDiag(`[Discovery例外] ${e.message}`, "error");
+        return [];
+      }
+    }
+
+    function resolveBestModels() {
+      if (STATE.availableModels.length > 0) {
+        // Lite系（日常会話）の自動選定
+        const liteCand = STATE.availableModels.find(m => /flash.*lite|3\.5.*lite|3\.1.*lite/i.test(m))
+                      || STATE.availableModels.find(m => /2\.0.*flash.*lite|flash-8b/i.test(m))
+                      || STATE.availableModels.find(m => /flash/i.test(m))
+                      || STATE.availableModels[0];
+        STATE.activeLiteModel = liteCand;
+
+        // Pro系（高度推論）の自動選定
+        const proCand = STATE.availableModels.find(m => /3\.8|pro|exp/i.test(m))
+                     || STATE.availableModels.find(m => /2\.0.*flash(?!.*lite)/i.test(m))
+                     || STATE.availableModels.find(m => /flash/i.test(m))
+                     || STATE.availableModels[0];
+        STATE.activeProModel = proCand;
+      } else {
+        STATE.activeLiteModel = "gemini-1.5-flash";
+        STATE.activeProModel = "gemini-1.5-pro";
+      }
+      logDiag(`[モデル解決完了] Lite: ${STATE.activeLiteModel} | Pro: ${STATE.activeProModel}`, "success");
+    }
+
+    /* ==========================================================
+       4. 会話ログ・記憶帳
        ========================================================== */
     function addChatMessage(role, text) {
       const row = document.createElement('div');
@@ -1003,7 +1054,7 @@
     }
 
     /* ==========================================================
-       4. 音声記憶コマンド判定
+       5. 音声記憶コマンド判定
        ========================================================== */
     function handleMemoryVoiceCommand(text) {
       const rememberPatterns = [
@@ -1035,7 +1086,7 @@
     }
 
     /* ==========================================================
-       5. GPS現在地取得
+       6. GPS現在地取得
        ========================================================== */
     function initGPS() {
       if ('geolocation' in navigator) {
@@ -1059,7 +1110,7 @@
     }
 
     /* ==========================================================
-       6. なでなで＆時計
+       7. なでなで＆時計
        ========================================================== */
     avatarWrapper.addEventListener('click', (e) => {
       unlockMasterAudio();
@@ -1103,7 +1154,7 @@
     }, 1000);
 
     /* ==========================================================
-       7. 難易度判定 ＆ Flash 3.8承認制インターロック
+       8. 難易度判定 ＆ Flash 3.8承認制インターロック
        ========================================================== */
     function evaluateNeedsPro(promptText) {
       if (promptText.includes('3.8') || promptText.includes('サンテンハチ') || promptText.includes('本気で考えて') || promptText.includes('詳しく')) {
@@ -1161,7 +1212,7 @@
       STATE.pending38Prompt = null;
 
       if (isApproved) {
-        logDiag("[3.8承認] 承認を確認。Flash 3.8で高度思考＆検索を実行ニャ！", "success");
+        logDiag("[3.8承認] 承認を確認。Flash 3.8で実行ニャ！", "success");
         runGeminiExecution(promptToRun, true);
       } else {
         logDiag("[3.8見送り] Flash 3.5 liteで通常回答しますニャ。", "info");
@@ -1186,32 +1237,36 @@
     }
 
     /* ==========================================================
-       8. Gemini API 実行エンジン
+       9. 【実績完全回帰】Gemini API通信（純粋プロンプト＋フォールバック）
        ========================================================== */
-    async function executeGeminiRequestWithFallback(modelCandidates, systemPrompt, promptText, historyItems, useSearch = false) {
+    async function executeGeminiRequestWithFallback(modelCandidates, systemPrompt, promptText, historyItems) {
+      // ロール整合性（userとmodelが交互）を厳格に保持
       const contents = [];
-      let hasStartedUser = false;
+      let lastRole = null;
+
       historyItems.forEach(h => {
-        if (!hasStartedUser && h.role !== 'user') return;
-        hasStartedUser = true;
-        contents.push({
-          role: h.role === 'user' ? 'user' : 'model',
-          parts: [{ text: h.text }]
-        });
+        const role = h.role === 'user' ? 'user' : 'model';
+        if (contents.length === 0 && role !== 'user') return; // 初回は必ずuserから
+        if (role === lastRole) {
+          // 同一ロールが連続したら結合
+          contents[contents.length - 1].parts[0].text += `\n${h.text}`;
+        } else {
+          contents.push({ role: role, parts: [{ text: h.text }] });
+          lastRole = role;
+        }
       });
-      contents.push({
-        role: 'user',
-        parts: [{ text: promptText }]
-      });
+
+      // 最新のプロンプトを追加
+      if (lastRole === 'user') {
+        contents[contents.length - 1].parts[0].text += `\n${promptText}`;
+      } else {
+        contents.push({ role: 'user', parts: [{ text: promptText }] });
+      }
 
       const bodyData = {
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents: contents
       };
-
-      if (useSearch) {
-        bodyData.tools = [{ "googleSearch": {} }];
-      }
 
       for (let i = 0; i < modelCandidates.length; i++) {
         const modelName = modelCandidates[i];
@@ -1231,6 +1286,8 @@
             if (text) {
               return { success: true, text: text, modelUsed: modelName };
             }
+          } else {
+            logDiag(`[通信レスポンス: ${modelName}] HTTP ${res.status}`, "warn");
           }
         } catch (e) {
           logDiag(`[通信例外: ${modelName}] ${e.message}`, "warn");
@@ -1321,15 +1378,21 @@
       }
       modelBadge.textContent = badgeName;
 
-      const candidates = isProMode
-        ? ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-pro"]
-        : ["gemini-2.0-flash-lite", "gemini-1.5-flash-8b", "gemini-2.0-flash"];
+      // 自動検出した確実なモデル候補リストを使用
+      const candidates = [];
+      if (isProMode) {
+        if (STATE.activeProModel) candidates.push(STATE.activeProModel);
+        candidates.push("gemini-2.0-flash", "gemini-1.5-pro", "gemini-pro");
+      } else {
+        if (STATE.activeLiteModel) candidates.push(STATE.activeLiteModel);
+        candidates.push("gemini-1.5-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash-8b");
+      }
+      const uniqueCandidates = [...new Set(candidates)];
 
       const historyToSend = isProMode ? STATE.history.slice(-16) : STATE.history.slice(-8);
       const now = new Date();
       const timeStr = `${now.getHours()}時${now.getMinutes()}分`;
 
-      // ★ 四国めたんが1〜2秒で即座に合成できるように、20〜28文字程度の愛らしい超短文を徹底指定
       const systemPrompt = `
 あなたはノルウェージャンフォレストキャットの愛らしくて賢い女の子の子猫「クロ」（約1歳）です。
 【クロの記憶帳】
@@ -1351,7 +1414,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 - 【超重要ルール】文末や文中に「（〇〇文字）」や注記、メタ情報は絶対に出力しないでください。純粋なセリフのみを返してください。
 `;
 
-      const result = await executeGeminiRequestWithFallback(candidates, systemPrompt, promptText, historyToSend, isProMode);
+      const result = await executeGeminiRequestWithFallback(uniqueCandidates, systemPrompt, promptText, historyToSend);
 
       if (result.success && result.text) {
         const cleanDisplay = sanitizeModelText(result.text);
@@ -1369,14 +1432,14 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       9. ★四国めたん（あまあま）専用 音声合成エンジン（4秒セーフティ）
+       10. 【実績完全回帰】四国めたん（あまあま）専用 音声合成エンジン
        ========================================================== */
     function cleanTextForSpeech(text) {
       if (!text) return "";
       return sanitizeModelText(text)
         .replace(/```[\s\S]*?```/g, '')
         .replace(/<[^>]*>/g, '')
-        // ★ あらゆる絵文字・アイコン・記号を100%完全除去
+        // ★ あらゆる絵文字・特殊記号を100%完全除去
         .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}\uFE0F\u200D]/gu, '')
         .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟]/gu, '')
         .replace(/[（\(【\[][^）\)】\]]*[）\)】\]]/g, '')
@@ -1391,40 +1454,35 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       setEmotion('idle');
     }
 
-    // 四国めたん（あまあま：speaker=0）専用の音声取得（タイムアウト：4.0秒）
-    async function getMetanMp3UrlWithTimeout(text, timeoutMs = 4000) {
+    // ★ 実績のある同一API URLポーリングループ（最大14回・約4秒）
+    async function getMetanMp3Url(text) {
       const encodedText = encodeURIComponent(text);
-      // 四国めたん（あまあま）は speaker=0
+      // 四国めたん（あまあま）speaker=0
       const apiUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=0`;
 
-      logDiag("[音声合成] 四国めたん（あまあま）サーバーにリクエスト中…", "info");
+      logDiag("[音声合成] 四国めたんAPIに問い合わせ中…", "info");
 
-      const startTime = Date.now();
-      let statusUrl = apiUrl;
-
-      while (Date.now() - startTime < timeoutMs) {
+      // 最大14回（約3.9秒）同一URLをポーリング
+      for (let i = 0; i < 14; i++) {
         try {
-          const res = await fetch(statusUrl);
+          const res = await fetch(apiUrl);
           if (res.ok) {
             const data = await res.json();
             if (data.isAudioError) throw new Error("VoiceVox synthesis error");
             if (data.isAudioReady && data.mp3DownloadUrl) {
-              logDiag(`[四国めたん完成] 生成成功ニャ！（${((Date.now() - startTime)/1000).toFixed(1)}秒）`, "success");
+              logDiag(`[四国めたん完成] 音声準備完了ニャ！（試行${i + 1}回目）`, "success");
               return data.mp3DownloadUrl;
-            }
-            if (data.audioStatusUrl) {
-              statusUrl = data.audioStatusUrl;
             }
           }
         } catch (e) {
           // リトライ
         }
-        await new Promise(r => setTimeout(r, 250));
+        await new Promise(r => setTimeout(r, 280));
       }
       throw new Error("4秒タイムアウト超過");
     }
 
-    // 📱 端末標準ボイス（高めピッチ：1.35・遅延ゼロ・フォールバック用）
+    // 📱 端末標準ボイス（高めピッチ1.35・安全フォールバック）
     function speakWithNativeVoice(cleanDisplay, syncBubble) {
       if (!window.speechSynthesis) return;
       window.speechSynthesis.cancel();
@@ -1471,7 +1529,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       window.speechSynthesis.speak(uttr);
     }
 
-    // メイン音声発声関数（四国めたん最優先）
+    // メイン音声発声関数（四国めたん最優先実行）
     async function speakVoice(rawText, syncBubble = false) {
       stopSpeaking();
       unlockMasterAudio();
@@ -1479,8 +1537,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       const textToSpeak = cleanTextForSpeech(rawText);
 
       try {
-        // ★ 四国めたん（あまあま）で最優先生成（4秒待機）
-        const mp3Url = await getMetanMp3UrlWithTimeout(textToSpeak, 4000);
+        const mp3Url = await getMetanMp3Url(textToSpeak);
 
         masterAudio.src = mp3Url;
         masterAudio.playbackRate = STATE.rate;
@@ -1507,23 +1564,23 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         };
 
         masterAudio.onerror = () => {
-          logDiag("[音声再生例外] 端末標準ボイスに切り替えて発声ニャ", "warn");
+          logDiag("[音声再生例外] 端末標準ボイスで代行発声ニャ", "warn");
           STATE.isVoiceColdMode = true;
           speakWithNativeVoice(rawText, syncBubble);
         };
 
         await masterAudio.play();
-        logDiag("[発声開始] 四国めたんの声で同期再生中ニャ！", "success");
+        logDiag("[発声開始] 四国めたんの声で同期再生完了ニャ！", "success");
 
       } catch (err) {
-        logDiag(`[4秒セーフティ発動] 四国めたんサーバー混雑のため、可愛い標準ボイスで代行発声ニャ（${err.message}）`, "warn");
+        logDiag(`[4秒セーフティ発動] 四国めたん待機タイムアウト。可愛い端末ボイスで代行発声ニャ（${err.message}）`, "warn");
         STATE.isVoiceColdMode = true; // 風邪モードON
         speakWithNativeVoice(rawText, syncBubble);
       }
     }
 
     /* ==========================================================
-       10. 音声認識（常時対話・ハウリング遮断）
+       11. 音声認識（常時対話・ハウリング遮断）
        ========================================================== */
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
@@ -1599,7 +1656,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       11. 初期化 ＆ 設定保存
+       12. 初期化 ＆ 設定保存
        ========================================================== */
     pauseBtn.addEventListener('click', togglePause);
 
@@ -1620,7 +1677,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       if (e.target === modalOverlay) modalOverlay.style.display = 'none';
     });
 
-    saveSettingsBtn.addEventListener('click', () => {
+    saveSettingsBtn.addEventListener('click', async () => {
       unlockMasterAudio();
       STATE.apiKey = document.getElementById('api-key-input').value.trim();
       STATE.rate = parseFloat(voiceRate.value);
@@ -1628,8 +1685,12 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       localStorage.setItem('kuro_api_key', STATE.apiKey);
       localStorage.setItem('kuro_rate', STATE.rate);
 
+      if (STATE.apiKey) {
+        await scanAvailableGeminiModels(STATE.apiKey);
+      }
+
       modalOverlay.style.display = 'none';
-      logDiag(`[設定保存] APIキーと速度（${STATE.rate}）を保存完了ニャ！`, "success");
+      logDiag(`[設定保存完了] APIキーと速度（${STATE.rate}）を保存完了ニャ！`, "success");
 
       playCatMeow('happy');
       addChatMessage('model', `設定バッチリ保存したニャ！四国めたんの声でいつでも話しかけてニャン🐾`);
@@ -1638,11 +1699,18 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       }, 500);
     });
 
-    window.addEventListener('load', () => {
+    window.addEventListener('load', async () => {
       initGPS();
       renderMemoryList();
       restoreChatTimeline();
       setEmotion('idle');
+
+      if (STATE.apiKey) {
+        await scanAvailableGeminiModels(STATE.apiKey);
+      } else {
+        resolveBestModels();
+      }
+
       logDiag("クロちゃん起動完了。四国めたん（あまあま）専用モード待機中ニャ🐾", "success");
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
