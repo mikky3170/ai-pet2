@@ -41,7 +41,7 @@
       align-items: center;
     }
 
-    /* メインコンテナ：縦画面で破綻しないフレックス構造 */
+    /* メインコンテナ：縦全画面で絶対に崩れないフレックス構造 */
     #pet-container {
       position: absolute;
       width: 100%;
@@ -84,7 +84,7 @@
     .model-badge.lite { background: #e0f2fe; color: #0284c7; }
     .model-badge.pro { background: #fdf4ff; color: #c026d3; }
 
-    /* 2. チャット履歴タイムライン（時計バー直下〜猫の頭上まで最大拡張） */
+    /* 2. 会話タイムライン（時計バー直下〜猫の頭上まで最大拡張） */
     #chat-timeline {
       flex: 1; /* 余白スペースを全て使ってスクロール領域化 */
       width: 100%;
@@ -148,14 +148,14 @@
       position: relative;
       flex-shrink: 0;
       width: 100%;
-      height: 290px; /* 猫の定位置を安定確保 */
+      height: 290px;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
       align-items: center;
       cursor: pointer;
       z-index: 20;
-      /* 黒いバーの天面と隙間ゼロで完全に接地 */
+      /* 黒バーの天面と隙間ゼロで完全に接地 */
       margin-bottom: -18px; 
     }
 
@@ -173,7 +173,7 @@
       z-index: 2;
     }
 
-    /* 黒バー上面にぴったり落ちる足元の接地シャドウ（浮遊感を完全消去） */
+    /* 接地シャドウ（浮遊感を完全消去） */
     .cat-ground-shadow {
       position: absolute;
       bottom: 16px;
@@ -242,7 +242,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      z-index: 30; /* 猫の手前に確実に配置 */
+      z-index: 30;
     }
 
     .action-bar {
@@ -250,13 +250,12 @@
       align-items: center;
       justify-content: space-between;
       width: 100%;
-      background: #111827; /* 深みのあるディープブラック */
+      background: #111827;
       box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
       padding: 8px 12px;
       border-radius: 38px;
     }
 
-    /* 音声会話ボタン（白文字・押しやすい設計） */
     .btn-action {
       flex: 1;
       height: 48px;
@@ -270,7 +269,7 @@
       font-weight: 800;
       cursor: pointer;
       background: #1f2937;
-      color: #ffffff; /* 白文字 */
+      color: #ffffff;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -280,14 +279,12 @@
       background: #374151;
     }
 
-    /* お休み中（一時停止） */
     .btn-action.is-paused {
       background: #450a0a;
       color: #fca5a5;
       border: 1px solid #7f1d1d;
     }
 
-    /* 右側の円形ボタン */
     .btn-circle {
       width: 44px;
       height: 44px;
@@ -588,7 +585,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。Web Audio音響エンジン＆Web検索ツール待機完了ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。超肉声Natural音声エンジン待機完了ニャ！</div>
       </div>
     </div>
   </div>
@@ -619,20 +616,20 @@
       </div>
 
       <div class="form-group">
-        <label>クロの声色（女の子優先）:</label>
+        <label>クロの声色（✨おすすめ＝超肉声・リアル）:</label>
         <select id="voice-select">
-          <option value="">読み込み中ニャ…</option>
+          <option value="">音声エンジンを読み込み中ニャ…</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label>声の高さ（女の子向け推奨: 1.20）: <span id="pitch-val">1.20</span></label>
-        <input type="range" id="voice-pitch" min="0.8" max="1.4" step="0.01" value="1.20">
+        <label>声の高さ（推奨: 1.10 = 人間の女の子の自然なトーン）: <span id="pitch-val">1.10</span></label>
+        <input type="range" id="voice-pitch" min="0.8" max="1.4" step="0.01" value="1.10">
       </div>
 
       <div class="form-group">
-        <label>話すスピード: <span id="rate-val">1.08</span></label>
-        <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.02" value="1.08">
+        <label>話すスピード: <span id="rate-val">1.06</span></label>
+        <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.02" value="1.06">
       </div>
 
       <!-- 📖 ヘルプ＆インフォメーション -->
@@ -640,7 +637,7 @@
         <summary>💡 AIモデルの仕組み・制限・使い方ヘルプ</summary>
         <ul>
           <li><strong>⚡ Flash 3.5 lite (日常会話)</strong>: 日常会話やあいさつ、ちょっとした質問に超高速・省エネで即答します。</li>
-          <li><strong>🧠 Flash 3.8 (難問・深い推論)</strong>: 複雑な論理問題、長文比較、プログラミング、または「3.8で考えて」と話しかけた時に自動起動します。上位モデルのため<strong>【1日20回】</strong>の上限を設けて安全に管理しています（毎日午前0時リセット）。</li>
+          <li><strong>🧠 Flash 3.8 (難問・深い推論)</strong>: 複雑な論理問題、長文比較、プログラミング、または「3.8で考えて」と話しかけた時に自動起動します（<strong>1日20回</strong>上限）。</li>
           <li><strong>🌐 リアルタイムWeb検索</strong>: 「今日の天気」「最新ニュース」「近くの美味しいラーメン」なども最新情報から調べて回答します。</li>
           <li><strong>📔 記憶帳の登録方法</strong>: 音声で「クロ、覚えて。好きな食べ物は〇〇」「記憶帳に書いて」と話しかけるか、この画面で自由に追加・削除ができます。</li>
         </ul>
@@ -812,8 +809,8 @@
     const STATE = {
       apiKey: localStorage.getItem('kuro_api_key') || localStorage.getItem('miichu_api_key') || '',
       selectedVoiceURI: localStorage.getItem('kuro_voice_uri') || '',
-      pitch: parseFloat(localStorage.getItem('kuro_pitch') || '1.20'),
-      rate: parseFloat(localStorage.getItem('kuro_rate') || '1.08'),
+      pitch: parseFloat(localStorage.getItem('kuro_pitch') || '1.10'), // 人間の女の子らしい自然なトーン
+      rate: parseFloat(localStorage.getItem('kuro_rate') || '1.06'),
       proUsedToday: savedCount,
       maxHistoryPairs: parseInt(localStorage.getItem('kuro_max_history') || '30', 10),
       memories: loadedMemories,
@@ -1024,8 +1021,19 @@
     }
 
     /* ==========================================================
-       6. 絵文字完全除外 ＆ 読み上げ最適化
+       6. 「何文字」完全排除 ＆ 読み上げ最適化
        ========================================================== */
+    function sanitizeModelText(text) {
+      if (!text) return "";
+      return text
+        // 「（30文字）」「(45文字)」「【30文字】」「30文字」などのカウント表記を完全消去
+        .replace(/[（\(【\[]?\s*\d{1,3}\s*文字(?:以内|程度)?\s*[）\)】\]]?/g, '')
+        // メタ注記の除去
+        .replace(/[（\(][^）\)]*(?:文字数|カウント)[^）\)]*[）\)]/g, '')
+        .replace(/[*#_~`]/g, '')
+        .trim();
+    }
+
     function normalizeNumbersForSpeech(str) {
       const numMap = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
       function convert2Digit(n) {
@@ -1046,7 +1054,7 @@
     }
 
     function cleanTextForSpeech(text) {
-      let cleaned = text
+      let cleaned = sanitizeModelText(text)
         .replace(/```[\s\S]*?```/g, '')
         .replace(/<[^>]*>/g, '')
         .replace(/[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
@@ -1074,7 +1082,7 @@
       STATE.strokingCounter++;
       if (STATE.strokingCounter >= 3) {
         STATE.strokingCounter = 0;
-        playCatPurr(); // ゴロゴロ音
+        playCatPurr();
         setEmotion('happy');
         const msg = "ゴロゴロ…おやびんになでられて幸せニャン♡ クロ、おやびんが大好きニャ🐾";
         addChatMessage('model', msg);
@@ -1082,7 +1090,7 @@
         return;
       }
 
-      playCatMeow('happy'); // 甘えたニャ〜ン♪
+      playCatMeow('happy');
       STATE.isThinking = false;
       STATE.isSpeaking = false;
       window.speechSynthesis.cancel();
@@ -1133,7 +1141,6 @@
       return { isPro: false, reason: "日常会話・簡易照会" };
     }
 
-    // GoogleリアルタイムWeb検索ツール付き Interactions API 送信
     async function sendToInteractionsAPI(modelName, systemPrompt, promptText, historyItems) {
       const url = `https://generativelanguage.googleapis.com/v1beta/interactions?key=${STATE.apiKey}`;
       const historyContext = historyItems.map(h => `${h.role === 'user' ? '飼い主' : 'クロ'}: ${h.text}`).join('\n');
@@ -1267,6 +1274,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 - 前世は大発明家の相棒猫です。少し自慢できる話題では「クロの前世の発明のひらめきによるとね…フフン♪」と誇らしげに可愛く自慢してください。
 - ラーメン、餃子、麻婆豆腐、ITガジェットを激推ししてください。
 - 返答は必ず【短く愛らしい1〜2文（合計50文字以内）】で返してください。長文は絶対に禁止です。
+- 【超重要ルール】文末や文中に「（〇〇文字）」や文字数の注記、カウント、メタ情報は絶対に出力しないでください。純粋なセリフのみを返してください。
 `;
 
       let replyText = null;
@@ -1293,7 +1301,8 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       STATE.isThinking = false;
 
       if (replyText) {
-        const cleanDisplay = replyText.replace(/[*#_~`]/g, '').trim();
+        // 「何文字」を完全除去したクリーンテキスト
+        const cleanDisplay = sanitizeModelText(replyText);
         addChatMessage('model', cleanDisplay);
         saveChatHistory(promptText, cleanDisplay);
 
@@ -1315,22 +1324,57 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       9. 女の子音声の自動優先選択 ＆ 音声合成
+       9. 超肉声Natural音声エンジンの優先選択 ＆ 音声合成
        ========================================================== */
     let availableVoices = [];
+
+    // 音声の肉声度・リアル度を判定するスコアリング関数
+    function scoreVoice(voice) {
+      let score = 0;
+      const name = voice.name.toLowerCase();
+      const lang = voice.lang.toLowerCase();
+
+      if (!lang.includes('ja') && !lang.includes('jp')) return -100;
+
+      // 1. 次世代AI肉声・Natural音声（最高品質）
+      if (name.includes('natural') || name.includes('online') || name.includes('neural')) score += 50;
+      if (name.includes('premium') || name.includes('enhanced')) score += 40;
+
+      // 2. 有名な高品質日本語女性ボイス
+      const topFemale = ['nanami', 'ayumi', 'haruka', 'sayaka', 'kyoko', 'aoi', 'shiori', 'mei', 'siri'];
+      for (const f of topFemale) {
+        if (name.includes(f)) { score += 25; break; }
+      }
+
+      // 3. 一般的なGoogle・Appleクラウド音声
+      if (name.includes('google') || name.includes('apple')) score += 10;
+
+      // 4. 明確な男性ボイスの減点
+      const maleList = ['ichiro', 'keita', 'otoya', 'kenji', 'takumi', 'daichi', 'naoki'];
+      for (const m of maleList) {
+        if (name.includes(m)) { score -= 40; break; }
+      }
+
+      return score;
+    }
 
     function populateVoiceList() {
       if (!('speechSynthesis' in window)) return;
       const allVoices = window.speechSynthesis.getVoices();
       availableVoices = allVoices.filter(v => v.lang.includes('ja') || v.lang.includes('JP'));
 
-      voiceSelect.innerHTML = '';
       if (availableVoices.length === 0) availableVoices = allVoices;
 
+      // 肉声度が高い順にソート
+      availableVoices.sort((a, b) => scoreVoice(b) - scoreVoice(a));
+
+      voiceSelect.innerHTML = '';
       availableVoices.forEach((voice) => {
         const option = document.createElement('option');
         option.value = voice.voiceURI;
-        option.textContent = `${voice.name} (${voice.lang})`;
+        const score = scoreVoice(voice);
+        const badge = score >= 40 ? '✨ 超肉声: ' : (score >= 10 ? '🌸 女の子: ' : '');
+        option.textContent = `${badge}${voice.name}`;
         if (voice.voiceURI === STATE.selectedVoiceURI) option.selected = true;
         voiceSelect.appendChild(option);
       });
@@ -1346,19 +1390,8 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         const found = availableVoices.find(v => v.voiceURI === STATE.selectedVoiceURI);
         if (found) return found;
       }
-      
-      const femaleKeywords = ['Kyoko', 'Nanami', 'Haruka', 'Ayumi', 'Sayaka', 'Mei', 'Siri', 'Google 日本語'];
-      const maleKeywords = ['Ichiro', 'Keita', 'Otoya', 'Kenji', 'Takumi'];
-
-      for (const kw of femaleKeywords) {
-        const match = availableVoices.find(v => v.name.includes(kw));
-        if (match) return match;
-      }
-
-      const nonMale = availableVoices.find(v => !maleKeywords.some(m => v.name.includes(m)));
-      if (nonMale) return nonMale;
-
-      return availableVoices[0];
+      // 最もスコアの高い肉声ボイスを自動選択
+      return availableVoices[0] || null;
     }
 
     function speakVoice(rawText) {
@@ -1370,14 +1403,16 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       window.speechSynthesis.cancel();
       window._speechLockHolder = [];
 
+      // 「何文字」などの余計なメタ情報を完全排除
       const textToSpeak = cleanTextForSpeech(rawText);
-      const safeSpokenText = textToSpeak + "…………。";
+      const safeSpokenText = textToSpeak + "……。";
 
-      logDiag(`[音声読み上げ] 女の子ボイス: 「${textToSpeak}」`, "info");
+      logDiag(`[音声読み上げ] 肉声ボイス: 「${textToSpeak}」`, "info");
 
       const uttr = new SpeechSynthesisUtterance(safeSpokenText);
       uttr.lang = 'ja-JP';
-      uttr.pitch = STATE.pitch;
+      // 人間の自然なイントネーションに合わせたピッチ＆速度
+      uttr.pitch = STATE.pitch; 
       uttr.rate = STATE.rate;
 
       const chosenVoice = getSelectedVoice();
