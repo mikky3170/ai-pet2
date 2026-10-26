@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -15,7 +16,7 @@
     :root {
       --primary-color: #f472b6;
       --secondary-color: #38bdf8;
-      --bubble-bg: rgba(255, 255, 255, 0.96);
+      --bubble-bg: rgba(255, 255, 255, 0.98);
       --text-color: #1f2937;
       --shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
     }
@@ -27,13 +28,14 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    /* 背景を完全な純白（#ffffff）に統一 */
     body {
       margin: 0;
       padding: 0;
       width: 100vw;
       height: 100dvh;
       overflow: hidden;
-      background: #f8fafc;
+      background: #ffffff;
       font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
       position: relative;
       display: flex;
@@ -52,6 +54,7 @@
       padding: env(safe-area-inset-top, 8px) 14px env(safe-area-inset-bottom, 14px) 14px;
       z-index: 50;
       box-sizing: border-box;
+      background: #ffffff;
     }
 
     /* 1. 最上部ステータスバー */
@@ -66,6 +69,7 @@
       padding: 8px 14px;
       border-radius: 20px;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      border: 1px solid rgba(241, 245, 249, 0.8);
       font-size: 11.5px;
       font-weight: bold;
       color: #4a5568;
@@ -138,11 +142,11 @@
       border-bottom-left-radius: 4px;
     }
 
-    /* 思考中バブル */
+    /* 💭 思考中バブル */
     .chat-bubble.thinking-bubble {
-      background: #f3f4f6;
-      border: 1.5px dashed #d1d5db;
-      color: #6b7280;
+      background: #f8fafc;
+      border: 1.5px dashed #cbd5e1;
+      color: #64748b;
       font-style: italic;
       animation: bubblePulse 1.4s ease-in-out infinite alternate;
     }
@@ -151,7 +155,7 @@
       100% { transform: scale(1.02); opacity: 1; }
     }
 
-    /* 承認ボタングループ（3.8利用確認） */
+    /* 3.8承認確認ボタン */
     .confirm-actions {
       display: flex;
       gap: 8px;
@@ -188,6 +192,7 @@
       cursor: pointer;
       z-index: 20;
       margin-bottom: -18px;
+      background: transparent;
     }
 
     #cat-stage-box {
@@ -200,9 +205,10 @@
       align-items: flex-end;
       transform-origin: bottom center;
       transition: transform 0.4s ease-out;
+      background: transparent;
     }
 
-    /* 待機アニメーション */
+    /* 待機呼吸 */
     .pet-avatar-wrapper.is-idling #cat-stage-box {
       animation: catSlowCalmBreathe 4.8s ease-in-out infinite;
     }
@@ -212,7 +218,7 @@
       70% { transform: scale(1.018, 0.985) translateY(-4px) rotate(1.5deg); }
     }
 
-    /* お話し中アニメーション */
+    /* お話し中息づき */
     .pet-avatar-wrapper.is-talking #cat-stage-box {
       animation: catGentleTalkBreath 1.3s ease-in-out infinite alternate;
     }
@@ -221,7 +227,7 @@
       100% { transform: translateY(-5px) scale(1.02); }
     }
 
-    /* 考え中アニメーション */
+    /* 考え中かしげ */
     .pet-avatar-wrapper.is-thinking #cat-stage-box {
       animation: catSlowThinking 2.4s ease-in-out infinite alternate;
     }
@@ -230,6 +236,7 @@
       100% { transform: scale(1.015) rotate(3.5deg); }
     }
 
+    /* ★ 画像と背景の境目を100%消去（mix-blend-mode: multiply） */
     .cat-avatar-img {
       position: absolute;
       bottom: 0;
@@ -242,13 +249,14 @@
       transform-origin: bottom center;
       transition: opacity 0.4s ease-in-out;
       background: transparent !important;
+      mix-blend-mode: multiply; /* 白背景をアプリの背景と分子レベルで同化 */
     }
     .cat-avatar-img.active {
       opacity: 1;
       pointer-events: auto;
     }
 
-    /* 画像がない場合のCSS/SVGプレースホルダーフォールバック */
+    /* 画像未配置時のSVGフォールバック */
     .cat-fallback-svg {
       width: 220px;
       height: 250px;
@@ -305,14 +313,14 @@
       justify-content: space-between;
       width: 100%;
       background: #111827;
-      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
       padding: 8px 12px;
       border-radius: 38px;
       transition: box-shadow 0.3s;
     }
 
     .is-listening .action-bar {
-      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.3), 0 0 18px rgba(34, 197, 94, 0.6), 0 0 0 1px rgba(74, 222, 128, 0.4) inset;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25), 0 0 18px rgba(34, 197, 94, 0.6), 0 0 0 1px rgba(74, 222, 128, 0.4) inset;
     }
 
     .btn-action {
@@ -559,24 +567,18 @@
         <img src="thinking.jpg" alt="考え中" class="cat-avatar-img" id="img-thinking" onerror="this.style.display='none';">
         <img src="happy.jpg" alt="大喜び" class="cat-avatar-img" id="img-happy" onerror="this.style.display='none';">
 
-        <!-- 画像ファイル未配置時の可愛いSVGフォールバック（ノルウェージャン黒＆シルバー） -->
+        <!-- 画像未配置時SVGフォールバック -->
         <svg viewBox="0 0 200 240" class="cat-fallback-svg" id="svg-cat-idle">
-          <!-- もふもふ長毛の輪郭 -->
           <path d="M40 220 Q20 180 30 130 Q15 90 40 70 Q60 20 85 45 Q100 40 115 45 Q140 20 160 70 Q185 90 170 130 Q180 180 160 220 Z" fill="#2b2d42"/>
-          <!-- 胸のシルバーふわふわ毛 -->
           <path d="M70 140 Q100 120 130 140 Q145 190 100 215 Q55 190 70 140 Z" fill="#8d99ae"/>
-          <!-- ピンクのインナーイヤー -->
           <polygon points="50,65 70,35 78,65" fill="#f472b6" opacity="0.8"/>
           <polygon points="150,65 130,35 122,65" fill="#f472b6" opacity="0.8"/>
-          <!-- エメラルドグリーンの愛らしい瞳 -->
           <ellipse cx="75" cy="95" rx="12" ry="16" fill="#10b981"/>
           <ellipse cx="125" cy="95" rx="12" ry="16" fill="#10b981"/>
           <ellipse cx="75" cy="95" rx="5" ry="13" fill="#111827"/>
           <ellipse cx="125" cy="95" rx="5" ry="13" fill="#111827"/>
-          <!-- 瞳のハイライト -->
           <circle cx="72" cy="90" r="3.5" fill="#ffffff"/>
           <circle cx="122" cy="90" r="3.5" fill="#ffffff"/>
-          <!-- お鼻とお口 -->
           <polygon points="100,108 95,103 105,103" fill="#f472b6"/>
           <path d="M95 111 Q100 116 100 111 Q100 116 105 111" stroke="#475569" stroke-width="2" fill="none"/>
         </svg>
@@ -605,7 +607,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。四国めたん（5秒タイムアウト）＆承認制3.8稼働ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。四国めたん（4秒セーフティ）＆完全白ブレンド完了ニャ！</div>
       </div>
     </div>
   </div>
@@ -807,7 +809,7 @@
     }
 
     /* ==========================================================
-       2. 状態管理（長期記憶・3.8残回数・承認保留）
+       2. 状態管理（長期記憶・承認保留・風邪モード）
        ========================================================== */
     const DEFAULT_MEMORIES = [
       "わたしの名前：クロ（ノルウェージャンフォレストキャットの女の子、約1歳）",
@@ -872,9 +874,12 @@
       currentEmotion: 'idle',
       strokingCounter: 0,
       
-      // ★ 3.8承認待ちペンディング状態
+      // 3.8承認待ち状態
       pending38Prompt: null,
-      isAwaiting38Approval: false
+      isAwaiting38Approval: false,
+
+      // ★ 音声タイムアウト・風邪モードフラグ
+      isVoiceColdMode: false
     };
 
     // DOM要素
@@ -951,7 +956,7 @@
     diagPanel.addEventListener('click', (e) => { if (e.target === diagPanel) diagPanel.classList.remove('expanded'); });
 
     /* ==========================================================
-       3. モデル自動解決エンジン（404根絶）
+       3. モデル自動解決エンジン
        ========================================================== */
     async function scanAvailableGeminiModels(apiKey) {
       if (!apiKey) return [];
@@ -965,7 +970,7 @@
           .map(m => m.name.replace(/^models\//, ''));
 
         STATE.availableModels = models;
-        logDiag(`[Discovery成功] 検出モデル: ${models.length}個 (${models.slice(0, 4).join(', ')}...)`, "success");
+        logDiag(`[Discovery成功] 検出モデル: ${models.length}個`, "success");
 
         liteModelSelect.innerHTML = `<option value="auto">🌟 自動最適化（Lite系を自動検出）</option>`;
         models.forEach(m => {
@@ -1005,7 +1010,7 @@
       } else {
         STATE.activeProModel = "gemini-2.0-flash";
       }
-      logDiag(`[モデル解決] Lite: ${STATE.activeLiteModel} | 3.8Pro: ${STATE.activeProModel}`, "info");
+      logDiag(`[モデル確定] Lite: ${STATE.activeLiteModel} | 3.8: ${STATE.activeProModel}`, "info");
     }
 
     scanModelsBtn.addEventListener('click', async () => {
@@ -1016,7 +1021,7 @@
     });
 
     /* ==========================================================
-       4. チャット表示 ＆ 思考バブル
+       4. 会話タイムライン ＆ 思考バブル
        ========================================================== */
     function addChatMessage(role, text) {
       const row = document.createElement('div');
@@ -1195,7 +1200,7 @@
     }, 1000);
 
     /* ==========================================================
-       8. 難易度判定 ＆ ★承認制Flash 3.8インターロック
+       8. 難易度判定 ＆ Flash 3.8承認制インターロック
        ========================================================== */
     function evaluateNeedsPro(promptText) {
       if (promptText.includes('3.8') || promptText.includes('サンテンハチ') || promptText.includes('本気で考えて') || promptText.includes('詳しく')) {
@@ -1211,7 +1216,7 @@
       return { needsPro: false, reason: "日常会話" };
     }
 
-    // 飼い主さんに「3.8使っていいかにゃ？」と尋ねる
+    // 飼い主さんにワンクッション確認
     function askUserFor38Approval(originalPrompt) {
       STATE.pending38Prompt = originalPrompt;
       STATE.isAwaiting38Approval = true;
@@ -1219,7 +1224,6 @@
       const remaining = Math.max(0, 20 - STATE.proUsedToday);
       const askText = `難しそうだニャ…！本気モードの『Flash 3.8』を使ってじっくり考えてもいいかニャ？（今日あと${remaining}回使えるニャ🐾）`;
 
-      // タイムラインにクロちゃんの伺いと承認ボタンを表示
       const row = document.createElement('div');
       row.className = 'chat-row model';
       const bubble = document.createElement('div');
@@ -1235,14 +1239,19 @@
       chatTimeline.appendChild(row);
       chatTimeline.scrollTop = chatTimeline.scrollHeight;
 
-      document.getElementById('btn-approve-38').onclick = () => handleApprovalResponse(true);
-      document.getElementById('btn-deny-38').onclick = () => handleApprovalResponse(false);
+      document.getElementById('btn-approve-38').onclick = () => {
+        addChatMessage('user', "お願いニャ！");
+        handleApprovalResponse(true);
+      };
+      document.getElementById('btn-deny-38').onclick = () => {
+        addChatMessage('user', "3.5 liteでいいよ");
+        handleApprovalResponse(false);
+      };
 
       speakVoice(askText, false);
-      logDiag(`[3.8承認要求] ユーザー承認待ち（残: ${remaining}/20）`, "warn");
+      logDiag(`[3.8承認確認] 飼い主の承認待ち（残: ${remaining}/20）`, "warn");
     }
 
-    // 承認 / 拒否の処理（タップまたは音声から呼び出し）
     function handleApprovalResponse(isApproved) {
       if (!STATE.isAwaiting38Approval) return;
       STATE.isAwaiting38Approval = false;
@@ -1250,17 +1259,14 @@
       STATE.pending38Prompt = null;
 
       if (isApproved) {
-        logDiag("[3.8承認] 飼い主の承認を確認。Flash 3.8で実行開始ニャ！", "success");
-        addChatMessage('user', "お願いニャ！");
+        logDiag("[3.8承認] 承認を確認。Flash 3.8で高度思考＆検索を実行ニャ！", "success");
         runGeminiExecution(promptToRun, true);
       } else {
-        logDiag("[3.8見送り] Flash 3.5 liteで通常実行しますニャ。", "info");
-        addChatMessage('user', "3.5 liteでいいよ");
+        logDiag("[3.8見送り] Flash 3.5 liteで通常回答しますニャ。", "info");
         runGeminiExecution(promptToRun, false);
       }
     }
 
-    // 音声認識からの承認判定チェック
     function checkVoiceApproval(voiceText) {
       if (!STATE.isAwaiting38Approval) return false;
       const yesWords = ['いいよ', 'お願い', 'ok', 'オーケー', '使って', '頼む', 'ハイ', 'はい', '3.8で'];
@@ -1278,7 +1284,7 @@
     }
 
     /* ==========================================================
-       9. Gemini API 実行エンジン（3大検索リソース統合）
+       9. Gemini API 実行エンジン
        ========================================================== */
     async function executeGeminiRequestWithFallback(modelCandidates, systemPrompt, promptText, historyItems, useSearch = false) {
       const contents = [];
@@ -1301,9 +1307,8 @@
         contents: contents
       };
 
-      // 3.8モード時はGoogle Search Groundingツール（最新Web検索）を有効化
       if (useSearch) {
-        bodyData.tools = [{ "google_search": {} }];
+        bodyData.tools = [{ "googleSearch": {} }];
       }
 
       for (let i = 0; i < modelCandidates.length; i++) {
@@ -1325,7 +1330,7 @@
               return { success: true, text: text, modelUsed: modelName };
             }
           } else if (res.status === 404) {
-            logDiag(`[404検知] 『${modelName}』は利用不可。次候補へフォールバック…`, "warn");
+            logDiag(`[404検知] 『${modelName}』不可。次候補へ…`, "warn");
           }
         } catch (e) {
           logDiag(`[通信例外: ${modelName}] ${e.message}`, "warn");
@@ -1344,12 +1349,19 @@
         .trim();
     }
 
-    // 会話ハンドラ
     async function askGemini(promptText) {
       addChatMessage('user', promptText);
       playCatAizuchi();
 
-      // もし3.8承認待ち状態なら、声での「いいよ/だめ」を判定
+      // ★ 声がおかしいよリアクション（風邪気味トーク）
+      if (promptText.includes('声がおかしい') || promptText.includes('声変') || promptText.includes('声が違う') || promptText.includes('その声')) {
+        const coldReply = "ごめんニャ…今ちょっと風邪気味で喉の調子がおかしいニャ🐾 もう少ししたら治ると思うニャ！";
+        addChatMessage('model', coldReply);
+        speakVoice(coldReply, false);
+        return;
+      }
+
+      // 3.8承認待ち判定
       if (STATE.isAwaiting38Approval) {
         if (checkVoiceApproval(promptText)) return;
       }
@@ -1363,7 +1375,7 @@
         return;
       }
 
-      // 残数問い合わせ
+      // 3.8残回数確認
       if (promptText.includes('あと何回') || promptText.includes('残り何回')) {
         const remaining = Math.max(0, 20 - STATE.proUsedToday);
         const reply = `今日3.8フラッシュで考えられるのは、あと【${remaining}回】だニャ🐾`;
@@ -1384,19 +1396,16 @@
       const evalResult = evaluateNeedsPro(promptText);
       if (evalResult.needsPro) {
         if (STATE.proUsedToday < 20) {
-          // ★ 自動では消費せず、飼い主に承認を求めるワンクッション！
           askUserFor38Approval(promptText);
           return;
         } else {
-          logDiag("[3.8上限] 本日枠を使い切ったため3.5 liteで実行しますニャ", "warn");
+          logDiag("[3.8上限] 枠上限のため3.5 liteで通常実行", "warn");
         }
       }
 
-      // 通常は 3.5 lite で即座に実行
       runGeminiExecution(promptText, false);
     }
 
-    // 実際のGeminiリクエスト実行
     async function runGeminiExecution(promptText, isProMode) {
       stopListening();
       STATE.isThinking = true;
@@ -1457,7 +1466,6 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         const cleanDisplay = sanitizeModelText(result.text);
         logDiag(`[API成功] モデル: ${result.modelUsed} / 「${cleanDisplay}」`, "success");
         saveChatHistory(promptText, cleanDisplay);
-        // 音声準備完了と同時に画面に出す
         speakVoice(cleanDisplay, true);
       } else {
         removeThinkingBubble();
@@ -1470,14 +1478,17 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       10. ★完全同期音声エンジン（外部音声最優先＋5秒タイムアウト）
+       10. ★完全同期音声エンジン（絵文字完全除去 ＆ 4秒セーフティ）
        ========================================================== */
     function cleanTextForSpeech(text) {
+      if (!text) return "";
       return sanitizeModelText(text)
         .replace(/```[\s\S]*?```/g, '')
         .replace(/<[^>]*>/g, '')
-        .replace(/[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
-        .replace(/[*#_~`🐾❤️💖✨🐱🥟🍜🎀]/g, '')
+        // ★ あらゆる絵文字・特殊記号・アイコンを100%完全除去
+        .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}\uFE0F\u200D]/gu, '')
+        .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟]/gu, '')
+        .replace(/[（\(【\[][^）\)】\]]*[）\)】\]]/g, '')
         .replace(/\n+/g, ' ')
         .trim();
     }
@@ -1489,12 +1500,12 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       setEmotion('idle');
     }
 
-    // 外部音声（VOICEVOX / 四国めたん等）の取得（タイムアウト：5.0秒）
-    async function getVoiceVoxMp3UrlWithTimeout(text, speakerId, timeoutMs = 5000) {
+    // ★ 正しい公式スピーカーIDで四国めたん等を生成（4.0秒タイムアウト）
+    async function getVoiceVoxMp3UrlWithTimeout(text, speakerId, timeoutMs = 4000) {
       const encodedText = encodeURIComponent(text);
       const apiUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=${speakerId}`;
 
-      logDiag("[外部音声] 四国めたんサーバーに問い合わせ中（上限5秒）…", "info");
+      logDiag("[外部音声] 四国めたんAPIに問い合わせ中（上限4秒）…", "info");
 
       const startTime = Date.now();
       while (Date.now() - startTime < timeoutMs) {
@@ -1504,24 +1515,25 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
             const data = await res.json();
             if (data.isAudioError) throw new Error("VoiceVox synthesis error");
             if (data.isAudioReady && data.mp3DownloadUrl) {
-              logDiag(`[外部音声完成] 生成成功ニャ！（${((Date.now() - startTime)/1000).toFixed(1)}秒）`, "success");
+              logDiag(`[外部音声完成] 四国めたんの音声生成成功！（${((Date.now() - startTime)/1000).toFixed(1)}秒）`, "success");
               return data.mp3DownloadUrl;
             }
           }
         } catch (e) {
           // リトライ
         }
-        await new Promise(r => setTimeout(r, 250));
+        await new Promise(r => setTimeout(r, 200));
       }
-      throw new Error("5秒タイムアウト超過");
+      throw new Error("4秒タイムアウト超過");
     }
 
     // 📱 端末標準ボイス（高めピッチ：1.35・遅延ゼロ）
-    function speakWithNativeVoice(cleanText, syncBubble) {
+    function speakWithNativeVoice(cleanDisplay, syncBubble) {
       if (!window.speechSynthesis) return;
       window.speechSynthesis.cancel();
 
-      const uttr = new SpeechSynthesisUtterance(cleanText);
+      const speakText = cleanTextForSpeech(cleanDisplay);
+      const uttr = new SpeechSynthesisUtterance(speakText);
       uttr.lang = 'ja-JP';
       uttr.rate = STATE.rate;
       uttr.pitch = 1.35; // 愛らしい高めピッチ
@@ -1533,7 +1545,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       uttr.onstart = () => {
         if (syncBubble) {
           removeThinkingBubble();
-          addChatMessage('model', cleanText);
+          addChatMessage('model', cleanDisplay);
         }
         STATE.isThinking = false;
         STATE.isSpeaking = true;
@@ -1545,7 +1557,6 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         STATE.isSpeaking = false;
         statusText.textContent = "👂 聴いてるニャ♪";
         setEmotion('idle');
-        // ★ エコー防止：発話終了後800msマージンを取ってから再開
         setTimeout(() => {
           if (!STATE.isPaused && !STATE.isThinking && !STATE.isAwaiting38Approval) startListening();
         }, 800);
@@ -1563,28 +1574,27 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       window.speechSynthesis.speak(uttr);
     }
 
-    // メイン発話関数
+    // メイン音声発声関数
     async function speakVoice(rawText, syncBubble = false) {
       stopSpeaking();
       unlockMasterAudio();
 
       const textToSpeak = cleanTextForSpeech(rawText);
 
-      // 端末標準ボイスが明示選択されている場合
       if (STATE.voiceModel === 'native-device') {
         speakWithNativeVoice(rawText, syncBubble);
         return;
       }
 
-      // 外部音声（四国めたん等）のID解決
+      // ★ 公式Speaker ID完全対応
       let speakerId = 0; // 四国めたん（あまあま）
-      if (STATE.voiceModel === 'zundamon-ama') speakerId = 3;
-      else if (STATE.voiceModel === 'tsumugi') speakerId = 8;
-      else if (STATE.voiceModel === 'zundamon-norm') speakerId = 1;
+      if (STATE.voiceModel === 'zundamon-ama') speakerId = 1;      // ずんだもん（あまあま）
+      else if (STATE.voiceModel === 'tsumugi') speakerId = 8;     // 春日部つむぎ（ノーマル）
+      else if (STATE.voiceModel === 'zundamon-norm') speakerId = 3;// ずんだもん（ノーマル）
 
       try {
-        // ★ まずは外部音声で回答を試行（タイムアウト5秒）
-        const mp3Url = await getVoiceVoxMp3UrlWithTimeout(textToSpeak, speakerId, 5000);
+        // ★ 4秒タイムアウトで外部音声を最優先実行
+        const mp3Url = await getVoiceVoxMp3UrlWithTimeout(textToSpeak, speakerId, 4000);
 
         masterAudio.src = mp3Url;
         masterAudio.playbackRate = STATE.rate;
@@ -1596,6 +1606,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
           }
           STATE.isThinking = false;
           STATE.isSpeaking = true;
+          STATE.isVoiceColdMode = false; // 四国めたん成功時は風邪モード解除
           statusText.textContent = "🗣️ お話し中ニャ♪";
           setEmotion('talking');
         };
@@ -1604,27 +1615,28 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
           STATE.isSpeaking = false;
           statusText.textContent = "👂 聴いてるニャ♪";
           setEmotion('idle');
-          // エコー防止クールダウン（800ms）
           setTimeout(() => {
             if (!STATE.isPaused && !STATE.isThinking && !STATE.isAwaiting38Approval) startListening();
           }, 800);
         };
 
         masterAudio.onerror = () => {
-          logDiag("[音声再生例外] 端末標準ボイスに切り替えて発声しますニャ", "warn");
+          logDiag("[音声再生例外] 端末標準ボイスに切り替え", "warn");
+          STATE.isVoiceColdMode = true;
           speakWithNativeVoice(rawText, syncBubble);
         };
 
         await masterAudio.play();
-        logDiag("[発声開始] 外部肉声ボイスで同期再生完了ニャ！", "success");
+        logDiag("[発声開始] 四国めたんボイスで同期再生中ニャ！", "success");
 
       } catch (err) {
-        logDiag(`[5秒タイムアウト発動] 外部音声が混雑のため、即座に可愛い端末ボイスに切り替えましたニャ（${err.message}）`, "warn");
+        logDiag(`[4秒セーフティ発動] 外部音声が混雑（${err.message}）。可愛い端末ボイスで代行発声ニャ！`, "warn");
+        STATE.isVoiceColdMode = true; // 風邪モードON
         speakWithNativeVoice(rawText, syncBubble);
       }
     }
 
-    // 試聴ボタン
+    // 🔊 試聴ボタン
     testVoiceBtn.addEventListener('click', () => {
       unlockMasterAudio();
       STATE.voiceModel = voiceModelSelect.value;
@@ -1634,7 +1646,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     });
 
     /* ==========================================================
-       11. 音声認識（常時対話・ハウリング完全遮断）
+       11. 音声認識（常時対話・ハウリング遮断）
        ========================================================== */
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
@@ -1744,7 +1756,6 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         STATE.customLiteModel = liteModelSelect.value;
       }
 
-      // ★ 選択した音声・設定を確実にlocalStorageに永続化
       localStorage.setItem('kuro_api_key', STATE.apiKey);
       localStorage.setItem('kuro_voice_model', STATE.voiceModel);
       localStorage.setItem('kuro_rate', STATE.rate);
@@ -1771,7 +1782,6 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       restoreChatTimeline();
       setEmotion('idle');
       
-      // 保存されていた音声をセレクトボックスに初期反映
       voiceModelSelect.value = STATE.voiceModel;
 
       if (STATE.apiKey) {
@@ -1779,7 +1789,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       } else {
         resolveBestModels();
       }
-      logDiag("クロちゃん起動完了。四国めたん（5秒待機）＆承認制3.8モード待機中ニャ🐾", "success");
+      logDiag("クロちゃん起動完了。四国めたん（4秒セーフティ）待機中ニャ🐾", "success");
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
       }, 1000);
@@ -1787,5 +1797,3 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
   </script>
 </body>
 </html>
-
-
