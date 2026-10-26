@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -1760,12 +1761,10 @@
        ========================================================== */
     function saveToMemoryNotebook(content) {
       let clean = content.trim();
-      // プレフィックスの整理
       clean = clean.replace(/^(飼い主さんの|僕の|私の)?(趣味|名前|好物|好きな食べ物|好きなもの)(は|：|:)?\s*/, (match, p1, p2) => {
         return `飼い主さんの${p2}：`;
       });
 
-      // 先頭に追加して、設定画面を開いた時に即座に確認できるようにする
       STATE.memories.unshift(clean);
       localStorage.setItem('kuro_notebook_memories', JSON.stringify(STATE.memories));
       renderMemoryList();
@@ -1774,10 +1773,8 @@
     }
 
     function handleMemoryVoiceCommand(rawText) {
-      // 1. 文頭の呼びかけ「クロちゃん」「クロ」「ねえ」などを綺麗にトリミング
       let text = rawText.replace(/^(?:ねえ|あのね|おーい)?\s*(?:クロちゃん|くろちゃん|クロ|くろ)[、,\s]*/i, '').trim();
 
-      // 2. 【2ステップ待機中】「何を登録するニャ？」の返事を待っていた時
       if (STATE.isWaitingForMemoryInput) {
         STATE.isWaitingForMemoryInput = false;
         if (/^(?:やめた|キャンセル|いいや|なんでもない)/.test(text)) {
@@ -1792,7 +1789,6 @@
         }
       }
 
-      // 3. 「記録帳（記載帳）に登録して」「メモして」とだけ言われた場合（聞き返しモードへ直行）
       const emptyTriggers = [
         /^(?:クロちゃん)?(?:の)?(?:記録帳|記憶帳|記載帳|きさいちょう|きろくちょう|ノート|メモ)(?:に)?(?:登録|追加|メモ|書いて|記録|残して|覚えて)(?:して|おいて|ちょうだい)?$/,
         /^(?:これ|次のこと|今から言うこと)(?:を)?(?:覚えて|登録|追加|メモ|記録)/
@@ -1810,13 +1806,9 @@
         }
       }
 
-      // 4. 1文で「〜を記録帳（記載帳）に書いて」「〜って覚えて」と中身が指定された場合
       const explicitAddPatterns = [
-        // 例：「僕の好きなものはラーメンって記載帳に書いて」
         /(.+?)(?:って|だと|と|を)?(?:記録帳|記憶帳|記載帳|きさいちょう|きろくちょう|ノート|メモ)(?:に)?(?:書いて|登録して|追加して|メモして|記録して|残して)/,
-        // 例：「記載帳に僕の好きなものはラーメンって書いて」
         /(?:記録帳|記憶帳|記載帳|きさいちょう|きろくちょう|ノート|メモ)(?:に)[：:、\s]*(.+?)(?:を)?(?:書いて|登録して|追加して|メモして|覚えて)/,
-        // 例：「僕の好きなものはラーメンって覚えて」
         /(.+?)(?:って|だと|と)?(?:覚えておいて|覚えて|忘れにゃいで|忘れないで)/
       ];
 
@@ -1825,7 +1817,6 @@
         if (match && match[1]) {
           let content = match[1].replace(/(?:記録帳|記憶帳|記載帳|きさいちょう|ノート|メモ|に|を|って)$/g, '').trim();
 
-          // 呼びかけのみ（「クロちゃん」「クロ」等）の誤登録を防止
           if (/^(?:クロちゃん|くろちゃん|クロ|くろ)$/i.test(content) || content.length <= 1) {
             STATE.isWaitingForMemoryInput = true;
             statusText.textContent = "📝 メモを待ってるニャ…";
@@ -1845,7 +1836,6 @@
         }
       }
 
-      // 5. 「記録帳教えて」「何覚えてる？」の確認コマンド
       if (/(?:記録帳|記憶帳|記載帳|ノート).*(?:教えて|見せて|何がある|何覚えてる)/.test(text) || text.includes('何覚えてる')) {
         const count = STATE.memories.length;
         const latest = STATE.memories[0] || "まだないニャ";
@@ -2083,7 +2073,6 @@
       addChatMessage('user', promptText);
       playCatAizuchi();
 
-      // 声がおかしい判定（風邪気味トーク）
       const voiceAbnormalPattern = /(?:声|こえ|喉|のど).*(?:違|変|おかしい|どうした|枯れ|ガラガラ|ヘン|いつもと)|(?:違|変|おかしい|どうした|ヘン).*(?:声|こえ|喉|のど)/;
       if (voiceAbnormalPattern.test(promptText)) {
         const coldReply = "ごめんニャ…今ちょっと風邪気味で喉の調子がおかしいニャ🐾 もう少ししたら治ると思うニャ！";
@@ -2092,7 +2081,6 @@
         return;
       }
 
-      // ★ 記録帳・記載帳コマンド判定
       const memResult = handleMemoryVoiceCommand(promptText);
       if (memResult) {
         addChatMessage('model', memResult.speech, [], memResult.savedText);
@@ -2209,7 +2197,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       10. ★【完全体系化】四国めたん（あまあま）専用通信エンジン
+       10. ★【完全修正版】四国めたん（あまあま）専用通信・再生エンジン
        ========================================================== */
     function cleanTextForSpeech(text) {
       if (!text) return "";
@@ -2230,48 +2218,78 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       setEmotion('idle');
     }
 
-    // 四国めたん音声合成URL取得（CORSフリー＆過負荷防止の安全ポーリング）
+    // 四国めたん音声合成URL取得（仕様準拠ポーリング＆最大15秒待機）
     async function getMetanMp3Url(text) {
       const clean = text.slice(0, 65);
       const encodedText = encodeURIComponent(clean);
+      // speaker=0: 四国めたん（あまあま）
       const initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=0`;
 
-      logDiag("[四国めたん] 音声合成リクエスト送信…", "info");
+      logDiag(`[四国めたん] 音声合成リクエスト送信中 (speaker:0)…`, "info");
 
-      const initRes = await fetch(initUrl);
-      if (!initRes.ok) throw new Error(`HTTP ${initRes.status}`);
-
-      const initData = await initRes.json();
-      if (initData.isAudioError) throw new Error("VoiceVoxエラー");
-
-      // 既に準備ができている場合
-      if (initData.isAudioReady && initData.mp3DownloadUrl) {
-        logDiag("[四国めたん] 音声準備OKニャ！", "success");
-        return initData.mp3DownloadUrl;
+      let initRes;
+      try {
+        initRes = await fetch(initUrl);
+      } catch (netErr) {
+        throw new Error(`初回通信接続エラー: ${netErr.message}`);
       }
 
-      // 未完了時はステータスURLを優しく監視（1秒間隔、最大9回）
-      const statusUrl = initData.audioStatusUrl || initUrl;
-      logDiag("[四国めたん] 音声生成中…待機中ニャ", "info");
+      if (!initRes.ok) {
+        throw new Error(`初回HTTPエラー: ${initRes.status}`);
+      }
 
-      for (let i = 0; i < 9; i++) {
+      const initData = await initRes.json();
+      if (initData.isAudioError) {
+        throw new Error("VoiceVox側エラーレスポンス");
+      }
+
+      // 初回レスポンスからダウンロードURLを確保（最重要）
+      const downloadUrl = initData.mp3DownloadUrl || initData.mp3StreamingUrl;
+      if (!downloadUrl) {
+        throw new Error("APIレスポンスにMP3 URLが存在しません");
+      }
+
+      // 既に生成済みの場合は即返却
+      if (initData.isAudioReady) {
+        logDiag("[四国めたん] キャッシュ即時取得成功ニャ！", "success");
+        return downloadUrl;
+      }
+
+      // 未完了時はステータスURLを最大15秒監視
+      const statusUrl = initData.audioStatusUrl;
+      if (!statusUrl) {
+        logDiag("[四国めたん] audioStatusUrlなし、直接URL待機ニャ", "warn");
+        return downloadUrl;
+      }
+
+      logDiag("[四国めたん] 音声生成待機中（最大15秒）…", "info");
+
+      const maxAttempts = 15;
+      for (let i = 1; i <= maxAttempts; i++) {
         await new Promise(r => setTimeout(r, 1000));
         try {
           const sRes = await fetch(statusUrl);
           if (sRes.ok) {
             const sData = await sRes.json();
-            if (sData.isAudioReady && sData.mp3DownloadUrl) {
-              logDiag(`[四国めたん完成] 音声準備完了ニャ！（待機 ${i + 1}秒）`, "success");
-              return sData.mp3DownloadUrl;
+            if (sData.isAudioError) {
+              throw new Error("生成途中でVoiceVoxエラー検知");
+            }
+            if (sData.isAudioReady) {
+              logDiag(`[四国めたん] 音声生成完了ニャ！（待機 ${i}秒）`, "success");
+              // sDataにはmp3DownloadUrlが含まれない場合があるため、初回保持のdownloadUrlを返す
+              return sData.mp3DownloadUrl || downloadUrl;
             }
           }
-        } catch(e) {}
+        } catch (pollErr) {
+          if (pollErr.message && pollErr.message.includes("VoiceVoxエラー")) throw pollErr;
+          logDiag(`[四国めたん待機 ${i}/${maxAttempts}秒] 確認通信待機中…`, "info");
+        }
       }
 
-      throw new Error("音声生成待機タイムアウト");
+      throw new Error("音声生成待機タイムアウト（15秒経過）");
     }
 
-    // 端末標準ボイス（最高ピッチの子猫風代行）
+    // 端末標準ボイス（最高ピッチの子猫風代行フォールバック）
     function speakWithNativeVoice(cleanDisplay, syncBubble, actionCards = [], savedBadgeText = null) {
       if (!window.speechSynthesis) return;
       window.speechSynthesis.cancel();
@@ -2280,7 +2298,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       const uttr = new SpeechSynthesisUtterance(speakText);
       uttr.lang = 'ja-JP';
       uttr.rate = STATE.rate;
-      uttr.pitch = 1.45; // 子猫らしい高めのかわいいピッチ
+      uttr.pitch = 1.45;
 
       const voices = window.speechSynthesis.getVoices();
       const cuteVoice = voices.find(v => v.lang.includes('ja') && (v.name.includes('Kyoko') || v.name.includes('Google 日本語') || v.name.includes('Nanami') || v.name.includes('Haruka') || v.name.includes('女性')));
@@ -2325,13 +2343,23 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       const textToSpeak = cleanTextForSpeech(rawText);
 
       try {
+        // ステップ1: 音声合成URLの取得
         const mp3Url = await getMetanMp3Url(textToSpeak);
+        logDiag(`[四国めたん] MP3確定: 再生準備開始ニャ`, "info");
 
-        // 先行アンカー済みの masterAudio に流し込んで再生（CORS無縁＆Androidブロック回避）
+        // ステップ2: Audio再生プロセスの設定
         masterAudio.src = mp3Url;
         masterAudio.playbackRate = STATE.rate;
 
+        // イベントリスナーの再登録（二重発火を完全に防ぐ）
+        masterAudio.oncanplay = null;
+        masterAudio.onerror = null;
+        masterAudio.onended = null;
+
+        let hasStarted = false;
         masterAudio.oncanplay = () => {
+          if (hasStarted) return;
+          hasStarted = true;
           if (syncBubble) {
             removeThinkingBubble();
             addChatMessage('model', rawText, actionCards, savedBadgeText);
@@ -2351,16 +2379,12 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
           }, 800);
         };
 
-        masterAudio.onerror = (e) => {
-          logDiag("[音声再生ブロック検知] 端末ボイスで代行発声ニャ", "warn");
-          speakWithNativeVoice(rawText, syncBubble, actionCards, savedBadgeText);
-        };
-
+        // 再生実行（Play Promise処理）
         await masterAudio.play();
-        logDiag("[発声開始] 四国めたん（あまあま）の肉声で再生成功ニャ！🐾", "success");
+        logDiag("[四国めたん] 再生開始成功！四国めたんボイスで発声中ニャ🐾", "success");
 
       } catch (err) {
-        logDiag(`[四国めたん代替発声] 端末ボイスで代行ニャ（${err.message}）`, "warn");
+        logDiag(`[四国めたん失敗: ${err.message}] 端末標準音声に切り替えますニャ`, "warn");
         speakWithNativeVoice(rawText, syncBubble, actionCards, savedBadgeText);
       }
     }
