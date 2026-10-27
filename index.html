@@ -181,12 +181,6 @@
       border-bottom-right-radius: 4px;
     }
 
-    /* ユーザー発話途中（リアルタイム表示） */
-    .chat-row.user.interim .chat-bubble {
-      background: #0284c7;
-      opacity: 0.9;
-    }
-
     /* クロちゃん返答（白×ピンク枠） */
     .chat-row.model .chat-bubble {
       background: #ffffff;
@@ -536,7 +530,7 @@
       box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
       padding: 8px 12px;
       border-radius: 38px;
-      transition: box-shadow 0.3s;
+      transition: all 0.3s;
     }
 
     .is-listening .action-bar {
@@ -899,7 +893,7 @@
         </button>
       </div>
 
-      <span id="status-text">👂 聴いてるニャ♪</span>
+      <span id="status-text">👆 画面をタップしてニャ♪</span>
 
       <div class="top-header-right">
         <span id="pro-counter-display">🧠 3.8残: 20/20</span>
@@ -991,7 +985,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[System] テンポ同期型エンジン起動。自然対話復元完了。</div>
+        <div class="log-row log-info">[System] 堅牢マイクループ・キャッチボール復元起動</div>
       </div>
     </div>
   </div>
@@ -1096,8 +1090,8 @@
     };
 
     /* ==========================================================================
-       ★ MODULE 1: 【完全保護区】四国めたん＆即応型音声認識エンジン
-       ※ 余計な遅延タイマーを撤廃し、原点の即時キャッチボールを完全復元
+       ★ MODULE 1: 【完全保護区】四国めたん＆ワンショット即応マイクエンジン
+       ※ continuousフリーズを完全排除。喋るたびに確実にキャッチし即座に打ち返す
        ========================================================================== */
     class AudioSpeechEngine {
       constructor() {
@@ -1112,13 +1106,17 @@
         this.rate = 1.05;
         this.isSpeaking = false;
         this.isListening = false;
+        this.isUserInteracted = false;
         this.recognition = null;
-        this.autoRestartTimer = null;
+        this.restartTime = null;
+
+        this.lastRecognizedText = '';
+        this.silenceTimeout = null;
 
         // イベントコールバック
-        this.onInterimUpdate = null; // (text) => リアルタイム表示
-        this.onSpeechFinal = null;   // (text) => 確定して即座に返信へ
-        this.onListeningStatus = null; // (boolean) => 状態更新
+        this.onInterimUpdate = null; // 途中テキスト
+        this.onSpeechFinal = null;   // 確定テキスト
+        this.onListeningStatus = null; // マイク状態
 
         this._setupRecognition();
         this._setupInteractionUnlock();
@@ -1138,18 +1136,22 @@
         this.masterAudio.src = this.silentWav;
         this.masterAudio.play().then(() => {
           this.isMasterUnlocked = true;
-          Logger.log("[Audio] 音声アンカー確立", "info");
+          Logger.log("[Audio] 音声アンカー解放完了", "info");
         }).catch(() => {});
       }
 
       _setupInteractionUnlock() {
-        const handler = () => {
+        const unlock = () => {
+          this.isUserInteracted = true;
           this.unlockMasterAudio();
           this._getAudioContext();
-          this.startListening();
+          if (!this.isSpeaking && AppCore.state.isRunning) {
+            this.startListening();
+          }
         };
-        window.addEventListener('pointerdown', handler, { passive: true, once: true });
-        window.addEventListener('touchstart', handler, { passive: true, once: true });
+        window.addEventListener('pointerdown', unlock, { passive: true });
+        window.addEventListener('touchstart', unlock, { passive: true });
+        window.addEventListener('click', unlock, { passive: true });
       }
 
       playEffect(type) {
@@ -1320,7 +1322,6 @@
         const encodedText = encodeURIComponent(clean);
         const initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=${speakerId}`;
 
-        Logger.log(`[四国めたんAPI] 合成リクエスト開始 (speaker:${speakerId})…`, "info");
         const initRes = await fetch(initUrl);
         if (!initRes.ok) throw new Error(`HTTPエラー ${initRes.status}`);
 
@@ -1331,7 +1332,6 @@
         if (!downloadUrl) throw new Error("MP3 URLなし");
 
         if (initData.isAudioReady) {
-          Logger.log("[四国めたんAPI] 即時取得成功", "success");
           return downloadUrl;
         }
 
@@ -1346,7 +1346,6 @@
               const sData = await sRes.json();
               if (sData.isAudioError) throw new Error("生成中VoiceVoxエラー");
               if (sData.isAudioReady) {
-                Logger.log(`[四国めたんAPI] 生成完了（待機 ${i}秒）`, "success");
                 return sData.mp3DownloadUrl || downloadUrl;
               }
             }
@@ -1437,7 +1436,7 @@
           Logger.log("[Audio] 四国めたん発声中", "success");
 
         } catch (err) {
-          Logger.log(`[四国めたんフォールバック: ${err.message}] 端末音声で発話します`, "warn");
+          Logger.log(`[四国めたんフォールバック] 端末標準音声で発話します`, "warn");
           this._speakFallback(clean, onStart, onEnd);
         }
       }
@@ -1448,86 +1447,116 @@
         if (window.speechSynthesis) window.speechSynthesis.cancel();
       }
 
-      /* ★ テンポ最優先・即時応答音声認識 */
+      /* ★ 鉄壁のワンショット即応マイクエンジン */
       _setupRecognition() {
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRec) {
-          Logger.log("[マイク] SpeechRecognition非対応", "error");
+          Logger.log("[マイク] SpeechRecognition非対応ブラウザです", "error");
           return;
         }
 
         this.recognition = new SpeechRec();
         this.recognition.lang = 'ja-JP';
-        this.recognition.continuous = true;
+        this.recognition.continuous = false; // ★ フリーズを物理的に防ぐワンショット
         this.recognition.interimResults = true;
 
         this.recognition.onstart = () => {
           this.isListening = true;
+          this.lastRecognizedText = '';
           if (this.onListeningStatus) this.onListeningStatus(true);
+          Logger.log("[マイク] 集音開始（待機中）", "info");
         };
 
         this.recognition.onresult = (event) => {
-          if (this.isSpeaking) return; // 自分の声は遮断
+          if (this.isSpeaking) return;
 
-          let finalTranscript = '';
-          let interimTranscript = '';
+          let interim = '';
+          let final = '';
 
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
+          for (let i = 0; i < event.results.length; ++i) {
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
-              finalTranscript += transcript;
+              final += transcript;
             } else {
-              interimTranscript += transcript;
+              interim += transcript;
             }
           }
 
-          // 1. 喋っている最中はリアルタイムにチャットへ反映
-          const currentText = (finalTranscript || interimTranscript).trim();
-          if (currentText && this.onInterimUpdate) {
-            this.onInterimUpdate(currentText);
+          const currentLive = (final || interim).trim();
+          if (currentLive) {
+            this.lastRecognizedText = currentLive;
+            if (this.onInterimUpdate) this.onInterimUpdate(currentLive);
           }
 
-          // 2. ★ 決定打：ブラウザが「喋り終わった（isFinal）」と判定したら待ち時間ゼロで即座に確定！
-          if (finalTranscript.trim()) {
-            Logger.log(`[マイク即時確定] 「${finalTranscript.trim()}」`, "success");
-            if (this.onSpeechFinal) {
-              this.onSpeechFinal(finalTranscript.trim());
-            }
+          // ★ isFinalフラグが出たら待ち時間ゼロで即座に確定！
+          if (final.trim()) {
+            this._commitFinalSpeech(final.trim());
+          } else if (currentLive) {
+            // isFinalが出にくい環境のためのスマートセーフティ（0.5秒沈黙で確定）
+            if (this.silenceTimeout) clearTimeout(this.silenceTimeout);
+            this.silenceTimeout = setTimeout(() => {
+              if (this.lastRecognizedText) {
+                this._commitFinalSpeech(this.lastRecognizedText);
+              }
+            }, 550);
           }
         };
 
-        this.recognition.onerror = () => {
+        this.recognition.onerror = (e) => {
           this.isListening = false;
           if (this.onListeningStatus) this.onListeningStatus(false);
-          this._scheduleAutoRestart();
+          if (e.error !== 'no-speech' && e.error !== 'aborted') {
+            Logger.log(`[マイクエラー] ${e.error}`, "warn");
+          }
+          this._scheduleRestart();
         };
 
         this.recognition.onend = () => {
           this.isListening = false;
           if (this.onListeningStatus) this.onListeningStatus(false);
-          this._scheduleAutoRestart();
+          // 喋り終わりで recognition が終了した際に未処理テキストがあれば確定
+          if (this.lastRecognizedText) {
+            this._commitFinalSpeech(this.lastRecognizedText);
+          } else {
+            this._scheduleRestart();
+          }
         };
       }
 
-      _scheduleAutoRestart() {
-        if (this.autoRestartTimer) clearTimeout(this.autoRestartTimer);
-        this.autoRestartTimer = setTimeout(() => {
+      _commitFinalSpeech(text) {
+        if (!text) return;
+        if (this.silenceTimeout) clearTimeout(this.silenceTimeout);
+        this.lastRecognizedText = '';
+        try { this.recognition.abort(); } catch(e) {}
+        this.isListening = false;
+        if (this.onListeningStatus) this.onListeningStatus(false);
+        Logger.log(`[マイク確定] 「${text}」`, "success");
+        if (this.onSpeechFinal) this.onSpeechFinal(text);
+      }
+
+      _scheduleRestart() {
+        if (this.restartTime) clearTimeout(this.restartTime);
+        if (!this.isUserInteracted) return;
+        this.restartTime = setTimeout(() => {
           if (!this.isSpeaking && AppCore.state.isRunning && !AppCore.state.isThinking) {
             this.startListening();
           }
-        }, 200);
+        }, 150);
       }
 
       startListening() {
-        if (!this.recognition || this.isSpeaking || this.isListening) return;
+        if (!this.recognition || this.isSpeaking || this.isListening || !this.isUserInteracted) return;
         try {
+          this.lastRecognizedText = '';
           this.recognition.start();
         } catch(e) {}
       }
 
       stopListening() {
         this.isListening = false;
-        if (this.autoRestartTimer) clearTimeout(this.autoRestartTimer);
+        if (this.silenceTimeout) clearTimeout(this.silenceTimeout);
+        if (this.restartTime) clearTimeout(this.restartTime);
+        this.lastRecognizedText = '';
         if (this.recognition) {
           try { this.recognition.abort(); } catch(e) {}
         }
@@ -1613,7 +1642,6 @@
             if (onComplete) onComplete(true, this.addressName);
           },
           (err) => {
-            Logger.log(`[GPSエラー] ${err.message}`, "warn");
             this.addressName = "位置情報未許可（東京付近）";
             this.isUpdating = false;
             if (onComplete) onComplete(false, this.addressName);
@@ -1995,7 +2023,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           document.getElementById('clock-display').textContent = TimeProvider.getCurrentInfo().clock;
         }, 1000);
 
-        Logger.log("[AppCore] 自然対話型システム起動完了ニャ！", "success");
+        Logger.log("[AppCore] 初期化完了。タップして会話開始ニャ！", "success");
       },
 
       _restoreTimelineHistory() {
@@ -2013,7 +2041,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
       },
 
       _setupAudioCallbacks() {
-        // 1. 喋っている最中：チャット欄にリアルタイムで文字を表示
+        // 1. 発話途中：チャット欄に即時表示
         this.audio.onInterimUpdate = (text) => {
           if (!this.state.isRunning || this.state.isThinking) return;
 
@@ -2024,7 +2052,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
 
           if (!this.activeUserRow) {
             this.activeUserRow = document.createElement('div');
-            this.activeUserRow.className = 'chat-row user interim';
+            this.activeUserRow.className = 'chat-row user';
             this.activeUserRow.innerHTML = `<div class="chat-bubble"><span class="user-text"></span></div>`;
             box.appendChild(this.activeUserRow);
           }
@@ -2034,13 +2062,12 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           box.scrollTop = box.scrollHeight;
         };
 
-        // 2. ★ 喋り終わり判定：即座に確定してクロちゃんが打ち返す！
+        // 2. 発話確定：クロちゃんが即座に打ち返す！
         this.audio.onSpeechFinal = (finalText) => {
           document.body.classList.remove('is-hearing');
           document.getElementById('status-text').textContent = "👂 聴いてるニャ♪";
 
           if (this.activeUserRow) {
-            this.activeUserRow.classList.remove('interim');
             const txtSpan = this.activeUserRow.querySelector('.user-text');
             if (txtSpan) txtSpan.textContent = finalText;
             this.activeUserRow = null;
@@ -2273,7 +2300,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           () => {
             this.avatar.setEmotion('idle');
             document.getElementById('status-text').textContent = "👂 聴いてるニャ♪";
-            if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 400);
+            if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 100);
           }
         );
         StorageManager.appendDailyLog('model', replyText);
@@ -2354,7 +2381,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
             () => {
               this.avatar.setEmotion('idle');
               document.getElementById('status-text').textContent = "👂 聴いてるニャ♪";
-              if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 400);
+              if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 100);
             }
           );
         } else {
@@ -2558,12 +2585,12 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           this.audio.speak("設定バッチリ保存したニャ！", CHARACTER_CONFIG.voiceSpeakerId, () => {
             this.renderBubble('model', "設定バッチリ保存したニャ！いつでも話しかけてニャン🐾");
           });
-          setTimeout(() => this.audio.startListening(), 400);
+          setTimeout(() => this.audio.startListening(), 200);
         };
 
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'visible' && this.state.isRunning && !this.audio.isSpeaking) {
-            setTimeout(() => this.audio.startListening(), 400);
+            setTimeout(() => this.audio.startListening(), 200);
           }
         });
       },
