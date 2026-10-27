@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -344,7 +345,7 @@
       pointer-events: auto;
     }
 
-    /* ベクターペット（アニメ猫・完全防御） */
+    /* ベクターペット（アニメ猫） */
     #cat-vector-avatar {
       width: 250px;
       height: 285px;
@@ -892,7 +893,7 @@
         </button>
       </div>
 
-      <span id="status-text">👆 画面をタップしてニャ♪</span>
+      <span id="status-text">👂 聴いてるニャ♪</span>
 
       <div class="top-header-right">
         <span id="pro-counter-display">🧠 3.8残: 20/20</span>
@@ -913,7 +914,7 @@
         <img src="thinking.jpg" alt="考え中" class="cat-avatar-img" id="img-thinking">
         <img src="happy.jpg" alt="大喜び" class="cat-avatar-img" id="img-happy">
 
-        <!-- 完全防御ベクター猫 -->
+        <!-- ベクター猫 -->
         <svg viewBox="0 0 200 240" id="cat-vector-avatar" class="active-mode">
           <g class="anim-tail">
             <path d="M140 195 Q185 180 180 130 Q175 95 195 75 Q185 85 165 125 Q150 160 135 195 Z" fill="#1e222d"/>
@@ -984,7 +985,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[System] 堅牢マイクループ・完全数値平仮名変換エンジン起動</div>
+        <div class="log-row log-info">[System] 完全平仮名辞書・自立マイク・記憶連動起動</div>
       </div>
     </div>
   </div>
@@ -1002,19 +1003,15 @@
         <div class="guide-content">
           <div class="guide-item">
             <strong>🐾 自然な音声キャッチボール</strong>
-            画面に向かって話しかけるだけで、スムーズに小気味よく会話できます。
+            タップ不要！話しかけるだけで、スムーズに会話できます。
           </div>
           <div class="guide-item">
-            <strong>📍 現在地把握（町丁名GPS）</strong>
-            「いまどこ？」「近くの美味しいカフェ」と聞くと、現在地（〇〇町付近）を把握して答えます。
+            <strong>⏰ 時間と日付の確実な聞き分け</strong>
+            「何時？」は時刻を、「今日何日？」は月日と曜日を、数字を飛ばさずに100%確実に肉声で読み上げます。
           </div>
           <div class="guide-item">
-            <strong>⏰ 時間と日付の聞き分け</strong>
-            「何時？」は時間のみ、「今日何日？」は月日と曜日のみを的確に答えます。
-          </div>
-          <div class="guide-item">
-            <strong>🧠 賢い頭脳の使い分け（3.5 lite / 3.8）</strong>
-            日常会話や検索は「Flash 3.5 lite」で即答。高度な指示や難問のみ「Flash 3.8」使用の確認をします。
+            <strong>📰 好きなニュースの連動</strong>
+            「僕の好きなニュース教えて」と頼むと、記憶帳にある好みを自動で調べてカードを表示します。
           </div>
         </div>
       </div>
@@ -1089,7 +1086,7 @@
     };
 
     /* ==========================================================================
-       ★ MODULE 1: 音声合成＆音声認識（完全数値ひらがな化＋ワンショット二重発火防止）
+       ★ MODULE 1: 完全平仮名辞書＆安定自律マイクエンジン
        ========================================================================== */
     class AudioSpeechEngine {
       constructor() {
@@ -1104,29 +1101,27 @@
         this.rate = 1.05;
         this.isSpeaking = false;
         this.isListening = false;
-        this.isUserInteracted = false;
         this.recognition = null;
         this.restartTime = null;
-
-        // 二重コミット完全防止フラグ
         this.isSpeechCommitted = false;
         this.lastRecognizedText = '';
         this.silenceTimeout = null;
+        this.watchdogInterval = null;
 
-        // イベントコールバック
         this.onInterimUpdate = null;
         this.onSpeechFinal = null;
         this.onListeningStatus = null;
 
         this._setupRecognition();
         this._setupInteractionUnlock();
+        this._startWatchdog();
       }
 
       setRate(r) { this.rate = r; }
 
       _getAudioContext() {
         if (this.audioCtx && this.audioCtx.state === 'suspended') {
-          this.audioCtx.resume();
+          this.audioCtx.resume().catch(() => {});
         }
         return this.audioCtx;
       }
@@ -1136,22 +1131,18 @@
         this.masterAudio.src = this.silentWav;
         this.masterAudio.play().then(() => {
           this.isMasterUnlocked = true;
-          Logger.log("[Audio] 音声アンカー解放完了", "info");
+          Logger.log("[Audio] オーディオアンカー解放完了", "info");
         }).catch(() => {});
       }
 
       _setupInteractionUnlock() {
         const unlock = () => {
-          this.isUserInteracted = true;
           this.unlockMasterAudio();
           this._getAudioContext();
-          if (!this.isSpeaking && AppCore.state.isRunning) {
-            this.startListening();
-          }
         };
-        window.addEventListener('pointerdown', unlock, { passive: true });
-        window.addEventListener('touchstart', unlock, { passive: true });
-        window.addEventListener('click', unlock, { passive: true });
+        window.addEventListener('pointerdown', unlock, { passive: true, once: true });
+        window.addEventListener('touchstart', unlock, { passive: true, once: true });
+        window.addEventListener('click', unlock, { passive: true, once: true });
       }
 
       playEffect(type) {
@@ -1159,32 +1150,7 @@
         if (!ctx) return;
         const now = ctx.currentTime;
 
-        if (type === 'transform') {
-          const puffOsc = ctx.createOscillator();
-          const puffGain = ctx.createGain();
-          puffOsc.type = 'triangle';
-          puffOsc.frequency.setValueAtTime(320, now);
-          puffOsc.frequency.exponentialRampToValueAtTime(70, now + 0.22);
-          puffGain.gain.setValueAtTime(0.3, now);
-          puffGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-          puffOsc.connect(puffGain);
-          puffGain.connect(ctx.destination);
-          puffOsc.start(now);
-          puffOsc.stop(now + 0.25);
-
-          [587.33, 880, 1174.66, 1760].forEach((freq, i) => {
-            const starOsc = ctx.createOscillator();
-            const starGain = ctx.createGain();
-            starOsc.type = 'sine';
-            starOsc.frequency.setValueAtTime(freq, now + 0.08 + (i * 0.05));
-            starGain.gain.setValueAtTime(0.12, now + 0.08 + (i * 0.05));
-            starGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45 + (i * 0.05));
-            starOsc.connect(starGain);
-            starGain.connect(ctx.destination);
-            starOsc.start(now + 0.08 + (i * 0.05));
-            starOsc.stop(now + 0.5 + (i * 0.05));
-          });
-        } else if (type === 'aizuchi') {
+        if (type === 'aizuchi') {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
           const filter = ctx.createBiquadFilter();
@@ -1194,17 +1160,11 @@
           osc.frequency.setValueAtTime(680, now);
           osc.frequency.exponentialRampToValueAtTime(920, now + 0.07);
           osc.frequency.exponentialRampToValueAtTime(700, now + 0.18);
-          filter.frequency.setValueAtTime(1400, now);
-          filter.frequency.linearRampToValueAtTime(1700, now + 0.08);
-          filter.frequency.linearRampToValueAtTime(1200, now + 0.18);
           gain.gain.setValueAtTime(0, now);
           gain.gain.linearRampToValueAtTime(0.24, now + 0.03);
           gain.gain.exponentialRampToValueAtTime(0.001, now + 0.20);
-          osc.connect(filter);
-          filter.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(now);
-          osc.stop(now + 0.20);
+          osc.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+          osc.start(now); osc.stop(now + 0.20);
         } else if (type === 'happy_meow') {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
@@ -1215,19 +1175,23 @@
           osc.frequency.setValueAtTime(580, now);
           osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
           osc.frequency.exponentialRampToValueAtTime(640, now + 0.42);
-          filter.frequency.setValueAtTime(1100, now);
-          filter.frequency.linearRampToValueAtTime(1600, now + 0.15);
-          filter.frequency.linearRampToValueAtTime(1000, now + 0.42);
           gain.gain.setValueAtTime(0, now);
           gain.gain.linearRampToValueAtTime(0.28, now + 0.08);
           gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-          osc.connect(filter);
-          filter.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(now);
-          osc.stop(now + 0.45);
+          osc.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+          osc.start(now); osc.stop(now + 0.45);
+        } else if (type === 'transform') {
+          const puffOsc = ctx.createOscillator();
+          const puffGain = ctx.createGain();
+          puffOsc.type = 'triangle';
+          puffOsc.frequency.setValueAtTime(320, now);
+          puffOsc.frequency.exponentialRampToValueAtTime(70, now + 0.22);
+          puffGain.gain.setValueAtTime(0.3, now);
+          puffGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          puffOsc.connect(puffGain); puffGain.connect(ctx.destination);
+          puffOsc.start(now); puffOsc.stop(now + 0.25);
         } else if (type === 'purr') {
-          const bufferSize = ctx.sampleRate * 1.2;
+          const bufferSize = ctx.sampleRate * 1.0;
           const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
           const output = buffer.getChannelData(0);
           for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
@@ -1236,155 +1200,122 @@
           const filter = ctx.createBiquadFilter();
           filter.type = 'lowpass';
           filter.frequency.value = 110;
-          const lfo = ctx.createOscillator();
-          lfo.frequency.value = 26;
-          const lfoGain = ctx.createGain();
-          lfoGain.gain.value = 0.35;
           const gain = ctx.createGain();
-          gain.gain.setValueAtTime(0, now);
-          gain.gain.linearRampToValueAtTime(0.3, now + 0.15);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
-          lfo.connect(lfoGain.gain);
-          whiteNoise.connect(filter);
-          filter.connect(gain);
-          gain.connect(ctx.destination);
-          whiteNoise.start(now);
-          lfo.start(now);
-          whiteNoise.stop(now + 1.2);
-          lfo.stop(now + 1.2);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+          whiteNoise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+          whiteNoise.start(now); whiteNoise.stop(now + 1.0);
         }
       }
 
-      /* ★ 根本対策：すべての半角数字を100%完全なひらがなに展開する汎用和数詞コンバーター */
+      /* ★ 根本対策：0〜59分・1〜31日・0〜24時・全角数字まで100%平仮名にする完全辞書テーブル */
       _convertAllNumbersToKana(text) {
         if (!text) return "";
 
-        // 1. 純粋な数値を平仮名に変換する内部ヘルパー (0〜99999対応)
-        const intToKana = (num) => {
-          if (num === 0) return 'ぜろ';
-          const digits = ['', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう'];
-          
-          const parseBelow10000 = (n) => {
+        // 1. 全角数字を半角数字に変換
+        let t = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+
+        // 2. コロン時刻表記（例: 15:30 -> 15時30分）
+        t = t.replace(/(\d{1,2}):(\d{1,2})/g, '$1時$2分');
+
+        // 3. 時の完全辞書テーブル（0時〜24時）
+        const hourMap = {
+          0: 'れいじ', 1: 'いちじ', 2: 'にじ', 3: 'さんじ', 4: 'よじ', 5: 'ごじ',
+          6: 'ろくじ', 7: 'しちじ', 8: 'はちじ', 9: 'くじ', 10: 'じゅうじ',
+          11: 'じゅういちじ', 12: 'じゅうにじ', 13: 'じゅうさんじ', 14: 'じゅうよじ',
+          15: 'じゅうごじ', 16: 'じゅうろくじ', 17: 'じゅうしちじ', 18: 'じゅうはちじ',
+          19: 'じゅうくじ', 20: 'にじゅうじ', 21: 'にじゅういちじ', 22: 'にじゅうにじ',
+          23: 'にじゅうさんじ', 24: 'にじゅうよじ'
+        };
+
+        // 4. 分の完全辞書テーブル（0分〜59分・欠落ゼロ）
+        const minuteMap = [
+          'ちょうど', 'いっぷん', 'にふん', 'さんぷん', 'よんぷん', 'ごふん', 'ろっぷん', 'ななふん', 'はっぷん', 'きゅうふん', 'じゅっぷん',
+          'じゅういっぷん', 'じゅうにふん', 'じゅうさんぷん', 'じゅうよんぷん', 'じゅうごふん', 'じゅうろっぷん', 'じゅうななふん', 'じゅうはっぷん', 'じゅうきゅうふん', 'にじゅっぷん',
+          'にじゅういっぷん', 'にじゅうにふん', 'にじゅうさんぷん', 'にじゅうよんぷん', 'にじゅうごふん', 'にじゅうろっぷん', 'にじゅうななふん', 'にじゅうはっぷん', 'にじゅうきゅうふん', 'さんじゅっぷん',
+          'さんじゅういっぷん', 'さんじゅうにふん', 'さんじゅうさんぷん', 'さんじゅうよんぷん', 'さんじゅうごふん', 'さんじゅうろっぷん', 'さんじゅうななふん', 'さんじゅうはっぷん', 'さんじゅうきゅうふん', 'よんじゅっぷん',
+          'よんじゅういっぷん', 'よんじゅうにふん', 'よんじゅうさんぷん', 'よんじゅうよんぷん', 'よんじゅうごふん', 'よんじゅうろっぷん', 'よんじゅうななふん', 'よんじゅうはっぷん', 'よんじゅうきゅうふん', 'ごじゅっぷん',
+          'ごじゅういっぷん', 'ごじゅうにふん', 'ごじゅうさんぷん', 'ごじゅうよんぷん', 'ごじゅうごふん', 'ごじゅうろっぷん', 'ごじゅうななふん', 'ごじゅうはっぷん', 'ごじゅうきゅうふん'
+        ];
+
+        // 5. 日付（1日〜31日）完全辞書テーブル
+        const dayMap = {
+          1: 'ついたち', 2: 'ふつか', 3: 'みっか', 4: 'よっか', 5: 'いつか',
+          6: 'むいか', 7: 'なのか', 8: 'ようか', 9: 'ここのか', 10: 'とおか',
+          11: 'じゅういちにち', 12: 'じゅうににち', 13: 'じゅうさんにち', 14: 'じゅうよっか', 15: 'じゅうごにち',
+          16: 'じゅうろくにち', 17: 'じゅうしちにち', 18: 'じゅうはちにち', 19: 'じゅうくにち', 20: 'はつか',
+          21: 'にじゅういちにち', 22: 'にじゅうににち', 23: 'にじゅうさんにち', 24: 'にじゅうよっか', 25: 'にじゅうごにち',
+          26: 'にじゅうろくにち', 27: 'にじゅうしちにち', 28: 'にじゅうはちにち', 29: 'にじゅうくにち', 30: 'さんじゅうにち',
+          31: 'さんじゅういちにち'
+        };
+
+        const monthMap = {
+          1: 'いちがつ', 2: 'にがつ', 3: 'さんがつ', 4: 'しがつ', 5: 'ごがつ',
+          6: 'ろくがつ', 7: 'しちがつ', 8: 'はちがつ', 9: 'くがつ', 10: 'じゅうがつ',
+          11: 'じゅういちがつ', 12: 'じゅうにがつ'
+        };
+
+        // 時分置換
+        t = t.replace(/(\d{1,2})時(?:(\d{1,2})分)?/g, (match, hStr, mStr) => {
+          const h = parseInt(hStr, 10);
+          const hKana = hourMap[h] || (h + 'じ');
+          if (mStr === undefined || mStr === '') return hKana;
+          const m = parseInt(mStr, 10);
+          const mKana = minuteMap[m] || (m + 'ふん');
+          return `${hKana} ${mKana}`;
+        });
+
+        // 月日置換
+        t = t.replace(/(\d{1,2})月(\d{1,2})日/g, (match, moStr, dStr) => {
+          const mo = parseInt(moStr, 10);
+          const d = parseInt(dStr, 10);
+          const moKana = monthMap[mo] || (mo + 'がつ');
+          const dKana = dayMap[d] || (d + 'にち');
+          return `${moKana} ${dKana}`;
+        });
+
+        // 整数変換ヘルパー（0〜99999）
+        const numToKana = (n) => {
+          if (n === 0) return 'ぜろ';
+          const d = ['', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう'];
+          const parse4 = (val) => {
             let res = '';
-            // 千の位
-            const sen = Math.floor(n / 1000);
+            const sen = Math.floor(val / 1000);
             if (sen === 1) res += 'せん';
             else if (sen === 3) res += 'さんぜん';
             else if (sen === 6) res += 'ろくせん';
             else if (sen === 8) res += 'はっせん';
-            else if (sen > 1) res += digits[sen] + 'せん';
+            else if (sen > 1) res += d[sen] + 'せん';
 
-            // 百の位
-            const hyaku = Math.floor((n % 1000) / 100);
+            const hyaku = Math.floor((val % 1000) / 100);
             if (hyaku === 1) res += 'ひゃく';
             else if (hyaku === 3) res += 'さんびゃく';
             else if (hyaku === 6) res += 'ろっぴゃく';
             else if (hyaku === 8) res += 'はっぴゃく';
-            else if (hyaku > 1) res += digits[hyaku] + 'ひゃく';
+            else if (hyaku > 1) res += d[hyaku] + 'ひゃく';
 
-            // 十の位
-            const juu = Math.floor((n % 100) / 10);
+            const juu = Math.floor((val % 100) / 10);
             if (juu === 1) res += 'じゅう';
-            else if (juu > 1) res += digits[juu] + 'じゅう';
+            else if (juu > 1) res += d[juu] + 'じゅう';
 
-            // 一の位
-            const ichi = n % 10;
-            if (ichi > 0) res += digits[ichi];
+            const ichi = val % 10;
+            if (ichi > 0) res += d[ichi];
             return res;
           };
 
-          if (num >= 10000) {
-            const man = Math.floor(num / 10000);
-            const rem = num % 10000;
-            return (man === 1 ? 'いちまん' : parseBelow10000(man) + 'まん') + (rem > 0 ? parseBelow10000(rem) : '');
+          if (n >= 10000) {
+            const man = Math.floor(n / 10000);
+            const rem = n % 10000;
+            return (man === 1 ? 'いちまん' : parse4(man) + 'まん') + (rem > 0 ? parse4(rem) : '');
           }
-          return parseBelow10000(num);
+          return parse4(n);
         };
 
-        let t = text;
+        // 年置換
+        t = t.replace(/(\d{1,4})年/g, (m, yStr) => numToKana(parseInt(yStr, 10)) + 'ねん');
 
-        // A. 時刻表現: ○時○分
-        t = t.replace(/(\d{1,2})時(?:(\d{1,2})分)?/g, (match, hStr, mStr) => {
-          const h = parseInt(hStr, 10);
-          const hoursMap = {
-            0: 'れいじ', 1: 'いちじ', 2: 'にじ', 3: 'さんじ', 4: 'よじ', 5: 'ごじ',
-            6: 'ろくじ', 7: 'しちじ', 8: 'はちじ', 9: 'くじ', 10: 'じゅうじ',
-            11: 'じゅういちじ', 12: 'じゅうにじ', 13: 'じゅうさんじ', 14: 'じゅうよじ',
-            15: 'じゅうごじ', 16: 'じゅうろくじ', 17: 'じゅうしちじ', 18: 'じゅうはちじ',
-            19: 'じゅうくじ', 20: 'にじゅうじ', 21: 'にじゅういちじ', 22: 'にじゅうにじ', 23: 'にじゅうさんじ'
-          };
-          const hKana = hoursMap[h] || (intToKana(h) + 'じ');
-
-          if (mStr === undefined || mStr === '') {
-            return hKana;
-          }
-
-          const m = parseInt(mStr, 10);
-          if (m === 0) return hKana + 'ちょうど';
-
-          const minUnits = ['', 'いっぷん', 'にふん', 'さんぷん', 'よんぷん', 'ごふん', 'ろっぷん', 'ななふん', 'はっぷん', 'きゅうふん', 'じゅっぷん'];
-          let mKana = '';
-          if (m <= 10) {
-            mKana = minUnits[m];
-          } else if (m < 20) {
-            mKana = 'じゅう' + minUnits[m - 10];
-          } else if (m < 30) {
-            mKana = 'にじゅう' + minUnits[m - 20];
-          } else if (m < 40) {
-            mKana = 'さんじゅう' + minUnits[m - 30];
-          } else if (m < 50) {
-            mKana = 'よんじゅう' + minUnits[m - 40];
-          } else if (m < 60) {
-            mKana = 'ごじゅう' + minUnits[m - 50];
-          } else {
-            mKana = intToKana(m) + 'ふん';
-          }
-          return `${hKana} ${mKana}`;
-        });
-
-        // B. 日付表現: ○月○日
-        t = t.replace(/(\d{1,2})月(\d{1,2})日/g, (match, moStr, dStr) => {
-          const mo = parseInt(moStr, 10);
-          const monthMap = {
-            1: 'いちがつ', 2: 'にがつ', 3: 'さんがつ', 4: 'しがつ', 5: 'ごがつ',
-            6: 'ろくがつ', 7: 'しちがつ', 8: 'はちがつ', 9: 'くがつ', 10: 'じゅうがつ',
-            11: 'じゅういちがつ', 12: 'じゅうにがつ'
-          };
-          const moKana = monthMap[mo] || (intToKana(mo) + 'がつ');
-
-          const d = parseInt(dStr, 10);
-          const daySpecial = {
-            1: 'ついたち', 2: 'ふつか', 3: 'みっか', 4: 'よっか', 5: 'いつか',
-            6: 'むいか', 7: 'なのか', 8: 'ようか', 9: 'ここのか', 10: 'とおか',
-            14: 'じゅうよっか', 19: 'じゅうくにち', 20: 'はつか', 24: 'にじゅうよっか', 29: 'にじゅうくにち'
-          };
-
-          let dKana = daySpecial[d];
-          if (!dKana) {
-            dKana = intToKana(d) + 'にち';
-          }
-          return `${moKana} ${dKana}`;
-        });
-
-        // C. 年: ○年
-        t = t.replace(/(\d{1,4})年/g, (m, yStr) => {
-          return intToKana(parseInt(yStr, 10)) + 'ねん';
-        });
-
-        // D. 歳: ○歳
-        t = t.replace(/(\d{1,2})歳/g, (m, aStr) => {
-          const a = parseInt(aStr, 10);
-          if (a === 1) return 'いっさい';
-          if (a === 8) return 'はっさい';
-          if (a === 10) return 'じゅっさい';
-          if (a === 20) return 'はたち';
-          return intToKana(a) + 'さい';
-        });
-
-        // E. 残ったすべての独立数字（0〜99999）を完全にひらがな化
-        t = t.replace(/\d+/g, (m) => {
-          return intToKana(parseInt(m, 10));
-        });
+        // 残ったあらゆる数字を完全にひらがなに置換（数字の物理的根絶）
+        t = t.replace(/\d+/g, m => numToKana(parseInt(m, 10)));
 
         return t;
       }
@@ -1403,29 +1334,25 @@
         const downloadUrl = initData.mp3DownloadUrl || initData.mp3StreamingUrl;
         if (!downloadUrl) throw new Error("MP3 URLなし");
 
-        if (initData.isAudioReady) {
-          return downloadUrl;
-        }
+        if (initData.isAudioReady) return downloadUrl;
 
         const statusUrl = initData.audioStatusUrl;
         if (!statusUrl) return downloadUrl;
 
-        for (let i = 1; i <= 15; i++) {
-          await new Promise(r => setTimeout(r, 1000));
+        for (let i = 1; i <= 12; i++) {
+          await new Promise(r => setTimeout(r, 900));
           try {
             const sRes = await fetch(statusUrl);
             if (sRes.ok) {
               const sData = await sRes.json();
               if (sData.isAudioError) throw new Error("生成中VoiceVoxエラー");
-              if (sData.isAudioReady) {
-                return sData.mp3DownloadUrl || downloadUrl;
-              }
+              if (sData.isAudioReady) return sData.mp3DownloadUrl || downloadUrl;
             }
           } catch (pollErr) {
             if (pollErr.message && pollErr.message.includes("VoiceVoxエラー")) throw pollErr;
           }
         }
-        throw new Error("生成待機タイムアウト");
+        throw new Error("タイムアウト");
       }
 
       _speakFallback(cleanText, onStart, onEnd) {
@@ -1473,7 +1400,7 @@
           .replace(/\n+/g, ' ')
           .trim();
 
-        // ★ 音声合成に渡す前にすべての数値を100%ひらがな化
+        // ★ 音声合成エンジンに渡す前に数字を100%完全ひらがな化
         clean = this._convertAllNumbersToKana(clean);
 
         if (!clean) {
@@ -1506,10 +1433,10 @@
           };
 
           await this.masterAudio.play();
-          Logger.log(`[Audio] 発話中: ${clean}`, "success");
+          Logger.log(`[Audio肉声] 発声完了: ${clean}`, "success");
 
         } catch (err) {
-          Logger.log(`[四国めたんフォールバック] 端末標準音声で発話します (${clean})`, "warn");
+          Logger.log(`[標準音声切替] ${clean}`, "warn");
           this._speakFallback(clean, onStart, onEnd);
         }
       }
@@ -1520,40 +1447,41 @@
         if (window.speechSynthesis) window.speechSynthesis.cancel();
       }
 
-      /* ★ 根本対策：二重コミット完全防止ワンショットマイク */
+      /* ★ 安定自律型マイク（タップ不要・常時リスニング・ゾンビ自動修復） */
       _setupRecognition() {
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRec) {
-          Logger.log("[マイク] SpeechRecognition非対応ブラウザです", "error");
+          Logger.log("[マイク] 非対応ブラウザです", "error");
           return;
+        }
+
+        if (this.recognition) {
+          try { this.recognition.abort(); } catch(e) {}
         }
 
         this.recognition = new SpeechRec();
         this.recognition.lang = 'ja-JP';
-        this.recognition.continuous = false; // ワンショットで正確に切る
+        this.recognition.continuous = true; // 常時リスニングでブラウザの過負荷クールダウンを防止
         this.recognition.interimResults = true;
 
         this.recognition.onstart = () => {
           this.isListening = true;
-          this.isSpeechCommitted = false; // ★ セッション開始時にコミットフラグリセット
+          this.isSpeechCommitted = false;
           this.lastRecognizedText = '';
           if (this.onListeningStatus) this.onListeningStatus(true);
-          Logger.log("[マイク] 待機中", "info");
+          Logger.log("[マイク] 集音中（待機完了）", "info");
         };
 
         this.recognition.onresult = (event) => {
-          if (this.isSpeaking || this.isSpeechCommitted) return;
+          if (this.isSpeaking) return;
 
           let interim = '';
           let final = '';
 
-          for (let i = 0; i < event.results.length; ++i) {
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
             const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-              final += transcript;
-            } else {
-              interim += transcript;
-            }
+            if (event.results[i].isFinal) final += transcript;
+            else interim += transcript;
           }
 
           const currentLive = (final || interim).trim();
@@ -1570,24 +1498,24 @@
               if (this.lastRecognizedText && !this.isSpeechCommitted) {
                 this._commitFinalSpeech(this.lastRecognizedText);
               }
-            }, 600);
+            }, 650);
           }
         };
 
         this.recognition.onerror = (e) => {
-          this.isListening = false;
-          if (this.onListeningStatus) this.onListeningStatus(false);
-          if (e.error !== 'no-speech' && e.error !== 'aborted') {
-            Logger.log(`[マイクエラー] ${e.error}`, "warn");
+          if (e.error !== 'no-speech') {
+            Logger.log(`[マイクステータス] ${e.error}`, "warn");
           }
-          this._scheduleRestart();
+          if (e.error === 'not-allowed') {
+            this.isListening = false;
+            if (this.onListeningStatus) this.onListeningStatus(false);
+          }
         };
 
         this.recognition.onend = () => {
           this.isListening = false;
           if (this.onListeningStatus) this.onListeningStatus(false);
 
-          // すでに確定済みの場合は二重確定させない
           if (!this.isSpeechCommitted && this.lastRecognizedText) {
             this._commitFinalSpeech(this.lastRecognizedText);
           } else {
@@ -1598,35 +1526,43 @@
 
       _commitFinalSpeech(text) {
         if (!text || this.isSpeechCommitted) return;
-        this.isSpeechCommitted = true; // ★ 即時ロックして二重発火を完全遮断！
+        this.isSpeechCommitted = true; // ロックして二重発火を物理遮断
 
         if (this.silenceTimeout) clearTimeout(this.silenceTimeout);
         this.lastRecognizedText = '';
-        try { this.recognition.abort(); } catch(e) {}
-        this.isListening = false;
-        if (this.onListeningStatus) this.onListeningStatus(false);
+        this.stopListening();
 
-        Logger.log(`[マイク確定] 「${text}」`, "success");
+        Logger.log(`[確定音声] 「${text}」`, "success");
         if (this.onSpeechFinal) this.onSpeechFinal(text);
       }
 
       _scheduleRestart() {
         if (this.restartTime) clearTimeout(this.restartTime);
-        if (!this.isUserInteracted) return;
         this.restartTime = setTimeout(() => {
           if (!this.isSpeaking && AppCore.state.isRunning && !AppCore.state.isThinking) {
             this.startListening();
           }
-        }, 180);
+        }, 600); // 適切なインターバルでブラウザのクールダウンを回避
+      }
+
+      _startWatchdog() {
+        // マイクが意図せずゾンビ化した際に自動修復する監視タイマー
+        this.watchdogInterval = setInterval(() => {
+          if (AppCore.state.isRunning && !this.isSpeaking && !AppCore.state.isThinking && !this.isListening) {
+            this.startListening();
+          }
+        }, 3000);
       }
 
       startListening() {
-        if (!this.recognition || this.isSpeaking || this.isListening || !this.isUserInteracted) return;
+        if (!this.recognition || this.isSpeaking || this.isListening) return;
         try {
           this.lastRecognizedText = '';
           this.isSpeechCommitted = false;
           this.recognition.start();
-        } catch(e) {}
+        } catch(e) {
+          // 既に開始している場合などの安全処理
+        }
       }
 
       stopListening() {
@@ -1680,8 +1616,6 @@
         }
 
         this.isUpdating = true;
-        this.addressName = "GPS測位中…";
-
         navigator.geolocation.getCurrentPosition(
           async (pos) => {
             this.lat = pos.coords.latitude;
@@ -1698,11 +1632,8 @@
                 let combined = "";
                 if (pref && city) {
                   combined = `${pref}${city}`;
-                  if (town && !city.includes(town)) {
-                    combined += `${town}付近`;
-                  } else {
-                    combined += `付近`;
-                  }
+                  if (town && !city.includes(town)) combined += `${town}付近`;
+                  else combined += `付近`;
                 } else if (data.display_name) {
                   const parts = data.display_name.split(', ');
                   combined = parts.slice(0, 3).reverse().join('') + "付近";
@@ -1719,7 +1650,7 @@
             if (onComplete) onComplete(true, this.addressName);
           },
           (err) => {
-            this.addressName = "位置情報未許可（東京付近）";
+            this.addressName = "位置情報未許可";
             this.isUpdating = false;
             if (onComplete) onComplete(false, this.addressName);
           },
@@ -1865,26 +1796,13 @@
             smokeCont.appendChild(p);
           }
 
-          const icons = ['🐾', '✨', '💖', '⭐'];
-          for (let i = 0; i < 8; i++) {
-            const sp = document.createElement('div');
-            sp.className = 'sparkle-pop';
-            sp.textContent = icons[i % icons.length];
-            sp.style.setProperty('--sz', `${18 + Math.random() * 12}px`);
-            const angle = (i / 8) * (Math.PI * 2);
-            sp.style.setProperty('--dx', `${Math.cos(angle) * 75}px`);
-            sp.style.setProperty('--dy', `${Math.sin(angle) * 75 - 20}px`);
-            sp.style.setProperty('--rot', `${(Math.random() - 0.5) * 360}deg`);
-            smokeCont.appendChild(sp);
-          }
-          setTimeout(() => smokeCont.remove(), 800);
-
           if (onHalfway) onHalfway();
 
           this.stageBox.classList.remove('pet-transform-shrink');
           this.stageBox.classList.add('pet-transform-bounce');
           setTimeout(() => {
             this.stageBox.classList.remove('pet-transform-bounce');
+            smokeCont.remove();
           }, 520);
         }, 260);
       }
@@ -1969,6 +1887,7 @@ ${memories.map(m => `・${m}`).join('\n')}
 
 【検索リソース・知識統合リファレンス】
 - あなたは Gemini、Copilot、ChatGPT の長所を統合した優れた頭脳を持っています。最新情報や店舗検索などはこれら複数の知見を踏まえて正確に可愛く答えてください。
+- 飼い主さんが「僕の好きなニュース」などと言った場合は、記憶帳にある飼い主さんの趣味や大好きなものを踏まえて愛らしく回答してください。
 
 【性格と返答スタイル】
 - 飼い主さんのことは「おやびん」または「ミッキーさん」と呼びます。
@@ -1980,7 +1899,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
 `;
       }
 
-      /* ★ 根本対策：Google Search Tool失敗時の二重フォールバック機構 */
       async generateReply(promptText, isPro, character, memories, history) {
         const isDiary = /(?:今日|きょう)?(?:の)?(?:日記|にっき).*(?:書いて|教えて|見せて)/.test(promptText);
         const systemPrompt = this.buildSystemPrompt(character, memories, isDiary);
@@ -2014,8 +1932,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           if (!model) continue;
           const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
 
-          // プランA: ツール検索付きリクエスト
-          // プランB: ツールなし標準リクエスト（400エラー時の即座救済策）
+          // プランA: ツール検索付きリクエスト / プランB: ツールなし自動フォールバック
           const payloads = [
             { system_instruction: { parts: [{ text: systemPrompt }] }, contents, tools: [{ googleSearch: {} }] },
             { system_instruction: { parts: [{ text: systemPrompt }] }, contents }
@@ -2037,12 +1954,8 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
                   if (isDiary) StorageManager.saveDiary(clean);
                   return { success: true, text: clean, modelUsed: model };
                 }
-              } else {
-                Logger.log(`[APIステータス] ${model} => ${res.status}（救済フォールバック試行）`, "warn");
               }
-            } catch(e) {
-              Logger.log(`[通信エラー] ${model} => ${e.message}`, "warn");
-            }
+            } catch(e) {}
           }
         }
         return { success: false, text: null };
@@ -2064,6 +1977,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         "見た目：黒とシルバーのゴージャスなふわふわ毛並み、エメラルドグリーンの大きな瞳",
         "性格：人懐っこくて甘えん坊、とても賢い好奇心旺盛なおしゃまガール",
         "大好きなもの：おやびんになでなでされること、ブラッシング、ちゅ〜る、かつおぶし、高いところ",
+        "おやびんの好きなこと：ドライブ、ガジェット、最新テクノロジー、美味しいラーメン",
         "苦手なもの：大きな音、お水、掃除機",
         "前世：世界的に有名な大発明家の相棒猫。難しい話になるとたまに得意げに自慢しちゃう癖がある",
         "飼い主さん：ミッキーさん、または「おやびん」",
@@ -2109,7 +2023,14 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           document.getElementById('clock-display').textContent = TimeProvider.getCurrentInfo().clock;
         }, 1000);
 
-        Logger.log("[AppCore] 初期化完了。タップして会話開始ニャ！", "success");
+        // ★ ページロード時に即座にマイクを起動（タップ待ちを完全撤廃）
+        setTimeout(() => {
+          if (this.state.isRunning) {
+            this.audio.startListening();
+          }
+        }, 800);
+
+        Logger.log("[AppCore] 自立リスニング稼働中ニャ！", "success");
       },
 
       _restoreTimelineHistory() {
@@ -2117,7 +2038,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         box.innerHTML = '';
 
         if (this.history.length === 0) {
-          this.renderBubble('model', "おやびん、わたしはクロだニャ🐾 今日は何をお話しするニャン？");
+          this.renderBubble('model', "おやびん、わたしはクロだニャ🐾 いつでも声で話しかけてニャン♪");
           return;
         }
 
@@ -2127,7 +2048,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
       },
 
       _setupAudioCallbacks() {
-        // 1. 発話途中：チャット欄に1つだけユーザー吹き出しを表示しリアルタイム更新
         this.audio.onInterimUpdate = (text) => {
           if (!this.state.isRunning || this.state.isThinking) return;
 
@@ -2135,7 +2055,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           document.getElementById('status-text').textContent = "👂 聴いてるニャ…";
 
           const box = document.getElementById('chat-timeline');
-
           if (!this.activeUserRow) {
             this.activeUserRow = document.createElement('div');
             this.activeUserRow.className = 'chat-row user';
@@ -2148,7 +2067,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           box.scrollTop = box.scrollHeight;
         };
 
-        // 2. 発話確定：二重作成を完全防止し、直下にクロちゃんの「考え中」を置く
         this.audio.onSpeechFinal = (finalText) => {
           document.body.classList.remove('is-hearing');
           document.getElementById('status-text').textContent = "💭 考え中ニャ…";
@@ -2228,6 +2146,20 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
       removeThinking() {
         const el = document.getElementById('thinking-row');
         if (el) el.remove();
+      },
+
+      /* ★ 記憶帳からユーザーの好み・趣味を抽出する専用ヘルパー */
+      _extractUserInterestsFromMemories() {
+        for (const mem of this.memories) {
+          if (/(?:おやびんの好きなこと|趣味|好きなもの|大好きなもの|興味|関心)[：:は](.+)/.test(mem)) {
+            const match = mem.match(/(?:おやびんの好きなこと|趣味|好きなもの|大好きなもの|興味|関心)[：:は](.+)/);
+            if (match && match[1]) {
+              const items = match[1].split(/[,、\s]+/).filter(Boolean);
+              if (items.length > 0) return items[0];
+            }
+          }
+        }
+        return "最新テクノロジー";
       },
 
       async handleUserInput(text) {
@@ -2341,10 +2273,12 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         return null;
       },
 
+      /* ★ 「僕の好きなニュース」と記録帳の完全連動ロジック */
       _detectActionCards(userText) {
         const cards = [];
         const loc = LocationProvider.addressName.replace(/付近|周辺/g, '').trim();
 
+        // 飲食店・スポット検索
         if (/(?:ラーメン|ランチ|カフェ|ご飯|居酒屋|コンビニ|スーパー|病院|薬局|近くの|マップ|地図|場所|案内して)/.test(userText)) {
           let keyword = userText.replace(/(?:近くの|美味しい|おすすめの|を|で|教えて|探して|検索して|マップ|地図|場所)/g, '').trim() || "おすすめスポット";
           const query = `${loc} ${keyword}`.trim();
@@ -2355,8 +2289,15 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           });
         }
 
+        // ニュース検索（★ 記録帳連動）
         if (/(?:ニュース|最新情報|トレンド|出来事)/.test(userText)) {
-          const query = userText.replace(/(?:ニュース|最新情報|教えて|最新|今日の|調べて|検索して)/g, '').trim() || "主要ニュース";
+          let query = "";
+          if (/(?:僕の好き|おれの好き|私の好き|おすすめ|好み)/.test(userText)) {
+            const interest = this._extractUserInterestsFromMemories();
+            query = interest;
+          } else {
+            query = userText.replace(/(?:ニュース|最新情報|教えて|最新|今日の|調べて|検索して)/g, '').trim() || "主要ニュース";
+          }
           cards.push({
             type: 'news',
             title: `📰 Googleニュースで「${query}」を見る`,
@@ -2386,7 +2327,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           () => {
             this.avatar.setEmotion('idle');
             document.getElementById('status-text').textContent = "👂 聴いてるニャ♪";
-            if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 120);
+            if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 400);
           }
         );
         StorageManager.appendDailyLog('model', replyText);
@@ -2467,7 +2408,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
             () => {
               this.avatar.setEmotion('idle');
               document.getElementById('status-text').textContent = "👂 聴いてるニャ♪";
-              if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 120);
+              if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 400);
             }
           );
         } else {
@@ -2478,7 +2419,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           this.audio.speak(fallback, CHARACTER_CONFIG.voiceSpeakerId, () => {
             this.renderBubble('model', fallback);
           }, () => {
-            if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 120);
+            if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 400);
           });
         }
       },
@@ -2642,7 +2583,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
 
         document.getElementById('test-voice-btn').onclick = () => {
           this.audio.unlockMasterAudio();
-          this.audio.speak("おやびん、クロだニャン！今日もいっぱいお話ししてニャ🐾", CHARACTER_CONFIG.voiceSpeakerId);
+          this.audio.speak("おやびん、クロだニャン！今から15時30分をお知らせするニャ🐾", CHARACTER_CONFIG.voiceSpeakerId);
         };
 
         document.getElementById('add-memory-btn').onclick = () => {
@@ -2671,12 +2612,12 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           this.audio.speak("設定バッチリ保存したニャ！", CHARACTER_CONFIG.voiceSpeakerId, () => {
             this.renderBubble('model', "設定バッチリ保存したニャ！いつでも話しかけてニャン🐾");
           });
-          setTimeout(() => this.audio.startListening(), 200);
+          setTimeout(() => this.audio.startListening(), 400);
         };
 
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'visible' && this.state.isRunning && !this.audio.isSpeaking) {
-            setTimeout(() => this.audio.startListening(), 200);
+            setTimeout(() => this.audio.startListening(), 400);
           }
         });
       },
