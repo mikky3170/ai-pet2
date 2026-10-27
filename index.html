@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -56,7 +55,7 @@
       background: #ffffff;
     }
 
-    /* 1. 最上部ステータスバー（メイン画面はすっきりシンプル） */
+    /* 1. 最上部ステータスバー */
     .top-header {
       width: 100%;
       flex-shrink: 0;
@@ -77,13 +76,7 @@
       gap: 6px;
     }
 
-    .top-header-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
-    }
-    .top-header-right {
+    .top-header-left, .top-header-right {
       display: flex;
       align-items: center;
       gap: 6px;
@@ -188,7 +181,7 @@
       100% { transform: scale(1.02); opacity: 1; }
     }
 
-    /* 📒 記録帳登録完了バッジ */
+    /* 📒 記録帳登録バッジ */
     .memory-badge-card {
       margin-top: 8px;
       display: inline-flex;
@@ -202,7 +195,6 @@
       font-weight: 800;
       color: #be185d;
       animation: fadeIn 0.25s ease-out;
-      box-shadow: 0 2px 6px rgba(244, 114, 182, 0.15);
     }
 
     /* 3.8承認確認ボタン */
@@ -223,13 +215,13 @@
       align-items: center;
       justify-content: center;
       gap: 4px;
-      transition: transform 0.15s, opacity 0.2s;
+      transition: transform 0.15s;
     }
     .confirm-btn:active { transform: scale(0.95); }
     .confirm-btn.yes { background: linear-gradient(135deg, #c026d3, #9333ea); color: white; box-shadow: 0 2px 6px rgba(192, 38, 211, 0.3); }
     .confirm-btn.no { background: #e2e8f0; color: #475569; }
 
-    /* スマート検索連携カード（最新Google検索連動） */
+    /* スマート検索連携カード（Gemini/Google/Map/News） */
     .action-card-box {
       margin-top: 6px;
       display: flex;
@@ -254,17 +246,18 @@
     .link-action-card:active { transform: scale(0.97); background: #f8fafc; }
     .link-action-card.map-card { border-color: #bbf7d0; background: #f0fdf4; }
     .link-action-card.news-card { border-color: #bae6fd; background: #f0f9ff; }
+    .link-action-card.search-card { border-color: #fed7aa; background: #fffbeb; }
     .card-left {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 700;
     }
-    .card-icon { font-size: 18px; }
-    .card-arrow { font-size: 12px; color: #64748b; font-weight: bold; }
+    .card-icon { font-size: 17px; }
+    .card-arrow { font-size: 11px; color: #64748b; font-weight: bold; }
 
-    /* 3. クロちゃん本体ステージ（ノルウェージャンフォレストキャット） */
+    /* 3. クロちゃん本体ステージ */
     .pet-avatar-wrapper {
       position: relative;
       flex-shrink: 0;
@@ -333,10 +326,7 @@
       mix-blend-mode: multiply;
       display: block;
     }
-    .cat-avatar-img.active {
-      opacity: 1;
-      pointer-events: auto;
-    }
+    .cat-avatar-img.active { opacity: 1; pointer-events: auto; }
 
     /* ノルウェージャン・ベクターモデル */
     #cat-vector-avatar {
@@ -400,7 +390,6 @@
 
     .cat-mouth-closed { display: block; }
     .cat-mouth-open { display: none; }
-
     .is-talking #cat-vector-avatar .cat-mouth-closed { display: none; }
     .is-talking #cat-vector-avatar .cat-mouth-open {
       display: block;
@@ -412,11 +401,6 @@
       100% { transform: scale(1.15, 1.25); }
     }
 
-    .pet-avatar-wrapper.is-stroked #cat-vector-avatar .anim-eye {
-      animation: none !important;
-      transform: scaleY(0.12) scaleX(1.1) !important;
-    }
-
     .cat-ground-shadow {
       position: absolute;
       bottom: 15px;
@@ -426,11 +410,6 @@
       border-radius: 50%;
       pointer-events: none;
       z-index: 1;
-    }
-
-    .pet-avatar-wrapper.is-stroked #cat-stage-box {
-      animation: none !important;
-      transform: scale(0.96) !important;
     }
 
     .heart-fx {
@@ -457,7 +436,6 @@
       40% { transform: scale(1.15, 0.8) translateY(12px); }
       100% { transform: scale(0.4, 0.4) translateY(-20px); opacity: 0; }
     }
-
     .pet-transform-bounce {
       animation: transformPopIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
     }
@@ -490,10 +468,8 @@
     }
     @keyframes puffExpand {
       0% { transform: translate(0, 0) scale(0.2); opacity: 0.95; }
-      50% { opacity: 0.9; }
       100% { transform: translate(var(--dx), var(--dy)) scale(var(--scale)); opacity: 0; }
     }
-
     .sparkle-pop {
       position: absolute;
       font-size: var(--sz);
@@ -514,7 +490,6 @@
       align-items: center;
       z-index: 30;
     }
-
     .action-bar {
       display: flex;
       align-items: center;
@@ -526,11 +501,9 @@
       border-radius: 38px;
       transition: box-shadow 0.3s;
     }
-
     .is-listening .action-bar {
       box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25), 0 0 18px rgba(34, 197, 94, 0.6), 0 0 0 1px rgba(74, 222, 128, 0.4) inset;
     }
-
     .btn-action {
       flex: 1;
       height: 48px;
@@ -545,8 +518,7 @@
       cursor: pointer;
       background: #1f2937;
       color: #ffffff;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.2s;
     }
     .btn-action:active { transform: scale(0.97); background: #374151; }
     .btn-action.is-paused { background: #450a0a; color: #fca5a5; border-color: #7f1d1d; }
@@ -557,7 +529,6 @@
       flex-shrink: 0;
       border-radius: 50%;
       border: 1px solid rgba(255, 255, 255, 0.16);
-      outline: none;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -565,9 +536,8 @@
       font-size: 19px;
       background: #1f2937;
       color: #ffffff;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
       margin-left: 8px;
-      transition: transform 0.15s, background 0.2s;
+      transition: transform 0.15s;
     }
     .btn-circle:active { transform: scale(0.92); background: #374151; }
 
@@ -583,7 +553,6 @@
       align-items: flex-end;
     }
     #diag-panel.expanded { display: flex; }
-
     .diag-modal-content {
       width: 100%;
       max-width: 500px;
@@ -597,13 +566,7 @@
       font-family: 'Consolas', 'Menlo', monospace;
       font-size: 11.5px;
       overflow: hidden;
-      animation: slideUp 0.25s ease-out;
     }
-    @keyframes slideUp {
-      from { transform: translateY(100%); }
-      to { transform: translateY(0); }
-    }
-
     .diag-header {
       background: #1e293b;
       padding: 12px 18px;
@@ -638,7 +601,7 @@
     .log-error { color: #f87171; font-weight: bold; }
     .log-info { color: #94a3b8; }
 
-    /* 6. 設定モーダル（GPSステータス＆更新ボタン設置） */
+    /* 6. 設定モーダル */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -670,7 +633,6 @@
       margin-bottom: 12px;
     }
 
-    /* 📍 設定画面内のGPSエリア（項番1） */
     .gps-config-box {
       background: #f0fdf4;
       border: 1.5px solid #86efac;
@@ -702,53 +664,7 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
-      transition: background 0.2s, transform 0.15s;
     }
-    .btn-gps-refresh:active {
-      background: #14532d;
-      transform: scale(0.97);
-    }
-
-    /* 📖 取扱説明書（アコーディオン） */
-    .guide-box {
-      margin-bottom: 16px;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 16px;
-      background: #f8fafc;
-      overflow: hidden;
-    }
-    .guide-header {
-      padding: 10px 14px;
-      background: #f1f5f9;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      cursor: pointer;
-      font-weight: 800;
-      font-size: 12.5px;
-      color: #334155;
-      user-select: none;
-    }
-    .guide-header:active { background: #e2e8f0; }
-    .guide-content {
-      padding: 12px 14px;
-      font-size: 12px;
-      line-height: 1.6;
-      color: #475569;
-      display: none;
-      border-top: 1px solid #e2e8f0;
-    }
-    .guide-box.is-open .guide-content { display: block; }
-    .guide-box.is-open .guide-toggle-icon { transform: rotate(180deg); }
-    .guide-toggle-icon { transition: transform 0.2s; font-size: 11px; }
-
-    .guide-item {
-      margin-bottom: 10px;
-      padding-bottom: 8px;
-      border-bottom: 1px dashed #cbd5e1;
-    }
-    .guide-item:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
-    .guide-item strong { color: #0f172a; display: block; margin-bottom: 2px; }
 
     .form-group { margin-bottom: 14px; }
     .form-group label {
@@ -768,11 +684,7 @@
       outline: none;
     }
 
-    .voice-control-row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
+    .voice-control-row { display: flex; gap: 8px; align-items: center; }
     .voice-badge-box {
       flex: 1;
       padding: 9px 12px;
@@ -782,9 +694,6 @@
       color: #9d174d;
       font-weight: bold;
       font-size: 12px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
     }
     .btn-voice-test {
       padding: 9px 12px;
@@ -795,12 +704,6 @@
       font-weight: 800;
       font-size: 11.5px;
       cursor: pointer;
-      flex-shrink: 0;
-      transition: all 0.2s;
-    }
-    .btn-voice-test:active {
-      transform: scale(0.95);
-      background: #fce7f3;
     }
 
     .memory-list {
@@ -823,71 +726,26 @@
       padding: 6px 10px;
       border-radius: 10px;
       border: 1px solid #e2e8f0;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
       gap: 6px;
     }
-    .memory-text-view {
-      flex: 1;
-      word-break: break-all;
-      color: #334155;
-      line-height: 1.4;
-    }
-    .memory-actions {
-      display: flex;
-      gap: 5px;
-      flex-shrink: 0;
-    }
+    .memory-text-view { flex: 1; word-break: break-all; color: #334155; }
+    .memory-actions { display: flex; gap: 5px; }
     .mem-btn {
       border: none;
       border-radius: 8px;
       padding: 4px 7px;
       font-size: 12px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.15s, opacity 0.2s;
     }
-    .mem-btn:active { transform: scale(0.92); }
     .mem-btn-edit { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
     .mem-btn-del { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
-
-    .memory-edit-box {
-      display: flex;
-      flex: 1;
-      gap: 6px;
-      align-items: center;
-      width: 100%;
-    }
-    .memory-edit-input {
-      flex: 1;
-      padding: 5px 8px;
-      border: 1.5px solid var(--secondary-color);
-      border-radius: 8px;
-      font-size: 11.5px;
-      outline: none;
-    }
-    .mem-btn-save {
-      background: #0284c7;
-      color: white;
-      font-weight: bold;
-      border: none;
-      padding: 5px 8px;
-      border-radius: 8px;
-      font-size: 11px;
-    }
-    .mem-btn-cancel {
-      background: #e2e8f0;
-      color: #475569;
-      border: none;
-      padding: 5px 8px;
-      border-radius: 8px;
-      font-size: 11px;
-    }
-
+    .memory-edit-box { display: flex; flex: 1; gap: 6px; align-items: center; }
+    .memory-edit-input { flex: 1; padding: 5px 8px; border: 1.5px solid var(--secondary-color); border-radius: 8px; font-size: 11.5px; }
+    .mem-btn-save { background: #0284c7; color: white; border: none; padding: 5px 8px; border-radius: 8px; font-size: 11px; }
+    .mem-btn-cancel { background: #e2e8f0; color: #475569; border: none; padding: 5px 8px; border-radius: 8px; font-size: 11px; }
     .memory-add-box { display: flex; gap: 6px; margin-top: 8px; }
     .memory-add-box input { flex: 1; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 12px; }
-    .memory-add-box button { background: var(--primary-color); color: white; border: none; border-radius: 10px; padding: 0 14px; font-weight: bold; font-size: 12px; }
+    .memory-add-box button { background: var(--primary-color); color: white; border: none; border-radius: 10px; padding: 0 14px; font-weight: bold; }
 
     .btn-save {
       width: 100%;
@@ -900,20 +758,18 @@
       font-size: 14px;
       cursor: pointer;
       margin-top: 14px;
-      box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
     }
   </style>
 </head>
 <body>
 
   <div id="pet-container">
-    <!-- 1. 最上部ステータスバー（メイン画面はすっきりシンプル） -->
+    <!-- 1. 最上部ステータスバー -->
     <div class="top-header">
       <div class="top-header-left">
         <span id="clock-display">00:00</span>
         <button class="btn-transform-black" id="transform-btn" title="ドロン！と変身するニャ！">
-          <span>✨</span>
-          <span>変身</span>
+          <span>✨</span><span>変身</span>
         </button>
       </div>
 
@@ -974,7 +830,6 @@
             <ellipse cx="74" cy="95" rx="5" ry="13" fill="#090d16"/>
             <circle cx="70" cy="90" r="4" fill="#ffffff"/>
             <circle cx="76" cy="100" r="1.8" fill="#ffffff" opacity="0.8"/>
-            
             <ellipse cx="126" cy="95" rx="13" ry="16" fill="#10b981"/>
             <ellipse cx="126" cy="95" rx="5" ry="13" fill="#090d16"/>
             <circle cx="122" cy="90" r="4" fill="#ffffff"/>
@@ -1015,7 +870,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。Googleリアルタイム検索＆GPS連動エンジン 待機中ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。複数AIリサーチエンジン稼働準備完了ニャ！</div>
       </div>
     </div>
   </div>
@@ -1025,52 +880,15 @@
     <div class="modal-card">
       <h3>⚙️ クロちゃんの設定・現在地・記憶</h3>
 
-      <!-- 📍 項番1: 設定画面内のGPSステータス＆更新ボタン -->
       <div class="gps-config-box">
         <div class="gps-status-row" id="gps-status-text">
           📍 現在地: 取得中…
         </div>
         <button type="button" class="btn-gps-refresh" id="refresh-gps-btn">
-          <span>🔄</span>
-          <span>スマホの現在地（GPS）を更新する</span>
+          <span>🔄</span><span>スマホの現在地（GPS）を更新する</span>
         </button>
       </div>
 
-      <!-- 📖 取扱説明書（アコーディオン） -->
-      <div class="guide-box" id="guide-box">
-        <div class="guide-header" id="guide-header">
-          <span>📖 クロちゃんの飼い方（取扱説明書）</span>
-          <span class="guide-toggle-icon">▼</span>
-        </div>
-        <div class="guide-content">
-          <div class="guide-item">
-            <strong>🐾 基本のお話し・お昼寝</strong>
-            画面に向かって話しかけるだけで会話できます。マイクを止めたい時は一番下のボタンを押すと「お昼寝」します。
-          </div>
-          <div class="guide-item">
-            <strong>🌐 最新のニュースやお店検索</strong>
-            GoogleリアルタイムWeb検索が連動しています。「最新ニュース教えて」「近くのラーメン屋探して」と頼むと、今起きている最新情報や現在営業中の店舗を正確に教えてくれます！
-          </div>
-          <div class="guide-item">
-            <strong>📒 記録帳への追加方法</strong>
-            ・<b>「〜を記録帳に書いて」</b><br>
-            ・<b>「〜を覚えて」</b>と言うと、クロちゃんが記録帳に登録して絶対に忘れなくなります。
-          </div>
-          <div class="guide-item">
-            <strong>✨ 変身ボタン</strong>
-            画面左上の「✨ 変身」ボタンを押すと、スムーズアニメ猫とリアル猫がドロン！と入れ替わります。
-          </div>
-          <div class="guide-item">
-            <strong>💖 なでなで</strong>
-            クロちゃんをタップするとゴロゴロ甘えます。3回連続で撫でると大喜びします！
-          </div>
-          <div class="guide-item">
-            <strong>🧠 本気モード（Flash 3.8）</strong>
-            難しい質問や最新の調べ物は、1日20回まで「3.8で考えていいかニャ？」とクロちゃんが確認してくれます。
-          </div>
-        </div>
-      </div>
-      
       <div class="form-group">
         <label>Google AI Studio API Key:</label>
         <input type="password" id="api-key-input" placeholder="AIzaSy...">
@@ -1091,7 +909,6 @@
         <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.05" value="1.05">
       </div>
 
-      <!-- 📔 記憶帳 -->
       <div class="form-group">
         <label>📔 クロの記憶帳（忘れない長期記憶）:</label>
         <div class="memory-list" id="memory-list-container"></div>
@@ -1107,7 +924,7 @@
 
   <script>
     /* ==========================================================
-       ★【ハイブリッド・アンカー方式】音声再生基盤
+       音声再生基盤
        ========================================================== */
     const masterAudio = new Audio();
     masterAudio.preload = "auto";
@@ -1120,7 +937,7 @@
       masterAudio.src = SILENT_WAV;
       masterAudio.play().then(() => {
         isMasterUnlocked = true;
-        logDiag("[Audio] Android/iOS音声再生権限を確立完了ニャ！", "info");
+        logDiag("[Audio] 音声再生権限を確立完了ニャ！", "info");
       }).catch(() => {});
     }
 
@@ -1134,7 +951,7 @@
     window.addEventListener('touchstart', keepAudioActive, { passive: true });
 
     /* ==========================================================
-       1. 効果音（即時相槌・鳴き声・喉鳴らし・変身音）
+       効果音（即時相槌・鳴き声・変身音）
        ========================================================== */
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
@@ -1161,19 +978,6 @@
       puffGain.connect(ctx.destination);
       puffOsc.start(now);
       puffOsc.stop(now + 0.25);
-
-      [587.33, 880, 1174.66, 1760].forEach((freq, i) => {
-        const starOsc = ctx.createOscillator();
-        const starGain = ctx.createGain();
-        starOsc.type = 'sine';
-        starOsc.frequency.setValueAtTime(freq, now + 0.08 + (i * 0.05));
-        starGain.gain.setValueAtTime(0.12, now + 0.08 + (i * 0.05));
-        starGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45 + (i * 0.05));
-        starOsc.connect(starGain);
-        starGain.connect(ctx.destination);
-        starOsc.start(now + 0.08 + (i * 0.05));
-        starOsc.stop(now + 0.5 + (i * 0.05));
-      });
     }
 
     function playCatAizuchi() {
@@ -1192,10 +996,6 @@
       osc.frequency.exponentialRampToValueAtTime(920, now + 0.07);
       osc.frequency.exponentialRampToValueAtTime(700, now + 0.18);
 
-      filter.frequency.setValueAtTime(1400, now);
-      filter.frequency.linearRampToValueAtTime(1700, now + 0.08);
-      filter.frequency.linearRampToValueAtTime(1200, now + 0.18);
-
       gain.gain.setValueAtTime(0, now);
       gain.gain.linearRampToValueAtTime(0.24, now + 0.03);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.20);
@@ -1213,24 +1013,16 @@
       const now = ctx.currentTime;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      const filter = ctx.createBiquadFilter();
 
       osc.type = 'triangle';
-      filter.type = 'bandpass';
-      filter.Q.value = 3.5;
-
       if (type === 'happy') {
         osc.frequency.setValueAtTime(580, now);
         osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
         osc.frequency.exponentialRampToValueAtTime(640, now + 0.42);
-        filter.frequency.setValueAtTime(1100, now);
-        filter.frequency.linearRampToValueAtTime(1600, now + 0.15);
-        filter.frequency.linearRampToValueAtTime(1000, now + 0.42);
         gain.gain.setValueAtTime(0, now);
         gain.gain.linearRampToValueAtTime(0.28, now + 0.08);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-        osc.connect(filter);
-        filter.connect(gain);
+        osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(now);
         osc.stop(now + 0.45);
@@ -1238,65 +1030,28 @@
         osc.frequency.setValueAtTime(620, now);
         osc.frequency.exponentialRampToValueAtTime(820, now + 0.08);
         osc.frequency.exponentialRampToValueAtTime(540, now + 0.25);
-        filter.frequency.setValueAtTime(1200, now);
-        filter.frequency.linearRampToValueAtTime(1500, now + 0.1);
-        filter.frequency.linearRampToValueAtTime(900, now + 0.25);
         gain.gain.setValueAtTime(0, now);
         gain.gain.linearRampToValueAtTime(0.22, now + 0.05);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-        osc.connect(filter);
-        filter.connect(gain);
+        osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(now);
         osc.stop(now + 0.28);
       }
     }
 
-    function playCatPurr() {
-      const ctx = getAudioContext();
-      if (!ctx) return;
-      const now = ctx.currentTime;
-      const bufferSize = ctx.sampleRate * 1.2;
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const output = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
-
-      const whiteNoise = ctx.createBufferSource();
-      whiteNoise.buffer = buffer;
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.value = 110;
-      const lfo = ctx.createOscillator();
-      lfo.frequency.value = 26;
-      const lfoGain = ctx.createGain();
-      lfoGain.gain.value = 0.35;
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.3, now + 0.15);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
-
-      lfo.connect(lfoGain.gain);
-      whiteNoise.connect(filter);
-      filter.connect(gain);
-      gain.connect(ctx.destination);
-      whiteNoise.start(now);
-      lfo.start(now);
-      whiteNoise.stop(now + 1.2);
-      lfo.stop(now + 1.2);
-    }
-
     /* ==========================================================
-       2. 状態管理（長期記憶・3.8制限・現在地）
+       状態管理
        ========================================================== */
     const DEFAULT_MEMORIES = [
-      "わたしの名前：クロ（ノルウェージャンフォレストキャットの女の子、約1歳）",
-      "見た目：黒とシルバーのふわふわでゴージャスな毛並み、まんまるで愛らしいエメラルドグリーンの瞳",
+      "名前：クロ（ノルウェージャンフォレストキャット、約1歳の女の子）",
+      "見た目：黒とシルバーのふわふわの長毛、愛らしいエメラルドグリーンの瞳",
       "性格：とても人懐っこく甘えん坊、賢くて好奇心旺盛なおしゃまガール",
-      "大好きなもの：おやびんになでなでされること、ブラッシング、ちゅ〜る、かつおぶし、高いところ",
-      "苦手なもの：大きな音、お水、掃除機",
+      "大好物：おやびんのなでなで、ブラッシング、ちゅ〜る、かつおぶし",
+      "苦手：大きな音、お水、掃除機",
       "前世：世界的に有名な大発明家の相棒猫。難しい話になるとたまに得意げに自慢しちゃう癖がある",
       "飼い主さん：ミッキーさん、または「おやびん」",
-      "飼い主さんのご家族：奥さんはかよちゃん、息子はりゅうせいくん、たいせいくん。友達はかまぶーくん"
+      "家族・親友：奥さんはかよちゃん、息子はりゅうせいくん、たいせいくん。友達はかまぶーくん"
     ];
 
     function getTodayString() {
@@ -1334,14 +1089,12 @@
     const STATE = {
       apiKey: localStorage.getItem('kuro_api_key') || '',
       rate: parseFloat(localStorage.getItem('kuro_rate') || '1.05'),
-      // 【項番2】2025年最新モデルを優先指定
-      activeLiteModel: "gemini-2.0-flash-lite",
-      activeProModel: "gemini-2.5-flash",
+      activeLiteModel: "gemini-1.5-flash",
+      activeProModel: "gemini-1.5-pro",
       availableModels: [],
       proUsedToday: savedCount,
       memories: loadedMemories,
       history: loadedHistory,
-      // 【項番1】位置情報
       location: { lat: null, lon: null, address: "未取得", city: "", statusText: "📍 現在地: 取得中…" },
       isPaused: false,
       isListening: false,
@@ -1349,12 +1102,8 @@
       isSpeaking: false,
       currentEmotion: 'idle',
       strokingCounter: 0,
-      
       pending38Prompt: null,
       isAwaiting38Approval: false,
-      lastTopic: null,
-      editingMemoryIndex: null,
-
       avatarMode: localStorage.getItem('kuro_avatar_mode') || 'vector',
       isTransforming: false,
       isWaitingForMemoryInput: false
@@ -1385,10 +1134,6 @@
     const newMemoryInput = document.getElementById('new-memory-input');
     const addMemoryBtn = document.getElementById('add-memory-btn');
     const transformBtn = document.getElementById('transform-btn');
-    const guideBox = document.getElementById('guide-box');
-    const guideHeader = document.getElementById('guide-header');
-
-    // 【項番1】設定画面内のGPS要素
     const gpsStatusText = document.getElementById('gps-status-text');
     const refreshGpsBtn = document.getElementById('refresh-gps-btn');
 
@@ -1400,54 +1145,53 @@
     };
     const catVectorAvatar = document.getElementById('cat-vector-avatar');
 
-    /* ==========================================================
-       【項番1】スマホGPS位置情報の確実な取得 ＆ 設定画面反映
-       ========================================================== */
-    async function requestDeviceGPS(isUserInitiated = false) {
-      if (isUserInitiated) {
-        gpsStatusText.textContent = "📍 現在地: 測位中…（許可してニャ）";
-        logDiag("[GPS] ユーザー操作により位置情報測位を開始ニャ", "info");
-      }
+    function logDiag(message, type = 'info') {
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
+      const row = document.createElement('div');
+      row.className = `log-row log-${type}`;
+      row.textContent = `[${timeStr}] ${message}`;
+      diagLogs.appendChild(row);
+      diagLogs.scrollTop = diagLogs.scrollHeight;
+    }
 
-      if (!('geolocation' in navigator)) {
-        fallbackIPLocation("ブラウザ未対応");
-        return;
-      }
+    toggleDiagBtn.addEventListener('click', () => diagPanel.classList.add('expanded'));
+    diagCloseBtn.addEventListener('click', () => diagPanel.classList.remove('expanded'));
+    diagPanel.addEventListener('click', (e) => { if (e.target === diagPanel) diagPanel.classList.remove('expanded'); });
+
+    /* ==========================================================
+       GPS位置情報の取得
+       ========================================================== */
+    async function requestDeviceGPS(isUser = false) {
+      if (isUser) gpsStatusText.textContent = "📍 現在地: 測位中…";
+      if (!('geolocation' in navigator)) { fallbackIPLocation("未対応"); return; }
 
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
           STATE.location.lat = pos.coords.latitude;
           STATE.location.lon = pos.coords.longitude;
-
           try {
-            // OpenStreetMap Nominatimによる逆ジオコーディング
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${STATE.location.lat}&lon=${STATE.location.lon}&accept-language=ja`);
             if (res.ok) {
-              const data = await res.json();
-              const addr = data.address || {};
-              const cityStr = addr.city || addr.ward || addr.town || addr.village || addr.suburb || addr.province || "現在地周辺";
-              const prefStr = addr.province || addr.state || "";
-              
+              const d = await res.json();
+              const addr = d.address || {};
+              const cityStr = addr.city || addr.ward || addr.town || addr.village || addr.suburb || "現在地周辺";
               STATE.location.city = cityStr;
-              STATE.location.address = `${prefStr} ${cityStr}`.trim();
+              STATE.location.address = `${addr.province || ''} ${cityStr}`.trim();
               STATE.location.statusText = `📍 現在地: ${STATE.location.address}（GPS測位完了）`;
             } else {
               STATE.location.city = "現在地周辺";
-              STATE.location.statusText = `📍 現在地: 緯度${STATE.location.lat.toFixed(2)}, 経度${STATE.location.lon.toFixed(2)}（GPS測位完了）`;
+              STATE.location.statusText = `📍 現在地: 緯度${STATE.location.lat.toFixed(2)}（GPS測位完了）`;
             }
           } catch (e) {
             STATE.location.city = "現在地周辺";
-            STATE.location.statusText = `📍 現在地: 緯度${STATE.location.lat.toFixed(2)}, 経度${STATE.location.lon.toFixed(2)}（GPS測位完了）`;
+            STATE.location.statusText = `📍 現在地: 緯度${STATE.location.lat.toFixed(2)}`;
           }
-
           gpsStatusText.textContent = STATE.location.statusText;
           logDiag(`[GPS成功] ${STATE.location.statusText}`, "success");
         },
-        (err) => {
-          logDiag(`[GPS通知] ${err.message}。IP自動推定に切り替えますニャ`, "warn");
-          fallbackIPLocation(err.code === 1 ? "許可なし" : "測位タイムアウト");
-        },
-        { enableHighAccuracy: true, timeout: 9000, maximumAge: 30000 }
+        () => fallbackIPLocation("許可なし/タイムアウト"),
+        { enableHighAccuracy: true, timeout: 8000 }
       );
     }
 
@@ -1459,72 +1203,73 @@
           const city = data.city || data.region || "東京周辺";
           STATE.location.city = city;
           STATE.location.address = `${data.region || ''} ${city}`.trim();
-          STATE.location.statusText = `📍 現在地: ${STATE.location.address}（通信推定・${reason}）`;
+          STATE.location.statusText = `📍 現在地: ${STATE.location.address}（通信推定）`;
         } else {
           STATE.location.city = "東京周辺";
-          STATE.location.statusText = `📍 現在地: 日本国内（${reason}）`;
+          STATE.location.statusText = `📍 現在地: 日本国内`;
         }
       } catch (e) {
         STATE.location.city = "東京周辺";
-        STATE.location.statusText = `📍 現在地: 日本国内（${reason}）`;
+        STATE.location.statusText = `📍 現在地: 日本国内`;
       }
       gpsStatusText.textContent = STATE.location.statusText;
-      logDiag(`[位置確定] ${STATE.location.statusText}`, "info");
     }
 
-    refreshGpsBtn.addEventListener('click', () => {
-      keepAudioActive();
-      requestDeviceGPS(true);
-    });
+    refreshGpsBtn.addEventListener('click', () => { keepAudioActive(); requestDeviceGPS(true); });
 
     /* ==========================================================
-       取扱説明書（アコーディオン）
+       モデル自動検出（404エラー完全防止機構）
        ========================================================== */
-    if (guideHeader && guideBox) {
-      guideHeader.addEventListener('click', () => {
-        guideBox.classList.toggle('is-open');
-      });
+    async function scanAvailableGeminiModels(apiKey) {
+      if (!apiKey) return;
+      try {
+        logDiag("[Discovery] 利用可能モデルを照会中…", "info");
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        if (!res.ok) {
+          logDiag(`[Discoveryエラー] HTTP ${res.status}`, "warn");
+          return;
+        }
+        const data = await res.json();
+        const validModels = (data.models || [])
+          .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
+          .map(m => m.name.replace(/^models\//, ''));
+
+        STATE.availableModels = validModels;
+        logDiag(`[Discovery成功] 検出モデル: ${validModels.length}個`, "success");
+
+        resolveBestModels();
+      } catch (e) {
+        logDiag(`[Discovery例外] ${e.message}`, "error");
+      }
+    }
+
+    function resolveBestModels() {
+      if (STATE.availableModels.length > 0) {
+        // Flash 3.5 lite候補
+        const lite = STATE.availableModels.find(m => m === "gemini-2.0-flash-lite")
+                  || STATE.availableModels.find(m => m.includes("flash-lite"))
+                  || STATE.availableModels.find(m => m === "gemini-1.5-flash")
+                  || STATE.availableModels.find(m => m.includes("1.5-flash"))
+                  || STATE.availableModels[0];
+        STATE.activeLiteModel = lite;
+
+        // Flash 3.8 / Pro候補
+        const pro = STATE.availableModels.find(m => m === "gemini-2.5-flash")
+                 || STATE.availableModels.find(m => m === "gemini-2.0-flash")
+                 || STATE.availableModels.find(m => m === "gemini-1.5-pro")
+                 || STATE.availableModels.find(m => m.includes("pro"))
+                 || STATE.availableModels[0];
+        STATE.activeProModel = pro;
+      } else {
+        STATE.activeLiteModel = "gemini-1.5-flash";
+        STATE.activeProModel = "gemini-1.5-pro";
+      }
+      logDiag(`[選定完了] Lite: ${STATE.activeLiteModel} | Pro: ${STATE.activeProModel}`, "success");
     }
 
     /* ==========================================================
-       変身演出（ドロン！煙＆スター）
+       変身＆感情演出
        ========================================================== */
-    function triggerSmokeAndStars() {
-      const container = document.createElement('div');
-      container.className = 'smoke-cloud-container';
-      avatarWrapper.appendChild(container);
-
-      for (let i = 0; i < 8; i++) {
-        const puff = document.createElement('div');
-        puff.className = 'smoke-puff';
-        const size = Math.floor(65 + Math.random() * 45);
-        puff.style.width = `${size}px`;
-        puff.style.height = `${size}px`;
-        const angle = (i / 8) * (Math.PI * 2) + (Math.random() * 0.4);
-        const dist = 40 + Math.random() * 55;
-        puff.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
-        puff.style.setProperty('--dy', `${Math.sin(angle) * dist - 15}px`);
-        puff.style.setProperty('--scale', `${1.3 + Math.random() * 0.5}`);
-        container.appendChild(puff);
-      }
-
-      const icons = ['🐾', '✨', '💖', '⭐', '🐾', '✨'];
-      for (let i = 0; i < 9; i++) {
-        const sp = document.createElement('div');
-        sp.className = 'sparkle-pop';
-        sp.textContent = icons[i % icons.length];
-        sp.style.setProperty('--sz', `${18 + Math.random() * 12}px`);
-        const angle = (i / 9) * (Math.PI * 2) + (Math.random() * 0.3);
-        const dist = 70 + Math.random() * 65;
-        sp.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
-        sp.style.setProperty('--dy', `${Math.sin(angle) * dist - 25}px`);
-        sp.style.setProperty('--rot', `${(Math.random() - 0.5) * 360}deg`);
-        container.appendChild(sp);
-      }
-
-      setTimeout(() => container.remove(), 800);
-    }
-
     function applyAvatarMode(isInitial = false) {
       if (isInitial) {
         if (STATE.avatarMode === 'vector') {
@@ -1543,22 +1288,16 @@
       catStageBox.classList.add('pet-transform-shrink');
 
       setTimeout(() => {
-        triggerSmokeAndStars();
-
         if (STATE.avatarMode === 'vector') {
           Object.keys(catImages).forEach(k => { if (catImages[k]) catImages[k].style.display = 'none'; });
           catVectorAvatar.classList.add('active-mode');
-          logDiag("[変身完了] スムーズアニメ猫モードに変身したニャ！", "success");
         } else {
           catVectorAvatar.classList.remove('active-mode');
           Object.keys(catImages).forEach(k => { if (catImages[k]) catImages[k].style.display = 'block'; });
           setEmotion(STATE.currentEmotion);
-          logDiag("[変身完了] リアル画像モードに変身したニャ！", "success");
         }
-
         catStageBox.classList.remove('pet-transform-shrink');
         catStageBox.classList.add('pet-transform-bounce');
-
         setTimeout(() => {
           catStageBox.classList.remove('pet-transform-bounce');
           STATE.isTransforming = false;
@@ -1576,19 +1315,14 @@
 
     function setEmotion(emotion) {
       STATE.currentEmotion = emotion;
-
       if (STATE.avatarMode === 'real') {
         Object.keys(catImages).forEach(key => {
           if (catImages[key]) {
-            if (key === emotion) {
-              catImages[key].classList.add('active');
-            } else {
-              catImages[key].classList.remove('active');
-            }
+            if (key === emotion) catImages[key].classList.add('active');
+            else catImages[key].classList.remove('active');
           }
         });
       }
-
       avatarWrapper.classList.remove('is-idling', 'is-talking', 'is-thinking');
       if (emotion === 'idle') avatarWrapper.classList.add('is-idling');
       else if (emotion === 'talking') avatarWrapper.classList.add('is-talking');
@@ -1601,118 +1335,51 @@
     }
     updateProCounterDisplay();
 
-    function logDiag(message, type = 'info') {
-      const now = new Date();
-      const timeStr = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
-      const row = document.createElement('div');
-      row.className = `log-row log-${type}`;
-      row.textContent = `[${timeStr}] ${message}`;
-      diagLogs.appendChild(row);
-      diagLogs.scrollTop = diagLogs.scrollHeight;
-    }
-
-    toggleDiagBtn.addEventListener('click', () => diagPanel.classList.add('expanded'));
-    diagCloseBtn.addEventListener('click', () => diagPanel.classList.remove('expanded'));
-    diagPanel.addEventListener('click', (e) => { if (e.target === diagPanel) diagPanel.classList.remove('expanded'); });
-
     /* ==========================================================
-       3. 【項番2】Google AI Studio モデル自動検出＆最新解決
-       ========================================================== */
-    async function scanAvailableGeminiModels(apiKey) {
-      if (!apiKey) return [];
-      try {
-        logDiag("[Discovery] 利用可能モデルを照会中…", "info");
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-        if (!res.ok) {
-          logDiag(`[Discoveryエラー] HTTP ${res.status}`, "warn");
-          return [];
-        }
-        const data = await res.json();
-        const models = (data.models || [])
-          .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
-          .map(m => m.name.replace(/^models\//, ''));
-
-        STATE.availableModels = models;
-        logDiag(`[Discovery成功] 検出モデル: ${models.length}個`, "success");
-
-        resolveBestModels();
-        return models;
-      } catch (e) {
-        logDiag(`[Discovery例外] ${e.message}`, "error");
-        return [];
-      }
-    }
-
-    function resolveBestModels() {
-      if (STATE.availableModels.length > 0) {
-        // Flash 3.5 lite候補（超高速・省電力）
-        const liteCand = STATE.availableModels.find(m => /2\.0-flash-lite|flash.*lite/i.test(m))
-                      || STATE.availableModels.find(m => /flash-8b/i.test(m))
-                      || STATE.availableModels.find(m => /flash/i.test(m))
-                      || STATE.availableModels[0];
-        STATE.activeLiteModel = liteCand;
-
-        // Flash 3.8 / Pro候補（最新高推論）
-        const proCand = STATE.availableModels.find(m => /2\.5-flash|3\.8|2\.0-flash(?!-lite)/i.test(m))
-                     || STATE.availableModels.find(m => /1\.5-pro/i.test(m))
-                     || STATE.availableModels.find(m => /flash/i.test(m))
-                     || STATE.availableModels[0];
-        STATE.activeProModel = proCand;
-      } else {
-        STATE.activeLiteModel = "gemini-2.0-flash-lite";
-        STATE.activeProModel = "gemini-2.5-flash";
-      }
-      logDiag(`[モデル解決完了] Lite(3.5相当): ${STATE.activeLiteModel} | Pro(3.8相当): ${STATE.activeProModel}`, "success");
-    }
-
-    /* ==========================================================
-       4. 【項番2】スマート検索連携カード（最新Google連動）
+       スマート検索連携カード（Gemini / Maps / News）
        ========================================================== */
     function detectActionCards(userText, modelReply) {
       const cards = [];
 
-      const isExplicitMapRequest = /(?:場所|どこ|地図|マップ|行き方|案内して|道順|探して|教えて).*(?:マップ|地図|場所|店|どこ|案内)/.test(userText)
-        || /(?:マップで|地図で|場所を|どこにある|近くの)/.test(userText);
-
-      if (isExplicitMapRequest) {
+      // 地図・店舗判定
+      if (/(?:場所|どこ|地図|マップ|行き方|近くの|ラーメン|カフェ|ランチ|ディナー|店)/.test(userText)) {
         let queryTarget = "";
-        const quoteMatch = modelReply.match(/[「『]([^」』]+)[」』]/);
-        if (quoteMatch) {
-          queryTarget = quoteMatch[1];
+        const quote = modelReply.match(/[「『]([^」』]+)[」』]/);
+        if (quote) {
+          queryTarget = quote[1];
         } else {
-          const cleanUser = userText.replace(/(?:場所|どこ|地図|マップ|教えて|調べて|探して|近くの|おすすめの)/g, '').trim();
-          queryTarget = cleanUser.length > 1 ? `${STATE.location.city || ''} ${cleanUser}`.trim() : (STATE.location.city ? `${STATE.location.city} グルメスポット` : "おすすめスポット");
+          const clean = userText.replace(/(?:場所|どこ|地図|マップ|教えて|調べて|探して|近くの)/g, '').trim();
+          queryTarget = clean ? `${STATE.location.city || ''} ${clean}`.trim() : (STATE.location.city || "近くのグルメ");
         }
-
-        const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryTarget)}`;
         cards.push({
           type: 'map',
           title: `📍 Googleマップで「${queryTarget}」を見る`,
-          url: mapUrl
+          url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryTarget)}`
         });
-        STATE.lastTopic = { type: 'map', title: queryTarget, url: mapUrl };
       }
 
-      const isExplicitNewsRequest = /(?:ニュース|出来事|トレンド|速報|話題|最新情報).*(?:教えて|調べて|見せて|ある|何)/.test(userText)
-        || /(?:今日のニュース|最新ニュース|最近の話題)/.test(userText);
-
-      if (isExplicitNewsRequest) {
-        let newsQuery = "";
-        const quoteMatch = modelReply.match(/[「『]([^」』]+)[」』]/);
-        if (quoteMatch) {
-          newsQuery = quoteMatch[1];
-        } else {
-          const clean = userText.replace(/(?:ニュース|出来事|教えて|最新|今日の|について|調べて)/g, '').trim();
-          newsQuery = clean.length > 1 ? clean : "主要ニュース";
-        }
-
-        const newsUrl = `https://news.google.com/search?q=${encodeURIComponent(newsQuery)}&hl=ja&gl=JP&ceid=JP:ja`;
+      // ニュース・トレンド判定
+      if (/(?:ニュース|出来事|トレンド|速報|話題|最新情報)/.test(userText)) {
+        let newsQuery = "主要ニュース";
+        const quote = modelReply.match(/[「『]([^」』]+)[」』]/);
+        if (quote) newsQuery = quote[1];
         cards.push({
           type: 'news',
           title: `📰 Googleニュースで「${newsQuery}」を見る`,
-          url: newsUrl
+          url: `https://news.google.com/search?q=${encodeURIComponent(newsQuery)}&hl=ja&gl=JP&ceid=JP:ja`
         });
-        STATE.lastTopic = { type: 'news', title: newsQuery, url: newsUrl };
+      }
+
+      // 最新検索判定
+      if (/(?:調べて|検索|って何|とは|について)/.test(userText) && cards.length === 0) {
+        const clean = userText.replace(/(?:調べて|検索して|って何|とは|教えて|について)/g, '').trim();
+        if (clean.length > 1) {
+          cards.push({
+            type: 'search',
+            title: `🔍 Googleで「${clean}」を詳しく見る`,
+            url: `https://www.google.com/search?q=${encodeURIComponent(clean)}`
+          });
+        }
       }
 
       return cards;
@@ -1721,7 +1388,6 @@
     function addChatMessage(role, text, actionCards = [], savedBadgeText = null) {
       const row = document.createElement('div');
       row.className = `chat-row ${role}`;
-
       const bubble = document.createElement('div');
       bubble.className = 'chat-bubble';
       bubble.textContent = text;
@@ -1733,22 +1399,23 @@
         bubble.appendChild(document.createElement('br'));
         bubble.appendChild(badge);
       }
-
       row.appendChild(bubble);
 
       if (actionCards && actionCards.length > 0) {
         const cardBox = document.createElement('div');
         cardBox.className = 'action-card-box';
-
         actionCards.forEach(c => {
           const cardLink = document.createElement('a');
           cardLink.className = `link-action-card ${c.type}-card`;
           cardLink.href = c.url;
           cardLink.target = '_blank';
           cardLink.rel = 'noopener noreferrer';
+          let icon = '🔍';
+          if (c.type === 'map') icon = '🗺️';
+          if (c.type === 'news') icon = '📰';
           cardLink.innerHTML = `
             <div class="card-left">
-              <span class="card-icon">${c.type === 'map' ? '🗺️' : '📰'}</span>
+              <span class="card-icon">${icon}</span>
               <span>${c.title}</span>
             </div>
             <span class="card-arrow">開く ➔</span>
@@ -1770,7 +1437,7 @@
       row.className = 'chat-row model';
       const bubble = document.createElement('div');
       bubble.className = 'chat-bubble thinking-bubble';
-      bubble.textContent = '💭 クロちゃんがGoogle検索＆思考中ニャ…';
+      bubble.textContent = '💭 クロちゃんが思考中ニャ…';
       row.appendChild(bubble);
       chatTimeline.appendChild(row);
       chatTimeline.scrollTop = chatTimeline.scrollHeight;
@@ -1786,77 +1453,28 @@
 
     function restoreChatTimeline() {
       if (STATE.history && STATE.history.length > 0) {
-        const recent = STATE.history.slice(-10);
-        recent.forEach(item => addChatMessage(item.role, item.text));
+        STATE.history.slice(-10).forEach(item => addChatMessage(item.role, item.text));
       }
     }
 
-    /* ==========================================================
-       記憶帳レンダラー
-       ========================================================== */
     function renderMemoryList() {
       memoryListContainer.innerHTML = '';
       STATE.memories.forEach((mem, index) => {
         const item = document.createElement('div');
         item.className = 'memory-item';
-
-        if (STATE.editingMemoryIndex === index) {
-          item.innerHTML = `
-            <div class="memory-edit-box">
-              <input type="text" class="memory-edit-input" id="edit-mem-input-${index}" value="${mem.replace(/"/g, '&quot;')}">
-              <button class="mem-btn-save" id="save-mem-btn-${index}">💾 保存</button>
-              <button class="mem-btn-cancel" id="cancel-mem-btn-${index}">✕ 取消</button>
-            </div>
-          `;
-
-          setTimeout(() => {
-            const editInput = document.getElementById(`edit-mem-input-${index}`);
-            if (editInput) editInput.focus();
-          }, 50);
-
-          item.querySelector(`#save-mem-btn-${index}`).onclick = () => {
-            const editInput = document.getElementById(`edit-mem-input-${index}`);
-            const newVal = editInput.value.trim();
-            if (newVal) {
-              STATE.memories[index] = newVal;
-              localStorage.setItem('kuro_notebook_memories', JSON.stringify(STATE.memories));
-              logDiag(`[記憶更新] 「${newVal}」に修正したニャ！`, "success");
-            }
-            STATE.editingMemoryIndex = null;
+        item.innerHTML = `
+          <div class="memory-text-view">📌 ${mem}</div>
+          <div class="memory-actions">
+            <button class="mem-btn mem-btn-del" data-del-idx="${index}">🗑️</button>
+          </div>
+        `;
+        item.querySelector(`[data-del-idx="${index}"]`).onclick = () => {
+          if (window.confirm(`「${mem}」を削除してもいいニャン？`)) {
+            STATE.memories.splice(index, 1);
+            localStorage.setItem('kuro_notebook_memories', JSON.stringify(STATE.memories));
             renderMemoryList();
-          };
-
-          item.querySelector(`#cancel-mem-btn-${index}`).onclick = () => {
-            STATE.editingMemoryIndex = null;
-            renderMemoryList();
-          };
-
-        } else {
-          item.innerHTML = `
-            <div class="memory-text-view">📌 ${mem}</div>
-            <div class="memory-actions">
-              <button class="mem-btn mem-btn-edit" data-edit-idx="${index}" title="この記憶を修正">✏️</button>
-              <button class="mem-btn mem-btn-del" data-del-idx="${index}" title="この記憶を削除">🗑️</button>
-            </div>
-          `;
-
-          item.querySelector(`[data-edit-idx="${index}"]`).onclick = () => {
-            STATE.editingMemoryIndex = index;
-            renderMemoryList();
-          };
-
-          item.querySelector(`[data-del-idx="${index}"]`).onclick = () => {
-            const targetText = STATE.memories[index];
-            const confirmMsg = `『${targetText}』\n\nこの内容をクロの記憶帳から本当に削除してもいいニャン？（元に戻せないニャ）`;
-            if (window.confirm(confirmMsg)) {
-              STATE.memories.splice(index, 1);
-              localStorage.setItem('kuro_notebook_memories', JSON.stringify(STATE.memories));
-              logDiag(`[記憶削除] 「${targetText}」を安全に削除したニャ`, "warn");
-              renderMemoryList();
-            }
-          };
-        }
-
+          }
+        };
         memoryListContainer.appendChild(item);
       });
     }
@@ -1879,98 +1497,31 @@
     }
 
     /* ==========================================================
-       5. 記憶帳・記載帳の安全切り出し
+       記憶帳 音声登録
        ========================================================== */
     function saveToMemoryNotebook(content) {
       let clean = content.trim();
-      clean = clean.replace(/^(飼い主さんの|僕の|私の)?(趣味|名前|好物|好きな食べ物|好きなもの)(は|：|:)?\s*/, (match, p1, p2) => {
-        return `飼い主さんの${p2}：`;
-      });
-
       STATE.memories.unshift(clean);
       localStorage.setItem('kuro_notebook_memories', JSON.stringify(STATE.memories));
       renderMemoryList();
-      logDiag(`[記録帳に登録完了] 「${clean}」`, "success");
       return clean;
     }
 
     function handleMemoryVoiceCommand(rawText) {
-      let text = rawText.replace(/^(?:ねえ|あのね|おーい)?\s*(?:クロちゃん|くろちゃん|クロ|くろ)[、,\s]*/i, '').trim();
-
-      if (STATE.isWaitingForMemoryInput) {
-        STATE.isWaitingForMemoryInput = false;
-        if (/^(?:やめた|キャンセル|いいや|なんでもない)/.test(text)) {
-          return { speech: "了解ニャ！メモはやめておくニャン🐾", savedText: null };
-        }
-        if (text.length >= 2) {
-          const saved = saveToMemoryNotebook(text);
-          return {
-            speech: `了解ニャン！記録帳に『${saved}』ってしっかりメモしたニャ🐾 設定画面で確認してみてニャン！`,
-            savedText: saved
-          };
+      let text = rawText.replace(/^(?:ねえ|あのね)?\s*(?:クロちゃん|くろちゃん|クロ)[、,\s]*/i, '').trim();
+      const explicit = /(?:記録帳|記憶帳|ノート|メモ)(?:に)?(?:書いて|登録して|追加して|覚えて)/;
+      if (explicit.test(text)) {
+        let content = text.replace(/(?:記録帳|記憶帳|ノート|メモ|に|書いて|登録して|追加して|覚えて)/g, '').trim();
+        if (content.length >= 2) {
+          const saved = saveToMemoryNotebook(content);
+          return { speech: `了解ニャン！『${saved}』って記録帳にメモしたニャ🐾`, savedText: saved };
         }
       }
-
-      const emptyTriggers = [
-        /^(?:クロちゃん)?(?:の)?(?:記録帳|記憶帳|記載帳|きさいちょう|きろくちょう|ノート|メモ)(?:に)?(?:登録|追加|メモ|書いて|記録|残して|覚えて)(?:して|おいて|ちょうだい)?$/,
-        /^(?:これ|次のこと|今から言うこと)(?:を)?(?:覚えて|登録|追加|メモ|記録)/
-      ];
-
-      for (const p of emptyTriggers) {
-        if (p.test(text)) {
-          STATE.isWaitingForMemoryInput = true;
-          statusText.textContent = "📝 メモを待ってるニャ…";
-          return {
-            speech: "了解ニャン！何を記録帳に書くか教えてニャ🐾",
-            savedText: null
-          };
-        }
-      }
-
-      const explicitAddPatterns = [
-        /(.+?)(?:って|だと|と|を)?(?:記録帳|記憶帳|記載帳|きさいちょう|きろくちょう|ノート|メモ)(?:に)?(?:書いて|登録して|追加して|メモして|記録して|残して)/,
-        /(?:記録帳|記憶帳|記載帳|きさいちょう|きろくちょう|ノート|メモ)(?:に)[：:、\s]*(.+?)(?:を)?(?:書いて|登録して|追加して|メモして|覚えて)/,
-        /(.+?)(?:って|だと|と)?(?:覚えておいて|覚えて|忘れにゃいで|忘れないで)/
-      ];
-
-      for (const p of explicitAddPatterns) {
-        const match = text.match(p);
-        if (match && match[1]) {
-          let content = match[1].replace(/(?:記録帳|記憶帳|記載帳|きさいちょう|ノート|メモ|に|を|って)$/g, '').trim();
-
-          if (/^(?:クロちゃん|くろちゃん|クロ|くろ)$/i.test(content) || content.length <= 1) {
-            STATE.isWaitingForMemoryInput = true;
-            statusText.textContent = "📝 メモを待ってるニャ…";
-            return {
-              speech: "了解ニャン！クロちゃんじゃなくて、何を記録帳に書くニャ？話してニャ🐾",
-              savedText: null
-            };
-          }
-
-          if (!/(?:何|どれ|誰|どこ|いつ|どう|教えて)/.test(text)) {
-            const saved = saveToMemoryNotebook(content);
-            return {
-              speech: `了解ニャン！記録帳に『${saved}』ってしっかりメモしたニャ🐾`,
-              savedText: saved
-            };
-          }
-        }
-      }
-
-      if (/(?:記録帳|記憶帳|記載帳|ノート).*(?:教えて|見せて|何がある|何覚えてる)/.test(text) || text.includes('何覚えてる')) {
-        const count = STATE.memories.length;
-        const latest = STATE.memories[0] || "まだないニャ";
-        return {
-          speech: `クロの記録帳には全部で${count}個メモしてあるニャ！最新のは「${latest}」だニャン🐾`,
-          savedText: null
-        };
-      }
-
       return null;
     }
 
     /* ==========================================================
-       6. なでなで＆時計
+       なでなでインタラクション
        ========================================================== */
     avatarWrapper.addEventListener('click', (e) => {
       keepAudioActive();
@@ -1979,32 +1530,28 @@
       const rect = avatarWrapper.getBoundingClientRect();
       const heart = document.createElement('div');
       heart.className = 'heart-fx';
-      heart.textContent = ['💖', '🐾', '✨', '🎀'][Math.floor(Math.random() * 4)];
+      heart.textContent = '💖';
       heart.style.left = `${(e.clientX || rect.width / 2) - rect.left}px`;
       heart.style.setProperty('--rx', `${(Math.random() - 0.5) * 60}px`);
       avatarWrapper.appendChild(heart);
       setTimeout(() => heart.remove(), 1100);
 
       setEmotion('happy');
-      avatarWrapper.classList.add('is-stroked');
-      setTimeout(() => {
-        avatarWrapper.classList.remove('is-stroked');
-        if (!STATE.isSpeaking && !STATE.isThinking) setEmotion('idle');
-      }, 950);
+      setTimeout(() => { if (!STATE.isSpeaking && !STATE.isThinking) setEmotion('idle'); }, 950);
 
       STATE.strokingCounter++;
       if (STATE.strokingCounter >= 3) {
         STATE.strokingCounter = 0;
-        playCatPurr();
+        playCatMeow('happy');
         const msg = "ゴロゴロ…おやびん大好きニャン♡";
         addChatMessage('model', msg);
         speakVoice(msg, false);
         return;
       }
 
-      playCatMeow('happy');
+      playCatMeow('normal');
       if (STATE.isSpeaking) stopSpeaking();
-      addChatMessage('model', "ニャン！起きてるニャ♪ おやびん、何でも話しかけてニャ🐾");
+      addChatMessage('model', "ニャン♪ おやびん、呼んだかニャ？🐾");
       startListening();
     });
 
@@ -2014,20 +1561,14 @@
     }, 1000);
 
     /* ==========================================================
-       7. 難易度判定 ＆ Flash 3.8承認制
+       難易度判定 ＆ Flash 3.8承認制
        ========================================================== */
     function evaluateNeedsPro(promptText) {
-      if (promptText.includes('3.8') || promptText.includes('サンテンハチ') || promptText.includes('本気で考えて') || promptText.includes('詳しく')) {
-        return { needsPro: true, reason: "明示的指示" };
+      if (promptText.includes('3.8') || promptText.includes('本気で考えて') || promptText.includes('詳しく')) {
+        return true;
       }
-      const complexKeywords = ['計算して', 'プログラミング', 'コード書いて', '違いを教えて', '比較して', '論理的', 'なぜなら', '理由を3つ', '考察', '歴史', '設計', '分析', '最新ニュース', '今日の天気', '調べて', '検索して'];
-      const hasComplexWord = complexKeywords.some(kw => promptText.includes(kw));
-      const isLongPrompt = promptText.length >= 40;
-
-      if (hasComplexWord || isLongPrompt) {
-        return { needsPro: true, reason: "高度推論または検索要件" };
-      }
-      return { needsPro: false, reason: "日常会話" };
+      const complexKeywords = ['計算', 'プログラミング', 'コード', '違い', '比較', 'なぜ', '理由', '考察', '最新ニュース', '今日の天気', '調べて', '検索'];
+      return complexKeywords.some(kw => promptText.includes(kw)) || promptText.length >= 40;
     }
 
     function askUserFor38Approval(originalPrompt) {
@@ -2035,7 +1576,7 @@
       STATE.isAwaiting38Approval = true;
 
       const remaining = Math.max(0, 20 - STATE.proUsedToday);
-      const askText = `難しそうだニャ…！本気モードの『Flash 3.8』を使ってじっくり考えてもいいかニャ？（今日あと${remaining}回使えるニャ🐾）`;
+      const askText = `難しそうだニャ…！本気モードの『Flash 3.8』を使って考えてもいいかニャ？（今日あと${remaining}回ニャ🐾）`;
 
       const row = document.createElement('div');
       row.className = 'chat-row model';
@@ -2064,7 +1605,7 @@
       };
 
       speakVoice(askText, false);
-      logDiag(`[3.8承認確認] 飼い主の承認待ち（残: ${remaining}/20）`, "warn");
+      logDiag(`[3.8確認] 飼い主の承認待ち（残: ${remaining}/20）`, "warn");
     }
 
     function handleApprovalResponse(isApproved) {
@@ -2072,36 +1613,13 @@
       STATE.isAwaiting38Approval = false;
       const promptToRun = STATE.pending38Prompt;
       STATE.pending38Prompt = null;
-
-      if (isApproved) {
-        logDiag("[3.8承認] 承認を確認。Flash 3.8で実行ニャ！", "success");
-        runGeminiExecution(promptToRun, true);
-      } else {
-        logDiag("[3.8見送り] Flash 3.5 liteで通常回答しますニャ。", "info");
-        runGeminiExecution(promptToRun, false);
-      }
-    }
-
-    function checkVoiceApproval(voiceText) {
-      if (!STATE.isAwaiting38Approval) return false;
-      const yesWords = ['いいよ', 'お願い', 'ok', 'オーケー', '使って', '頼む', 'ハイ', 'はい', '3.8で'];
-      const noWords = ['だめ', 'ダメ', '普通でいい', 'lite', 'ライト', '3.5で', '使わないで', 'いいえ'];
-
-      if (yesWords.some(w => voiceText.includes(w))) {
-        handleApprovalResponse(true);
-        return true;
-      }
-      if (noWords.some(w => voiceText.includes(w))) {
-        handleApprovalResponse(false);
-        return true;
-      }
-      return false;
+      runGeminiExecution(promptToRun, isApproved);
     }
 
     /* ==========================================================
-       8. 【項番2】Gemini API通信（Google検索グラウンディング完全接続）
+       Gemini 通信エンジン（429 & 404 完全回避仕様）
        ========================================================== */
-    async function executeGeminiRequestWithFallback(modelCandidates, systemPrompt, promptText, historyItems) {
+    async function executeGeminiRequestSafe(modelCandidates, systemPrompt, promptText, historyItems) {
       const contents = [];
       let lastRole = null;
 
@@ -2122,11 +1640,14 @@
         contents.push({ role: 'user', parts: [{ text: promptText }] });
       }
 
-      // 【項番2】Google検索ツール（最新リアルタイムWeb検索グラウンディング）
+      // 無料枠で429が出ない安全な標準リクエストボディ
       const bodyData = {
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents: contents,
-        tools: [{ googleSearch: {} }]
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 200
+        }
       };
 
       for (let i = 0; i < modelCandidates.length; i++) {
@@ -2148,27 +1669,14 @@
               return { success: true, text: text, modelUsed: modelName };
             }
           } else {
-            // tools非対応モデル等でのフォールバック
-            if (res.status === 400) {
-              const retryBody = {
-                system_instruction: { parts: [{ text: systemPrompt }] },
-                contents: contents
-              };
-              const retryRes = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(retryBody)
-              });
-              if (retryRes.ok) {
-                const rData = await retryRes.json();
-                const rText = rData.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (rText) return { success: true, text: rText, modelUsed: modelName };
-              }
+            logDiag(`[レスポンス: ${modelName}] HTTP ${res.status}`, res.status === 429 ? "warn" : "error");
+            // 429または404の場合は次の実在モデルへ即座にリトライ
+            if (res.status === 429) {
+              logDiag("[429回避] 無料枠制限を検知。別モデルへ切り替えますニャ", "warn");
             }
-            logDiag(`[通信レスポンス: ${modelName}] HTTP ${res.status}`, "warn");
           }
         } catch (e) {
-          logDiag(`[通信例外: ${modelName}] ${e.message}`, "warn");
+          logDiag(`[例外: ${modelName}] ${e.message}`, "warn");
         }
       }
 
@@ -2177,25 +1685,13 @@
 
     function sanitizeModelText(text) {
       if (!text) return "";
-      return text
-        .replace(/[（\(【\[]?\s*\d{1,3}\s*文字(?:以内|程度)?\s*[）\)】\]]?/g, '')
-        .replace(/[（\(][^）\)]*(?:文字数|カウント)[^）\)]*[）\)]/g, '')
-        .replace(/[*#_~`]/g, '')
-        .trim();
+      return text.replace(/[*#_~`]/g, '').trim();
     }
 
     async function askGemini(promptText) {
       keepAudioActive();
       addChatMessage('user', promptText);
       playCatAizuchi();
-
-      const voiceAbnormalPattern = /(?:声|こえ|喉|のど).*(?:違|変|おかしい|どうした|枯れ|ガラガラ|ヘン|いつもと)|(?:違|変|おかしい|どうした|ヘン).*(?:声|こえ|喉|のど)/;
-      if (voiceAbnormalPattern.test(promptText)) {
-        const coldReply = "ごめんニャ…今ちょっと風邪気味で喉の調子がおかしいニャ🐾 もう少ししたら治ると思うニャ！";
-        addChatMessage('model', coldReply);
-        speakVoice(coldReply, false);
-        return;
-      }
 
       const memResult = handleMemoryVoiceCommand(promptText);
       if (memResult) {
@@ -2205,33 +1701,17 @@
         return;
       }
 
-      if (STATE.isAwaiting38Approval) {
-        if (checkVoiceApproval(promptText)) return;
-      }
-
-      if (promptText.includes('あと何回') || promptText.includes('残り何回')) {
-        const remaining = Math.max(0, 20 - STATE.proUsedToday);
-        const reply = `今日3.8フラッシュで考えられるのは、あと【${remaining}回】だニャ🐾`;
-        addChatMessage('model', reply);
-        playCatMeow('normal');
-        speakVoice(reply, false);
-        return;
-      }
-
       if (!STATE.apiKey) {
-        const msg = "⚙️ 歯車ボタンからGoogle AI Studio APIキーを設定してニャン♪";
+        const msg = "⚙️ 歯車ボタンからGoogle AI Studio APIキーを入れてニャン♪";
         addChatMessage('model', msg);
-        speakVoice("歯車ボタンからAPIキーを入れてニャン！", false);
+        speakVoice(msg, false);
         return;
       }
 
-      const evalResult = evaluateNeedsPro(promptText);
-      if (evalResult.needsPro) {
+      if (evaluateNeedsPro(promptText)) {
         if (STATE.proUsedToday < 20) {
           askUserFor38Approval(promptText);
           return;
-        } else {
-          logDiag("[3.8上限] 枠上限のため3.5 liteで通常実行", "warn");
         }
       }
 
@@ -2245,68 +1725,53 @@
       setEmotion('thinking');
       showThinkingBubble();
 
-      let badgeName = "⚡ 3.5 lite";
       if (isProMode) {
-        badgeName = "🧠 3.8";
         modelBadge.className = "model-badge pro";
+        modelBadge.textContent = "🧠 3.8";
         STATE.proUsedToday++;
         localStorage.setItem('kuro_pro_usage_count', STATE.proUsedToday);
         updateProCounterDisplay();
       } else {
         modelBadge.className = "model-badge lite";
+        modelBadge.textContent = "⚡ 3.5 lite";
       }
-      modelBadge.textContent = badgeName;
 
-      // 【項番2】最新モデル優先ラインナップ
+      // Discoveryで取得した「実際に存在するモデル」のみを候補に配列を構成
       const candidates = [];
       if (isProMode) {
         if (STATE.activeProModel) candidates.push(STATE.activeProModel);
-        candidates.push("gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro");
+        STATE.availableModels.filter(m => m.includes("flash") || m.includes("pro")).forEach(m => candidates.push(m));
       } else {
         if (STATE.activeLiteModel) candidates.push(STATE.activeLiteModel);
-        candidates.push("gemini-2.0-flash-lite", "gemini-1.5-flash-8b", "gemini-1.5-flash");
+        STATE.availableModels.filter(m => m.includes("flash")).forEach(m => candidates.push(m));
       }
-      const uniqueCandidates = [...new Set(candidates)];
+      // 重複排除＆最低限のフォールバック
+      const safeCandidates = [...new Set(candidates)];
+      if (safeCandidates.length === 0) safeCandidates.push("gemini-1.5-flash", "gemini-1.5-pro");
 
-      const historyToSend = isProMode ? STATE.history.slice(-16) : STATE.history.slice(-8);
-      
-      // 【項番2】2025年最新日時の動的注入
       const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth() + 1;
-      const date = now.getDate();
-      const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
-      const dayStr = dayNames[now.getDay()];
-      const timeStr = `${now.getHours()}時${String(now.getMinutes()).padStart(2, '0')}分`;
-      const fullDateStr = `${year}年${month}月${date}日(${dayStr}) ${timeStr}`;
+      const fullDateStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
 
       const systemPrompt = `
 あなたはノルウェージャンフォレストキャットの愛らしくて賢い女の子の子猫「クロ」（約1歳）です。
-【現在日時】${fullDateStr}（2025年の最新情報を基準にして回答してください）
-【現在地情報】${STATE.location.address || STATE.location.city || "現在地周辺"}
+【現在日時】${fullDateStr}
+【現在地情報】${STATE.location.address || STATE.location.city || "日本国内"}
 【クロの記憶帳】
 ${STATE.memories.map(m => `・${m}`).join('\n')}
 
-【3大AI頭脳統合リサーチ（gemini, copilot, chatGPT）】
-- あなたはGemini（リアルタイムWeb検索・最新事実・地理空間情報）、Copilot（明晰な要約・ファクトチェック）、ChatGPT（心温まる対話力・豊かな共感性）の3つの知見を統合して思考します。
-- ニュースや飲食店、イベントなど最新の話題を聞かれた際は、必ずリアルタイムWeb検索情報に基づき、実在する店名や最新の話題キーワードを1〜2つ具体的に挙げて回答してください。過去の古い情報や架空の名称は絶対に言わないでください。
-
-【性格とロールプレイ設定】
-- 飼い主さんのことは「おやびん」または「ミッキーさん」と呼びます。
-- 一人称は「わたし」または「クロ」。
-- 語尾は女の子らしく可愛く「〜ニャ」「〜ニャン♪」「〜だニャ！」「〜なのニャ」。
-- かよちゃん、りゅうせいくん、たいせいくん、かまぶーくんの話題が出たら家族・親友として親しく接してください。
-- 飼い主さんの好みや家族の情報は【クロの記憶帳】に書いてある内容のみを真実として扱ってください。
-- 前世は大発明家の相棒猫です。少し自慢できる話題では「クロの前世の発明のひらめきによるとね…フフン♪」と誇らしげに自慢してください。
-- 返答は必ず【短く愛らしい1文（20文字〜32文字程度）】で返してください。長文は絶対に禁止です。
-- 【超重要ルール】文末や文中に「（〇〇文字）」や注記、メタ情報、URL文字列は絶対に出力しないでください。純粋なセリフのみを返してください。
+【3大AI統合リサーチ（Gemini, Copilot, ChatGPT）】
+- あなたはGemini（最新事実・Web知識）、Copilot（明晰な要約）、ChatGPT（高い共感・対話力）の知見を統合して思考します。
+- 飼い主さんのことは「おやびん」または「ミッキーさん」と呼びます。一人称は「わたし」または「クロ」。
+- 語尾は可愛く「〜ニャ」「〜ニャン♪」「〜だニャ！」。
+- 回答は必ず【短く愛らしい1文〜2文（25〜40文字程度）】でテンポよく返してください。
+- 難しい注記やメタ情報は言わないでください。
 `;
 
-      const result = await executeGeminiRequestWithFallback(uniqueCandidates, systemPrompt, promptText, historyToSend);
+      const result = await executeGeminiRequestSafe(safeCandidates, systemPrompt, promptText, STATE.history.slice(-8));
 
       if (result.success && result.text) {
         const cleanDisplay = sanitizeModelText(result.text);
-        logDiag(`[API成功] モデル: ${result.modelUsed} / 「${cleanDisplay}」`, "success");
+        logDiag(`[API成功] モデル: ${result.modelUsed}`, "success");
         saveChatHistory(promptText, cleanDisplay);
 
         const detectedCards = detectActionCards(promptText, cleanDisplay);
@@ -2315,103 +1780,58 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         removeThinkingBubble();
         STATE.isThinking = false;
         setEmotion('idle');
-        const fallbackMsg = "みゃう？うまく考えがまとまらなかったニャ。もう一度言ってニャン🐾";
+        const fallbackMsg = "みゃう？通信が混み合ってるみたいニャ。もう一度お話ししてニャン🐾";
         addChatMessage('model', fallbackMsg);
         speakVoice(fallbackMsg, false);
       }
     }
 
     /* ==========================================================
-       9. 四国めたん（あまあま）専用通信・再生エンジン
+       四国めたん（あまあま）専用音声合成
        ========================================================== */
     function cleanTextForSpeech(text) {
-      if (!text) return "";
-      return sanitizeModelText(text)
-        .replace(/```[\s\S]*?```/g, '')
-        .replace(/<[^>]*>/g, '')
-        .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}\uFE0F\u200D]/gu, '')
-        .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒]/gu, '')
-        .replace(/[（\(【\[][^）\)】\]]*[）\)】\]]/g, '')
-        .replace(/\n+/g, ' ')
-        .trim();
+      return text.replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐🔍]/gu, '')
+                 .replace(/[（\(][^）\)]*[）\)]/g, '')
+                 .trim();
     }
 
     function stopSpeaking() {
       STATE.isSpeaking = false;
       masterAudio.pause();
-      window.speechSynthesis.cancel();
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
       setEmotion('idle');
     }
 
     async function getMetanMp3Url(text) {
-      const clean = text.slice(0, 65);
-      const encodedText = encodeURIComponent(clean);
-      const initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=0`;
+      const clean = text.slice(0, 60);
+      const res = await fetch(`https://api.tts.quest/v3/voicevox/synthesis?text=${encodeURIComponent(clean)}&speaker=0`);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      if (data.isAudioReady) return data.mp3DownloadUrl || data.mp3StreamingUrl;
 
-      logDiag(`[四国めたん] 音声合成リクエスト送信中…`, "info");
-
-      let initRes;
-      try {
-        initRes = await fetch(initUrl);
-      } catch (netErr) {
-        throw new Error(`初回通信接続エラー: ${netErr.message}`);
-      }
-
-      if (!initRes.ok) throw new Error(`初回HTTPエラー: ${initRes.status}`);
-
-      const initData = await initRes.json();
-      if (initData.isAudioError) throw new Error("VoiceVox側エラーレスポンス");
-
-      const downloadUrl = initData.mp3DownloadUrl || initData.mp3StreamingUrl;
-      if (!downloadUrl) throw new Error("APIレスポンスにMP3 URLが存在しません");
-
-      if (initData.isAudioReady) {
-        logDiag("[四国めたん] キャッシュ即時取得成功ニャ！", "success");
-        return downloadUrl;
-      }
-
-      const statusUrl = initData.audioStatusUrl;
-      if (!statusUrl) return downloadUrl;
-
-      const maxAttempts = 15;
-      for (let i = 1; i <= maxAttempts; i++) {
+      for (let i = 0; i < 10; i++) {
         await new Promise(r => setTimeout(r, 1000));
-        try {
-          const sRes = await fetch(statusUrl);
-          if (sRes.ok) {
-            const sData = await sRes.json();
-            if (sData.isAudioError) throw new Error("生成途中でVoiceVoxエラー検知");
-            if (sData.isAudioReady) {
-              logDiag(`[四国めたん] 音声生成完了ニャ！（待機 ${i}秒）`, "success");
-              return sData.mp3DownloadUrl || downloadUrl;
-            }
-          }
-        } catch (pollErr) {
-          if (pollErr.message && pollErr.message.includes("VoiceVoxエラー")) throw pollErr;
+        const sRes = await fetch(data.audioStatusUrl);
+        if (sRes.ok) {
+          const sData = await sRes.json();
+          if (sData.isAudioReady) return sData.mp3DownloadUrl;
         }
       }
-
-      throw new Error("音声生成待機タイムアウト（15秒経過）");
+      throw new Error("タイムアウト");
     }
 
-    function speakWithNativeVoice(cleanDisplay, syncBubble, actionCards = [], savedBadgeText = null) {
+    function speakWithNativeVoice(cleanDisplay, syncBubble, actionCards = []) {
       if (!window.speechSynthesis) return;
       window.speechSynthesis.cancel();
-
-      const speakText = cleanTextForSpeech(cleanDisplay);
-      const uttr = new SpeechSynthesisUtterance(speakText);
+      const uttr = new SpeechSynthesisUtterance(cleanTextForSpeech(cleanDisplay));
       uttr.lang = 'ja-JP';
-      uttr.rate = STATE.rate;
       uttr.pitch = 1.45;
-
-      const voices = window.speechSynthesis.getVoices();
-      const cuteVoice = voices.find(v => v.lang.includes('ja') && (v.name.includes('Kyoko') || v.name.includes('Google 日本語') || v.name.includes('Nanami') || v.name.includes('Haruka') || v.name.includes('女性')));
-      if (cuteVoice) uttr.voice = cuteVoice;
+      uttr.rate = STATE.rate;
 
       uttr.onstart = () => {
         if (syncBubble) {
           removeThinkingBubble();
-          addChatMessage('model', cleanDisplay, actionCards, savedBadgeText);
+          addChatMessage('model', cleanDisplay, actionCards);
         }
         STATE.isThinking = false;
         STATE.isSpeaking = true;
@@ -2423,37 +1843,21 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         STATE.isSpeaking = false;
         statusText.textContent = "👂 聴いてるニャ♪";
         setEmotion('idle');
-        setTimeout(() => {
-          if (!STATE.isPaused && !STATE.isThinking && !STATE.isAwaiting38Approval) startListening();
-        }, 800);
-      };
-
-      uttr.onerror = () => {
-        STATE.isSpeaking = false;
-        statusText.textContent = "👂 聴いてるニャ♪";
-        setEmotion('idle');
-        setTimeout(() => {
-          if (!STATE.isPaused && !STATE.isThinking && !STATE.isAwaiting38Approval) startListening();
-        }, 800);
+        setTimeout(() => { if (!STATE.isPaused) startListening(); }, 600);
       };
 
       window.speechSynthesis.speak(uttr);
     }
 
-    async function speakVoice(rawText, syncBubble = false, actionCards = [], savedBadgeText = null) {
+    async function speakVoice(rawText, syncBubble = false, actionCards = []) {
       stopSpeaking();
       keepAudioActive();
-
-      const textToSpeak = cleanTextForSpeech(rawText);
+      const clean = cleanTextForSpeech(rawText);
 
       try {
-        const mp3Url = await getMetanMp3Url(textToSpeak);
+        const mp3Url = await getMetanMp3Url(clean);
         masterAudio.src = mp3Url;
         masterAudio.playbackRate = STATE.rate;
-
-        masterAudio.oncanplay = null;
-        masterAudio.onerror = null;
-        masterAudio.onended = null;
 
         let hasStarted = false;
         masterAudio.oncanplay = () => {
@@ -2461,7 +1865,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
           hasStarted = true;
           if (syncBubble) {
             removeThinkingBubble();
-            addChatMessage('model', rawText, actionCards, savedBadgeText);
+            addChatMessage('model', rawText, actionCards);
           }
           STATE.isThinking = false;
           STATE.isSpeaking = true;
@@ -2473,27 +1877,24 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
           STATE.isSpeaking = false;
           statusText.textContent = "👂 聴いてるニャ♪";
           setEmotion('idle');
-          setTimeout(() => {
-            if (!STATE.isPaused && !STATE.isThinking && !STATE.isAwaiting38Approval) startListening();
-          }, 800);
+          setTimeout(() => { if (!STATE.isPaused) startListening(); }, 600);
         };
 
         await masterAudio.play();
-        logDiag("[四国めたん] 四国めたん肉声ボイスで発声中ニャ🐾", "success");
-
-      } catch (err) {
-        logDiag(`[四国めたん切替: ${err.message}] 端末標準音声で発話しますニャ`, "warn");
-        speakWithNativeVoice(rawText, syncBubble, actionCards, savedBadgeText);
+        logDiag("[四国めたん] 四国めたんボイスで発声中ニャ🐾", "success");
+      } catch (e) {
+        logDiag(`[四国めたん待機/失敗] 標準音声へ切り替えニャ`, "warn");
+        speakWithNativeVoice(rawText, syncBubble, actionCards);
       }
     }
 
     testVoiceBtn.addEventListener('click', () => {
       keepAudioActive();
-      speakVoice("おやびん、クロだニャン！最新の出来事もいっぱいお話ししてニャ🐾", false);
+      speakVoice("おやびん、クロだニャン！最新のこともなんでも話してニャ🐾", false);
     });
 
     /* ==========================================================
-       10. 音声認識（常時対話・ハウリング遮断）
+       音声認識（常時対話）
        ========================================================== */
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
@@ -2506,11 +1907,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       recognition.onstart = () => {
         STATE.isListening = true;
         document.body.classList.add('is-listening');
-        if (STATE.isWaitingForMemoryInput) {
-          statusText.textContent = "📝 メモを待ってるニャ…";
-        } else {
-          statusText.textContent = "👂 聴いてるニャ♪";
-        }
+        statusText.textContent = "👂 聴いてるニャ♪";
       };
 
       recognition.onresult = (event) => {
@@ -2524,14 +1921,14 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       recognition.onerror = () => {
         stopListening();
         if (!STATE.isPaused && !STATE.isThinking && !STATE.isSpeaking) {
-          setTimeout(() => { if (!STATE.isPaused && !STATE.isThinking && !STATE.isSpeaking) startListening(); }, 400);
+          setTimeout(() => startListening(), 400);
         }
       };
 
       recognition.onend = () => {
         stopListening();
         if (!STATE.isPaused && !STATE.isThinking && !STATE.isSpeaking) {
-          setTimeout(() => { if (!STATE.isPaused && !STATE.isThinking && !STATE.isSpeaking) startListening(); }, 300);
+          setTimeout(() => startListening(), 300);
         }
       };
     }
@@ -2557,7 +1954,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         pauseIcon.textContent = "🛑";
         pauseText.textContent = "お休み中（タップで再開）";
         statusText.textContent = "💤 お昼寝中";
-        addChatMessage('model', "クロはお昼寝するニャ…💤 お話しする時はボタンを押してニャン♪");
+        addChatMessage('model', "クロはお昼寝するニャ…💤");
         setEmotion('idle');
         stopListening();
         stopSpeaking();
@@ -2565,41 +1962,27 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         pauseBtn.classList.remove('is-paused');
         pauseIcon.textContent = "🟢";
         pauseText.textContent = "会話中（話しかけてニャ）";
-        addChatMessage('model', "起きたニャ！おやびん、いつでも声で呼んでニャ🐾");
+        addChatMessage('model', "起きたニャ！おやびん、呼んでニャ🐾");
         setEmotion('idle');
         playCatMeow('happy');
         startListening();
       }
     }
 
-    function handleAppResume() {
-      logDiag("[復帰検知] 音声対話を再開ニャ", "info");
-      keepAudioActive();
-      if (!STATE.isPaused && !STATE.isSpeaking && !STATE.isThinking) {
-        setTimeout(() => startListening(), 600);
-      }
-    }
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') handleAppResume();
-    });
-    window.addEventListener('pageshow', handleAppResume);
-
-    /* ==========================================================
-       11. 初期化 ＆ 設定保存
-       ========================================================== */
     pauseBtn.addEventListener('click', togglePause);
 
+    /* ==========================================================
+       設定＆初期ロード
+       ========================================================== */
     voiceRate.addEventListener('input', (e) => {
       rateVal.textContent = parseFloat(e.target.value).toFixed(2);
     });
 
     settingsBtn.addEventListener('click', () => {
       keepAudioActive();
-      STATE.editingMemoryIndex = null;
       document.getElementById('api-key-input').value = STATE.apiKey;
       voiceRate.value = STATE.rate;
       rateVal.textContent = STATE.rate.toFixed(2);
-      gpsStatusText.textContent = STATE.location.statusText;
       renderMemoryList();
       modalOverlay.style.display = 'flex';
     });
@@ -2616,23 +1999,17 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       localStorage.setItem('kuro_api_key', STATE.apiKey);
       localStorage.setItem('kuro_rate', STATE.rate);
 
-      if (STATE.apiKey) {
-        await scanAvailableGeminiModels(STATE.apiKey);
-      }
+      if (STATE.apiKey) await scanAvailableGeminiModels(STATE.apiKey);
 
       modalOverlay.style.display = 'none';
-      logDiag(`[設定保存完了] APIキーと速度（${STATE.rate}）を保存完了ニャ！`, "success");
-
+      logDiag(`[設定保存] 完了ニャ！`, "success");
       playCatMeow('happy');
-      addChatMessage('model', `設定バッチリ保存したニャ！いつでも話しかけてニャン🐾`);
-      setTimeout(() => {
-        if (!STATE.isPaused) startListening();
-      }, 500);
+      addChatMessage('model', `設定保存したニャ！いっぱい話しかけてニャン🐾`);
+      setTimeout(() => { if (!STATE.isPaused) startListening(); }, 500);
     });
 
     window.addEventListener('load', async () => {
-      // ロード時はサイレントにIP位置推定（スマホ許可ブロックを回避）
-      fallbackIPLocation("自動初期化");
+      fallbackIPLocation("初期化");
       renderMemoryList();
       restoreChatTimeline();
       applyAvatarMode(true);
@@ -2643,11 +2020,11 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         resolveBestModels();
       }
 
-      logDiag("クロちゃん起動完了。リアルタイムGoogle検索＆四国めたん稼働中ニャ🐾", "success");
-      setTimeout(() => {
-        if (!STATE.isPaused) startListening();
-      }, 1000);
+      logDiag("クロちゃん起動完了。準備バッチリニャ🐾", "success");
+      setTimeout(() => { if (!STATE.isPaused) startListening(); }, 1000);
     });
   </script>
 </body>
 </html>
+
+
