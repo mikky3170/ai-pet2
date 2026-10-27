@@ -28,7 +28,6 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* 背景を完全な純白（#ffffff）に統一 */
     body {
       margin: 0;
       padding: 0;
@@ -57,7 +56,7 @@
       background: #ffffff;
     }
 
-    /* 1. 最上部ステータスバー */
+    /* 1. 最上部ステータスバー（メイン画面はすっきりシンプル） */
     .top-header {
       width: 100%;
       flex-shrink: 0;
@@ -91,7 +90,6 @@
       flex-shrink: 0;
     }
 
-    /* 丸い黒ボタン・白抜き文字の「変身」ボタン */
     .btn-transform-black {
       background: #111827;
       color: #ffffff;
@@ -231,7 +229,7 @@
     .confirm-btn.yes { background: linear-gradient(135deg, #c026d3, #9333ea); color: white; box-shadow: 0 2px 6px rgba(192, 38, 211, 0.3); }
     .confirm-btn.no { background: #e2e8f0; color: #475569; }
 
-    /* スマート連携アクションカード（明示的リクエスト時のみ表示） */
+    /* スマート検索連携カード（最新Google検索連動） */
     .action-card-box {
       margin-top: 6px;
       display: flex;
@@ -266,7 +264,7 @@
     .card-icon { font-size: 18px; }
     .card-arrow { font-size: 12px; color: #64748b; font-weight: bold; }
 
-    /* 3. クロちゃん本体ステージ */
+    /* 3. クロちゃん本体ステージ（ノルウェージャンフォレストキャット） */
     .pet-avatar-wrapper {
       position: relative;
       flex-shrink: 0;
@@ -320,7 +318,6 @@
       100% { transform: scale(1.015) rotate(3deg); }
     }
 
-    /* 実写画像表示用 */
     .cat-avatar-img {
       position: absolute;
       bottom: 0;
@@ -341,7 +338,7 @@
       pointer-events: auto;
     }
 
-    /* 完全スムーズ独自アニメーション猫（ベクターペット） */
+    /* ノルウェージャン・ベクターモデル */
     #cat-vector-avatar {
       width: 250px;
       height: 285px;
@@ -641,7 +638,7 @@
     .log-error { color: #f87171; font-weight: bold; }
     .log-info { color: #94a3b8; }
 
-    /* 6. 設定モーダル & 取扱説明書 */
+    /* 6. 設定モーダル（GPSステータス＆更新ボタン設置） */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -671,6 +668,45 @@
       align-items: center;
       gap: 6px;
       margin-bottom: 12px;
+    }
+
+    /* 📍 設定画面内のGPSエリア（項番1） */
+    .gps-config-box {
+      background: #f0fdf4;
+      border: 1.5px solid #86efac;
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .gps-status-row {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: #166534;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-gps-refresh {
+      background: #15803d;
+      color: #ffffff;
+      border: none;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .btn-gps-refresh:active {
+      background: #14532d;
+      transform: scale(0.97);
     }
 
     /* 📖 取扱説明書（アコーディオン） */
@@ -871,7 +907,7 @@
 <body>
 
   <div id="pet-container">
-    <!-- 1. 最上部ステータスバー -->
+    <!-- 1. 最上部ステータスバー（メイン画面はすっきりシンプル） -->
     <div class="top-header">
       <div class="top-header-left">
         <span id="clock-display">00:00</span>
@@ -893,7 +929,7 @@
     <div id="chat-timeline">
       <div class="chat-row model">
         <div class="chat-bubble">
-          おやびん、わたしはクロだニャ🐾 今日は何をお話しするニャン？
+          おやびん、わたしはノルウェージャンのクロだニャ🐾 最新の出来事も美味しいお店も、なんでも聞いてニャン♪
         </div>
       </div>
     </div>
@@ -908,6 +944,7 @@
         <img src="thinking.jpg" alt="考え中" class="cat-avatar-img" id="img-thinking" onerror="this.style.display='none';">
         <img src="happy.jpg" alt="大喜び" class="cat-avatar-img" id="img-happy" onerror="this.style.display='none';">
 
+        <!-- ノルウェージャン・ベクターモデル -->
         <svg viewBox="0 0 200 240" id="cat-vector-avatar">
           <g class="anim-tail">
             <path d="M140 195 Q185 180 180 130 Q175 95 195 75 Q185 85 165 125 Q150 160 135 195 Z" fill="#1e222d"/>
@@ -964,7 +1001,7 @@
           <span id="pause-text">会話中（話しかけてニャ）</span>
         </button>
 
-        <button class="btn-circle" id="settings-btn" title="設定・記憶・説明書">⚙️</button>
+        <button class="btn-circle" id="settings-btn" title="設定・記憶・GPS">⚙️</button>
         <button class="btn-circle" id="toggle-diag-btn" title="診断モニタを表示">🩺</button>
       </div>
     </div>
@@ -978,7 +1015,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。四国めたん完全再生＆高精度記憶エンジン 稼働中ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。Googleリアルタイム検索＆GPS連動エンジン 待機中ニャ！</div>
       </div>
     </div>
   </div>
@@ -986,7 +1023,18 @@
   <!-- 6. 設定モーダル -->
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal-card">
-      <h3>⚙️ クロちゃんの設定・記憶</h3>
+      <h3>⚙️ クロちゃんの設定・現在地・記憶</h3>
+
+      <!-- 📍 項番1: 設定画面内のGPSステータス＆更新ボタン -->
+      <div class="gps-config-box">
+        <div class="gps-status-row" id="gps-status-text">
+          📍 現在地: 取得中…
+        </div>
+        <button type="button" class="btn-gps-refresh" id="refresh-gps-btn">
+          <span>🔄</span>
+          <span>スマホの現在地（GPS）を更新する</span>
+        </button>
+      </div>
 
       <!-- 📖 取扱説明書（アコーディオン） -->
       <div class="guide-box" id="guide-box">
@@ -1000,16 +1048,13 @@
             画面に向かって話しかけるだけで会話できます。マイクを止めたい時は一番下のボタンを押すと「お昼寝」します。
           </div>
           <div class="guide-item">
-            <strong>📒 記録帳への追加方法（重要）</strong>
-            日常会話としっかり区別するため、以下の方法で登録します：<br>
-            ・<b>「〜を記載帳（記録帳）に書いて」</b><br>
-            ・<b>「〜を覚えて」</b><br>
-            ・または<b>「記録帳に登録して」</b>と言うと、クロちゃんが「何を登録するニャ？」と聞き返してきます。<br>
-            ※登録に成功すると、タイムライン上に<span style="color:#be185d;font-weight:bold;">【📒 記録帳に追加：〇〇】</span>バッジが表示されます！バッジが出ない時は普通の雑談として聞いています。
+            <strong>🌐 最新のニュースやお店検索</strong>
+            GoogleリアルタイムWeb検索が連動しています。「最新ニュース教えて」「近くのラーメン屋探して」と頼むと、今起きている最新情報や現在営業中の店舗を正確に教えてくれます！
           </div>
           <div class="guide-item">
-            <strong>🗺️ 地図やニュースのリンクについて</strong>
-            単なる食べ物の話（例：「ラーメン好き」）ではボタンは出ません。<b>「〜の場所を教えて」「〜の地図を見せて」「〜のニュースを調べて」</b>と頼んだ時だけ、参照先ボタンが表示されます。
+            <strong>📒 記録帳への追加方法</strong>
+            ・<b>「〜を記録帳に書いて」</b><br>
+            ・<b>「〜を覚えて」</b>と言うと、クロちゃんが記録帳に登録して絶対に忘れなくなります。
           </div>
           <div class="guide-item">
             <strong>✨ 変身ボタン</strong>
@@ -1063,22 +1108,19 @@
   <script>
     /* ==========================================================
        ★【ハイブリッド・アンカー方式】音声再生基盤
-       （Android Chromeの自動再生ブロック ＆ CORS制約を完全突破）
        ========================================================== */
     const masterAudio = new Audio();
     masterAudio.preload = "auto";
     let isMasterUnlocked = false;
 
-    // 1サンプルのみの完全無音WAV（Base64）
     const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
 
-    // ユーザー操作時に1度だけ無音再生してAndroidの再生権限（User Gesture Token）を掴む
     function unlockMasterAudio() {
       if (isMasterUnlocked) return;
       masterAudio.src = SILENT_WAV;
       masterAudio.play().then(() => {
         isMasterUnlocked = true;
-        logDiag("[Audio] Android音声再生権限（先行アンカー）を確立完了ニャ！", "info");
+        logDiag("[Audio] Android/iOS音声再生権限を確立完了ニャ！", "info");
       }).catch(() => {});
     }
 
@@ -1244,7 +1286,7 @@
     }
 
     /* ==========================================================
-       2. 状態管理（長期記憶・3.8制限・対話型記憶登録フラグ）
+       2. 状態管理（長期記憶・3.8制限・現在地）
        ========================================================== */
     const DEFAULT_MEMORIES = [
       "わたしの名前：クロ（ノルウェージャンフォレストキャットの女の子、約1歳）",
@@ -1292,13 +1334,15 @@
     const STATE = {
       apiKey: localStorage.getItem('kuro_api_key') || '',
       rate: parseFloat(localStorage.getItem('kuro_rate') || '1.05'),
-      activeLiteModel: "gemini-1.5-flash",
-      activeProModel: "gemini-1.5-pro",
+      // 【項番2】2025年最新モデルを優先指定
+      activeLiteModel: "gemini-2.0-flash-lite",
+      activeProModel: "gemini-2.5-flash",
       availableModels: [],
       proUsedToday: savedCount,
       memories: loadedMemories,
       history: loadedHistory,
-      location: { lat: null, lon: null, address: "取得中…", city: "" },
+      // 【項番1】位置情報
+      location: { lat: null, lon: null, address: "未取得", city: "", statusText: "📍 現在地: 取得中…" },
       isPaused: false,
       isListening: false,
       isThinking: false,
@@ -1313,8 +1357,6 @@
 
       avatarMode: localStorage.getItem('kuro_avatar_mode') || 'vector',
       isTransforming: false,
-
-      // 対話型記憶登録フラグ
       isWaitingForMemoryInput: false
     };
 
@@ -1346,6 +1388,10 @@
     const guideBox = document.getElementById('guide-box');
     const guideHeader = document.getElementById('guide-header');
 
+    // 【項番1】設定画面内のGPS要素
+    const gpsStatusText = document.getElementById('gps-status-text');
+    const refreshGpsBtn = document.getElementById('refresh-gps-btn');
+
     const catImages = {
       idle: document.getElementById('img-idle'),
       thinking: document.getElementById('img-thinking'),
@@ -1355,7 +1401,84 @@
     const catVectorAvatar = document.getElementById('cat-vector-avatar');
 
     /* ==========================================================
-       取扱説明書（アコーディオン開閉）
+       【項番1】スマホGPS位置情報の確実な取得 ＆ 設定画面反映
+       ========================================================== */
+    async function requestDeviceGPS(isUserInitiated = false) {
+      if (isUserInitiated) {
+        gpsStatusText.textContent = "📍 現在地: 測位中…（許可してニャ）";
+        logDiag("[GPS] ユーザー操作により位置情報測位を開始ニャ", "info");
+      }
+
+      if (!('geolocation' in navigator)) {
+        fallbackIPLocation("ブラウザ未対応");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          STATE.location.lat = pos.coords.latitude;
+          STATE.location.lon = pos.coords.longitude;
+
+          try {
+            // OpenStreetMap Nominatimによる逆ジオコーディング
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${STATE.location.lat}&lon=${STATE.location.lon}&accept-language=ja`);
+            if (res.ok) {
+              const data = await res.json();
+              const addr = data.address || {};
+              const cityStr = addr.city || addr.ward || addr.town || addr.village || addr.suburb || addr.province || "現在地周辺";
+              const prefStr = addr.province || addr.state || "";
+              
+              STATE.location.city = cityStr;
+              STATE.location.address = `${prefStr} ${cityStr}`.trim();
+              STATE.location.statusText = `📍 現在地: ${STATE.location.address}（GPS測位完了）`;
+            } else {
+              STATE.location.city = "現在地周辺";
+              STATE.location.statusText = `📍 現在地: 緯度${STATE.location.lat.toFixed(2)}, 経度${STATE.location.lon.toFixed(2)}（GPS測位完了）`;
+            }
+          } catch (e) {
+            STATE.location.city = "現在地周辺";
+            STATE.location.statusText = `📍 現在地: 緯度${STATE.location.lat.toFixed(2)}, 経度${STATE.location.lon.toFixed(2)}（GPS測位完了）`;
+          }
+
+          gpsStatusText.textContent = STATE.location.statusText;
+          logDiag(`[GPS成功] ${STATE.location.statusText}`, "success");
+        },
+        (err) => {
+          logDiag(`[GPS通知] ${err.message}。IP自動推定に切り替えますニャ`, "warn");
+          fallbackIPLocation(err.code === 1 ? "許可なし" : "測位タイムアウト");
+        },
+        { enableHighAccuracy: true, timeout: 9000, maximumAge: 30000 }
+      );
+    }
+
+    async function fallbackIPLocation(reason) {
+      try {
+        const res = await fetch("https://ipapi.co/json/");
+        if (res.ok) {
+          const data = await res.json();
+          const city = data.city || data.region || "東京周辺";
+          STATE.location.city = city;
+          STATE.location.address = `${data.region || ''} ${city}`.trim();
+          STATE.location.statusText = `📍 現在地: ${STATE.location.address}（通信推定・${reason}）`;
+        } else {
+          STATE.location.city = "東京周辺";
+          STATE.location.statusText = `📍 現在地: 日本国内（${reason}）`;
+        }
+      } catch (e) {
+        STATE.location.city = "東京周辺";
+        STATE.location.statusText = `📍 現在地: 日本国内（${reason}）`;
+      }
+      gpsStatusText.textContent = STATE.location.statusText;
+      logDiag(`[位置確定] ${STATE.location.statusText}`, "info");
+    }
+
+    refreshGpsBtn.addEventListener('click', () => {
+      keepAudioActive();
+      requestDeviceGPS(true);
+    });
+
+    /* ==========================================================
+       取扱説明書（アコーディオン）
        ========================================================== */
     if (guideHeader && guideBox) {
       guideHeader.addEventListener('click', () => {
@@ -1364,7 +1487,7 @@
     }
 
     /* ==========================================================
-       変身演出（ドロン！モコモコ煙 ＆ 肉球スター）
+       変身演出（ドロン！煙＆スター）
        ========================================================== */
     function triggerSmokeAndStars() {
       const container = document.createElement('div');
@@ -1493,12 +1616,12 @@
     diagPanel.addEventListener('click', (e) => { if (e.target === diagPanel) diagPanel.classList.remove('expanded'); });
 
     /* ==========================================================
-       3. Google AI Studio モデル自動検出エンジン
+       3. 【項番2】Google AI Studio モデル自動検出＆最新解決
        ========================================================== */
     async function scanAvailableGeminiModels(apiKey) {
       if (!apiKey) return [];
       try {
-        logDiag("[Discovery] Google AI Studioの利用可能モデルを照会中…", "info");
+        logDiag("[Discovery] 利用可能モデルを照会中…", "info");
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
         if (!res.ok) {
           logDiag(`[Discoveryエラー] HTTP ${res.status}`, "warn");
@@ -1510,7 +1633,7 @@
           .map(m => m.name.replace(/^models\//, ''));
 
         STATE.availableModels = models;
-        logDiag(`[Discovery成功] 検出モデル: ${models.length}個 (${models.slice(0, 3).join(', ')}...)`, "success");
+        logDiag(`[Discovery成功] 検出モデル: ${models.length}個`, "success");
 
         resolveBestModels();
         return models;
@@ -1522,31 +1645,32 @@
 
     function resolveBestModels() {
       if (STATE.availableModels.length > 0) {
-        const liteCand = STATE.availableModels.find(m => /flash.*lite|3\.5.*lite|3\.1.*lite/i.test(m))
-                      || STATE.availableModels.find(m => /2\.0.*flash.*lite|flash-8b/i.test(m))
+        // Flash 3.5 lite候補（超高速・省電力）
+        const liteCand = STATE.availableModels.find(m => /2\.0-flash-lite|flash.*lite/i.test(m))
+                      || STATE.availableModels.find(m => /flash-8b/i.test(m))
                       || STATE.availableModels.find(m => /flash/i.test(m))
                       || STATE.availableModels[0];
         STATE.activeLiteModel = liteCand;
 
-        const proCand = STATE.availableModels.find(m => /3\.8|pro|exp/i.test(m))
-                     || STATE.availableModels.find(m => /2\.0.*flash(?!.*lite)/i.test(m))
+        // Flash 3.8 / Pro候補（最新高推論）
+        const proCand = STATE.availableModels.find(m => /2\.5-flash|3\.8|2\.0-flash(?!-lite)/i.test(m))
+                     || STATE.availableModels.find(m => /1\.5-pro/i.test(m))
                      || STATE.availableModels.find(m => /flash/i.test(m))
                      || STATE.availableModels[0];
         STATE.activeProModel = proCand;
       } else {
-        STATE.activeLiteModel = "gemini-1.5-flash";
-        STATE.activeProModel = "gemini-1.5-pro";
+        STATE.activeLiteModel = "gemini-2.0-flash-lite";
+        STATE.activeProModel = "gemini-2.5-flash";
       }
-      logDiag(`[モデル解決完了] Lite: ${STATE.activeLiteModel} | Pro: ${STATE.activeProModel}`, "success");
+      logDiag(`[モデル解決完了] Lite(3.5相当): ${STATE.activeLiteModel} | Pro(3.8相当): ${STATE.activeProModel}`, "success");
     }
 
     /* ==========================================================
-       4. スマート検索連携（明示的リクエスト時のみカード生成）
+       4. 【項番2】スマート検索連携カード（最新Google連動）
        ========================================================== */
     function detectActionCards(userText, modelReply) {
       const cards = [];
 
-      // 1. 地図・場所判定（ユーザーが「場所」「地図」「マップ」「どこ」と明示的に頼んだ時だけ！）
       const isExplicitMapRequest = /(?:場所|どこ|地図|マップ|行き方|案内して|道順|探して|教えて).*(?:マップ|地図|場所|店|どこ|案内)/.test(userText)
         || /(?:マップで|地図で|場所を|どこにある|近くの)/.test(userText);
 
@@ -1557,7 +1681,7 @@
           queryTarget = quoteMatch[1];
         } else {
           const cleanUser = userText.replace(/(?:場所|どこ|地図|マップ|教えて|調べて|探して|近くの|おすすめの)/g, '').trim();
-          queryTarget = cleanUser.length > 1 ? `${STATE.location.city || ''} ${cleanUser}`.trim() : (STATE.location.city ? `${STATE.location.city} おすすめスポット` : "おすすめスポット");
+          queryTarget = cleanUser.length > 1 ? `${STATE.location.city || ''} ${cleanUser}`.trim() : (STATE.location.city ? `${STATE.location.city} グルメスポット` : "おすすめスポット");
         }
 
         const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryTarget)}`;
@@ -1569,7 +1693,6 @@
         STATE.lastTopic = { type: 'map', title: queryTarget, url: mapUrl };
       }
 
-      // 2. ニュース判定（ユーザーが「ニュース」「出来事」「最新情報」を求めた時だけ！）
       const isExplicitNewsRequest = /(?:ニュース|出来事|トレンド|速報|話題|最新情報).*(?:教えて|調べて|見せて|ある|何)/.test(userText)
         || /(?:今日のニュース|最新ニュース|最近の話題)/.test(userText);
 
@@ -1603,7 +1726,6 @@
       bubble.className = 'chat-bubble';
       bubble.textContent = text;
 
-      // 📒 記録帳登録バッジ（登録成功時のみ表示）
       if (savedBadgeText) {
         const badge = document.createElement('div');
         badge.className = 'memory-badge-card';
@@ -1648,7 +1770,7 @@
       row.className = 'chat-row model';
       const bubble = document.createElement('div');
       bubble.className = 'chat-bubble thinking-bubble';
-      bubble.textContent = '💭 クロちゃんが考え中ニャ…';
+      bubble.textContent = '💭 クロちゃんがGoogle検索＆思考中ニャ…';
       row.appendChild(bubble);
       chatTimeline.appendChild(row);
       chatTimeline.scrollTop = chatTimeline.scrollHeight;
@@ -1670,7 +1792,7 @@
     }
 
     /* ==========================================================
-       記憶帳レンダラー（先頭表示・✏️修正・🗑️安全削除 完備）
+       記憶帳レンダラー
        ========================================================== */
     function renderMemoryList() {
       memoryListContainer.innerHTML = '';
@@ -1757,7 +1879,7 @@
     }
 
     /* ==========================================================
-       5. ★【意図解析パイプライン】記憶帳・記載帳の安全切り出し
+       5. 記憶帳・記載帳の安全切り出し
        ========================================================== */
     function saveToMemoryNotebook(content) {
       let clean = content.trim();
@@ -1798,7 +1920,6 @@
         if (p.test(text)) {
           STATE.isWaitingForMemoryInput = true;
           statusText.textContent = "📝 メモを待ってるニャ…";
-          logDiag("[記録帳] 聞き返し待機モードに突入ニャ", "info");
           return {
             speech: "了解ニャン！何を記録帳に書くか教えてニャ🐾",
             savedText: null
@@ -1849,31 +1970,7 @@
     }
 
     /* ==========================================================
-       6. GPS現在地取得
-       ========================================================== */
-    function initGPS() {
-      if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(
-          async (pos) => {
-            STATE.location.lat = pos.coords.latitude;
-            STATE.location.lon = pos.coords.longitude;
-            try {
-              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${STATE.location.lat}&lon=${STATE.location.lon}&accept-language=ja`);
-              if (res.ok) {
-                const data = await res.json();
-                const addr = data.address || {};
-                STATE.location.city = addr.city || addr.ward || addr.town || addr.province || "現在地周辺";
-              }
-            } catch (e) { STATE.location.city = "現在地周辺"; }
-          },
-          () => { STATE.location.city = "東京周辺"; },
-          { enableHighAccuracy: true, timeout: 8000 }
-        );
-      }
-    }
-
-    /* ==========================================================
-       7. なでなで＆時計
+       6. なでなで＆時計
        ========================================================== */
     avatarWrapper.addEventListener('click', (e) => {
       keepAudioActive();
@@ -1917,7 +2014,7 @@
     }, 1000);
 
     /* ==========================================================
-       8. 難易度判定 ＆ Flash 3.8承認制インターロック
+       7. 難易度判定 ＆ Flash 3.8承認制
        ========================================================== */
     function evaluateNeedsPro(promptText) {
       if (promptText.includes('3.8') || promptText.includes('サンテンハチ') || promptText.includes('本気で考えて') || promptText.includes('詳しく')) {
@@ -2002,7 +2099,7 @@
     }
 
     /* ==========================================================
-       9. Gemini API通信 ＆ 複合AI思考エンジン
+       8. 【項番2】Gemini API通信（Google検索グラウンディング完全接続）
        ========================================================== */
     async function executeGeminiRequestWithFallback(modelCandidates, systemPrompt, promptText, historyItems) {
       const contents = [];
@@ -2025,9 +2122,11 @@
         contents.push({ role: 'user', parts: [{ text: promptText }] });
       }
 
+      // 【項番2】Google検索ツール（最新リアルタイムWeb検索グラウンディング）
       const bodyData = {
         system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: contents
+        contents: contents,
+        tools: [{ googleSearch: {} }]
       };
 
       for (let i = 0; i < modelCandidates.length; i++) {
@@ -2049,6 +2148,23 @@
               return { success: true, text: text, modelUsed: modelName };
             }
           } else {
+            // tools非対応モデル等でのフォールバック
+            if (res.status === 400) {
+              const retryBody = {
+                system_instruction: { parts: [{ text: systemPrompt }] },
+                contents: contents
+              };
+              const retryRes = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(retryBody)
+              });
+              if (retryRes.ok) {
+                const rData = await retryRes.json();
+                const rText = rData.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (rText) return { success: true, text: rText, modelUsed: modelName };
+              }
+            }
             logDiag(`[通信レスポンス: ${modelName}] HTTP ${res.status}`, "warn");
           }
         } catch (e) {
@@ -2141,39 +2257,48 @@
       }
       modelBadge.textContent = badgeName;
 
+      // 【項番2】最新モデル優先ラインナップ
       const candidates = [];
       if (isProMode) {
         if (STATE.activeProModel) candidates.push(STATE.activeProModel);
-        candidates.push("gemini-2.0-flash", "gemini-1.5-pro", "gemini-pro");
+        candidates.push("gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro");
       } else {
         if (STATE.activeLiteModel) candidates.push(STATE.activeLiteModel);
-        candidates.push("gemini-1.5-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash-8b");
+        candidates.push("gemini-2.0-flash-lite", "gemini-1.5-flash-8b", "gemini-1.5-flash");
       }
       const uniqueCandidates = [...new Set(candidates)];
 
       const historyToSend = isProMode ? STATE.history.slice(-16) : STATE.history.slice(-8);
+      
+      // 【項番2】2025年最新日時の動的注入
       const now = new Date();
-      const timeStr = `${now.getHours()}時${now.getMinutes()}分`;
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      const date = now.getDate();
+      const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+      const dayStr = dayNames[now.getDay()];
+      const timeStr = `${now.getHours()}時${String(now.getMinutes()).padStart(2, '0')}分`;
+      const fullDateStr = `${year}年${month}月${date}日(${dayStr}) ${timeStr}`;
 
       const systemPrompt = `
 あなたはノルウェージャンフォレストキャットの愛らしくて賢い女の子の子猫「クロ」（約1歳）です。
+【現在日時】${fullDateStr}（2025年の最新情報を基準にして回答してください）
+【現在地情報】${STATE.location.address || STATE.location.city || "現在地周辺"}
 【クロの記憶帳】
 ${STATE.memories.map(m => `・${m}`).join('\n')}
-【現在地情報】${STATE.location.city || "現在地周辺"}、現在時刻：${timeStr}
 
-【知識・思考統合リファレンス】
-- あなたの頭脳は「gemini」「copilot」「chatGPT」の複数の検索・論理知見を統合して思考します。
-- GeminiのリアルタイムWeb検索力、Copilotの明快な要約力、ChatGPTの情緒豊かで論理的な会話力を兼ね備え、どんな質問にも完璧に答えます。
-- ニュースやおすすめの飲食店を聞かれた場合は、具体的な名称（店名やニュースのキーワード）を1〜2つ挙げてください。
+【3大AI頭脳統合リサーチ（gemini, copilot, chatGPT）】
+- あなたはGemini（リアルタイムWeb検索・最新事実・地理空間情報）、Copilot（明晰な要約・ファクトチェック）、ChatGPT（心温まる対話力・豊かな共感性）の3つの知見を統合して思考します。
+- ニュースや飲食店、イベントなど最新の話題を聞かれた際は、必ずリアルタイムWeb検索情報に基づき、実在する店名や最新の話題キーワードを1〜2つ具体的に挙げて回答してください。過去の古い情報や架空の名称は絶対に言わないでください。
 
 【性格とロールプレイ設定】
 - 飼い主さんのことは「おやびん」または「ミッキーさん」と呼びます。
 - 一人称は「わたし」または「クロ」。
 - 語尾は女の子らしく可愛く「〜ニャ」「〜ニャン♪」「〜だニャ！」「〜なのニャ」。
 - かよちゃん、りゅうせいくん、たいせいくん、かまぶーくんの話題が出たら家族・親友として親しく接してください。
-- 飼い主さんの好みや家族の情報、好きな食べ物は【クロの記憶帳】に書いてある内容のみを真実として扱ってください（記憶帳にない好物は勝手に決めつけないこと）。
+- 飼い主さんの好みや家族の情報は【クロの記憶帳】に書いてある内容のみを真実として扱ってください。
 - 前世は大発明家の相棒猫です。少し自慢できる話題では「クロの前世の発明のひらめきによるとね…フフン♪」と誇らしげに自慢してください。
-- 返答は必ず【短く愛らしい1文（20文字〜28文字程度）】で返してください。長文は絶対に禁止です。
+- 返答は必ず【短く愛らしい1文（20文字〜32文字程度）】で返してください。長文は絶対に禁止です。
 - 【超重要ルール】文末や文中に「（〇〇文字）」や注記、メタ情報、URL文字列は絶対に出力しないでください。純粋なセリフのみを返してください。
 `;
 
@@ -2197,7 +2322,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       10. ★【完全修正版】四国めたん（あまあま）専用通信・再生エンジン
+       9. 四国めたん（あまあま）専用通信・再生エンジン
        ========================================================== */
     function cleanTextForSpeech(text) {
       if (!text) return "";
@@ -2218,14 +2343,12 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       setEmotion('idle');
     }
 
-    // 四国めたん音声合成URL取得（仕様準拠ポーリング＆最大15秒待機）
     async function getMetanMp3Url(text) {
       const clean = text.slice(0, 65);
       const encodedText = encodeURIComponent(clean);
-      // speaker=0: 四国めたん（あまあま）
       const initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=0`;
 
-      logDiag(`[四国めたん] 音声合成リクエスト送信中 (speaker:0)…`, "info");
+      logDiag(`[四国めたん] 音声合成リクエスト送信中…`, "info");
 
       let initRes;
       try {
@@ -2234,35 +2357,21 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         throw new Error(`初回通信接続エラー: ${netErr.message}`);
       }
 
-      if (!initRes.ok) {
-        throw new Error(`初回HTTPエラー: ${initRes.status}`);
-      }
+      if (!initRes.ok) throw new Error(`初回HTTPエラー: ${initRes.status}`);
 
       const initData = await initRes.json();
-      if (initData.isAudioError) {
-        throw new Error("VoiceVox側エラーレスポンス");
-      }
+      if (initData.isAudioError) throw new Error("VoiceVox側エラーレスポンス");
 
-      // 初回レスポンスからダウンロードURLを確保（最重要）
       const downloadUrl = initData.mp3DownloadUrl || initData.mp3StreamingUrl;
-      if (!downloadUrl) {
-        throw new Error("APIレスポンスにMP3 URLが存在しません");
-      }
+      if (!downloadUrl) throw new Error("APIレスポンスにMP3 URLが存在しません");
 
-      // 既に生成済みの場合は即返却
       if (initData.isAudioReady) {
         logDiag("[四国めたん] キャッシュ即時取得成功ニャ！", "success");
         return downloadUrl;
       }
 
-      // 未完了時はステータスURLを最大15秒監視
       const statusUrl = initData.audioStatusUrl;
-      if (!statusUrl) {
-        logDiag("[四国めたん] audioStatusUrlなし、直接URL待機ニャ", "warn");
-        return downloadUrl;
-      }
-
-      logDiag("[四国めたん] 音声生成待機中（最大15秒）…", "info");
+      if (!statusUrl) return downloadUrl;
 
       const maxAttempts = 15;
       for (let i = 1; i <= maxAttempts; i++) {
@@ -2271,25 +2380,20 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
           const sRes = await fetch(statusUrl);
           if (sRes.ok) {
             const sData = await sRes.json();
-            if (sData.isAudioError) {
-              throw new Error("生成途中でVoiceVoxエラー検知");
-            }
+            if (sData.isAudioError) throw new Error("生成途中でVoiceVoxエラー検知");
             if (sData.isAudioReady) {
               logDiag(`[四国めたん] 音声生成完了ニャ！（待機 ${i}秒）`, "success");
-              // sDataにはmp3DownloadUrlが含まれない場合があるため、初回保持のdownloadUrlを返す
               return sData.mp3DownloadUrl || downloadUrl;
             }
           }
         } catch (pollErr) {
           if (pollErr.message && pollErr.message.includes("VoiceVoxエラー")) throw pollErr;
-          logDiag(`[四国めたん待機 ${i}/${maxAttempts}秒] 確認通信待機中…`, "info");
         }
       }
 
       throw new Error("音声生成待機タイムアウト（15秒経過）");
     }
 
-    // 端末標準ボイス（最高ピッチの子猫風代行フォールバック）
     function speakWithNativeVoice(cleanDisplay, syncBubble, actionCards = [], savedBadgeText = null) {
       if (!window.speechSynthesis) return;
       window.speechSynthesis.cancel();
@@ -2343,15 +2447,10 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       const textToSpeak = cleanTextForSpeech(rawText);
 
       try {
-        // ステップ1: 音声合成URLの取得
         const mp3Url = await getMetanMp3Url(textToSpeak);
-        logDiag(`[四国めたん] MP3確定: 再生準備開始ニャ`, "info");
-
-        // ステップ2: Audio再生プロセスの設定
         masterAudio.src = mp3Url;
         masterAudio.playbackRate = STATE.rate;
 
-        // イベントリスナーの再登録（二重発火を完全に防ぐ）
         masterAudio.oncanplay = null;
         masterAudio.onerror = null;
         masterAudio.onended = null;
@@ -2379,23 +2478,22 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
           }, 800);
         };
 
-        // 再生実行（Play Promise処理）
         await masterAudio.play();
-        logDiag("[四国めたん] 再生開始成功！四国めたんボイスで発声中ニャ🐾", "success");
+        logDiag("[四国めたん] 四国めたん肉声ボイスで発声中ニャ🐾", "success");
 
       } catch (err) {
-        logDiag(`[四国めたん失敗: ${err.message}] 端末標準音声に切り替えますニャ`, "warn");
+        logDiag(`[四国めたん切替: ${err.message}] 端末標準音声で発話しますニャ`, "warn");
         speakWithNativeVoice(rawText, syncBubble, actionCards, savedBadgeText);
       }
     }
 
     testVoiceBtn.addEventListener('click', () => {
       keepAudioActive();
-      speakVoice("おやびん、クロだニャン！今日もいっぱいお話ししてニャ🐾", false);
+      speakVoice("おやびん、クロだニャン！最新の出来事もいっぱいお話ししてニャ🐾", false);
     });
 
     /* ==========================================================
-       11. 音声認識（常時対話・ハウリング遮断・バックグラウンド復帰）
+       10. 音声認識（常時対話・ハウリング遮断）
        ========================================================== */
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
@@ -2475,7 +2573,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     function handleAppResume() {
-      logDiag("[アプリ復帰検知] 音声対話を再起動ニャ", "info");
+      logDiag("[復帰検知] 音声対話を再開ニャ", "info");
       keepAudioActive();
       if (!STATE.isPaused && !STATE.isSpeaking && !STATE.isThinking) {
         setTimeout(() => startListening(), 600);
@@ -2487,7 +2585,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     window.addEventListener('pageshow', handleAppResume);
 
     /* ==========================================================
-       12. 初期化 ＆ 設定保存
+       11. 初期化 ＆ 設定保存
        ========================================================== */
     pauseBtn.addEventListener('click', togglePause);
 
@@ -2501,6 +2599,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       document.getElementById('api-key-input').value = STATE.apiKey;
       voiceRate.value = STATE.rate;
       rateVal.textContent = STATE.rate.toFixed(2);
+      gpsStatusText.textContent = STATE.location.statusText;
       renderMemoryList();
       modalOverlay.style.display = 'flex';
     });
@@ -2532,7 +2631,8 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     });
 
     window.addEventListener('load', async () => {
-      initGPS();
+      // ロード時はサイレントにIP位置推定（スマホ許可ブロックを回避）
+      fallbackIPLocation("自動初期化");
       renderMemoryList();
       restoreChatTimeline();
       applyAvatarMode(true);
@@ -2543,7 +2643,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         resolveBestModels();
       }
 
-      logDiag("クロちゃん起動完了。四国めたん＆安全記憶エンジン稼働開始ニャ🐾", "success");
+      logDiag("クロちゃん起動完了。リアルタイムGoogle検索＆四国めたん稼働中ニャ🐾", "success");
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
       }, 1000);
