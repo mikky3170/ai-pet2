@@ -84,6 +84,21 @@
       flex-shrink: 0;
     }
 
+    #status-text {
+      flex: 1;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 0 4px;
+      color: #0284c7;
+      transition: color 0.2s;
+    }
+    .is-hearing #status-text {
+      color: #e11d48;
+      font-weight: 800;
+    }
+
     .btn-transform-black {
       background: #111827;
       color: #ffffff;
@@ -625,7 +640,7 @@
     .log-error { color: #f87171; font-weight: bold; }
     .log-info { color: #94a3b8; }
 
-    /* 6. 設定・日記モーダル */
+    /* 6. 設定・現在地・日記モーダル */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -712,6 +727,45 @@
       font-size: 13.5px;
       outline: none;
     }
+
+    /* 📍 現在地表示 ＆ 更新ボタン */
+    .location-box-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .location-display-card {
+      flex: 1;
+      padding: 9px 12px;
+      background: #f0fdf4;
+      border: 1.5px solid #bbf7d0;
+      border-radius: 12px;
+      color: #166534;
+      font-weight: 700;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .btn-location-refresh {
+      padding: 9px 12px;
+      background: #f0fdf4;
+      border: 1.5px solid #86efac;
+      color: #15803d;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 11.5px;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+    .btn-location-refresh:active { transform: scale(0.95); background: #dcfce7; }
 
     .voice-control-row {
       display: flex;
@@ -921,7 +975,7 @@
           <span id="pause-text">会話中（話しかけてニャ）</span>
         </button>
 
-        <button class="btn-circle" id="settings-btn" title="設定・記憶・説明書・日記">⚙️</button>
+        <button class="btn-circle" id="settings-btn" title="設定・現在地・日記・記憶">⚙️</button>
         <button class="btn-circle" id="toggle-diag-btn" title="診断モニタを表示">🩺</button>
       </div>
     </div>
@@ -935,15 +989,15 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] モジュール完全分離アーキテクチャ 稼働開始ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。四国めたん完全保護＆高精度GPS稼働中ニャ！</div>
       </div>
     </div>
   </div>
 
-  <!-- 6. 設定・記憶・日記モーダル -->
+  <!-- 6. 設定・現在地・記憶・日記モーダル -->
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal-card">
-      <h3>⚙️ クロちゃんの設定・記憶・日記</h3>
+      <h3>⚙️ クロちゃんの設定・現在地・記憶</h3>
 
       <!-- 📖 取扱説明書（アコーディオン） -->
       <div class="guide-box" id="guide-box">
@@ -955,6 +1009,10 @@
           <div class="guide-item">
             <strong>🐾 基本のお話し・お昼寝</strong>
             画面に向かって話しかけるだけで会話できます。マイクを止めたい時は一番下のボタンを押すと「お昼寝」します。
+          </div>
+          <div class="guide-item">
+            <strong>📍 現在地の自動把握＆手動更新</strong>
+            スマホのGPSで現在地を自動把握します。移動した時は設定画面の「🔄 位置を更新」を押すと最新になります！
           </div>
           <div class="guide-item">
             <strong>📔 今日あったことの日記</strong>
@@ -975,6 +1033,19 @@
             <strong>✨ 変身ボタン</strong>
             画面左上の「✨ 変身」ボタンでアニメ猫と実写猫がドロン！と入れ替わります。
           </div>
+        </div>
+      </div>
+
+      <!-- 📍 クロが把握している現在地 ＆ 手動更新ボタン -->
+      <div class="form-group">
+        <label>📍 クロが把握している現在地:</label>
+        <div class="location-box-row">
+          <div class="location-display-card" id="current-location-text">
+            <span>📡</span><span id="loc-display-val">現在地を取得中…</span>
+          </div>
+          <button type="button" class="btn-location-refresh" id="refresh-location-btn">
+            <span>🔄</span><span>位置を更新</span>
+          </button>
         </div>
       </div>
       
@@ -998,7 +1069,7 @@
         <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.05" value="1.05">
       </div>
 
-      <!-- 📔 今日のクロ日記（最新） -->
+      <!-- 📖 今日のクロ日記（最新） -->
       <div class="form-group">
         <label>📖 最新のクロ日記（思い出日報）:</label>
         <div class="diary-preview-card" id="diary-preview-container">
@@ -1023,7 +1094,7 @@
 
   <script>
     /* ==========================================================================
-       ★ MODULE 0: 診断ロガー（全モジュール共有）
+       ★ MODULE 0: 診断ロガー
        ========================================================================== */
     const Logger = {
       log(message, type = 'info') {
@@ -1041,7 +1112,7 @@
 
     /* ==========================================================================
        ★ MODULE 1: 【完全保護・隔離】四国めたん 音声合成＆音声認識エンジン
-       ※ ここは他モジュール（検索・プロンプト・UI）から完全隔離されています。
+       ※ 音声合成・再生エンジンは完全保護。音声認識の常時自動復活ループを追加！
        ========================================================================== */
     class KuroVoiceEngine {
       constructor() {
@@ -1057,9 +1128,11 @@
         this.isSpeaking = false;
         this.isListening = false;
         this.recognition = null;
+        this.autoRestartTimer = null;
 
         // コールバック登録スロット
         this.onSpeechResult = null;
+        this.onInterimSpeech = null;
         this.onListeningChange = null;
 
         this._setupRecognition();
@@ -1088,6 +1161,7 @@
         const handler = () => {
           this.unlockMasterAudio();
           this._getAudioContext();
+          this.startListening();
         };
         window.addEventListener('pointerdown', handler, { passive: true });
         window.addEventListener('touchstart', handler, { passive: true });
@@ -1270,7 +1344,7 @@
         window.speechSynthesis.speak(uttr);
       }
 
-      /* 公開API: 発声処理（四国めたん最優先 ＆ フォールバック保証） */
+      /* 公開API: 発声処理 */
       async speak(text, speakerId = 0, onStart = null, onEnd = null) {
         this.stopSpeaking();
         this.unlockMasterAudio();
@@ -1326,14 +1400,18 @@
         if (window.speechSynthesis) window.speechSynthesis.cancel();
       }
 
-      /* 音声認識設定 */
+      /* 音声認識設定（★自動復活ループ ＆ リアルタイム認識字幕を完全装備） */
       _setupRecognition() {
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRec) return;
+        if (!SpeechRec) {
+          Logger.log("[マイク] このブラウザはSpeechRecognition非対応です", "error");
+          return;
+        }
 
         this.recognition = new SpeechRec();
         this.recognition.lang = 'ja-JP';
-        this.recognition.interimResults = false;
+        this.recognition.continuous = true;
+        this.recognition.interimResults = true; // 喋っている最中の言葉をリアルタイム取得
 
         this.recognition.onstart = () => {
           this.isListening = true;
@@ -1341,30 +1419,65 @@
         };
 
         this.recognition.onresult = (event) => {
-          const transcript = event.results[0][0].transcript;
-          if (transcript.trim() && this.onSpeechResult) {
-            this.onSpeechResult(transcript.trim());
+          let interimText = '';
+          let finalText = '';
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalText += transcript;
+            } else {
+              interimText += transcript;
+            }
+          }
+
+          if (interimText && this.onInterimSpeech) {
+            this.onInterimSpeech(interimText.trim());
+          }
+
+          if (finalText.trim()) {
+            Logger.log(`[マイク認識確定] 「${finalText.trim()}」`, "success");
+            if (this.onSpeechResult) {
+              this.onSpeechResult(finalText.trim());
+            }
           }
         };
 
-        this.recognition.onerror = () => {
+        this.recognition.onerror = (e) => {
           this.isListening = false;
           if (this.onListeningChange) this.onListeningChange(false);
+          this._scheduleAutoRestart();
         };
 
         this.recognition.onend = () => {
           this.isListening = false;
           if (this.onListeningChange) this.onListeningChange(false);
+          this._scheduleAutoRestart();
         };
+      }
+
+      // ブラウザが勝手に切断したときの自動再起動ループ
+      _scheduleAutoRestart() {
+        if (this.autoRestartTimer) clearTimeout(this.autoRestartTimer);
+        this.autoRestartTimer = setTimeout(() => {
+          if (!this.isSpeaking && !App.isPaused && !App.isThinking) {
+            this.startListening();
+          }
+        }, 350);
       }
 
       startListening() {
         if (!this.recognition || this.isSpeaking || this.isListening) return;
-        try { this.recognition.start(); } catch(e) {}
+        try {
+          this.recognition.start();
+        } catch(e) {
+          // すでに動いている場合は無視
+        }
       }
 
       stopListening() {
         this.isListening = false;
+        if (this.autoRestartTimer) clearTimeout(this.autoRestartTimer);
         if (this.recognition) {
           try { this.recognition.abort(); } catch(e) {}
         }
@@ -1373,7 +1486,7 @@
     }
 
     /* ==========================================================================
-       ★ MODULE 2: 【コンテキスト】高精度日時＆高精度GPSプロバイダ
+       ★ MODULE 2: 【コンテキスト】高精度日時＆本格高精度GPSプロバイダ
        ========================================================================== */
     const TimeProvider = {
       getCurrentInfo() {
@@ -1389,38 +1502,65 @@
     const LocationProvider = {
       lat: null,
       lon: null,
-      addressName: "現在地周辺",
+      addressName: "現在地を取得中…",
+      isUpdating: false,
 
-      init() {
-        if ('geolocation' in navigator) {
-          navigator.geolocation.getCurrentPosition(
-            async (pos) => {
-              this.lat = pos.coords.latitude;
-              this.lon = pos.coords.longitude;
-              try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${this.lat}&lon=${this.lon}&accept-language=ja`);
-                if (res.ok) {
-                  const data = await res.json();
-                  const a = data.address || {};
-                  this.addressName = a.city || a.ward || a.town || a.province || "現在地周辺";
-                  Logger.log(`[GPS更新] ${this.addressName} (緯度:${this.lat.toFixed(3)})`, "success");
-                }
-              } catch(e) {
+      async updateLocation(onComplete = null) {
+        if (!('geolocation' in navigator)) {
+          this.addressName = "位置情報非対応";
+          this._renderUI();
+          if (onComplete) onComplete(false);
+          return;
+        }
+
+        this.isUpdating = true;
+        this.addressName = "GPS測位中…";
+        this._renderUI();
+
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            this.lat = pos.coords.latitude;
+            this.lon = pos.coords.longitude;
+            try {
+              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${this.lat}&lon=${this.lon}&accept-language=ja`);
+              if (res.ok) {
+                const data = await res.json();
+                const a = data.address || {};
+                const pref = a.province || a.state || "";
+                const city = a.city || a.ward || a.town || a.suburb || a.village || "";
+                this.addressName = `${pref}${city}` || "現在地周辺";
+                Logger.log(`[GPS更新成功] ${this.addressName} (緯度:${this.lat.toFixed(3)}, 経度:${this.lon.toFixed(3)})`, "success");
+              } else {
                 this.addressName = "現在地周辺";
               }
-            },
-            () => { this.addressName = "東京周辺"; },
-            { enableHighAccuracy: true, timeout: 8000 }
-          );
-        }
+            } catch(e) {
+              this.addressName = "現在地周辺";
+            }
+            this.isUpdating = false;
+            this._renderUI();
+            if (onComplete) onComplete(true);
+          },
+          (err) => {
+            Logger.log(`[GPSエラー] コード:${err.code} ${err.message}`, "warn");
+            this.addressName = "東京周辺（測位未許可）";
+            this.isUpdating = false;
+            this._renderUI();
+            if (onComplete) onComplete(false);
+          },
+          { enableHighAccuracy: true, timeout: 9000, maximumAge: 0 }
+        );
+      },
+
+      _renderUI() {
+        const el = document.getElementById('loc-display-val');
+        if (el) el.textContent = this.addressName;
       }
     };
 
     /* ==========================================================================
-       ★ MODULE 3: 【会話ログ＆日記プロバイダ】日付別記録＆絵日記まとめエンジン
+       ★ MODULE 3: 【会話ログ＆日記プロバイダ】日付別記録＆プレビュー
        ========================================================================== */
     const KuroJournalProvider = {
-      // 日付ごとの会話ログを永続化
       appendLog(role, text) {
         const dateKey = TimeProvider.getCurrentInfo().logKey;
         const storageKey = `kuro_daily_log_${dateKey}`;
@@ -1431,14 +1571,6 @@
         } catch(e) {}
         logs.push({ time: TimeProvider.getCurrentInfo().clock, role, text });
         try { localStorage.setItem(storageKey, JSON.stringify(logs)); } catch(e) {}
-      },
-
-      getTodayLogs() {
-        const dateKey = TimeProvider.getCurrentInfo().logKey;
-        try {
-          const raw = localStorage.getItem(`kuro_daily_log_${dateKey}`);
-          return raw ? JSON.parse(raw) : [];
-        } catch(e) { return []; }
       },
 
       saveDiary(entryText) {
@@ -1471,7 +1603,7 @@
     };
 
     /* ==========================================================================
-       ★ MODULE 4: 【キャラクター定義】将来のキャラ切り替え対応スロット
+       ★ MODULE 4: 【キャラクター定義】将来の複数キャラ切り替え対応スロット
        ========================================================================== */
     const CHARACTER_PROFILES = {
       kuro: {
@@ -1492,7 +1624,6 @@
           "飼い主さんのご家族：奥さんはかよちゃん、息子はりゅうせいくん、たいせいくん。友達はかまぶーくん"
         ]
       }
-      // 将来ここに "momo", "leo" などを追加するだけでキャラ拡張可能
     };
 
     let activeCharacter = CHARACTER_PROFILES.kuro;
@@ -1552,7 +1683,6 @@
         return keywords.some(k => text.includes(k)) || text.length >= 40;
       }
 
-      // システムプロンプト生成（時間・GPS・記憶・日記作成・複数検索知見統合）
       buildSystemPrompt(memories, isDiaryRequest = false) {
         const timeInfo = TimeProvider.getCurrentInfo();
         const locName = LocationProvider.addressName;
@@ -1660,7 +1790,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
       init() {
         this._loadStorage();
         this._bindUI();
-        LocationProvider.init();
+        LocationProvider.updateLocation(); // 初回GPS取得
         KuroJournalProvider.renderDiaryPreview();
         this.renderMemoryList();
         this.updateProDisplay();
@@ -1670,7 +1800,15 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
 
         // 音声認識ハンドラー配線
         this.voice.onSpeechResult = (text) => this.handleUserVoice(text);
+
+        // 話している最中のリアルタイム字幕表示
+        this.voice.onInterimSpeech = (interim) => {
+          document.body.classList.add('is-hearing');
+          document.getElementById('status-text').textContent = `👂 「${interim}…」`;
+        };
+
         this.voice.onListeningChange = (listening) => {
+          document.body.classList.remove('is-hearing');
           if (listening) {
             document.body.classList.add('is-listening');
             document.getElementById('status-text').textContent = this.isWaitingForMemoryInput ? "📝 メモを待ってるニャ…" : "👂 聴いてるニャ♪";
@@ -1684,7 +1822,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           document.getElementById('clock-display').textContent = TimeProvider.getCurrentInfo().clock;
         }, 1000);
 
-        Logger.log("システム初期化完了。独立音声エンジン稼働中ニャ！", "success");
+        Logger.log("システム初期化完了。独立音声エンジン＆高精度GPS稼働中ニャ！", "success");
         setTimeout(() => this.startListening(), 1000);
       },
 
@@ -1740,7 +1878,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         document.getElementById('pro-counter-display').textContent = `🧠 3.8残: ${remaining}/20`;
       },
 
-      /* 記録帳対話判定 */
       handleMemoryIntent(text) {
         let clean = text.replace(/^(?:ねえ|あのね|おーい)?\s*(?:クロちゃん|クロ|くろ)[、,\s]*/i, '').trim();
 
@@ -1778,7 +1915,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         return null;
       },
 
-      /* 明示的リクエスト時のみカード生成 */
       detectActionCards(userText, modelReply) {
         const cards = [];
         const isMap = /(?:場所|どこ|地図|マップ|行き方|案内して)/.test(userText);
@@ -1855,6 +1991,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
 
       async handleUserVoice(text) {
         this.voice.unlockMasterAudio();
+        document.body.classList.remove('is-hearing');
         this.addBubble('user', text);
         this.voice.playEffect('aizuchi');
 
@@ -1894,7 +2031,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           return;
         }
 
-        // 難易度判定
         const needsPro = this.ai.evaluateComplexity(text);
         if (needsPro && this.ai.getRemainingProQuota() > 0) {
           this.askProApproval(text);
@@ -1993,7 +2129,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         }
       },
 
-      /* 変身演出 */
       triggerTransformation() {
         if (this.isTransforming) return;
         this.isTransforming = true;
@@ -2003,7 +2138,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         box.classList.add('pet-transform-shrink');
 
         setTimeout(() => {
-          // モコモコ煙＆肉球スター演出
           const wrapper = document.getElementById('avatar-wrapper');
           const smokeCont = document.createElement('div');
           smokeCont.className = 'smoke-cloud-container';
@@ -2035,7 +2169,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           }
           setTimeout(() => smokeCont.remove(), 800);
 
-          // モード切り替え
           this.avatarMode = (this.avatarMode === 'vector') ? 'real' : 'vector';
           localStorage.setItem('kuro_avatar_mode', this.avatarMode);
           this.applyAvatarMode(false);
@@ -2173,11 +2306,26 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         // 取扱説明書
         document.getElementById('guide-header').onclick = () => document.getElementById('guide-box').classList.toggle('is-open');
 
+        // 📍 GPS現在地 手動更新ボタン
+        document.getElementById('refresh-location-btn').onclick = () => {
+          this.voice.unlockMasterAudio();
+          const btn = document.getElementById('refresh-location-btn');
+          btn.innerHTML = `<span>⏳</span><span>取得中…</span>`;
+          LocationProvider.updateLocation((success) => {
+            btn.innerHTML = `<span>🔄</span><span>位置を更新</span>`;
+            if (success) {
+              this.voice.playEffect('happy_meow');
+              Logger.log(`[手動GPS] 現在地を「${LocationProvider.addressName}」に更新したニャ！`, "success");
+            }
+          });
+        };
+
         // 設定モーダル
         document.getElementById('settings-btn').onclick = () => {
           this.voice.unlockMasterAudio();
           this.editingMemoryIndex = null;
           document.getElementById('api-key-input').value = this.ai.apiKey;
+          LocationProvider._renderUI();
           KuroJournalProvider.renderDiaryPreview();
           this.renderMemoryList();
           document.getElementById('modal-overlay').style.display = 'flex';
@@ -2220,6 +2368,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           document.getElementById('modal-overlay').style.display = 'none';
           this.voice.playEffect('happy_meow');
           this.addBubble('model', "設定バッチリ保存したニャ！いつでも話しかけてニャン🐾");
+          setTimeout(() => this.startListening(), 500);
         };
 
         // バックグラウンド復帰
