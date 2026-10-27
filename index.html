@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -247,7 +246,6 @@
     .link-action-card:active { transform: scale(0.97); background: #f8fafc; }
     .link-action-card.map-card { border-color: #bbf7d0; background: #f0fdf4; }
     .link-action-card.news-card { border-color: #bae6fd; background: #f0f9ff; }
-    .link-action-card.search-card { border-color: #fed7aa; background: #fffbeb; }
     .card-left {
       display: flex;
       align-items: center;
@@ -872,12 +870,13 @@
 
   <script>
     /* ==========================================================
-       ★【ハイブリッド・アンカー方式】音声再生基盤（完全復元）
+       ★【ハイブリッド・アンカー方式】音声再生基盤（完全改修）
        ========================================================== */
     const masterAudio = new Audio();
     masterAudio.preload = "auto";
     let isMasterUnlocked = false;
 
+    // 無音WAVデータURI（オーディオパイプラインの事前解放用）
     const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
 
     function unlockMasterAudio() {
@@ -885,12 +884,15 @@
       masterAudio.src = SILENT_WAV;
       masterAudio.play().then(() => {
         isMasterUnlocked = true;
-        logDiag("[Audio] 音声再生アンカー権限を確立完了ニャ！", "info");
-      }).catch(() => {});
+        logDiag("[Audio] スマホ音声再生権限を完全に確立したニャ！", "info");
+      }).catch(e => {
+        logDiag(`[Audio権限保留] ${e.message}`, "warn");
+      });
     }
 
+    // ユーザー操作の瞬間に確実に呼んでブラウザのAutoplayブロックを防止
     function keepAudioActive() {
-      if (!isMasterUnlocked) unlockMasterAudio();
+      unlockMasterAudio();
       const ctx = getAudioContext();
       if (ctx && ctx.state === 'suspended') ctx.resume();
     }
@@ -1105,7 +1107,7 @@
     diagPanel.addEventListener('click', (e) => { if (e.target === diagPanel) diagPanel.classList.remove('expanded'); });
 
     /* ==========================================================
-       ★【おやびんの好みを記憶帳から抽出するインテリジェント関数】
+       おやびんの好みを記憶帳から抽出するインテリジェント関数
        ========================================================== */
     function extractUserPreferences(category) {
       const results = [];
@@ -1126,7 +1128,7 @@
     }
 
     /* ==========================================================
-       ★【記憶帳連動スマート検索カード生成（マップ＆ニュース）】
+       記憶帳連動スマート検索カード生成（マップ＆ニュース）
        ========================================================== */
     function detectActionCards(userText, modelReply) {
       const cards = [];
@@ -1759,8 +1761,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       ★【四国めたん（あまあま）専用通信・再生エンジン】
-       （元の動作コードを完全100%復元・デグレ永久防止）
+       ★【四国めたん（あまあま）専用通信・完全再生エンジン】
        ========================================================== */
     function cleanTextForSpeech(text) {
       if (!text) return "";
@@ -1781,6 +1782,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       setEmotion('idle');
     }
 
+    // VOICEVOX (四国めたん あまあま: speaker=0) API取得＆ポーリング処理
     async function getMetanMp3Url(text) {
       const clean = text.slice(0, 65);
       const encodedText = encodeURIComponent(clean);
@@ -1792,25 +1794,29 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       try {
         initRes = await fetch(initUrl);
       } catch (netErr) {
-        throw new Error(`初回通信接続エラー: ${netErr.message}`);
+        throw new Error(`初回接続エラー: ${netErr.message}`);
       }
 
-      if (!initRes.ok) throw new Error(`初回HTTPエラー: ${initRes.status}`);
+      if (!initRes.ok) throw new Error(`HTTPエラー: ${initRes.status}`);
 
       const initData = await initRes.json();
-      if (initData.isAudioError) throw new Error("VoiceVox側エラーレスポンス");
+      if (initData.isAudioError) throw new Error("VoiceVox側エラー通知");
 
       const downloadUrl = initData.mp3DownloadUrl || initData.mp3StreamingUrl;
-      if (!downloadUrl) throw new Error("APIレスポンスにMP3 URLが存在しません");
 
-      if (initData.isAudioReady) {
+      // すでにキャッシュがある場合は即時返却
+      if (initData.isAudioReady && downloadUrl) {
         logDiag("[四国めたん] キャッシュ即時取得成功ニャ！", "success");
         return downloadUrl;
       }
 
       const statusUrl = initData.audioStatusUrl;
-      if (!statusUrl) return downloadUrl;
+      if (!statusUrl) {
+        if (downloadUrl) return downloadUrl;
+        throw new Error("ステータス確認用URLが存在しません");
+      }
 
+      // 最大15回（15秒）丁寧ポーリング
       const maxAttempts = 15;
       for (let i = 1; i <= maxAttempts; i++) {
         await new Promise(r => setTimeout(r, 1000));
@@ -1818,20 +1824,22 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
           const sRes = await fetch(statusUrl);
           if (sRes.ok) {
             const sData = await sRes.json();
-            if (sData.isAudioError) throw new Error("生成途中でVoiceVoxエラー検知");
+            if (sData.isAudioError) throw new Error("生成処理中エラー検知");
             if (sData.isAudioReady) {
+              const finalUrl = sData.mp3DownloadUrl || downloadUrl;
               logDiag(`[四国めたん] 音声生成完了ニャ！（待機 ${i}秒）`, "success");
-              return sData.mp3DownloadUrl || downloadUrl;
+              return finalUrl;
             }
           }
         } catch (pollErr) {
-          if (pollErr.message && pollErr.message.includes("VoiceVoxエラー")) throw pollErr;
+          if (pollErr.message && pollErr.message.includes("生成処理中エラー")) throw pollErr;
         }
       }
 
-      throw new Error("音声生成待機タイムアウト（15秒経過）");
+      throw new Error("生成待機タイムアウト（15秒経過）");
     }
 
+    // 端末標準音声へのフォールバック（極限時のみ）
     function speakWithNativeVoice(cleanDisplay, syncBubble, actionCards = [], savedBadgeText = null) {
       if (!window.speechSynthesis) return;
       window.speechSynthesis.cancel();
@@ -1869,35 +1877,47 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       window.speechSynthesis.speak(uttr);
     }
 
+    // 四国めたん音声再生メイン処理
     async function speakVoice(rawText, syncBubble = false, actionCards = [], savedBadgeText = null) {
       stopSpeaking();
+      // ユーザー操作の直後コンテキストで事前アクティブ化を呼んでおく
       keepAudioActive();
 
       const textToSpeak = cleanTextForSpeech(rawText);
 
       try {
+        // 1. APIからMP3のURLを取得
         const mp3Url = await getMetanMp3Url(textToSpeak);
-        masterAudio.src = mp3Url;
-        masterAudio.playbackRate = STATE.rate;
 
-        masterAudio.oncanplay = null;
-        masterAudio.onerror = null;
-        masterAudio.onended = null;
+        // 2. Audio要素へセット＆ロード待機機構（フライング再生防止）
+        await new Promise((resolve, reject) => {
+          masterAudio.src = mp3Url;
+          masterAudio.playbackRate = STATE.rate;
 
-        let hasStarted = false;
-        masterAudio.oncanplay = () => {
-          if (hasStarted) return;
-          hasStarted = true;
-          if (syncBubble) {
-            removeThinkingBubble();
-            addChatMessage('model', rawText, actionCards, savedBadgeText);
-          }
-          STATE.isThinking = false;
-          STATE.isSpeaking = true;
-          statusText.textContent = "🗣️ お話し中ニャ♪";
-          setEmotion('talking');
-        };
+          const onReady = () => {
+            cleanup();
+            resolve();
+          };
+          const onError = (e) => {
+            cleanup();
+            reject(new Error(`オーディオ読み込み失敗: ${masterAudio.error ? masterAudio.error.message : 'ロードエラー'}`));
+          };
+          const cleanup = () => {
+            masterAudio.removeEventListener('canplaythrough', onReady);
+            masterAudio.removeEventListener('error', onError);
+          };
 
+          masterAudio.addEventListener('canplaythrough', onReady);
+          masterAudio.addEventListener('error', onError);
+          masterAudio.load();
+
+          // 6秒ロードタイムアウト救済
+          setTimeout(() => { cleanup(); resolve(); }, 6000);
+        });
+
+        logDiag("[四国めたん] 音声バッファ完了、再生開始ニャ！", "info");
+
+        // 3. イベントハンドラ設定
         masterAudio.onended = () => {
           STATE.isSpeaking = false;
           statusText.textContent = "👂 聴いてるニャ♪";
@@ -1907,11 +1927,22 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
           }, 800);
         };
 
+        // 4. 再生実行（Autoplayブロックを突破）
         await masterAudio.play();
+
+        if (syncBubble) {
+          removeThinkingBubble();
+          addChatMessage('model', rawText, actionCards, savedBadgeText);
+        }
+        STATE.isThinking = false;
+        STATE.isSpeaking = true;
+        statusText.textContent = "🗣️ お話し中ニャ♪";
+        setEmotion('talking');
+
         logDiag("[四国めたん] 四国めたん肉声ボイスで発声中ニャ🐾", "success");
 
       } catch (err) {
-        logDiag(`[四国めたん待機エラー: ${err.message}] 端末音声で代行しますニャ`, "warn");
+        logDiag(`[四国めたん失敗: ${err.message}] 端末音声で代行しますニャ`, "warn");
         speakWithNativeVoice(rawText, syncBubble, actionCards, savedBadgeText);
       }
     }
@@ -2054,5 +2085,4 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
   </script>
 </body>
 </html>
-
 
