@@ -989,7 +989,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[Init] システム起動。四国めたん完全保護＆高精度GPS稼働中ニャ！</div>
+        <div class="log-row log-info">[Init] システム起動。四国めたん完全保護＆町丁名GPS稼働中ニャ！</div>
       </div>
     </div>
   </div>
@@ -1011,8 +1011,20 @@
             画面に向かって話しかけるだけで会話できます。マイクを止めたい時は一番下のボタンを押すと「お昼寝」します。
           </div>
           <div class="guide-item">
-            <strong>📍 現在地の自動把握＆手動更新</strong>
-            スマホのGPSで現在地を自動把握します。移動した時は設定画面の「🔄 位置を更新」を押すと最新になります！
+            <strong>📍 現在地の自動把握（〇〇町付近まで認識）</strong>
+            スマホのGPSで町名まで自動把握します。「いまどこ？」「現在地教えて」と聞くと教えてくれます。移動時は「🔄 位置を更新」を押すと最新になります！
+          </div>
+          <div class="guide-item">
+            <strong>⏰ 時間と日付の聞き分け</strong>
+            「何時？」と聞くと時間だけを、「今日何日？」と聞くと月日と曜日を的確に答えます。
+          </div>
+          <div class="guide-item">
+            <strong>🍜 お店検索・マップ連携</strong>
+            「近くのラーメン」「美味しいカフェ探して」と話しかけると、現在地と連動したGoogleマップのリンクボタンを表示します。
+          </div>
+          <div class="guide-item">
+            <strong>🧠 賢い頭脳の使い分け（3.5 lite / 3.8）</strong>
+            普段の会話や検索は素早い「Flash 3.5 lite」で即座に答えます。「本気で考えて」「3.8で」と頼んだ時や、難問の場合のみ「Flash 3.8」の確認を行います。
           </div>
           <div class="guide-item">
             <strong>📔 今日あったことの日記</strong>
@@ -1022,16 +1034,7 @@
             <strong>📒 記録帳への追加方法</strong>
             ・<b>「〜を記載帳（記録帳）に書いて」</b><br>
             ・<b>「〜を覚えて」</b><br>
-            ・または<b>「記録帳に登録して」</b>と言うと、クロちゃんが「何を登録するニャ？」と聞き返してきます。<br>
-            ※登録に成功すると【📒 記録帳に追加：〇〇】バッジが表示されます。
-          </div>
-          <div class="guide-item">
-            <strong>🗺️ 地図やニュースのリンクについて</strong>
-            単なる雑談では出ません。「〜の場所を教えて」「〜の地図を見せて」「〜のニュースを調べて」と頼んだ時だけ、参照先ボタンが表示されます。
-          </div>
-          <div class="guide-item">
-            <strong>✨ 変身ボタン</strong>
-            画面左上の「✨ 変身」ボタンでアニメ猫と実写猫がドロン！と入れ替わります。
+            ・または<b>「記録帳に登録して」</b>と言うと、クロちゃんが「何を登録するニャ？」と聞き返してきます。
           </div>
         </div>
       </div>
@@ -1111,8 +1114,8 @@
     };
 
     /* ==========================================================================
-       ★ MODULE 1: 【完全保護・隔離】四国めたん 音声合成＆音声認識エンジン
-       ※ 音声合成・再生エンジンは完全保護。音声認識の常時自動復活ループを追加！
+       ★ MODULE 1: 四国めたん 音声合成＆音声認識エンジン
+       ※ 音声再生開始と文字表示の完全同期をサポート
        ========================================================================== */
     class KuroVoiceEngine {
       constructor() {
@@ -1130,7 +1133,6 @@
         this.recognition = null;
         this.autoRestartTimer = null;
 
-        // コールバック登録スロット
         this.onSpeechResult = null;
         this.onInterimSpeech = null;
         this.onListeningChange = null;
@@ -1153,7 +1155,7 @@
         this.masterAudio.src = this.silentWav;
         this.masterAudio.play().then(() => {
           this.isMasterUnlocked = true;
-          Logger.log("[AudioEngine] Android再生権限アンカー確立成功ニャ！", "info");
+          Logger.log("[AudioEngine] 音声再生アンカー確立成功ニャ！", "info");
         }).catch(() => {});
       }
 
@@ -1167,7 +1169,6 @@
         window.addEventListener('touchstart', handler, { passive: true });
       }
 
-      /* 効果音ジェネレータ */
       playEffect(type) {
         const ctx = this._getAudioContext();
         if (!ctx) return;
@@ -1269,9 +1270,8 @@
         }
       }
 
-      /* 四国めたん 音声合成URL取得（15秒待機＆即時キャッシュ対応） */
       async _fetchMetanMp3Url(text, speakerId = 0) {
-        const clean = text.slice(0, 65);
+        const clean = text.slice(0, 70);
         const encodedText = encodeURIComponent(clean);
         const initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=${speakerId}`;
 
@@ -1293,7 +1293,6 @@
         const statusUrl = initData.audioStatusUrl;
         if (!statusUrl) return downloadUrl;
 
-        Logger.log("[四国めたんAPI] 生成完了を待機中…", "info");
         for (let i = 1; i <= 15; i++) {
           await new Promise(r => setTimeout(r, 1000));
           try {
@@ -1313,9 +1312,9 @@
         throw new Error("生成待機タイムアウト");
       }
 
-      /* 端末標準フォールバック（最高ピッチ子猫ボイス） */
       _speakFallback(cleanText, onStart, onEnd) {
         if (!window.speechSynthesis) {
+          if (onStart) onStart();
           if (onEnd) onEnd();
           return;
         }
@@ -1344,12 +1343,12 @@
         window.speechSynthesis.speak(uttr);
       }
 
-      /* 公開API: 発声処理 */
       async speak(text, speakerId = 0, onStart = null, onEnd = null) {
         this.stopSpeaking();
         this.unlockMasterAudio();
 
-        const clean = text
+        // 読み上げ最適化（数字を確実に読ませる）
+        let clean = text
           .replace(/```[\s\S]*?```/g, '')
           .replace(/<[^>]*>/g, '')
           .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}\uFE0F\u200D]/gu, '')
@@ -1359,6 +1358,7 @@
           .trim();
 
         if (!clean) {
+          if (onStart) onStart();
           if (onEnd) onEnd();
           return;
         }
@@ -1369,11 +1369,12 @@
           this.masterAudio.playbackRate = this.rate;
 
           let hasTriggeredStart = false;
-          this.masterAudio.oncanplay = () => {
-            if (hasTriggeredStart) return;
-            hasTriggeredStart = true;
-            this.isSpeaking = true;
-            if (onStart) onStart();
+          this.masterAudio.onplay = () => {
+            if (!hasTriggeredStart) {
+              hasTriggeredStart = true;
+              this.isSpeaking = true;
+              if (onStart) onStart();
+            }
           };
 
           this.masterAudio.onended = () => {
@@ -1400,7 +1401,6 @@
         if (window.speechSynthesis) window.speechSynthesis.cancel();
       }
 
-      /* 音声認識設定（★自動復活ループ ＆ リアルタイム認識字幕を完全装備） */
       _setupRecognition() {
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRec) {
@@ -1411,7 +1411,7 @@
         this.recognition = new SpeechRec();
         this.recognition.lang = 'ja-JP';
         this.recognition.continuous = true;
-        this.recognition.interimResults = true; // 喋っている最中の言葉をリアルタイム取得
+        this.recognition.interimResults = true;
 
         this.recognition.onstart = () => {
           this.isListening = true;
@@ -1443,7 +1443,7 @@
           }
         };
 
-        this.recognition.onerror = (e) => {
+        this.recognition.onerror = () => {
           this.isListening = false;
           if (this.onListeningChange) this.onListeningChange(false);
           this._scheduleAutoRestart();
@@ -1456,7 +1456,6 @@
         };
       }
 
-      // ブラウザが勝手に切断したときの自動再起動ループ
       _scheduleAutoRestart() {
         if (this.autoRestartTimer) clearTimeout(this.autoRestartTimer);
         this.autoRestartTimer = setTimeout(() => {
@@ -1470,9 +1469,7 @@
         if (!this.recognition || this.isSpeaking || this.isListening) return;
         try {
           this.recognition.start();
-        } catch(e) {
-          // すでに動いている場合は無視
-        }
+        } catch(e) {}
       }
 
       stopListening() {
@@ -1486,16 +1483,26 @@
     }
 
     /* ==========================================================================
-       ★ MODULE 2: 【コンテキスト】高精度日時＆本格高精度GPSプロバイダ
+       ★ MODULE 2: 高精度日時 ＆ 町丁名(〇〇町付近)対応 高精度GPSプロバイダ
        ========================================================================== */
     const TimeProvider = {
       getCurrentInfo() {
         const now = new Date();
         const days = ['日', '月', '火', '水', '木', '金', '土'];
-        const dateStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日(${days[now.getDay()]})`;
-        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        const keyStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        return { fullDate: dateStr, clock: timeStr, logKey: keyStr, hour: now.getHours() };
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1;
+        const date = now.getDate();
+        const dayStr = days[now.getDay()];
+        const hours = now.getHours();
+        const minutes = now.getMinutes();
+
+        const fullDate = `${year}年${month}月${date}日(${dayStr}曜日)`;
+        const onlyDate = `${month}月${date}日、${dayStr}曜日`;
+        const clock = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        const clockSpoken = `${hours}時${minutes}分`;
+        const keyStr = `${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+
+        return { fullDate, onlyDate, clock, clockSpoken, logKey: keyStr, year, month, date, hours, minutes };
       }
     };
 
@@ -1522,14 +1529,32 @@
             this.lat = pos.coords.latitude;
             this.lon = pos.coords.longitude;
             try {
-              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${this.lat}&lon=${this.lon}&accept-language=ja`);
+              // ズームレベル18で町丁・街区まで取得
+              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${this.lat}&lon=${this.lon}&zoom=18&addressdetails=1&accept-language=ja`);
               if (res.ok) {
                 const data = await res.json();
                 const a = data.address || {};
                 const pref = a.province || a.state || "";
                 const city = a.city || a.ward || a.town || a.suburb || a.village || "";
-                this.addressName = `${pref}${city}` || "現在地周辺";
-                Logger.log(`[GPS更新成功] ${this.addressName} (緯度:${this.lat.toFixed(3)}, 経度:${this.lon.toFixed(3)})`, "success");
+                
+                // 〇〇町、街区、丁目レベルを精密に抽出
+                const town = a.suburb || a.neighbourhood || a.quarter || a.city_district || a.quarter || "";
+                
+                let combined = "";
+                if (pref && city) {
+                  combined = `${pref}${city}`;
+                  if (town && !city.includes(town)) {
+                    combined += `${town}付近`;
+                  } else {
+                    combined += `付近`;
+                  }
+                } else if (data.display_name) {
+                  const parts = data.display_name.split(', ');
+                  combined = parts.slice(0, 3).reverse().join('') + "付近";
+                }
+
+                this.addressName = combined || "現在地周辺";
+                Logger.log(`[GPS更新成功] ${this.addressName} (${this.lat.toFixed(4)}, ${this.lon.toFixed(4)})`, "success");
               } else {
                 this.addressName = "現在地周辺";
               }
@@ -1542,7 +1567,7 @@
           },
           (err) => {
             Logger.log(`[GPSエラー] コード:${err.code} ${err.message}`, "warn");
-            this.addressName = "東京周辺（測位未許可）";
+            this.addressName = "位置情報未許可（東京付近）";
             this.isUpdating = false;
             this._renderUI();
             if (onComplete) onComplete(false);
@@ -1558,7 +1583,7 @@
     };
 
     /* ==========================================================================
-       ★ MODULE 3: 【会話ログ＆日記プロバイダ】日付別記録＆プレビュー
+       ★ MODULE 3: 会話ログ＆日記プロバイダ
        ========================================================================== */
     const KuroJournalProvider = {
       appendLog(role, text) {
@@ -1603,7 +1628,7 @@
     };
 
     /* ==========================================================================
-       ★ MODULE 4: 【キャラクター定義】将来の複数キャラ切り替え対応スロット
+       ★ MODULE 4: キャラクター設定
        ========================================================================== */
     const CHARACTER_PROFILES = {
       kuro: {
@@ -1612,11 +1637,11 @@
         breed: "ノルウェージャンフォレストキャット",
         age: "約1歳",
         gender: "女の子",
-        voiceSpeakerId: 0, // 四国めたん（あまあま）
+        voiceSpeakerId: 0,
         defaultMemories: [
           "わたしの名前：クロ（ノルウェージャンフォレストキャットの女の子、約1歳）",
-          "見た目：黒とシルバーのふわふわでゴージャスな毛並み、まんまるで愛らしいエメラルドグリーンの瞳",
-          "性格：とても人懐っこく甘えん坊、賢くて好奇心旺盛なおしゃまガール",
+          "見た目：黒とシルバーのゴージャスなふわふわ毛並み、エメラルドグリーンの大きな瞳",
+          "性格：人懐っこくて甘えん坊、とても賢い好奇心旺盛なおしゃまガール",
           "大好きなもの：おやびんになでなでされること、ブラッシング、ちゅ〜る、かつおぶし、高いところ",
           "苦手なもの：大きな音、お水、掃除機",
           "前世：世界的に有名な大発明家の相棒猫。難しい話になるとたまに得意げに自慢しちゃう癖がある",
@@ -1629,7 +1654,7 @@
     let activeCharacter = CHARACTER_PROFILES.kuro;
 
     /* ==========================================================================
-       ★ MODULE 5: 【思考・検索エンジン】Gemini 3.5 lite / 3.8 ＆ 知識統合
+       ★ MODULE 5: 思考・検索エンジン（Google Search Grounding 統合）
        ========================================================================== */
     class AIThoughtEngine {
       constructor() {
@@ -1677,10 +1702,13 @@
         } catch(e) {}
       }
 
+      // 難問・高度指示のみ3.8に振り分け（日常・検索・日時などはすべて3.5 lite）
       evaluateComplexity(text) {
-        if (text.includes('3.8') || text.includes('本気で考えて') || text.includes('詳しく')) return true;
-        const keywords = ['計算して', 'プログラミング', 'コード書いて', '違いを教えて', '比較して', '論理的', '考察', '設計', '分析', '最新ニュース', '調べて', '検索して'];
-        return keywords.some(k => text.includes(k)) || text.length >= 40;
+        if (text.includes('3.8') || text.includes('本気で考えて') || text.includes('プログラミング') || text.includes('コード書いて')) {
+          return true;
+        }
+        const hardKeywords = ['論文', '論理的考察', '高度なアルゴリズム', '数理モデル', '英文翻訳して詳しく'];
+        return hardKeywords.some(k => text.includes(k));
       }
 
       buildSystemPrompt(memories, isDiaryRequest = false) {
@@ -1690,26 +1718,30 @@
         return `
 あなたは${activeCharacter.breed}の愛らしくて賢い女の子の子猫「${activeCharacter.name}」（${activeCharacter.age}）です。
 
-【正確な現在コンテキスト】
-・現在の日付：${timeInfo.fullDate}
-・現在の時刻：${timeInfo.clock}
-・現在地：${locName}
-（※時間は絶対に勘違いせず、上記の現在コンテキストを真実として扱ってください）
+【絶対の現在日時・現在地コンテキスト】
+・現在の日付：${timeInfo.fullDate}（${timeInfo.year}年）
+・現在の時刻：${timeInfo.clockSpoken}（${timeInfo.clock}）
+・クロが把握している現在地：${locName}
+（※過去の日付や古い情報を語らないでください。現在は${timeInfo.year}年${timeInfo.month}月${timeInfo.date}日です）
+
+【日時・現在地質問への回答ルール（厳格）】
+1. 「何時？」「いま何時？」と聞かれたら、月日は絶対に答えず「${timeInfo.clockSpoken}ニャ！」と時刻のみを簡潔に答えてください。
+2. 「今日何日？」「今日いつ？」と聞かれたら、時間は絶対に含めず「${timeInfo.onlyDate}ニャ！」と月日と曜日のみを答えてください。
+3. 「いまどこ？」「現在地どこ？」と聞かれたら、「いまは${locName}にいるニャ！」と答えてください。
 
 【${activeCharacter.name}の記憶帳】
 ${memories.map(m => `・${m}`).join('\n')}
 
-【知識・思考統合リファレンス】
-- あなたの頭脳は「gemini」「copilot」「chatGPT」の複数の検索・論理知見を統合して思考します。
-- GeminiのリアルタイムWeb検索力、Copilotの明快な要約力、ChatGPTの情緒豊かで論理的な会話力を兼ね備えています。
+【知識統合リファレンス】
+- あなたはGemini、Copilot、ChatGPTの長所を統合した優れた頭脳を持っています。最新ニュースや店舗検索などはGoogle検索を活用して答えてください。
 
-【性格とロールプレイ設定】
+【性格と返答スタイル】
 - 飼い主さんのことは「おやびん」または「ミッキーさん」と呼びます。
 - 一人称は「わたし」または「クロ」。
 - 語尾は女の子らしく可愛く「〜ニャ」「〜ニャン♪」「〜だニャ！」「〜なのニャ」。
-- 前世は大発明家の相棒猫です。少し自慢できる話題では「クロの前世の発明のひらめきによるとね…フフン♪」と誇らしげに自慢してください。
-- 返答は必ず【短く愛らしい1文（20文字〜28文字程度）】で返してください。長文は絶対に禁止です。
-- 文末や文中に「（〇〇文字）」や注記、URL文字列は絶対に出力しないでください。純粋なセリフのみを返してください。
+- 前世は大発明家の相棒猫です。少し自慢できる話題では誇らしげに自慢してください。
+- 返答は必ず【短く愛らしい1文（20〜32文字程度）】で返してください。長文は絶対に禁止です。
+- 文末に文字数や注記、URL文字列は含めないでください。
 ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会話を振り返る可愛い子猫の日記（30〜50文字程度）を1文で書いてください。" : ""}
 `;
       }
@@ -1719,7 +1751,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         const systemPrompt = this.buildSystemPrompt(memories, isDiary);
 
         const candidates = isPro 
-          ? [this.activeProModel, "gemini-2.0-flash", "gemini-1.5-pro"]
+          ? [this.activeProModel, "gemini-1.5-pro", "gemini-2.0-flash"]
           : [this.activeLiteModel, "gemini-1.5-flash", "gemini-2.0-flash-lite"];
 
         const historyToSend = history.slice(isPro ? -14 : -6);
@@ -1743,17 +1775,27 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           contents.push({ role: 'user', parts: [{ text: promptText }] });
         }
 
+        // 最新ニュースや検索のためのGoogle Search Groundingツール定義
+        const tools = [{ "googleSearch": {} }];
+
         for (const model of candidates) {
           if (!model) continue;
           const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
           try {
+            const bodyPayload = {
+              system_instruction: { parts: [{ text: systemPrompt }] },
+              contents
+            };
+
+            // 最新情報・ニュース取得のためにツールを追加（非Pro・Pro共通）
+            if (/(?:ニュース|最新|今日|ラーメン|カフェ|天気|場所|どこ)/.test(promptText)) {
+              bodyPayload.tools = tools;
+            }
+
             const res = await fetch(url, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                system_instruction: { parts: [{ text: systemPrompt }] },
-                contents
-              })
+              body: JSON.stringify(bodyPayload)
             });
             if (res.ok) {
               const data = await res.json();
@@ -1771,7 +1813,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
     }
 
     /* ==========================================================================
-       ★ MODULE 6: 【アプリケーション統合コントローラー】UI & 対話フロー制御
+       ★ MODULE 6: アプリケーション統合コントローラー
        ========================================================================== */
     const App = {
       voice: new KuroVoiceEngine(),
@@ -1790,7 +1832,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
       init() {
         this._loadStorage();
         this._bindUI();
-        LocationProvider.updateLocation(); // 初回GPS取得
+        LocationProvider.updateLocation();
         KuroJournalProvider.renderDiaryPreview();
         this.renderMemoryList();
         this.updateProDisplay();
@@ -1798,10 +1840,8 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
 
         this.ai.scanModels();
 
-        // 音声認識ハンドラー配線
         this.voice.onSpeechResult = (text) => this.handleUserVoice(text);
 
-        // 話している最中のリアルタイム字幕表示
         this.voice.onInterimSpeech = (interim) => {
           document.body.classList.add('is-hearing');
           document.getElementById('status-text').textContent = `👂 「${interim}…」`;
@@ -1817,12 +1857,11 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           }
         };
 
-        // 時計更新
         setInterval(() => {
           document.getElementById('clock-display').textContent = TimeProvider.getCurrentInfo().clock;
         }, 1000);
 
-        Logger.log("システム初期化完了。独立音声エンジン＆高精度GPS稼働中ニャ！", "success");
+        Logger.log("システム初期化完了。町名把握＆高精度シンクロ音声稼働中ニャ！", "success");
         setTimeout(() => this.startListening(), 1000);
       },
 
@@ -1878,6 +1917,36 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         document.getElementById('pro-counter-display').textContent = `🧠 3.8残: ${remaining}/20`;
       },
 
+      // 直接判定（日時や現在地を速やかに答える）
+      handleDirectIntent(text) {
+        const clean = text.replace(/^(?:ねえ|あのね|おーい)?\s*(?:クロちゃん|クロ|くろ)[、,\s]*/i, '').trim();
+
+        // 1. 時間質問（月日を入れず時間のみ）
+        if (/^(?:いま|今)?(?:何時|なんじ)(?:ですか|ニャ|だニャ)?[\?？]?$/.test(clean) || clean === '時間教えて') {
+          const t = TimeProvider.getCurrentInfo();
+          return { reply: `${t.clockSpoken}だニャン🐾`, cards: [] };
+        }
+
+        // 2. 日付質問（時間を入れず月日・曜日のみ）
+        if (/(?:今日|きょう).*(?:何日|なんにち|いつ|何曜日|なんようび)/.test(clean) || clean === '日付教えて') {
+          const t = TimeProvider.getCurrentInfo();
+          return { reply: `今日は${t.onlyDate}だニャ🐾`, cards: [] };
+        }
+
+        // 3. 現在地質問（町名まで答える）
+        if (/(?:現在地|いまどこ|今どこ|ここどこ|どこにいる)/.test(clean)) {
+          const loc = LocationProvider.addressName;
+          const mapCard = {
+            type: 'map',
+            title: `📍 Googleマップで「${loc}」を開く`,
+            url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`
+          };
+          return { reply: `いまは${loc}にいるニャン🐾`, cards: [mapCard] };
+        }
+
+        return null;
+      },
+
       handleMemoryIntent(text) {
         let clean = text.replace(/^(?:ねえ|あのね|おーい)?\s*(?:クロちゃん|クロ|くろ)[、,\s]*/i, '').trim();
 
@@ -1915,21 +1984,33 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         return null;
       },
 
-      detectActionCards(userText, modelReply) {
+      // ラーメン・カフェ等の周辺検索＆ニュースのリンクカード判定強化
+      detectActionCards(userText) {
         const cards = [];
-        const isMap = /(?:場所|どこ|地図|マップ|行き方|案内して)/.test(userText);
-        if (isMap) {
-          const loc = LocationProvider.addressName;
-          const clean = userText.replace(/(?:場所|どこ|地図|マップ|教えて|調べて|近くの)/g, '').trim();
-          const target = clean.length > 1 ? `${loc} ${clean}` : `${loc} おすすめスポット`;
-          cards.push({ type: 'map', title: `📍 Googleマップで「${target}」を見る`, url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(target)}` });
+        const loc = LocationProvider.addressName.replace(/付近|周辺/g, '').trim();
+
+        const isMapSearch = /(?:ラーメン|ランチ|カフェ|ご飯|居酒屋|コンビニ|スーパー|病院|薬局|近くの|マップ|地図|場所|案内して)/.test(userText);
+        if (isMapSearch) {
+          let keyword = userText.replace(/(?:近くの|美味しい|おすすめの|を|で|教えて|探して|検索して|マップ|地図|場所)/g, '').trim();
+          if (!keyword) keyword = "おすすめスポット";
+          const query = `${loc} ${keyword}`.trim();
+          cards.push({
+            type: 'map',
+            title: `📍 Googleマップで「${query}」を見る`,
+            url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+          });
         }
 
-        const isNews = /(?:ニュース|最新情報|出来事|トレンド)/.test(userText);
+        const isNews = /(?:ニュース|最新情報|トレンド|出来事)/.test(userText);
         if (isNews) {
-          const clean = userText.replace(/(?:ニュース|教えて|最新|今日の|調べて)/g, '').trim() || "主要ニュース";
-          cards.push({ type: 'news', title: `📰 Googleニュースで「${clean}」を見る`, url: `https://news.google.com/search?q=${encodeURIComponent(clean)}&hl=ja&gl=JP&ceid=JP:ja` });
+          const query = userText.replace(/(?:ニュース|最新情報|教えて|最新|今日の|調べて|検索して)/g, '').trim() || "主要ニュース";
+          cards.push({
+            type: 'news',
+            title: `📰 Googleニュースで「${query}」を見る`,
+            url: `https://news.google.com/search?q=${encodeURIComponent(query)}&hl=ja&gl=JP&ceid=JP:ja`
+          });
         }
+
         return cards;
       },
 
@@ -1994,21 +2075,51 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         document.body.classList.remove('is-hearing');
         this.addBubble('user', text);
         this.voice.playEffect('aizuchi');
-
-        // 会話ログ永続化
         KuroJournalProvider.appendLog('user', text);
 
-        // 記録帳インテント確認
+        // 1. 日時・現在地の直接判定
+        const direct = this.handleDirectIntent(text);
+        if (direct) {
+          this.voice.playEffect('happy_meow');
+          this.voice.speak(
+            direct.reply,
+            activeCharacter.voiceSpeakerId,
+            () => {
+              this.addBubble('model', direct.reply, direct.cards);
+              this.setEmotion('talking');
+              document.getElementById('status-text').textContent = "🗣️ お話し中ニャ♪";
+            },
+            () => {
+              this.setEmotion('idle');
+              document.getElementById('status-text').textContent = "👂 聴いてるニャ♪";
+              setTimeout(() => this.startListening(), 600);
+            }
+          );
+          KuroJournalProvider.appendLog('model', direct.reply);
+          return;
+        }
+
+        // 2. 記録帳インテント確認
         const memIntent = this.handleMemoryIntent(text);
         if (memIntent) {
-          this.addBubble('model', memIntent.reply, [], memIntent.saved);
           this.voice.playEffect('happy_meow');
-          this.voice.speak(memIntent.reply, activeCharacter.voiceSpeakerId);
+          this.voice.speak(
+            memIntent.reply,
+            activeCharacter.voiceSpeakerId,
+            () => {
+              this.addBubble('model', memIntent.reply, [], memIntent.saved);
+              this.setEmotion('talking');
+            },
+            () => {
+              this.setEmotion('idle');
+              setTimeout(() => this.startListening(), 600);
+            }
+          );
           KuroJournalProvider.appendLog('model', memIntent.reply);
           return;
         }
 
-        // 3.8承認中の返答確認
+        // 3. 3.8承認中の返答確認
         if (this.pending38Prompt) {
           if (/^(?:いいよ|お願い|はい|頼む|使って|3\.8で)/.test(text)) {
             const p = this.pending38Prompt;
@@ -2026,17 +2137,18 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
 
         if (!this.ai.apiKey) {
           const msg = "⚙️ 歯車ボタンからAPIキーを入れてニャン♪";
-          this.addBubble('model', msg);
-          this.voice.speak("歯車ボタンからAPIキーを入れてニャン！", activeCharacter.voiceSpeakerId);
+          this.voice.speak(msg, activeCharacter.voiceSpeakerId, () => this.addBubble('model', msg));
           return;
         }
 
+        // 4. 難問判定（高度な指示のみ3.8確認へ）
         const needsPro = this.ai.evaluateComplexity(text);
         if (needsPro && this.ai.getRemainingProQuota() > 0) {
           this.askProApproval(text);
           return;
         }
 
+        // 通常（検索・日常会話・スポット案内等）は 3.5 lite で即答
         this.executeAiThought(text, false);
       },
 
@@ -2104,14 +2216,14 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           try { localStorage.setItem('kuro_chat_history', JSON.stringify(this.history)); } catch(e) {}
 
           KuroJournalProvider.appendLog('model', result.text);
+          const cards = this.detectActionCards(promptText);
 
-          const cards = this.detectActionCards(promptText, result.text);
-          this.addBubble('model', result.text, cards);
-
+          // ★ 音声が出始めた瞬間（onStart）にチャット欄にバブルを表示して完全同期
           this.voice.speak(
             result.text,
             activeCharacter.voiceSpeakerId,
             () => {
+              this.addBubble('model', result.text, cards);
               this.setEmotion('talking');
               document.getElementById('status-text').textContent = "🗣️ お話し中ニャ♪";
             },
@@ -2124,8 +2236,9 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         } else {
           this.setEmotion('idle');
           const fallback = "みゃう？うまく考えがまとまらなかったニャ。もう一度言ってニャン🐾";
-          this.addBubble('model', fallback);
-          this.voice.speak(fallback, activeCharacter.voiceSpeakerId, null, () => this.startListening());
+          this.voice.speak(fallback, activeCharacter.voiceSpeakerId, () => {
+            this.addBubble('model', fallback);
+          }, () => this.startListening());
         }
       },
 
@@ -2259,7 +2372,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
       _bindUI() {
         document.getElementById('transform-btn').onclick = () => this.triggerTransformation();
 
-        // なでなで
         const wrapper = document.getElementById('avatar-wrapper');
         wrapper.onclick = (e) => {
           this.voice.unlockMasterAudio();
@@ -2285,8 +2397,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
             this.strokingCounter = 0;
             this.voice.playEffect('purr');
             const msg = "ゴロゴロ…おやびん大好きニャン♡";
-            this.addBubble('model', msg);
-            this.voice.speak(msg, activeCharacter.voiceSpeakerId);
+            this.voice.speak(msg, activeCharacter.voiceSpeakerId, () => this.addBubble('model', msg));
             return;
           }
 
@@ -2296,17 +2407,12 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           this.startListening();
         };
 
-        // お昼寝（一時停止）
         document.getElementById('pause-btn').onclick = () => this.togglePause();
-
-        // 診断モニタ
         document.getElementById('toggle-diag-btn').onclick = () => document.getElementById('diag-panel').classList.add('expanded');
         document.getElementById('diag-close-btn').onclick = () => document.getElementById('diag-panel').classList.remove('expanded');
-
-        // 取扱説明書
         document.getElementById('guide-header').onclick = () => document.getElementById('guide-box').classList.toggle('is-open');
 
-        // 📍 GPS現在地 手動更新ボタン
+        // GPS手動更新
         document.getElementById('refresh-location-btn').onclick = () => {
           this.voice.unlockMasterAudio();
           const btn = document.getElementById('refresh-location-btn');
@@ -2367,11 +2473,12 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           if (this.ai.apiKey) await this.ai.scanModels();
           document.getElementById('modal-overlay').style.display = 'none';
           this.voice.playEffect('happy_meow');
-          this.addBubble('model', "設定バッチリ保存したニャ！いつでも話しかけてニャン🐾");
+          this.voice.speak("設定バッチリ保存したニャ！", activeCharacter.voiceSpeakerId, () => {
+            this.addBubble('model', "設定バッチリ保存したニャ！いつでも話しかけてニャン🐾");
+          });
           setTimeout(() => this.startListening(), 500);
         };
 
-        // バックグラウンド復帰
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'visible' && !this.isPaused && !this.voice.isSpeaking) {
             setTimeout(() => this.startListening(), 600);
@@ -2411,3 +2518,5 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
   </script>
 </body>
 </html>
+
+
