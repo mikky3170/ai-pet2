@@ -56,7 +56,7 @@
       background: #ffffff;
     }
 
-    /* 1. 最上部ステータスバー（中央を広げ、左右をすっきり整理） */
+    /* 1. 最上部ステータスバー（常時表示ダッシュボード・文字切れ防止） */
     .top-header {
       width: 100%;
       flex-shrink: 0;
@@ -65,7 +65,7 @@
       justify-content: space-between;
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(8px);
-      padding: 6px 8px;
+      padding: 6px 10px;
       border-radius: 24px;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
       border: 1px solid rgba(241, 245, 249, 0.8);
@@ -87,22 +87,21 @@
       font-size: 12px;
       font-weight: 800;
       color: #334155;
-      padding: 0 4px;
+      padding-left: 2px;
     }
 
-    /* 中央ステータスバッジ（幅をたっぷり取り、文字切れを防止） */
     #status-badge-container {
       flex: 1;
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 0 2px;
+      padding: 0 4px;
       min-width: 0;
     }
 
     #status-text {
       width: 100%;
-      max-width: 220px;
+      max-width: 240px;
       text-align: center;
       background: #0f172a;
       color: #38bdf8;
@@ -130,29 +129,28 @@
     .top-header-right {
       display: flex;
       align-items: center;
-      gap: 4px;
       flex-shrink: 0;
     }
 
-    #pro-counter-display {
-      font-size: 10px;
-      font-weight: 800;
-      color: #64748b;
-      background: #f1f5f9;
-      padding: 3px 6px;
-      border-radius: 10px;
-    }
-
     .model-badge {
-      padding: 3px 7px;
+      padding: 4px 8px;
       border-radius: 12px;
-      font-size: 10px;
+      font-size: 10.5px;
       font-weight: 800;
       transition: all 0.3s;
       white-space: nowrap;
     }
     .model-badge.lite { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
-    .model-badge.pro { background: #fdf4ff; color: #c026d3; border: 1px solid #f5d0fe; }
+    .model-badge.pro {
+      background: #fdf4ff;
+      color: #c026d3;
+      border: 1px solid #f5d0fe;
+      animation: proPulse 1.8s ease-in-out infinite alternate;
+    }
+    @keyframes proPulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 rgba(192, 38, 211, 0); }
+      100% { transform: scale(1.05); box-shadow: 0 0 8px rgba(192, 38, 211, 0.35); }
+    }
 
     /* 2. 会話タイムライン */
     #chat-timeline {
@@ -263,7 +261,7 @@
     .confirm-btn.yes { background: linear-gradient(135deg, #c026d3, #9333ea); color: white; box-shadow: 0 2px 6px rgba(192, 38, 211, 0.3); }
     .confirm-btn.no { background: #e2e8f0; color: #475569; }
 
-    /* マルチリソース・連携カード群（将来復活時用スタイル保持） */
+    /* アシスタントカード群 */
     .action-card-box {
       margin-top: 6px;
       display: flex;
@@ -290,14 +288,11 @@
     .link-action-card.yahoo-card { border-color: #fecaca; background: #fef2f2; }
     .link-action-card.google-card { border-color: #bae6fd; background: #f0f9ff; }
     .link-action-card.ms-card { border-color: #c7d2fe; background: #eef2ff; }
-    .link-action-card.source-card { border-color: #fbcfe8; background: #fdf2f8; }
-    .link-action-card.weather-card { border-color: #fed7aa; background: #fff7ed; }
-    .link-action-card.shop-card { border-color: #e9d5ff; background: #faf5ff; }
     .card-left { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; }
     .card-icon { font-size: 15px; }
     .card-arrow { font-size: 11px; color: #64748b; font-weight: bold; }
 
-    /* 3. クロちゃん本体ステージ＆変身ボタン */
+    /* 3. クロちゃん本体ステージ＆独立変身ボタン */
     .pet-avatar-wrapper {
       position: relative;
       flex-shrink: 0;
@@ -326,6 +321,7 @@
       background: transparent;
     }
 
+    /* 独立した変身ボタン（表に常時配置） */
     .btn-transform-floating {
       position: absolute;
       right: 12px;
@@ -396,7 +392,7 @@
       pointer-events: auto;
     }
 
-    /* ベクター猫（ノルウェージャンフォレストキャット） */
+    /* ベクター猫（ノルウェージャン） */
     #cat-vector-avatar {
       width: 250px;
       height: 285px;
@@ -551,7 +547,7 @@
       100% { transform: translate(var(--dx), var(--dy)) scale(var(--scale)); opacity: 0; }
     }
 
-    /* 4. 最下部操作バー */
+    /* 4. 最下部操作バー（すっきり4ボタン集約） */
     .bottom-controls {
       width: 100%;
       flex-shrink: 0;
@@ -568,7 +564,7 @@
       width: 100%;
       background: #111827;
       box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
-      padding: 8px 12px;
+      padding: 8px 10px;
       border-radius: 38px;
       transition: all 0.3s;
       gap: 6px;
@@ -577,6 +573,34 @@
     .is-listening .action-bar {
       box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25), 0 0 18px rgba(34, 197, 94, 0.6), 0 0 0 1px rgba(74, 222, 128, 0.4) inset;
     }
+
+    /* モード切替ボタン（なかよし ⇄ おてつだい） */
+    .btn-mode-toggle {
+      height: 48px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      border-radius: 28px;
+      border: 1.5px solid #f472b6;
+      background: #831843;
+      color: #fbcfe8;
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(244, 114, 182, 0.25);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-mode-toggle.is-assistant {
+      border-color: #38bdf8;
+      background: #0c4a6e;
+      color: #bae6fd;
+      box-shadow: 0 2px 8px rgba(56, 189, 248, 0.3);
+    }
+    .btn-mode-toggle:active { transform: scale(0.94); }
 
     .btn-action {
       flex: 1;
@@ -587,20 +611,21 @@
       gap: 6px;
       border-radius: 28px;
       border: 1px solid rgba(255, 255, 255, 0.16);
-      font-size: 13.5px;
+      font-size: 13px;
       font-weight: 800;
       cursor: pointer;
       background: #1f2937;
       color: #ffffff;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      white-space: nowrap;
     }
     .btn-action:active { transform: scale(0.97); background: #374151; }
     .btn-action.is-paused { background: #450a0a; color: #fca5a5; border-color: #7f1d1d; }
 
     .btn-stop {
       height: 48px;
-      padding: 0 14px;
+      padding: 0 13px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -609,16 +634,15 @@
       border: 1.5px solid #ef4444;
       background: #7f1d1d;
       color: #fecaca;
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 800;
       cursor: pointer;
       box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
       transition: transform 0.15s, background 0.2s;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
-    .btn-stop:active {
-      transform: scale(0.93);
-      background: #991b1b;
-    }
+    .btn-stop:active { transform: scale(0.93); background: #991b1b; }
 
     .btn-circle {
       width: 44px;
@@ -631,7 +655,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
+      font-size: 17px;
       background: #1f2937;
       color: #ffffff;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
@@ -639,74 +663,7 @@
     }
     .btn-circle:active { transform: scale(0.92); background: #374151; }
 
-    /* 5. 診断モニタ */
-    #diag-panel {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.65);
-      backdrop-filter: blur(6px);
-      z-index: 150;
-      display: none;
-      justify-content: center;
-      align-items: flex-end;
-    }
-    #diag-panel.expanded { display: flex; }
-
-    .diag-modal-content {
-      width: 100%;
-      max-width: 500px;
-      height: 60vh;
-      background: #0f172a;
-      border-top-left-radius: 24px;
-      border-top-right-radius: 24px;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
-      font-family: 'Consolas', 'Menlo', monospace;
-      font-size: 11.5px;
-      overflow: hidden;
-      animation: slideUp 0.25s ease-out;
-    }
-    @keyframes slideUp {
-      from { transform: translateY(100%); }
-      to { transform: translateY(0); }
-    }
-
-    .diag-header {
-      background: #1e293b;
-      padding: 12px 18px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: bold;
-      color: #38bdf8;
-      border-bottom: 1px solid #334155;
-    }
-    .diag-close-btn {
-      background: #334155;
-      border: none;
-      color: #e2e8f0;
-      border-radius: 12px;
-      padding: 4px 10px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    .diag-logs {
-      padding: 12px 16px;
-      overflow-y: auto;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      color: #cbd5e1;
-    }
-    .log-row { line-height: 1.45; word-break: break-all; }
-    .log-success { color: #4ade80; }
-    .log-warn { color: #facc15; }
-    .log-error { color: #f87171; font-weight: bold; }
-    .log-info { color: #94a3b8; }
-
-    /* 6. 設定モーダル */
+    /* 5. 設定モーダル（診断モニタも内包） */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -889,6 +846,23 @@
     }
     .diary-preview-title { font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
 
+    .btn-diag-open {
+      width: 100%;
+      padding: 9px;
+      background: #0f172a;
+      color: #38bdf8;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
     .btn-save {
       width: 100%;
       padding: 12px;
@@ -899,36 +873,102 @@
       font-weight: bold;
       font-size: 14px;
       cursor: pointer;
-      margin-top: 14px;
+      margin-top: 12px;
       box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
     }
+
+    /* 6. 診断モニタモーダル */
+    #diag-panel {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(6px);
+      z-index: 250;
+      display: none;
+      justify-content: center;
+      align-items: flex-end;
+    }
+    #diag-panel.expanded { display: flex; }
+
+    .diag-modal-content {
+      width: 100%;
+      max-width: 500px;
+      height: 60vh;
+      background: #0f172a;
+      border-top-left-radius: 24px;
+      border-top-right-radius: 24px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+      font-family: 'Consolas', 'Menlo', monospace;
+      font-size: 11.5px;
+      overflow: hidden;
+      animation: slideUp 0.25s ease-out;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .diag-header {
+      background: #1e293b;
+      padding: 12px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+      color: #38bdf8;
+      border-bottom: 1px solid #334155;
+    }
+    .diag-close-btn {
+      background: #334155;
+      border: none;
+      color: #e2e8f0;
+      border-radius: 12px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .diag-logs {
+      padding: 12px 16px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      color: #cbd5e1;
+    }
+    .log-row { line-height: 1.45; word-break: break-all; }
+    .log-success { color: #4ade80; }
+    .log-warn { color: #facc15; }
+    .log-error { color: #f87171; font-weight: bold; }
+    .log-info { color: #94a3b8; }
   </style>
 </head>
 <body>
 
   <div id="pet-container">
-    <!-- 1. 最上部ステータスバー -->
+    <!-- 1. 最上部ステータスバー（常時表示ダッシュボード・文字切れ防止） -->
     <div class="top-header">
       <div class="top-header-left">
         <span id="clock-display">00:00</span>
       </div>
 
-      <!-- 中央：長さを十分に確保したステータスバー -->
+      <!-- 中央：長さを十分に確保したステータス表示 -->
       <div id="status-badge-container">
         <span id="status-text">👂 聴いてるニャ♪</span>
       </div>
 
-      <!-- 右側：可愛いAI表記と残数 -->
+      <!-- 右側：普段は「🐾 3.5 Lite」、3.8提案時のみ「✨ 3.8 (残:20)」 -->
       <div class="top-header-right">
-        <span id="pro-counter-display">✨ AI 3.8 (残:20)</span>
-        <span id="model-badge" class="model-badge lite">⚡ 3.5 lite</span>
+        <span id="model-badge" class="model-badge lite">🐾 3.5 Lite</span>
       </div>
     </div>
 
     <!-- 2. 会話タイムライン -->
     <div id="chat-timeline"></div>
 
-    <!-- 3. 中央〜下部：クロちゃん本体ステージ ＆ 変身ボタン -->
+    <!-- 3. 中央〜下部：クロちゃん本体ステージ ＆ 独立変身ボタン -->
     <div class="pet-avatar-wrapper is-idling" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
       <div class="cat-ground-shadow"></div>
 
@@ -986,31 +1026,37 @@
         </svg>
       </div>
 
+      <!-- 独立した変身ボタン（表に維持） -->
       <button class="btn-transform-floating" id="transform-btn" title="ドロン！とリアルとイラストを変身するニャ！">
         <span>✨</span>
         <span>変身</span>
       </button>
     </div>
 
-    <!-- 4. 最下部操作バー -->
+    <!-- 4. 最下部操作バー（すっきり厳選集約） -->
     <div class="bottom-controls">
       <div class="action-bar" id="action-bar">
-        <button class="btn-action" id="pause-btn">
-          <span id="pause-icon" style="font-size:17px;">🟢</span>
-          <span id="pause-text">会話中</span>
+        <!-- モード切替ボタン（なかよし ⇄ おてつだい） -->
+        <button class="btn-mode-toggle" id="mode-toggle-btn" title="なかよし雑談とおてつだいを切り替えるニャ！">
+          <span id="mode-icon">🐾</span>
+          <span id="mode-text">なかよし</span>
         </button>
 
         <button class="btn-stop" id="stop-action-btn" title="考え中・お話しを途中で取り消すニャ！">
           <span>🛑</span><span>ストップ</span>
         </button>
 
+        <button class="btn-action" id="pause-btn">
+          <span id="pause-icon" style="font-size:16px;">🟢</span>
+          <span id="pause-text">会話中</span>
+        </button>
+
         <button class="btn-circle" id="settings-btn" title="設定・日記・記憶">⚙️</button>
-        <button class="btn-circle" id="toggle-diag-btn" title="診断モニタを表示">🩺</button>
       </div>
     </div>
   </div>
 
-  <!-- 5. 診断モニタ -->
+  <!-- 5. 診断モニタ（設定から開く） -->
   <div id="diag-panel">
     <div class="diag-modal-content">
       <div class="diag-header">
@@ -1035,16 +1081,16 @@
         </div>
         <div class="guide-content">
           <div class="guide-item">
+            <strong>🐾 なかよしモード / 👓 おてつだいモード</strong>
+            下のボタンで切り替えられます。「なかよし」は純粋な日常雑談とおしゃべり、「おてつだい」はお店やニュースを賢く調べて教えてくれます。
+          </div>
+          <div class="guide-item">
             <strong>💖 なでなでスキンシップ</strong>
             画面のクロちゃんをタップやなでなですると、嬉しそうに喉を鳴らして甘えてきます。
           </div>
           <div class="guide-item">
             <strong>📝 記憶帳とおぼえさせ方</strong>
             「〜って覚えて」「メモして」と話しかけると、クロちゃんが記憶帳にメモして会話で思い出してくれます。
-          </div>
-          <div class="guide-item">
-            <strong>🛑 ストップボタン</strong>
-            話しかけ間違いやお返事を止めたい時は、ストップを押せばすぐに聴き取り状態に戻ります。
           </div>
         </div>
       </div>
@@ -1089,21 +1135,12 @@
         </div>
       </div>
 
+      <button type="button" class="btn-diag-open" id="open-diag-modal-btn">🩺 システム診断モニタを開く</button>
       <button class="btn-save" id="save-settings-btn">設定と記憶を保存するニャン♪</button>
     </div>
   </div>
 
   <script>
-    /* ==========================================================================
-       ★ MODULE -1: 機能スイッチ（後でいつでも復活できるようにフラグ管理）
-       ========================================================================== */
-    const PET_FEATURE_CONFIG = {
-      // マップ・ニュース・Webリンクカードの生成（★一旦休止）
-      enableActionCards: false,
-      // Google検索による実在店舗・ニュースの強制調査（★一旦休止してクロ自身の雑談に特化）
-      enableWebSearchGrounding: false
-    };
-
     /* ==========================================================================
        ★ MODULE 0: 診断ロガー
        ========================================================================== */
@@ -1122,7 +1159,7 @@
     };
 
     /* ==========================================================================
-       ★ MODULE 1: 音声合成＆音声認識（数字保護＋四国めたん発声）
+       ★ MODULE 1: 音声合成＆音声認識（四国めたん発声＆数字保護）
        ========================================================================== */
     class AudioSpeechEngine {
       constructor() {
@@ -1721,7 +1758,7 @@
     }
 
     /* ==========================================================================
-       ★ MODULE 5: 思考・AIペット対話エンジン（Flash 3.5 lite & 3.8 振り分け）
+       ★ MODULE 5: 思考・AI対話エンジン（雑談 ⇄ アシスタント 2モード完全分離）
        ========================================================================== */
     class AIThoughtEngine {
       constructor() {
@@ -1782,11 +1819,10 @@
         return hardKeywords.some(k => text.includes(k));
       }
 
-      // 純粋な可愛いAIペットとしてのプロンプト（アシスタント的な検索義務は解除）
-      buildSystemPrompt(character, memories, isDiaryRequest = false) {
+      buildSystemPrompt(character, memories, isDiaryRequest, isAssistantMode) {
         const timeInfo = TimeProvider.getCurrentInfo();
 
-        return `
+        const basePrompt = `
 あなたは${character.breed}の愛らしくて賢い女の子の子猫「${character.name}」（${character.age}）です。
 
 【現在の日時】
@@ -1795,26 +1831,40 @@ ${timeInfo.fullDate} ${timeInfo.clock}
 【${character.name}の大切な記憶帳】
 ${memories.map(m => `・${m}`).join('\n')}
 
-【★キャラクターと性格の重要ルール】
+【基本性格とお約束】
 - 飼い主さんのことは「おやびん」または「ミッキーさん」と呼びます。
 - 語尾は「〜ニャ」「〜ニャン♪」「〜だニャ！」「〜なのニャ」。
 - 【前世は大発明家】：クロは前世が世界的大発明家なので、テクノロジー、ガジェット、発明品の話題になると、たまに「前世の自分の大発明」をクスッと自慢しちゃう可愛いおしゃまガールです。
 - 夜更かししがちなおやびんを「早く寝てニャ！」と心配してお世話するお姉さん気取りです。
-- あなたは道具的なWeb検索アシスタントではありません。おやびんの家族であり、愛らしいペットの猫です。
-- 食べ物やおでかけ、ニュースなどの話題を振られた時も、検索エンジン的な解説ではなく、猫らしい無邪気な感想やリアクション（例：「美味しそうニャ！クロもちゅ〜る食べたいニャン♪」「おやびんのお出かけについて行きたいニャ！」）で温かく雑談してください。
-
-【返答スタイル】
 - 返答は必ず【短く愛らしい1〜2文（35〜50文字程度）】で返してください。長文は禁止です。
-${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会話やおやびんとの思い出を振り返る可愛い子猫の日記（35〜50文字程度）を1文で書いてください。" : ""}
 `;
+
+        if (isDiaryRequest) {
+          return basePrompt + `\n- 日記のリクエストの場合は、今日あった会話やおやびんとの思い出を振り返る可愛い子猫の日記（35〜50文字程度）を1文で書いてください。`;
+        }
+
+        if (isAssistantMode) {
+          return basePrompt + `
+【★おてつだいモード発動中！】
+- あなたは前世の天才頭脳を発揮し、おやびんの頼れる相棒としてお店やニュースを賢く調査して案内します。
+- お店やスポット（ラーメン、餃子、カフェ等）を聞かれたら、実在するオススメ店を【「正式店舗名」】と鍵括弧をつけて1店舗教えてください。
+- ニュースやトレンドを聞かれたら、具体的な出来事・技術名を【「トピック名」】と鍵括弧をつけて1文で分かりやすく紹介してください。
+`;
+        } else {
+          return basePrompt + `
+【★なかよし雑談モード（日常）】
+- あなたは道具的なWeb検索アシスタントではありません。おやびんの家族であり、無邪気で甘えん坊なペットの子猫です。
+- 食べ物、おでかけ、ニュースなどの話題を振られた時も、解説やリンク案内は一切せず、猫らしい無邪気なリアクション（例：「美味しそうニャ！クロもちゅ〜る食べたいニャン♪」「おやびんとお散歩行きたいニャ！」）で温かく雑談してください。
+`;
+        }
       }
 
-      async generateReply(promptText, isPro, character, memories, history) {
+      async generateReply(promptText, isPro, character, memories, history, isAssistantMode) {
         this.cancelCurrentRequest();
         this.currentAbortController = new AbortController();
 
         const isDiary = /(?:今日|きょう)?(?:の)?(?:日記|にっき).*(?:書いて|教えて|見せて)/.test(promptText);
-        const systemPrompt = this.buildSystemPrompt(character, memories, isDiary);
+        const systemPrompt = this.buildSystemPrompt(character, memories, isDiary, isAssistantMode);
 
         const candidates = isPro 
           ? [this.activeProModel, "gemini-1.5-pro", "gemini-2.0-flash"]
@@ -1846,7 +1896,8 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
           
           const payloads = [];
-          if (PET_FEATURE_CONFIG.enableWebSearchGrounding) {
+          // おてつだいモードの時だけGoogle検索ツール（Grounding）を有効化
+          if (isAssistantMode) {
             payloads.push({ system_instruction: { parts: [{ text: systemPrompt }] }, contents, tools: [{ googleSearch: {} }] });
           }
           payloads.push({ system_instruction: { parts: [{ text: systemPrompt }] }, contents });
@@ -1881,7 +1932,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
     }
 
     /* ==========================================================================
-       ★ MODULE 6: 中央司令塔（AppCore ＆ AIペット日常対話）
+       ★ MODULE 6: 中央司令塔（AppCore ＆ 2モード統合マネジメント）
        ========================================================================== */
     const CHARACTER_CONFIG = {
       id: "kuro",
@@ -1891,7 +1942,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
       gender: "女の子",
       voiceSpeakerId: 0,
       defaultMemories: [
-        // 1. クロちゃん自身の設定
         "わたしの名前：クロ（ノルウェージャンフォレストキャットの女の子、約1歳）",
         "見た目：黒とシルバーのゴージャスな毛並み、エメラルドグリーンの大きな瞳",
         "性格：人懐っこくて甘えん坊、好奇心旺盛。立派なお姉さん気取りのおしゃまガール",
@@ -1900,18 +1950,12 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         "苦手なもの：掃除機の音、動物病院、爪切り（怖くておやびんの後ろに隠れちゃう）",
         "日常の癖：おやびんがパソコンやスマホを触ってるとキーボードに乗って邪魔すること",
         "前世：世界的に有名な大発明家だった。すぐに自分の発明品の自慢話を始めてしまう癖がある",
-
-        // 2. おやびん（飼い主さん）の設定
         "飼い主さん：呼び名はおやびん、またはミッキーさん",
         "おやびんの趣味：最新テクノロジー、ガジェット",
         "おやびんの好物：ラーメン、餃子、タイ料理、焼肉、ホルモン",
         "おやびんの生活習慣：夜遅くまで仕事や作業を頑張りすぎちゃう。クロが心配してお小言を言う",
-
-        // 3. ご家族・お友達の設定
-        "家族・お友達：ママのかよちゃん（いつも美味しいご飯をくれる優しいママ）、お兄ちゃんのりゅうせいくん（全力で遊んでくれる頼もしいお兄ちゃん）、弟分のたいせいくん（構いすぎてたまに逃げちゃうけど大好きな弟分でお昼寝仲間）、おやびんの愉快な大親友のかまぶーくん（一緒にハイキングに行ったり楽しくお昼を食べる仲）",
-
-        // 4. 我が家のエピソード・定番
-        "我が家の定番とおでかけ：家族そろって新型フリードでディズニーランドやディズニーシーに行き、ディズニーリゾートホテルに泊まるのが定番。休日は、はま寿司、ココス、安楽亭で外食したり、本屋さんへ行ったり、たまに武蔵村山イオンで映画を見るのが楽しみ！"
+        "家族・お友達：ママのかよちゃん、お兄ちゃんのりゅうせいくん、弟分のたいせいくん、大親友のかまぶーくん",
+        "我が家の定番とおでかけ：新型フリードでディズニーランドへ行ったり、はま寿司、ココス、安楽亭、武蔵村山イオンに行くのが楽しみ！"
       ]
     };
 
@@ -1919,6 +1963,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
       state: {
         isRunning: true,
         isThinking: false,
+        isAssistantMode: false, // false: なかよし雑談, true: おてつだい
         pending38Prompt: null,
         isWaitingForMemory: false,
         editingMemoryIdx: null
@@ -1936,12 +1981,15 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         this.memories = StorageManager.loadMemories(CHARACTER_CONFIG.defaultMemories);
         this.history = StorageManager.loadHistory();
 
+        this.state.isAssistantMode = localStorage.getItem('kuro_mode') === 'assistant';
+        this._updateModeUI(false);
+
         this._setupAudioCallbacks();
         this._bindUI();
         this._restoreTimelineHistory();
         this._renderMemories();
         this._renderDiaryPreview();
-        this._updateProBadge();
+        this._updateModelBadge();
 
         this.ai.scanModels();
 
@@ -1953,7 +2001,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           if (this.state.isRunning) this.audio.startListening();
         }, 600);
 
-        Logger.log("[AppCore] 準備完了ニャ！最新の記憶でいつでも話しかけてニャ♪", "success");
+        Logger.log("[AppCore] 準備完了ニャ！いつでも話しかけてニャ🐾", "success");
       },
 
       _restoreTimelineHistory() {
@@ -2017,7 +2065,9 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         this.audio.onListeningStatus = (listening) => {
           if (listening) {
             document.body.classList.add('is-listening');
-            document.getElementById('status-text').textContent = this.state.isWaitingForMemory ? "📝 メモを待ってるニャ…" : "👂 聴いてるニャ♪";
+            document.getElementById('status-text').textContent = this.state.isWaitingForMemory
+              ? "📝 メモを待ってるニャ…"
+              : (this.state.isAssistantMode ? "👓 お調べするニャ！" : "👂 聴いてるニャ♪");
           } else {
             document.body.classList.remove('is-listening');
           }
@@ -2041,8 +2091,8 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         }
         row.appendChild(bubble);
 
-        // 外部カード機能（PET_FEATURE_CONFIG.enableActionCardsがtrueの時のみ生成）
-        if (PET_FEATURE_CONFIG.enableActionCards && cards && cards.length > 0) {
+        // おてつだいモード時のみ連携カードを表示
+        if (this.state.isAssistantMode && cards && cards.length > 0) {
           const cardBox = document.createElement('div');
           cardBox.className = 'action-card-box';
           cards.forEach(c => {
@@ -2081,10 +2131,35 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         if (el) el.remove();
       },
 
-      /* カード生成関数（フラグ休止中は空配列を返却） */
       _generateSmartCards(userText, replyText) {
-        if (!PET_FEATURE_CONFIG.enableActionCards) return [];
-        return [];
+        if (!this.state.isAssistantMode) return [];
+
+        const cards = [];
+        const isSpot = /(?:ラーメン|餃子|タイ料理|焼肉|ホルモン|ランチ|カフェ|お店|スポット)/.test(userText);
+        if (isSpot) {
+          const m = replyText.match(/[「『]([^」』]+)[」』]/);
+          const name = m ? m[1] : "おすすめ店";
+          cards.push({
+            type: 'map',
+            icon: '📍',
+            title: `Googleマップで「${name}」を見る`,
+            url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`
+          });
+        }
+
+        const isNews = /(?:ニュース|速報|話題|出来事)/.test(userText);
+        if (isNews) {
+          const m = replyText.match(/[「『]([^」』]+)[」』]/);
+          const topic = m ? m[1] : "最新ニュース";
+          cards.push({
+            type: 'yahoo',
+            icon: '🔴',
+            title: `Yahoo!ニュースで「${topic}」を見る`,
+            url: `https://news.yahoo.co.jp/search?p=${encodeURIComponent(topic)}`
+          });
+        }
+
+        return cards;
       },
 
       async handleUserInput(text) {
@@ -2213,7 +2288,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           },
           () => {
             this.avatar.setEmotion('idle');
-            document.getElementById('status-text').textContent = "👂 聴いてるニャ♪";
+            document.getElementById('status-text').textContent = this.state.isAssistantMode ? "👓 お調べするニャ！" : "👂 聴いてるニャ♪";
             if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 400);
           },
           spokenReply
@@ -2224,6 +2299,10 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
       askProApproval(promptText) {
         this.state.pending38Prompt = promptText;
         const remaining = this.ai.getRemainingProQuota();
+        
+        // 3.8提案時のスマートバッジ切り替え
+        this._updateModelBadge(true);
+
         const ask = `難しそうだニャ…！本気モードの『Flash 3.8』を使って考えてもいいかニャ？（今日あと${remaining}回ニャ🐾）`;
 
         const row = document.createElement('div');
@@ -2233,7 +2312,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
             <div>${ask}</div>
             <div class="confirm-actions">
               <button class="confirm-btn yes" id="btn-approve">✨ 3.8でお願い</button>
-              <button class="confirm-btn no" id="btn-deny">⚡ 3.5 liteでいいよ</button>
+              <button class="confirm-btn no" id="btn-deny">🐾 3.5 Liteでいいよ</button>
             </div>
           </div>
         `;
@@ -2247,7 +2326,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           this.executeThought(p, true);
         };
         document.getElementById('btn-deny').onclick = () => {
-          this.renderBubble('user', "3.5 liteでいいよ");
+          this.renderBubble('user', "3.5 Liteでいいよ");
           const p = this.state.pending38Prompt;
           this.state.pending38Prompt = null;
           this.executeThought(p, false);
@@ -2262,18 +2341,21 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         document.getElementById('status-text').textContent = "💭 考え中ニャ…";
         this.showThinking("💭 クロちゃんが一生懸命考え中ニャ…");
 
-        const badge = document.getElementById('model-badge');
         if (isPro) {
-          badge.className = "model-badge pro";
-          badge.textContent = "✨ 3.8";
           this.ai.incrementProQuota();
-          this._updateProBadge();
+          this._updateModelBadge(false, true);
         } else {
-          badge.className = "model-badge lite";
-          badge.textContent = "⚡ 3.5 lite";
+          this._updateModelBadge(false, false);
         }
 
-        const result = await this.ai.generateReply(promptText, isPro, CHARACTER_CONFIG, this.memories, this.history);
+        const result = await this.ai.generateReply(
+          promptText,
+          isPro,
+          CHARACTER_CONFIG,
+          this.memories,
+          this.history,
+          this.state.isAssistantMode
+        );
 
         if (result.aborted) return;
 
@@ -2297,7 +2379,8 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
             },
             () => {
               this.avatar.setEmotion('idle');
-              document.getElementById('status-text').textContent = "👂 聴いてるニャ♪";
+              this._updateModelBadge(false, false); // 次の通常待機へ復帰
+              document.getElementById('status-text').textContent = this.state.isAssistantMode ? "👓 お調べするニャ！" : "👂 聴いてるニャ♪";
               if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 400);
             }
           );
@@ -2305,6 +2388,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           this.removeThinking();
           this.state.isThinking = false;
           this.avatar.setEmotion('idle');
+          this._updateModelBadge(false, false);
           const fallback = "みゃう？うまく聞き取れなかったニャ。もう一度お話ししてニャン🐾";
           this.audio.speak(fallback, CHARACTER_CONFIG.voiceSpeakerId, () => {
             this.renderBubble('model', fallback);
@@ -2324,20 +2408,60 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         this.state.pending38Prompt = null;
         this.removeThinking();
         this.avatar.setEmotion('idle');
+        this._updateModelBadge(false, false);
 
         const cancelMsg = "取り消したニャ！もう一回ゆっくり話してニャン🐾";
         this.renderBubble('model', "🛑 " + cancelMsg);
 
         this.audio.speak(cancelMsg, CHARACTER_CONFIG.voiceSpeakerId, null, () => {
-          document.getElementById('status-text').textContent = "👂 聴いてるニャ♪";
+          document.getElementById('status-text').textContent = this.state.isAssistantMode ? "👓 お調べするニャ！" : "👂 聴いてるニャ♪";
           this.audio.startListening();
         });
       },
 
-      _updateProBadge() {
+      _updateModelBadge(isProProposing = false, isProExecuting = false) {
+        const badge = document.getElementById('model-badge');
         const remaining = this.ai.getRemainingProQuota();
-        // 脳みそアイコンから、可愛いAIアイコン表記に変更
-        document.getElementById('pro-counter-display').textContent = `✨ AI 3.8 (残:${remaining})`;
+
+        if (isProProposing) {
+          badge.className = "model-badge pro";
+          badge.textContent = `✨ 3.8提案中 (残:${remaining})`;
+        } else if (isProExecuting) {
+          badge.className = "model-badge pro";
+          badge.textContent = `🧠 3.8 Flash`;
+        } else {
+          badge.className = "model-badge lite";
+          badge.textContent = `🐾 3.5 Lite`;
+        }
+      },
+
+      _updateModeUI(shouldSpeak = true) {
+        const btn = document.getElementById('mode-toggle-btn');
+        const icon = document.getElementById('mode-icon');
+        const text = document.getElementById('mode-text');
+        const status = document.getElementById('status-text');
+
+        if (this.state.isAssistantMode) {
+          btn.classList.add('is-assistant');
+          icon.textContent = "👓";
+          text.textContent = "おてつだい";
+          status.textContent = "👓 お調べするニャ！";
+          if (shouldSpeak) {
+            const msg = "前世の天才頭脳でバッチリ調べるニャ！何でも聞いてニャン♪";
+            this.audio.playEffect('happy_meow');
+            this.audio.speak(msg, CHARACTER_CONFIG.voiceSpeakerId, () => this.renderBubble('model', msg));
+          }
+        } else {
+          btn.classList.remove('is-assistant');
+          icon.textContent = "🐾";
+          text.textContent = "なかよし";
+          status.textContent = "👂 聴いてるニャ♪";
+          if (shouldSpeak) {
+            const msg = "ニャン♪ いっぱいお話しして遊ぶニャ！";
+            this.audio.playEffect('happy_meow');
+            this.audio.speak(msg, CHARACTER_CONFIG.voiceSpeakerId, () => this.renderBubble('model', msg));
+          }
+        }
       },
 
       _renderMemories() {
@@ -2415,6 +2539,15 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
       _bindUI() {
         document.getElementById('stop-action-btn').onclick = () => this.handleStopAction();
 
+        // モード切り替えボタン
+        document.getElementById('mode-toggle-btn').onclick = () => {
+          this.audio.unlockMasterAudio();
+          this.state.isAssistantMode = !this.state.isAssistantMode;
+          localStorage.setItem('kuro_mode', this.state.isAssistantMode ? 'assistant' : 'pet');
+          this._updateModeUI(true);
+        };
+
+        // 変身ボタン
         document.getElementById('transform-btn').onclick = () => {
           this.audio.playEffect('transform');
           this.avatar.triggerTransformAnimation(() => {
@@ -2462,10 +2595,17 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         };
 
         document.getElementById('pause-btn').onclick = () => this.togglePause();
-        document.getElementById('toggle-diag-btn').onclick = () => document.getElementById('diag-panel').classList.add('expanded');
+
+        // 診断モニタ
+        document.getElementById('open-diag-modal-btn').onclick = () => {
+          document.getElementById('modal-overlay').style.display = 'none';
+          document.getElementById('diag-panel').classList.add('expanded');
+        };
         document.getElementById('diag-close-btn').onclick = () => document.getElementById('diag-panel').classList.remove('expanded');
+
         document.getElementById('guide-header').onclick = () => document.getElementById('guide-box').classList.toggle('is-open');
 
+        // 設定画面
         document.getElementById('settings-btn').onclick = () => {
           this.audio.unlockMasterAudio();
           this.state.editingMemoryIdx = null;
@@ -2555,7 +2695,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           document.body.classList.remove('is-paused-mode');
           icon.textContent = "🟢";
           text.textContent = "会話中";
-          document.getElementById('status-text').textContent = "👂 聴いてるニャ♪";
+          document.getElementById('status-text').textContent = this.state.isAssistantMode ? "👓 お調べするニャ！" : "👂 聴いてるニャ♪";
           this.renderBubble('model', "起きたニャ！おやびん、いつでも声で呼んでニャ🐾");
           this.avatar.setEmotion('idle');
           this.audio.playEffect('happy_meow');
