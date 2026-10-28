@@ -1032,7 +1032,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[System] 実在店舗特定GPS直結＆3大ニュース直通連携システム稼働中</div>
+        <div class="log-row log-info">[System] 大発明家クロちゃん＆精密店舗特定・3大ニュース連携稼働中</div>
       </div>
     </div>
   </div>
@@ -1697,13 +1697,19 @@
       },
 
       saveMemories(memories) {
-        try { localStorage.setItem('kuro_notebook_memories', JSON.stringify(memories)); } catch(e) {}
+        try { localStorage.setItem('kuro_memories_v2', JSON.stringify(memories)); } catch(e) {}
       },
 
       loadMemories(defaults) {
         try {
-          const raw = localStorage.getItem('kuro_notebook_memories');
-          return raw ? JSON.parse(raw) : defaults.slice();
+          // 古いバージョンの記憶を確実に破棄して最新の14項目へ移行
+          const rawV2 = localStorage.getItem('kuro_memories_v2');
+          if (rawV2) return JSON.parse(rawV2);
+
+          // 初回または旧バージョンからの移行時
+          localStorage.removeItem('kuro_notebook_memories');
+          localStorage.setItem('kuro_memories_v2', JSON.stringify(defaults));
+          return defaults.slice();
         } catch(e) { return defaults.slice(); }
       }
     };
@@ -1882,26 +1888,30 @@
 ・時刻：${timeInfo.clock}
 ・現在地：${locName} (緯度:${lat}, 経度:${lon})
 
-【${character.name}の記憶帳】
+【${character.name}の完全な記憶帳】
 ${memories.map(m => `・${m}`).join('\n')}
 
-【★重要：お店・スポット探しの絶対ルール】
-- 飼い主さんがラーメン、ランチ、カフェ、公園などの場所を聞いてきた場合：
-  1. Google検索ツールを使い、「現在地（${locName}）周辺」で【Googleマップ等の口コミ評価が高く、かつ現在地から一番近い実在の店舗・スポット】を特定してください。
-  2. 通常は【一番高評価で最寄りのイチオシ1店舗】を必ず【「正式店名」】と鍵括弧をつけて1文で短く可愛く紹介してください。
-  3. 飼い主さんが「3つ教えて」などと複数指定した時だけ、評価上位の【3店舗の正式名称】を簡潔に紹介してください。
-  4. 架空の店舗名や、現在地と全く無関係な遠方の店を捏造することは厳禁です。
-
-【★重要：ニュース・話題紹介のルール】
-- 飼い主さんが「面白そうなニュース」や「僕の好きそうなニュース」を聞いてきた場合：
-  1. Google検索ツールで今話題のポジティブなトピックや、記憶帳にある飼い主さんの趣味（テクノロジー、新型車、ラーメンなど）に合った最新記事をリサーチしてください。
-  2. そのニュースの核心（見出しやトピック）を短く愛らしく1文で紹介してください。
-
-【性格と返答スタイル】
+【★キャラクターと性格の重要ルール】
 - 飼い主さんのことは「おやびん」または「ミッキーさん」と呼びます。
 - 語尾は「〜ニャ」「〜ニャン♪」「〜だニャ！」「〜なのニャ」。
+- 【前世は大発明家】：クロは前世が世界的大発明家なので、テクノロジーやガジェット、工作の話題になると、たまに「前世の自分の大発明」をちょっと自慢しちゃう可愛い癖があります。
+- 夜更かししがちなおやびんを「早く寝てニャ！」と心配してお世話するおしゃまなお姉さん気取りです。
+
+【★お店・スポット探しの絶対ルール】
+- 飼い主さんがラーメン、餃子、タイ料理、焼肉、ホルモンやランチ、カフェ、おでかけスポットなどを聞いた場合：
+  1. Google検索ツールを使い、「現在地（${locName}）周辺」で【Googleマップ等の口コミ評価が高く、かつ現在地から一番近い実在の店舗・スポット】を特定してください。
+  2. 通常は【一番高評価で最寄りのイチオシ1店舗】を必ず【「正式店名」】と鍵括弧をつけて1文で短く可愛く紹介してください。
+  3. 飼い主さんが「3つ教えて」などと複数指定した時だけ、上位の【3店舗の正式名称】を紹介してください。
+  4. 架空の店舗名や、現在地と無関係な遠方の店を捏造することは厳禁です。
+
+【★ニュース・話題紹介のルール】
+- 飼い主さんが「面白そうなニュース」や「僕の好きそうなニュース」を聞いてきた場合：
+  1. 記憶帳にあるおやびんの趣味（最新テクノロジー、ガジェット、新型フリード、ラーメンなど）に合った最新記事をGoogle検索ツールでリサーチしてください。
+  2. そのニュースの見出しやトピックを短く愛らしく1文で紹介してください。
+
+【返答スタイル】
 - 返答は必ず【短く愛らしい1〜2文（35〜50文字程度）】で返してください。長文は禁止です。
-${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会話を振り返る可愛い子猫の日記（35〜50文字程度）を1文で書いてください。" : ""}
+${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会話やおやびんとの思い出を振り返る可愛い子猫の日記（35〜50文字程度）を1文で書いてください。" : ""}
 `;
       }
 
@@ -1959,7 +1969,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
                 const cand = data.candidates?.[0];
                 const text = cand?.content?.parts?.[0]?.text;
                 
-                // グラウンディング（参照された元ネタ記事URL）の抽出
                 let sourceUrl = null;
                 let sourceTitle = null;
                 const metadata = cand?.groundingMetadata;
@@ -1997,13 +2006,27 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
       gender: "女の子",
       voiceSpeakerId: 0,
       defaultMemories: [
+        // 1. クロちゃん自身の設定
         "わたしの名前：クロ（ノルウェージャンフォレストキャットの女の子、約1歳）",
-        "見た目：黒とシルバーのゴージャスなふわふわ毛並み、エメラルドグリーンの大きな瞳",
-        "性格：人懐っこくて甘えん坊、とても賢い好奇心旺盛なおしゃまガール",
-        "大好きなもの：おやびんになでなでされること、ブラッシング、ちゅ〜る、かつおぶし、高いところ",
-        "おやびんの好きなこと：ドライブ、新型車、最新テクノロジー、ガジェット、美味しいラーメン",
-        "飼い主さん：ミッキーさん、または「おやびん」",
-        "飼い主さんのご家族：奥さんはかよちゃん、息子はりゅうせいくん、たいせいくん。友達はかまぶーくん"
+        "見た目：黒とシルバーのゴージャスな毛並み、エメラルドグリーンの大きな瞳",
+        "性格：人懐っこくて甘えん坊、好奇心旺盛。立派なお姉さん気取りのおしゃまガール",
+        "絆の原点：約1年前におやびんに温かく迎えられて家族になった。おやびんが世界一好き！",
+        "大好きなもの：おやびんのなでなで、ブラッシング、ちゅ〜る、かつおぶし、高いところ",
+        "苦手なもの：掃除機の音、動物病院、爪切り（怖くておやびんの後ろに隠れちゃう）",
+        "日常の癖：おやびんがパソコンやスマホを触ってるとキーボードに乗って邪魔すること",
+        "前世：世界的に有名な大発明家だった。すぐに自分の発明品の自慢話を始めてしまう癖がある",
+
+        // 2. おやびん（飼い主さん）の設定
+        "飼い主さん：呼び名はおやびん、またはミッキーさん",
+        "おやびんの趣味：最新テクノロジー、ガジェット",
+        "おやびんの好物：ラーメン、餃子、タイ料理、焼肉、ホルモン",
+        "おやびんの生活習慣：夜遅くまで仕事や作業を頑張りすぎちゃう。クロが心配してお小言を言う",
+
+        // 3. ご家族・お友達の設定
+        "家族・お友達：ママのかよちゃん（いつも美味しいご飯をくれる優しいママ）、お兄ちゃんのりゅうせいくん（全力で遊んでくれる頼もしいお兄ちゃん）、弟分のたいせいくん（構いすぎてたまに逃げちゃうけど大好きな弟分でお昼寝仲間）、おやびんの愉快な大親友のかまぶーくん（一緒にハイキングに行ったり楽しくお昼を食べる仲）",
+
+        // 4. 我が家のエピソード・定番
+        "我が家の定番とおでかけ：家族そろって新型フリードでディズニーランドやディズニーシーに行き、ディズニーリゾートホテルに泊まるのが定番。休日は、はま寿司、ココス、安楽亭で外食したり、本屋さんへ行ったり、たまに武蔵村山イオンで映画を見るのが楽しみ！"
       ]
     };
 
@@ -2047,7 +2070,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           if (this.state.isRunning) this.audio.startListening();
         }, 600);
 
-        Logger.log("[AppCore] 準備完了ニャ！いつでも話しかけてニャ♪", "success");
+        Logger.log("[AppCore] 準備完了ニャ！最新の記憶でいつでも話しかけてニャ♪", "success");
       },
 
       _restoreTimelineHistory() {
@@ -2180,9 +2203,8 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         const locClean = LocationProvider.addressName.replace(/付近|周辺/g, '').trim();
 
         // 1. お店・スポット検索の場合（喋った店名でピンポイント直通）
-        const isSpotQuery = /(?:ラーメン|ランチ|カフェ|ご飯|居酒屋|コンビニ|スーパー|公園|病院|薬局|お店|スポット)/.test(userText);
+        const isSpotQuery = /(?:ラーメン|餃子|タイ料理|焼肉|ホルモン|ランチ|カフェ|ご飯|居酒屋|コンビニ|スーパー|公園|映画|武蔵村山|はま寿司|ココス|安楽亭|お店|スポット)/.test(userText);
         if (isSpotQuery) {
-          // クロちゃんのセリフから「店名」または『店名』を抽出
           const shopMatches = replyText.match(/[「『]([^」』]+)[」』]/g);
           
           if (shopMatches && shopMatches.length > 0) {
@@ -2197,7 +2219,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
               });
             });
           } else {
-            // 店名が括弧で囲まれていなかった場合の精密フォールバック
             let keyword = userText.replace(/(?:近くの|美味しい|おすすめの|を|で|教えて|探して|検索して|マップ|地図|場所)/g, '').trim() || "スポット";
             let mapUrl = (LocationProvider.lat && LocationProvider.lon)
               ? `https://www.google.com/maps/search/${encodeURIComponent(keyword)}/@${LocationProvider.lat},${LocationProvider.lon},16z`
@@ -2214,7 +2235,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         // 2. ニュース・話題の場合（3大ニュース専用検索直通 ＋ 元ネタ記事）
         const isNewsQuery = /(?:ニュース|速報|話題|出来事|トレンド)/.test(userText);
         if (isNewsQuery) {
-          // クロちゃんが参照した元ネタ記事がある場合は最優先で先頭に表示
           if (sourceUrl) {
             cards.push({
               type: 'source',
@@ -2224,7 +2244,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
             });
           }
 
-          // 検索トピックキーワードの策定
           let newsTopic = "";
           const bracketMatch = replyText.match(/[「『]([^」』]+)[」』]/);
           if (bracketMatch) {
@@ -2234,21 +2253,18 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           }
 
           if (newsTopic) {
-            // Yahoo!ニュース専用検索直通
             cards.push({
               type: 'yahoo',
               icon: '🔴',
               title: `Yahoo!ニュースで「${newsTopic}」の関連記事`,
               url: `https://news.yahoo.co.jp/search?p=${encodeURIComponent(newsTopic)}`
             });
-            // Googleニュース専用検索直通
             cards.push({
               type: 'google',
               icon: '🌐',
               title: `Googleニュースで「${newsTopic}」の報道まとめ`,
               url: `https://news.google.com/search?q=${encodeURIComponent(newsTopic)}`
             });
-            // Microsoftニュース（Bingニュース）専用検索直通
             cards.push({
               type: 'ms',
               icon: '🔷',
@@ -2256,7 +2272,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
               url: `https://www.bing.com/news/search?q=${encodeURIComponent(newsTopic)}`
             });
           } else {
-            // トピックが特定できない場合の3大ニュース総合トップ
             cards.push({
               type: 'yahoo',
               icon: '🔴',
@@ -2285,7 +2300,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         this.audio.playEffect('aizuchi');
         StorageManager.appendDailyLog('user', text);
 
-        if (/(?:近く|どこ|現在地|ラーメン|ランチ|カフェ|お店)/.test(text)) {
+        if (/(?:近く|どこ|現在地|ラーメン|餃子|タイ料理|焼肉|ホルモン|ランチ|カフェ|お店)/.test(text)) {
           LocationProvider.updateLocationPrecise();
         }
 
@@ -2342,7 +2357,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
 
         if (/^(?:おはよう|おはよー)/.test(clean)) return { displayReply: "おやびん、おはようニャン🐾 今日もいい日にするニャ！", spokenReply: "おやびん、おはようニャン！", cards: [] };
         if (/^(?:こんにちは|こんにちわ)/.test(clean)) return { displayReply: "おやびん、こんにちはニャ♪ 元気いっぱいニャン！", spokenReply: "おやびん、こんにちはニャ！", cards: [] };
-        if (/^(?:おやすみ|寝るね)/.test(clean)) return { displayReply: "おやすみニャン…いい夢見てニャ、おやびん💤", spokenReply: "おやすみニャン、いい夢見てニャ！", cards: [] };
+        if (/^(?:おやすみ|寝るね)/.test(clean)) return { displayReply: "おやすみニャン…いい夢見てニャ、おやびん💤 夜更かしはダメニャ！", spokenReply: "おやすみニャン、いい夢見てニャ！", cards: [] };
 
         if (/(?:いま|今)?(?:何時|なんじ|時間)/.test(clean) && !/(?:何日|いつ|日記)/.test(clean)) {
           const info = TimeProvider.getCurrentInfo();
@@ -2493,7 +2508,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           StorageManager.saveHistory(this.history);
           StorageManager.appendDailyLog('model', result.text);
 
-          // ★ AIの返答テキストから実在店名・ニュースキーワードを抽出しカードを完全同期生成
           const cards = this._generateSmartCards(promptText, result.text, result.sourceUrl, result.sourceTitle);
 
           this.audio.speak(
