@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -237,12 +238,12 @@
     .confirm-btn.yes { background: linear-gradient(135deg, #c026d3, #9333ea); color: white; box-shadow: 0 2px 6px rgba(192, 38, 211, 0.3); }
     .confirm-btn.no { background: #e2e8f0; color: #475569; }
 
-    /* マルチリソース・アクションカード群 */
+    /* マルチリソース・連携カード群 */
     .action-card-box {
       margin-top: 6px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
       max-width: 90%;
       animation: fadeIn 0.3s ease-out;
     }
@@ -342,7 +343,7 @@
       pointer-events: auto;
     }
 
-    /* ベクター猫 */
+    /* ベクター猫（ノルウェージャンフォレストキャット） */
     #cat-vector-avatar {
       width: 250px;
       height: 285px;
@@ -497,7 +498,7 @@
       100% { transform: translate(var(--dx), var(--dy)) scale(var(--scale)); opacity: 0; }
     }
 
-    /* 4. 最下部操作バー（🛑 ストップボタン搭載） */
+    /* 4. 最下部操作バー */
     .bottom-controls {
       width: 100%;
       flex-shrink: 0;
@@ -997,7 +998,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[System] 950ms無音タイマー・即答挨拶・疑問符判定起動完了</div>
+        <div class="log-row log-info">[System] 950ms無音タイマー・四国めたん16秒安定化稼働中</div>
       </div>
     </div>
   </div>
@@ -1043,6 +1044,11 @@
       <div class="form-group">
         <label>Google AI Studio API Key:</label>
         <input type="password" id="api-key-input" placeholder="AIzaSy...">
+      </div>
+
+      <div class="form-group">
+        <label>VoiceVox API Key（任意・空欄でOK）:</label>
+        <input type="password" id="voicevox-key-input" placeholder="空欄のままで自動動作します">
       </div>
 
       <div class="form-group">
@@ -1098,7 +1104,7 @@
     };
 
     /* ==========================================================================
-       ★ MODULE 1: 音声合成＆音声認識（息継ぎ配慮950ms・クッション付平仮名）
+       ★ MODULE 1: 音声合成＆音声認識（息継ぎ950ms＋四国めたん爆速最適化）
        ========================================================================== */
     class AudioSpeechEngine {
       constructor() {
@@ -1277,10 +1283,28 @@
         return t;
       }
 
+      /* ★ 送信テキストを最初の1文（最大35文字）にスマート短縮し爆速生成 */
+      _extractSpeechTarget(text) {
+        if (!text) return "";
+        let t = text.trim();
+        // 最初の句点や感嘆符で短く切る
+        const match = t.match(/^(.+?[。！!\?\n])/);
+        if (match && match[1] && match[1].length <= 40) {
+          t = match[1];
+        } else {
+          t = t.slice(0, 36);
+        }
+        return t;
+      }
+
+      /* ★ タイムアウト16秒（500ms×32回）＆APIキー任意付与対応 */
       async _fetchMetanMp3Url(text, speakerId = 0) {
-        const clean = text.slice(0, 75);
-        const encodedText = encodeURIComponent(clean);
-        const initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=${speakerId}`;
+        const target = this._extractSpeechTarget(text);
+        const encodedText = encodeURIComponent(target);
+        const vvKey = localStorage.getItem('kuro_voicevox_key') || '';
+        
+        let initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodedText}&speaker=${speakerId}`;
+        if (vvKey) initUrl += `&key=${encodeURIComponent(vvKey)}`;
 
         const initRes = await fetch(initUrl);
         if (!initRes.ok) throw new Error(`HTTPエラー ${initRes.status}`);
@@ -1296,8 +1320,9 @@
         const statusUrl = initData.audioStatusUrl;
         if (!statusUrl) return downloadUrl;
 
-        for (let i = 1; i <= 10; i++) {
-          await new Promise(r => setTimeout(r, 800));
+        // 500ms刻みで最大32回（16秒）粘り強くチェック
+        for (let i = 1; i <= 32; i++) {
+          await new Promise(r => setTimeout(r, 500));
           try {
             const sRes = await fetch(statusUrl);
             if (sRes.ok) {
@@ -1393,7 +1418,7 @@
           };
 
           await this.masterAudio.play();
-          Logger.log(`[Audio肉声] 再生中: ${clean}`, "success");
+          Logger.log(`[Audio肉声] 再生成功: ${clean}`, "success");
 
         } catch (err) {
           Logger.log(`[標準音声] ${clean}`, "warn");
@@ -1408,7 +1433,7 @@
         if (window.speechSynthesis) window.speechSynthesis.cancel();
       }
 
-      /* ★ 息継ぎ配慮（無音タイマーを950msに延長） */
+      /* ★ 息継ぎ配慮（無音タイマーを950msに設定） */
       _setupRecognition() {
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRec) {
@@ -2160,7 +2185,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         this.audio.playEffect('aizuchi');
         StorageManager.appendDailyLog('user', text);
 
-        // 1. 直接インテント（★ 呼びかけ・日常挨拶・時計・日付の即答化）
+        // 1. 直接インテント（★ 呼びかけ・日常挨拶・時計・日付の高速即答化）
         const direct = this._checkDirectIntent(text);
         if (direct) {
           this.executeDirectReply(direct.displayReply, direct.cards, null, direct.spokenReply);
@@ -2317,7 +2342,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         return null;
       },
 
-      /* ★ マルチAIダイレクト連携カード（検索時のみ控えめに表示） */
+      /* ★ 検索リソース連携カード（検索時のみ控えめに表示） */
       _detectActionCards(userText) {
         const cards = [];
         const loc = LocationProvider.addressName.replace(/付近|周辺/g, '').trim();
@@ -2341,7 +2366,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
             query = userText.replace(/(?:ニュース|最新情報|教えて|最新|今日の|調べて|検索して|とは)/g, '').trim() || "主要ニュース";
           }
           
-          // 3大リソースへのダイレクト連携
           cards.push({
             type: 'gemini',
             icon: '🌐',
@@ -2648,6 +2672,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           this.audio.unlockMasterAudio();
           this.state.editingMemoryIdx = null;
           document.getElementById('api-key-input').value = this.ai.apiKey;
+          document.getElementById('voicevox-key-input').value = localStorage.getItem('kuro_voicevox_key') || '';
           this._renderMemories();
           this._renderDiaryPreview();
           document.getElementById('modal-overlay').style.display = 'flex';
@@ -2688,10 +2713,12 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         document.getElementById('save-settings-btn').onclick = async () => {
           this.audio.unlockMasterAudio();
           this.ai.apiKey = document.getElementById('api-key-input').value.trim();
+          const vvKey = document.getElementById('voicevox-key-input').value.trim();
           const r = parseFloat(document.getElementById('voice-rate').value);
           this.audio.setRate(r);
 
           localStorage.setItem('kuro_api_key', this.ai.apiKey);
+          localStorage.setItem('kuro_voicevox_key', vvKey);
           localStorage.setItem('kuro_rate', r);
 
           if (this.ai.apiKey) await this.ai.scanModels();
