@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -91,7 +90,7 @@
       padding-left: 4px;
     }
 
-    /* ★ ステータス表示の反転強調（黒バッジ・大きな文字） */
+    /* ステータスバッジ（反転強調） */
     #status-badge-container {
       flex: 1;
       display: flex;
@@ -244,7 +243,7 @@
     .confirm-btn.yes { background: linear-gradient(135deg, #c026d3, #9333ea); color: white; box-shadow: 0 2px 6px rgba(192, 38, 211, 0.3); }
     .confirm-btn.no { background: #e2e8f0; color: #475569; }
 
-    /* マルチリソース・連携カード群 */
+    /* マルチリソース・連携カード群（Yahoo対応） */
     .action-card-box {
       margin-top: 6px;
       display: flex;
@@ -270,12 +269,12 @@
     .link-action-card.map-card { border-color: #bbf7d0; background: #f0fdf4; }
     .link-action-card.gemini-card { border-color: #bae6fd; background: #f0f9ff; }
     .link-action-card.copilot-card { border-color: #c7d2fe; background: #eef2ff; }
-    .link-action-card.chatgpt-card { border-color: #a7f3d0; background: #ecfdf5; }
+    .link-action-card.yahoo-card { border-color: #fecaca; background: #fef2f2; }
     .card-left { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; }
     .card-icon { font-size: 15px; }
     .card-arrow { font-size: 11px; color: #64748b; font-weight: bold; }
 
-    /* 3. クロちゃん本体ステージ＆変身フローティングボタン */
+    /* 3. クロちゃん本体ステージ＆変身ボタン */
     .pet-avatar-wrapper {
       position: relative;
       flex-shrink: 0;
@@ -304,7 +303,6 @@
       background: transparent;
     }
 
-    /* ★ ねこちゃんの右下、操作バーの上に少し大きめで配置した変身ボタン */
     .btn-transform-floating {
       position: absolute;
       right: 12px;
@@ -924,7 +922,7 @@
 <body>
 
   <div id="pet-container">
-    <!-- 1. 最上部ステータスバー（中央の反転黒バッジ強調） -->
+    <!-- 1. 最上部ステータスバー -->
     <div class="top-header">
       <div class="top-header-left">
         <span id="clock-display">00:00</span>
@@ -943,7 +941,7 @@
     <!-- 2. 会話タイムライン -->
     <div id="chat-timeline"></div>
 
-    <!-- 3. 中央〜下部：クロちゃん本体ステージ ＆ ねこちゃんの右下・少し大きめの変身ボタン -->
+    <!-- 3. 中央〜下部：クロちゃん本体ステージ ＆ 変身ボタン -->
     <div class="pet-avatar-wrapper is-idling" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
       <div class="cat-ground-shadow"></div>
 
@@ -1001,7 +999,6 @@
         </svg>
       </div>
 
-      <!-- ★ ねこちゃんの右下・操作バーの上の黒い変身ボタン -->
       <button class="btn-transform-floating" id="transform-btn" title="ドロン！とリアルとイラストを変身するニャ！">
         <span>✨</span>
         <span>変身</span>
@@ -1034,7 +1031,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[System] 括弧文字保護・助数詞完全平仮名・右下変身ボタン稼働中</div>
+        <div class="log-row log-info">[System] 数字最優先平仮名保護・Yahoo連携システム稼働中</div>
       </div>
     </div>
   </div>
@@ -1060,7 +1057,7 @@
           </div>
           <div class="guide-item">
             <strong>🔢 数字・気温・分数の完全発音</strong>
-            「20分」「21度」「21℃」などもカッコや記号に邪魔されず「にじゅっぷん」「にじゅういちど」と確実に発音します。
+            「20分」「21度」「21℃」なども絵文字判定で消えることなく「にじゅっぷん」「にじゅういちど」と確実に発音します。
           </div>
         </div>
       </div>
@@ -1140,7 +1137,7 @@
     };
 
     /* ==========================================================================
-       ★ MODULE 1: 音声合成＆音声認識（カッコ文字保護＋助数詞完全平仮名）
+       ★ MODULE 1: 音声合成＆音声認識（数字最優先保護＋安全絵文字除去）
        ========================================================================== */
     class AudioSpeechEngine {
       constructor() {
@@ -1288,7 +1285,7 @@
           return parse4(n);
         };
 
-        // 1. 分（空白があっても対応、1〜59分など促音も完全網羅）
+        // 1. 分（1〜59分の促音も完全網羅）
         const minuteUnits = [
           'ぜろふん', 'いっぷん', 'にふん', 'さんぷん', 'よんぷん', 'ごふん', 'ろっぷん', 'ななふん', 'はっぷん', 'きゅうふん', 'じゅっぷん',
           'じゅういっぷん', 'じゅうにふん', 'じゅうさんぷん', 'じゅうよんぷん', 'じゅうごふん', 'じゅうろっぷん', 'じゅうななふん', 'じゅうはっぷん', 'じゅうきゅうふん', 'にじゅっぷん',
@@ -1345,19 +1342,34 @@
         });
         t = t.replace(/(\d+)\s*(?:%|パーセント)/g, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'ぱーせんと');
 
-        // 7. 年
+        // 7. 年・月・日・時
         t = t.replace(/(\d{1,4})\s*年/g, (m, yStr) => numToKana(parseInt(yStr, 10)) + 'ねん');
+        t = t.replace(/(\d{1,2})\s*月/g, (m, mStr) => numToKana(parseInt(mStr, 10)) + 'がつ');
+        t = t.replace(/(\d{1,2})\s*日/g, (m, dStr) => {
+          const d = parseInt(dStr, 10);
+          const daySpecial = {
+            1: 'ついたち', 2: 'ふつか', 3: 'みっか', 4: 'よっか', 5: 'いつか',
+            6: 'むいか', 7: 'なのか', 8: 'ようか', 9: 'ここのか', 10: 'とおか',
+            14: 'じゅうよっか', 20: 'はつか', 24: 'にじゅうよっか'
+          };
+          return daySpecial[d] || (numToKana(d) + 'にち');
+        });
+        t = t.replace(/(\d{1,2})\s*時/g, (m, hStr) => {
+          const h = parseInt(hStr, 10);
+          if (h === 4) return 'よじ';
+          if (h === 7) return 'しちじ';
+          if (h === 9) return 'くじ';
+          return numToKana(h) + 'じ';
+        });
 
         // 8. 残りの裸の数字
         t = t.replace(/\d+/g, m => numToKana(parseInt(m, 10)));
         return t;
       }
 
-      /* ★ 45〜50文字までしっかり含めて自然に喋らせる */
       _extractSpeechTarget(text) {
         if (!text) return "";
         let t = text.trim();
-
         if (t.length <= 50) return t;
 
         const segment = t.slice(0, 52);
@@ -1398,7 +1410,6 @@
         const statusUrl = initData.audioStatusUrl;
         if (!statusUrl) return downloadUrl;
 
-        // 500ms刻みで最大32回（16秒）粘り強くチェック
         for (let i = 1; i <= 32; i++) {
           await new Promise(r => setTimeout(r, 500));
           try {
@@ -1453,19 +1464,20 @@
 
         let targetText = spokenOverride || text;
 
-        // ★ 修正：カッコの中身を丸ごと消さず、カッコの記号だけを安全に空白に置換して中身（数字など）を100%残す！
+        // ★ 根本修正：まず最初に数字を平仮名化して保護！
+        if (!spokenOverride) {
+          targetText = this._convertAllNumbersToKana(targetText);
+        }
+
+        // ★ 安全な文字・絵文字クリーニング（\p{Emoji}の誤爆を排除）
         let clean = targetText
           .replace(/```[\s\S]*?```/g, '')
           .replace(/<[^>]*>/g, '')
-          .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}\uFE0F\u200D]/gu, '')
-          .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🟢]/gu, '')
+          .replace(/(?:[0-9#*]\uFE0F?\u20E3|[\p{Extended_Pictographic}\p{Emoji_Presentation}])/gu, '')
+          .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴]/gu, '')
           .replace(/[（\(【\[「『）\)】\]」』]/g, ' ')
           .replace(/\s+/g, ' ')
           .trim();
-
-        if (!spokenOverride) {
-          clean = this._convertAllNumbersToKana(clean);
-        }
 
         if (!clean) {
           if (onStart) onStart();
@@ -1934,7 +1946,7 @@
         if (this.currentAbortController) {
           this.currentAbortController.abort();
           this.currentAbortController = null;
-          Logger.log("[AI] 思考リクエストを強制中断しました", "warn");
+          Logger.log("[AI] 思考リクエストを中断しました", "warn");
         }
       }
 
@@ -1977,7 +1989,7 @@
 ${memories.map(m => `・${m}`).join('\n')}
 
 【検索リソース・知識方針】
-- GoogleのリアルタイムWeb検索情報に加え、CopilotやChatGPTのような知的な多角的視点を統合して回答してください。
+- Googleのリアルタイム検索、CopilotやYahoo! JAPANのような多様で知的な最新情報を統合して回答してください。
 - 飼い主さんが「僕の好きなニュース」などと言った場合は、記憶帳にある好みを踏まえて回答してください。
 
 【性格と返答スタイル】
@@ -2247,12 +2259,10 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
 
       _extractUserInterestsFromMemories() {
         for (const mem of this.memories) {
-          if (/(?:おやびんの好きなこと|趣味|好きなもの|大好きなもの|興味|関心)[：:は](.+)/.test(mem)) {
-            const match = mem.match(/(?:おやびんの好きなこと|趣味|好きなもの|大好きなもの|興味|関心)[：:は](.+)/);
-            if (match && match[1]) {
-              const items = match[1].split(/[,、\s]+/).filter(Boolean);
-              if (items.length > 0) return items[0];
-            }
+          const match = mem.match(/(?:おやびんの好きなこと|趣味|好きなもの|大好きなもの|興味|関心)[：:は](.+)/);
+          if (match && match[1]) {
+            const items = match[1].split(/[,、\s]+/).filter(Boolean);
+            if (items.length > 0) return items[0];
           }
         }
         return "最新テクノロジー";
@@ -2409,6 +2419,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         return null;
       },
 
+      /* ★ 検索カード（ChatGPT撤廃 ➔ Yahoo! JAPAN検索・ニュースに更新） */
       _detectActionCards(userText) {
         const cards = [];
         const loc = LocationProvider.addressName.replace(/付近|周辺/g, '').trim();
@@ -2445,10 +2456,10 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
             url: `https://www.bing.com/search?q=${encodeURIComponent(query)}`
           });
           cards.push({
-            type: 'chatgpt',
-            icon: '🟢',
-            title: `ChatGPTで開く`,
-            url: `https://chatgpt.com/?q=${encodeURIComponent(query)}`
+            type: 'yahoo',
+            icon: '🔴',
+            title: `Yahoo!ニュースで「${query}」を検索`,
+            url: `https://news.yahoo.co.jp/search?p=${encodeURIComponent(query)}`
           });
         }
         return cards;
@@ -2674,7 +2685,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
       _bindUI() {
         document.getElementById('stop-action-btn').onclick = () => this.handleStopAction();
 
-        // ★ 右下に配置された大きめの変身ボタン
         document.getElementById('transform-btn').onclick = () => {
           this.audio.playEffect('transform');
           this.avatar.triggerTransformAnimation(() => {
@@ -2686,7 +2696,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         const wrapper = document.getElementById('avatar-wrapper');
         let strokeCount = 0;
         wrapper.onclick = (e) => {
-          // 変身ボタン自体を押した時はなでなでを発火させない
           if (e.target.closest('#transform-btn')) return;
 
           this.audio.unlockMasterAudio();
@@ -2840,3 +2849,5 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
   </script>
 </body>
 </html>
+
+
