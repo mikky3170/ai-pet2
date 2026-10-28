@@ -274,6 +274,7 @@
     }
     .link-action-card:active { transform: scale(0.97); }
     .link-action-card.map-primary-card { border-color: #86efac; background: #f0fdf4; font-weight: 800; }
+    .link-action-card.map-sub-card { border-color: #bbf7d0; background: #f7fee7; font-weight: 700; }
     .link-action-card.map-all-card { border-color: #fed7aa; background: #fff7ed; }
     .link-action-card.news-primary-card { border-color: #fecaca; background: #fef2f2; font-weight: 800; }
     .link-action-card.news-sub-card { border-color: #bae6fd; background: #f0f9ff; }
@@ -1044,11 +1045,15 @@
         <div class="guide-content">
           <div class="guide-item">
             <strong>🐾 なかよし / 👓 おてつだい モード</strong>
-            下のボタンで切り替えられます。「なかよし」は日常の愛らしい雑談、「おてつだい」は現在地周辺の実在するお店や最新ニュースをGoogle検索して教えてくれます。
+            下のボタンで切り替えられます。「なかよし」は日常の愛らしい雑談、「おてつだい」は現在地周辺の実在するお店や最新ニュースをGoogle検索して教えてくれます（どちらも完全無制限の 3.5 Lite で動きます）。
           </div>
           <div class="guide-item">
-            <strong>📍 Googleマップ＆厳選ニュース連携（おてつだい時）</strong>
-            お店を聞くとGoogleマップや実在サイトが開き、ニュースを聞くとクロちゃんが話した話題に完全一致するニュース詳細記事へ直行できます。
+            <strong>🧠 Flash 3.8 本気モード</strong>
+            プログラミングや難しい計算など、高度な頭脳が必要な時だけ、おやびんに確認して切り替えます（1日20回枠）。
+          </div>
+          <div class="guide-item">
+            <strong>📍 Googleマップ＆厳選ニュース連携</strong>
+            お店を聞くと設定した候補数分のお店マップピンが開き、ニュースを聞くとクロちゃんが話した話題の詳細記事や追加枠が確実に開きます。
           </div>
         </div>
       </div>
@@ -1076,14 +1081,27 @@
         <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.05" value="1.05">
       </div>
 
+      <!-- ★ ニュース件数設定 -->
       <div class="form-group">
-        <label>他に追加する注目ニュースの枠数:</label>
+        <label>ニュースの紹介件数（追加枠数）:</label>
         <select id="news-count-select">
-          <option value="1">1枠（クロちゃんの話題 ＋ 別の注目ニュース1件）</option>
-          <option value="2" selected>2枠【標準】（クロちゃんの話題 ＋ 別の注目ニュース2件）</option>
-          <option value="3">3枠（クロちゃんの話題 ＋ 別の注目ニュース3件）</option>
-          <option value="4">4枠（クロちゃんの話題 ＋ 別の注目ニュース4件）</option>
-          <option value="5">5枠（クロちゃんの話題 ＋ 別の注目ニュース5件）</option>
+          <option value="1">1件（クロちゃんの話題 ＋ 別の注目ニュース1件）</option>
+          <option value="2" selected>2件【標準】（クロちゃんの話題 ＋ 別の注目ニュース2件）</option>
+          <option value="3">3件（クロちゃんの話題 ＋ 別の注目ニュース3件）</option>
+          <option value="4">4件（クロちゃんの話題 ＋ 別の注目ニュース4件）</option>
+          <option value="5">5件（クロちゃんの話題 ＋ 別の注目ニュース5件）</option>
+        </select>
+      </div>
+
+      <!-- ★ お店・スポット候補数設定（完全復元！） -->
+      <div class="form-group">
+        <label>お店・スポットの候補件数:</label>
+        <select id="spot-count-select">
+          <option value="1">1件（クロちゃんのイチオシ店のみ）</option>
+          <option value="2" selected>2件【標準】（イチオシ店 ＋ 近くの候補1店）</option>
+          <option value="3">3件（イチオシ店 ＋ 近くの候補2店）</option>
+          <option value="4">4件（イチオシ店 ＋ 近くの候補3店）</option>
+          <option value="5">5件（イチオシ店 ＋ 近くの候補4店）</option>
         </select>
       </div>
 
@@ -1128,7 +1146,7 @@
     };
 
     /* ==========================================================================
-       ★ MODULE 1: 音声合成＆音声認識（自声エコーフィルター ＋ 日付完全読上げ）
+       ★ MODULE 1: 音声合成＆音声認識（エコーキャンセラー ＋ 日付完全読上げ）
        ========================================================================== */
     class AudioSpeechEngine {
       constructor() {
@@ -1150,7 +1168,7 @@
         this.silenceTimeout = null;
         this.watchdogInterval = null;
 
-        // ★ 自声エコー防止用メモリ
+        // 自声エコー防止用
         this.recentSpokenTexts = [];
         this.lastSpeechEndTime = 0;
 
@@ -1251,7 +1269,7 @@
         }
       }
 
-      /* ★ 改善：月日（10月28日等）の特殊暦読みを完全網羅したカナ変換 */
+      /* ★ 月日（10月28日等）の特殊暦読みを完全網羅したカナ変換 */
       _convertAllNumbersToKana(text) {
         if (!text) return "";
         let t = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
@@ -1365,7 +1383,6 @@
         return t;
       }
 
-      /* 画面表示文字（40〜50文字）を全文そのまま声に出す */
       _extractSpeechTarget(text) {
         if (!text) return "";
         let t = text.trim();
@@ -1449,14 +1466,12 @@
         window.speechSynthesis.speak(uttr);
       }
 
-      /* ★ 自声のハウリング（跳ね返り）判定 */
       _isSelfEcho(text) {
         if (!text) return true;
         const normalized = text.replace(/[\s、。！？ニャンニャ]/g, '');
         if (normalized.length < 2) return true;
 
         const now = Date.now();
-        // 直前のクロの発声終了から1.2秒以内の音声は厳格にチェック
         const isRecent = (now - this.lastSpeechEndTime) < 1200;
 
         for (const spoken of this.recentSpokenTexts) {
@@ -1496,7 +1511,6 @@
           return;
         }
 
-        // 自声エコー防止用リストに登録（直近3件を保持）
         this.recentSpokenTexts.unshift(clean);
         if (this.recentSpokenTexts.length > 4) this.recentSpokenTexts.pop();
 
@@ -1572,7 +1586,6 @@
 
           const currentLive = (final || interim).trim();
 
-          // 自声エコーの疑いがある場合は中間表示しない
           if (currentLive && !this._isSelfEcho(currentLive)) {
             this.lastRecognizedText = currentLive;
             if (this.onInterimUpdate) this.onInterimUpdate(currentLive);
@@ -1605,7 +1618,6 @@
       _commitFinalSpeech(text) {
         if (!text || this.isSpeechCommitted) return;
 
-        // ★ 自声エコー判定：クロ自身の声の跳ね返りなら確定させず無視する
         if (this._isSelfEcho(text)) {
           Logger.log(`[エコーキャンセラー] 自声の跳ね返りを破棄: 「${text}」`, "warn");
           this.lastRecognizedText = '';
@@ -1629,13 +1641,12 @@
           if (!this.isSpeaking && AppCore.state.isRunning && !AppCore.state.isThinking) {
             this.startListening();
           }
-        }, 800); // 800msの余韻待機
+        }, 800);
       }
 
       _startWatchdog() {
         this.watchdogInterval = setInterval(() => {
           if (AppCore.state.isRunning && !this.isSpeaking && !AppCore.state.isThinking && !this.isListening) {
-            // 発声終了から800ms以上経過している場合のみ自動再起動
             if (Date.now() - this.lastSpeechEndTime > 800) {
               this.startListening();
             }
@@ -1936,15 +1947,14 @@
     }
 
     /* ==========================================================================
-       ★ MODULE 5: 思考・AI対話エンジン（404廃止モデル完全排除・最新モデル固定）
+       ★ MODULE 5: 思考・AI対話エンジン（日常・検索は3.5 Lite、難問のみ3.8 Flash）
        ========================================================================== */
     class AIThoughtEngine {
       constructor() {
         this.apiKey = localStorage.getItem('kuro_api_key') || '';
-        // 確実に動作するモデルを初期値としてセット
-        this.activeLiteModel = "gemini-2.0-flash-lite";
-        this.activeSearchModel = "gemini-2.0-flash"; // Google検索Grounding対応の最新標準モデル
-        this.activeProModel = "gemini-2.0-flash";
+        // 初期値
+        this.activeLiteModel = "gemini-3.5-flash-lite"; // 日常雑談・おてつだい検索の標準
+        this.activeProModel = "gemini-3.8-flash";       // 難しい内容専用（1日20回制限）
         this.proUsedToday = 0;
         this.currentAbortController = null;
         this._initProQuota();
@@ -1976,7 +1986,7 @@
         }
       }
 
-      /* ★ 改善：404になる廃止モデル（gemini-2.5-flash等）を排除し、ホワイトリスト順に安全選択 */
+      /* モデルスキャン：APIキーで利用可能なモデル一覧から安全に取得 */
       async scanModels() {
         if (!this.apiKey) return;
         try {
@@ -1986,21 +1996,17 @@
           const validModels = (data.models || [])
             .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
             .map(m => m.name.replace(/^models\//, ''))
-            .filter(m => !m.includes('2.5')); // 404の原因となった非推奨・廃止モデルを完全除外！
+            .filter(m => !m.includes('2.5') && !m.includes('2.0')); // 404の原因となる非推奨モデルを除外
 
-          // 1. Lite（通常対話用）
-          const liteOrder = ["gemini-2.0-flash-lite", "gemini-2.0-flash-lite-preview-02-05", "gemini-1.5-flash", "gemini-2.0-flash"];
-          this.activeLiteModel = liteOrder.find(m => validModels.includes(m)) || "gemini-2.0-flash";
+          // 1. Lite（通常・日常・検索おてつだい用）
+          const liteCandidates = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-1.5-flash"];
+          this.activeLiteModel = liteCandidates.find(m => validModels.includes(m)) || validModels.find(m => m.includes('lite')) || "gemini-3.5-flash-lite";
 
-          // 2. Search（おてつだい検索用：2.0-flash が最もGroundingが安定）
-          const searchOrder = ["gemini-2.0-flash", "gemini-1.5-flash"];
-          this.activeSearchModel = searchOrder.find(m => validModels.includes(m)) || "gemini-2.0-flash";
+          // 2. Pro（難しい内容専用・1日20回枠）
+          const proCandidates = ["gemini-3.8-flash", "gemini-1.5-pro"];
+          this.activeProModel = proCandidates.find(m => validModels.includes(m)) || validModels.find(m => m.includes('3.8')) || "gemini-3.8-flash";
 
-          // 3. Pro（難しい内容用）
-          const proOrder = ["gemini-2.0-flash", "gemini-1.5-pro"];
-          this.activeProModel = proOrder.find(m => validModels.includes(m)) || "gemini-2.0-flash";
-
-          Logger.log(`[モデル選定完了] Lite:${this.activeLiteModel} / Search:${this.activeSearchModel} / Pro:${this.activeProModel}`, "success");
+          Logger.log(`[モデル選定] 日常・検索: ${this.activeLiteModel} / 本気モード: ${this.activeProModel}`, "success");
         } catch(e) {}
       }
 
@@ -2048,7 +2054,7 @@ ${memories.map(m => `・${m}`).join('\n')}
 - 架空の創作や古い知識での回答は厳禁です。必ず検索結果に基づき回答してください。
 - ★重要【話題タグの出力】：
   回答の末尾に、紹介する話題の検索用キーワードを必ず <!--TOPIC:話題名または店名--> という隠しタグ形式で1つだけ付加してください。
-  （例：<!--TOPIC:宇宙船帰還--> や <!--TOPIC:麺処丸め 武蔵村山-->）
+  （例：<!--TOPIC:宇宙船帰還--> や <!--TOPIC:ラーメン二郎 東村山-->）
   ※このタグはシステム内部でのみ参照され、文字数制限（40〜50文字）には含まれません。
 - セリフ本文では、イチオシ店舗やニューストピックを短く愛らしく紹介してください（40〜50文字以内）。
 `;
@@ -2068,12 +2074,8 @@ ${memories.map(m => `・${m}`).join('\n')}
         const isDiary = /(?:今日|きょう)?(?:の)?(?:日記|にっき).*(?:書いて|教えて|見せて)/.test(promptText);
         const systemPrompt = this.buildSystemPrompt(character, memories, isDiary, isAssistantMode);
 
-        let targetModel = this.activeLiteModel;
-        if (isPro) {
-          targetModel = this.activeProModel;
-        } else if (isAssistantMode) {
-          targetModel = this.activeSearchModel;
-        }
+        // ★ 大原則：isPro（承認された難問）のみ 3.8 Flash、日常・おてつだいはすべて 3.5 Lite
+        const targetModel = isPro ? this.activeProModel : this.activeLiteModel;
 
         const historyToSend = history.slice(isPro ? -14 : -6);
         const contents = [];
@@ -2103,6 +2105,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           contents
         };
 
+        // おてつだいモード時はGoogle検索Groundingを併用（3.5 Liteで動作）
         if (isAssistantMode) {
           bodyPayload.tools = [{ google_search: {} }];
         }
@@ -2127,7 +2130,7 @@ ${memories.map(m => `・${m}`).join('\n')}
 
           if (!rawText) return { success: false, text: null };
 
-          // 話題タグの抽出と除去
+          // 話題タグの抽出
           let topicTag = "";
           const topicMatch = rawText.match(/<!--TOPIC:(.*?)-->/i);
           if (topicMatch && topicMatch[1]) {
@@ -2140,7 +2143,7 @@ ${memories.map(m => `・${m}`).join('\n')}
             .replace(/[*#_~`]/g, '')
             .trim();
 
-          // Groundingメタデータの精密抽出
+          // Groundingメタデータの抽出
           const groundingMetadata = cand.groundingMetadata || {};
           const rawChunks = groundingMetadata.groundingChunks || [];
           const groundingSupports = groundingMetadata.groundingSupports || [];
@@ -2250,8 +2253,11 @@ ${memories.map(m => `・${m}`).join('\n')}
         this.ai.scanModels();
 
         const savedNewsCount = localStorage.getItem('kuro_news_count') || "2";
+        const savedSpotCount = localStorage.getItem('kuro_spot_count') || "2";
         const newsSelect = document.getElementById('news-count-select');
+        const spotSelect = document.getElementById('spot-count-select');
         if (newsSelect) newsSelect.value = savedNewsCount;
+        if (spotSelect) spotSelect.value = savedSpotCount;
 
         setInterval(() => {
           document.getElementById('clock-display').textContent = TimeProvider.getCurrentInfo().clock;
@@ -2408,7 +2414,6 @@ ${memories.map(m => `・${m}`).join('\n')}
             this.state.isThinking = false;
             this._updateModelBadge(false, false);
             document.getElementById('status-text').textContent = this.state.isAssistantMode ? "👓 お調べするニャ！" : "👂 聴いてるニャ♪";
-            // 発声終了後のクールダウンを800msに設定してマイク再起動
             if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 800);
           },
           spokenOverride
@@ -2416,6 +2421,7 @@ ${memories.map(m => `・${m}`).join('\n')}
         StorageManager.appendDailyLog('model', text);
       },
 
+      /* ★ 改善：設定件数（お店・ニュース）に完全連動したスマートカード生成 */
       _generateSmartCards(userText, replyText, aiResult) {
         if (!this.state.isAssistantMode) return [];
 
@@ -2424,6 +2430,20 @@ ${memories.map(m => `・${m}`).join('\n')}
         const topic = aiResult.topicTag || "";
         const mainChunk = aiResult.mainChunk;
         const allChunks = aiResult.allChunks || [];
+
+        const isDirectArticleUrl = (uri) => {
+          if (!uri || !uri.startsWith('http')) return false;
+          if (uri.includes('vertexaisearch') || uri.includes('google.com/url')) return false;
+          try {
+            const u = new URL(uri);
+            return u.pathname && u.pathname.length > 3;
+          } catch(e) { return false; }
+        };
+
+        const isDomainOnlyTitle = (title) => {
+          if (!title) return true;
+          return /\.(jp|com|net|org|co\.jp|ne\.jp)$/i.test(title.trim());
+        };
 
         // 1. お店・スポット判定
         const spotKeywords = [
@@ -2435,31 +2455,41 @@ ${memories.map(m => `・${m}`).join('\n')}
         
         if (isSpot) {
           const matchedGenre = spotKeywords.find(k => userText.includes(k)) || "グルメ";
-          let shopName = topic;
+          const desiredSpotCount = parseInt(localStorage.getItem('kuro_spot_count') || "2", 10);
+          let primaryShopName = topic;
 
-          if (!shopName) {
+          if (!primaryShopName) {
             const m = replyText.match(/[「『]([^」』]+)[」』]/);
-            if (m) shopName = m[1].trim();
+            if (m) primaryShopName = m[1].trim();
           }
 
-          if (shopName) {
+          // ① イチオシ店舗のGoogleマップピン
+          if (primaryShopName) {
             cards.push({
               type: 'map-primary',
               icon: '📍',
-              title: `【クロのイチオシ】${shopName}（Googleマップ）`,
-              url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shopName + ' ' + area)}`
+              title: `【イチオシ】${primaryShopName}（Googleマップ）`,
+              url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(primaryShopName + ' ' + area)}`
             });
           }
 
-          if (mainChunk && mainChunk.uri) {
-            cards.push({
-              type: 'web-primary',
-              icon: '🌐',
-              title: mainChunk.title || `${shopName} の詳細情報`,
-              url: mainChunk.uri
-            });
+          // ② 設定された店舗候補数分、実在店舗カードを追加
+          let spotAdded = 0;
+          for (const chunk of allChunks) {
+            if (spotAdded >= (desiredSpotCount - 1)) break;
+            // サイト名や詳細URL
+            if (isDirectArticleUrl(chunk.uri)) {
+              cards.push({
+                type: 'map-sub',
+                icon: '🏪',
+                title: `${chunk.title}`,
+                url: chunk.uri
+              });
+              spotAdded++;
+            }
           }
 
+          // ③ 周辺一括マップ
           cards.push({
             type: 'map-all',
             icon: '🗺️',
@@ -2468,26 +2498,13 @@ ${memories.map(m => `・${m}`).join('\n')}
           });
         }
 
-        // 2. ニュース判定（話題とリンクの完全一致 ＋ リンク浄化 ＋ 追加枠）
+        // 2. ニュース判定
         const isNews = /(?:ニュース|速報|話題|出来事|トレンド)/.test(userText);
         if (isNews) {
-          const desiredOtherCount = parseInt(localStorage.getItem('kuro_news_count') || "2", 10);
+          const desiredNewsCount = parseInt(localStorage.getItem('kuro_news_count') || "2", 10);
           const effectiveTopic = topic || (replyText.match(/[「『]([^」』]+)[」』]/)?.[1]) || "最新ニュース";
 
-          const isDirectArticleUrl = (uri) => {
-            if (!uri || !uri.startsWith('http')) return false;
-            if (uri.includes('vertexaisearch') || uri.includes('google.com/url')) return false;
-            try {
-              const u = new URL(uri);
-              return u.pathname && u.pathname.length > 3;
-            } catch(e) { return false; }
-          };
-
-          const isDomainOnlyTitle = (title) => {
-            if (!title) return true;
-            return /\.(jp|com|net|org|co\.jp|ne\.jp)$/i.test(title.trim());
-          };
-
+          // ① メイン詳細記事（話題に完全一致）
           if (mainChunk && isDirectArticleUrl(mainChunk.uri) && !isDomainOnlyTitle(mainChunk.title)) {
             cards.push({
               type: 'news-primary',
@@ -2504,9 +2521,10 @@ ${memories.map(m => `・${m}`).join('\n')}
             });
           }
 
-          let addedCount = 0;
+          // ② 設定された枠数分、別の注目ニュースを追加
+          let newsAdded = 0;
           for (const chunk of allChunks) {
-            if (addedCount >= desiredOtherCount) break;
+            if (newsAdded >= desiredNewsCount) break;
             if (mainChunk && chunk.uri === mainChunk.uri) continue;
 
             if (isDirectArticleUrl(chunk.uri) && !isDomainOnlyTitle(chunk.title)) {
@@ -2516,11 +2534,11 @@ ${memories.map(m => `・${m}`).join('\n')}
                 title: `${chunk.title}`,
                 url: chunk.uri
               });
-              addedCount++;
+              newsAdded++;
             }
           }
 
-          if (addedCount === 0 && effectiveTopic) {
+          if (newsAdded === 0 && effectiveTopic) {
             cards.push({
               type: 'news-sub',
               icon: '💡',
@@ -2579,6 +2597,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           return;
         }
 
+        // 日常・おてつだい検索はすべて 3.5 Lite で実行
         this.executeThought(text, false);
       },
 
@@ -2789,7 +2808,6 @@ ${memories.map(m => `・${m}`).join('\n')}
       },
 
       _updateModeUI(shouldSpeak = true) {
-        // ★ モード変更時は直ちにマイクを停止し、クロの言葉を拾わないようにガード
         this.audio.stopListening();
 
         const btn = document.getElementById('mode-toggle-btn');
@@ -2975,6 +2993,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           const currentVvKey = localStorage.getItem('kuro_voicevox_key') || '';
           const currentRate = parseFloat(localStorage.getItem('kuro_rate') || '1.05');
           const currentNewsCount = localStorage.getItem('kuro_news_count') || "2";
+          const currentSpotCount = localStorage.getItem('kuro_spot_count') || "2";
           const currentMemsJson = JSON.stringify(this.memories);
 
           this.state.settingsSnapshot = {
@@ -2982,6 +3001,7 @@ ${memories.map(m => `・${m}`).join('\n')}
             vvKey: currentVvKey,
             rate: currentRate,
             newsCount: currentNewsCount,
+            spotCount: currentSpotCount,
             memsJson: currentMemsJson
           };
 
@@ -2990,6 +3010,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           document.getElementById('voice-rate').value = currentRate;
           document.getElementById('rate-val').textContent = currentRate.toFixed(2);
           document.getElementById('news-count-select').value = currentNewsCount;
+          document.getElementById('spot-count-select').value = currentSpotCount;
 
           this._renderMemories();
           this._renderDiaryPreview();
@@ -3036,6 +3057,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           const newVvKey = document.getElementById('voicevox-key-input').value.trim();
           const newRate = parseFloat(document.getElementById('voice-rate').value);
           const newNewsCount = document.getElementById('news-count-select').value;
+          const newSpotCount = document.getElementById('spot-count-select').value;
           const newMemsJson = JSON.stringify(this.memories);
 
           const snap = this.state.settingsSnapshot;
@@ -3044,6 +3066,7 @@ ${memories.map(m => `・${m}`).join('\n')}
             snap.vvKey !== newVvKey ||
             snap.rate !== newRate ||
             snap.newsCount !== newNewsCount ||
+            snap.spotCount !== newSpotCount ||
             snap.memsJson !== newMemsJson
           );
 
@@ -3054,6 +3077,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           localStorage.setItem('kuro_voicevox_key', newVvKey);
           localStorage.setItem('kuro_rate', newRate);
           localStorage.setItem('kuro_news_count', newNewsCount);
+          localStorage.setItem('kuro_spot_count', newSpotCount);
 
           if (newApiKey) await this.ai.scanModels();
           document.getElementById('modal-overlay').style.display = 'none';
