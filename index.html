@@ -243,7 +243,7 @@
     .confirm-btn.yes { background: linear-gradient(135deg, #c026d3, #9333ea); color: white; box-shadow: 0 2px 6px rgba(192, 38, 211, 0.3); }
     .confirm-btn.no { background: #e2e8f0; color: #475569; }
 
-    /* マルチリソース・連携カード群（Google・Yahoo・Geminiに最適化） */
+    /* マルチリソース・連携カード群 */
     .action-card-box {
       margin-top: 6px;
       display: flex;
@@ -259,7 +259,7 @@
       background: #ffffff;
       border: 1.5px solid #e2e8f0;
       border-radius: 12px;
-      padding: 7px 11px;
+      padding: 8px 12px;
       text-decoration: none;
       color: #1e293b;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
@@ -268,8 +268,9 @@
     .link-action-card:active { transform: scale(0.97); background: #f8fafc; }
     .link-action-card.map-card { border-color: #bbf7d0; background: #f0fdf4; }
     .link-action-card.yahoo-card { border-color: #fecaca; background: #fef2f2; }
-    .link-action-card.news-card { border-color: #bae6fd; background: #f0f9ff; }
-    .link-action-card.gemini-card { border-color: #ddd6fe; background: #f5f3ff; }
+    .link-action-card.google-card { border-color: #bae6fd; background: #f0f9ff; }
+    .link-action-card.ms-card { border-color: #c7d2fe; background: #eef2ff; }
+    .link-action-card.source-card { border-color: #fbcfe8; background: #fdf2f8; }
     .card-left { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; }
     .card-icon { font-size: 15px; }
     .card-arrow { font-size: 11px; color: #64748b; font-weight: bold; }
@@ -1031,7 +1032,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[System] 精密GPS座標直結＆スマート情報連携稼働中</div>
+        <div class="log-row log-info">[System] 実在店舗特定GPS直結＆3大ニュース直通連携システム稼働中</div>
       </div>
     </div>
   </div>
@@ -1048,16 +1049,16 @@
         </div>
         <div class="guide-content">
           <div class="guide-item">
+            <strong>📍 ピンポイント実在店舗特定（Googleマップ完全一致）</strong>
+            お店を聞くと、Googleマップ等の高評価×現在地最寄りの実在店を特定し、開いた瞬間にその店へ直接ピンが刺さります。
+          </div>
+          <div class="guide-item">
+            <strong>📰 3大ニュース専用直通リンク（Yahoo・Google・MSN）</strong>
+            話題のニュースや好みのニュースを聞くと、その話題で絞り込んだ各社ニュース一覧と元ネタ記事へ一発で飛べます。
+          </div>
+          <div class="guide-item">
             <strong>🛑 ストップボタン</strong>
-            認識違いの時や考え中の時に押すと、即座に中断してもう一度聞き取り状態に戻ります。
-          </div>
-          <div class="guide-item">
-            <strong>📍 ピンポイントGPS座標直結</strong>
-            画面上は自然な「町名付近」で表示しつつ、お店を探す時は内部の精密座標から今いる地点の本当の最寄り店を検索します。
-          </div>
-          <div class="guide-item">
-            <strong>🔢 数字・気温・分数の完全発音</strong>
-            「20分」「21度」「21℃」なども絵文字判定で消えることなく「にじゅっぷん」「にじゅういちど」と確実に発音します。
+            話しかけ間違いや考え中の時に押すと、即座に中断してもう一度聴き取り状態に戻ります。
           </div>
         </div>
       </div>
@@ -1137,7 +1138,7 @@
     };
 
     /* ==========================================================================
-       ★ MODULE 1: 音声合成＆音声認識（数字最優先保護＋安全絵文字除去）
+       ★ MODULE 1: 音声合成＆音声認識（数字保護＋四国めたん発声）
        ========================================================================== */
     class AudioSpeechEngine {
       constructor() {
@@ -1244,7 +1245,6 @@
         }
       }
 
-      /* 助数詞の空白や記号を平仮名化 */
       _convertAllNumbersToKana(text) {
         if (!text) return "";
         let t = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
@@ -1285,7 +1285,6 @@
           return parse4(n);
         };
 
-        // 1. 分（促音完全網羅）
         const minuteUnits = [
           'ぜろふん', 'いっぷん', 'にふん', 'さんぷん', 'よんぷん', 'ごふん', 'ろっぷん', 'ななふん', 'はっぷん', 'きゅうふん', 'じゅっぷん',
           'じゅういっぷん', 'じゅうにふん', 'じゅうさんぷん', 'じゅうよんぷん', 'じゅうごふん', 'じゅうろっぷん', 'じゅうななふん', 'じゅうはっぷん', 'じゅうきゅうふん', 'にじゅっぷん',
@@ -1294,75 +1293,21 @@
           'よんじゅういっぷん', 'よんじゅうにふん', 'よんじゅうさんぷん', 'よんじゅうよんぷん', 'よんじゅうごふん', 'よんじゅうろっぷん', 'よんじゅうななふん', 'よんじゅうはっぷん', 'よんじゅうきゅうふん', 'ごじゅっぷん',
           'ごじゅういっぷん', 'ごじゅうにふん', 'ごじゅうさんぷん', 'ごじゅうよんぷん', 'ごじゅうごふん', 'ごじゅうろっぷん', 'ごじゅうななふん', 'ごじゅうはっぷん', 'ごじゅうきゅうふん'
         ];
+
         t = t.replace(/(\d{1,2})\s*分/g, (m, numStr) => {
           const n = parseInt(numStr, 10);
           return minuteUnits[n] || (numToKana(n) + 'ふん');
         });
 
-        // 2. 気温・角度（度、℃、°C、°、マイナスも完全対応）
         t = t.replace(/マイナス\s*(\d+)/g, 'まいなす$1');
         t = t.replace(/-\s*(\d+)/g, 'まいなす$1');
         t = t.replace(/(\d+)\s*(?:度|℃|°C|°c|°)/g, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'ど');
-
-        // 3. 秒
         t = t.replace(/(\d+)\s*秒/g, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'びょう');
-
-        // 4. 円
         t = t.replace(/(\d+)\s*円/g, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'えん');
-
-        // 5. キロ
         t = t.replace(/(\d+)\s*(?:キロ|km|kg)/gi, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'きろ');
-
-        // 6. 回・個・人・匹・歳
-        t = t.replace(/(\d+)\s*回/g, (m, nStr) => {
-          const n = parseInt(nStr, 10);
-          if (n === 1) return 'いっかい';
-          if (n === 6) return 'ろっかい';
-          if (n === 8) return 'はっかい';
-          if (n === 10) return 'じゅっかい';
-          return numToKana(n) + 'かい';
-        });
-        t = t.replace(/(\d+)\s*個/g, (m, nStr) => {
-          const n = parseInt(nStr, 10);
-          if (n === 1) return 'いっこ';
-          if (n === 6) return 'ろっこ';
-          if (n === 8) return 'はっこ';
-          if (n === 10) return 'じゅっこ';
-          return numToKana(n) + 'こ';
-        });
         t = t.replace(/1\s*人/g, 'ひとり').replace(/2\s*人/g, 'ふたり').replace(/(\d+)\s*人/g, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'にん');
         t = t.replace(/1\s*匹/g, 'いっぴき').replace(/(\d+)\s*匹/g, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'ひき');
-        t = t.replace(/(\d+)\s*(?:歳|才)/g, (m, nStr) => {
-          const n = parseInt(nStr, 10);
-          if (n === 1) return 'いっさい';
-          if (n === 8) return 'はっさい';
-          if (n === 10) return 'じゅっさい';
-          if (n === 20) return 'はたち';
-          return numToKana(n) + 'さい';
-        });
-        t = t.replace(/(\d+)\s*(?:%|パーセント)/g, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'ぱーせんと');
-
-        // 7. 年・月・日・時
-        t = t.replace(/(\d{1,4})\s*年/g, (m, yStr) => numToKana(parseInt(yStr, 10)) + 'ねん');
-        t = t.replace(/(\d{1,2})\s*月/g, (m, mStr) => numToKana(parseInt(mStr, 10)) + 'がつ');
-        t = t.replace(/(\d{1,2})\s*日/g, (m, dStr) => {
-          const d = parseInt(dStr, 10);
-          const daySpecial = {
-            1: 'ついたち', 2: 'ふつか', 3: 'みっか', 4: 'よっか', 5: 'いつか',
-            6: 'むいか', 7: 'なのか', 8: 'ようか', 9: 'ここのか', 10: 'とおか',
-            14: 'じゅうよっか', 20: 'はつか', 24: 'にじゅうよっか'
-          };
-          return daySpecial[d] || (numToKana(d) + 'にち');
-        });
-        t = t.replace(/(\d{1,2})\s*時/g, (m, hStr) => {
-          const h = parseInt(hStr, 10);
-          if (h === 4) return 'よじ';
-          if (h === 7) return 'しちじ';
-          if (h === 9) return 'くじ';
-          return numToKana(h) + 'じ';
-        });
-
-        // 8. 残りの裸の数字
+        t = t.replace(/(\d+)\s*(?:歳|才)/g, (m, nStr) => (parseInt(nStr, 10) === 20 ? 'はたち' : numToKana(parseInt(nStr, 10)) + 'さい'));
         t = t.replace(/\d+/g, m => numToKana(parseInt(m, 10)));
         return t;
       }
@@ -1374,17 +1319,11 @@
 
         const segment = t.slice(0, 52);
         const lastPunct = Math.max(
-          segment.lastIndexOf('。'),
-          segment.lastIndexOf('！'),
-          segment.lastIndexOf('!'),
-          segment.lastIndexOf('？'),
-          segment.lastIndexOf('?'),
-          segment.lastIndexOf('、')
+          segment.lastIndexOf('。'), segment.lastIndexOf('！'), segment.lastIndexOf('!'),
+          segment.lastIndexOf('？'), segment.lastIndexOf('?'), segment.lastIndexOf('、')
         );
 
-        if (lastPunct >= 38) {
-          return segment.slice(0, lastPunct + 1);
-        }
+        if (lastPunct >= 38) return segment.slice(0, lastPunct + 1);
         return segment.slice(0, 48) + 'ニャ！';
       }
 
@@ -1416,11 +1355,11 @@
             const sRes = await fetch(statusUrl);
             if (sRes.ok) {
               const sData = await sRes.json();
-              if (sData.isAudioError) throw new Error("生成中VoiceVoxエラー");
+              if (sData.isAudioError) throw new Error("生成中エラー");
               if (sData.isAudioReady) return sData.mp3DownloadUrl || downloadUrl;
             }
           } catch (pollErr) {
-            if (pollErr.message && pollErr.message.includes("VoiceVoxエラー")) throw pollErr;
+            if (pollErr.message && pollErr.message.includes("エラー")) throw pollErr;
           }
         }
         throw new Error("タイムアウト");
@@ -1442,18 +1381,9 @@
         const cuteVoice = voices.find(v => v.lang.includes('ja') && (v.name.includes('Kyoko') || v.name.includes('Google 日本語') || v.name.includes('Nanami') || v.name.includes('Haruka')));
         if (cuteVoice) uttr.voice = cuteVoice;
 
-        uttr.onstart = () => {
-          this.isSpeaking = true;
-          if (onStart) onStart();
-        };
-        uttr.onend = () => {
-          this.isSpeaking = false;
-          if (onEnd) onEnd();
-        };
-        uttr.onerror = () => {
-          this.isSpeaking = false;
-          if (onEnd) onEnd();
-        };
+        uttr.onstart = () => { this.isSpeaking = true; if (onStart) onStart(); };
+        uttr.onend = () => { this.isSpeaking = false; if (onEnd) onEnd(); };
+        uttr.onerror = () => { this.isSpeaking = false; if (onEnd) onEnd(); };
         window.speechSynthesis.speak(uttr);
       }
 
@@ -1463,13 +1393,8 @@
         this.unlockMasterAudio();
 
         let targetText = spokenOverride || text;
+        if (!spokenOverride) targetText = this._convertAllNumbersToKana(targetText);
 
-        // ★ 最優先で数字を平仮名化して保護
-        if (!spokenOverride) {
-          targetText = this._convertAllNumbersToKana(targetText);
-        }
-
-        // ★ 安全な記号クリーニング（\p{Emoji}の誤爆を排除し数字を守る）
         let clean = targetText
           .replace(/```[\s\S]*?```/g, '')
           .replace(/<[^>]*>/g, '')
@@ -1506,15 +1431,12 @@
             if (onEnd) onEnd();
           };
 
-          this.masterAudio.onerror = () => {
-            throw new Error("MasterAudio再生エラー");
-          };
-
+          this.masterAudio.onerror = () => { throw new Error("Audio再生エラー"); };
           await this.masterAudio.play();
-          Logger.log(`[Audio肉声] 再生成功: ${clean}`, "success");
+          Logger.log(`[Audio肉声] 再生成功`, "success");
 
         } catch (err) {
-          Logger.log(`[標準音声フォールバック] ${clean}`, "warn");
+          Logger.log(`[標準音声フォールバック]`, "warn");
           this._speakFallback(clean, onStart, onEnd);
         }
       }
@@ -1543,7 +1465,6 @@
           this.isSpeechCommitted = false;
           this.lastRecognizedText = '';
           if (this.onListeningStatus) this.onListeningStatus(true);
-          Logger.log("[マイク] 待機完了（常時リスニング中）", "info");
         };
 
         this.recognition.onresult = (event) => {
@@ -1573,9 +1494,7 @@
         };
 
         this.recognition.onerror = (e) => {
-          if (e.error !== 'no-speech') {
-            Logger.log(`[マイク] ${e.error}`, "warn");
-          }
+          if (e.error !== 'no-speech') Logger.log(`[マイク] ${e.error}`, "warn");
         };
 
         this.recognition.onend = () => {
@@ -1641,73 +1560,29 @@
     }
 
     /* ==========================================================================
-       ★ MODULE 2: 日時＆スマート・ハイブリッドGPSプロバイダ
+       ★ MODULE 2: 日時＆ハイブリッドGPSプロバイダ
        ========================================================================== */
     const TimeProvider = {
       getCurrentInfo() {
         const now = new Date();
         const days = ['日', '月', '火', '水', '木', '金', '土'];
-        const daysKana = ['にちようび', 'げつようび', 'かようび', 'すいようび', 'もくようび', 'きんようび', 'どようび'];
         const year = now.getFullYear();
         const month = now.getMonth() + 1;
         const date = now.getDate();
         const dayStr = days[now.getDay()];
-        const dayKana = daysKana[now.getDay()];
         const hours = now.getHours();
         const minutes = now.getMinutes();
-
-        const hourMap = {
-          0: 'れいじ', 1: 'いちじ', 2: 'にじ', 3: 'さんじ', 4: 'よじ', 5: 'ごじ',
-          6: 'ろくじ', 7: 'しちじ', 8: 'はちじ', 9: 'くじ', 10: 'じゅうじ',
-          11: 'じゅういちじ', 12: 'じゅうにじ', 13: 'じゅうさんじ', 14: 'じゅうよじ',
-          15: 'じゅうごじ', 16: 'じゅうろくじ', 17: 'じゅうしちじ', 18: 'じゅうはちじ',
-          19: 'じゅうくじ', 20: 'にじゅうじ', 21: 'にじゅういちじ', 22: 'にじゅうにじ',
-          23: 'にじゅうさんじ', 24: 'にじゅうよじ'
-        };
-
-        const minuteMap = [
-          'ちょうど', 'いっぷん', 'にふん', 'さんぷん', 'よんぷん', 'ごふん', 'ろっぷん', 'ななふん', 'はっぷん', 'きゅうふん', 'じゅっぷん',
-          'じゅういっぷん', 'じゅうにふん', 'じゅうさんぷん', 'じゅうよんぷん', 'じゅうごふん', 'じゅうろっぷん', 'じゅうななふん', 'じゅうはっぷん', 'じゅうきゅうふん', 'にじゅっぷん',
-          'にじゅういっぷん', 'にじゅうにふん', 'にじゅうさんぷん', 'にじゅうよんぷん', 'にじゅうごふん', 'にじゅうろっぷん', 'にじゅうななふん', 'にじゅうはっぷん', 'にじゅうきゅうふん', 'さんじゅっぷん',
-          'さんじゅういっぷん', 'さんじゅうにふん', 'さんじゅうさんぷん', 'さんじゅうよんぷん', 'さんじゅうごふん', 'さんじゅうろっぷん', 'さんじゅうななふん', 'さんじゅうはっぷん', 'さんじゅうきゅうふん', 'よんじゅっぷん',
-          'よんじゅういっぷん', 'よんじゅうにふん', 'よんじゅうさんぷん', 'よんじゅうよんぷん', 'よんじゅうごふん', 'よんじゅうろっぷん', 'よんじゅうななふん', 'よんじゅうはっぷん', 'よんじゅうきゅうふん', 'ごじゅっぷん',
-          'ごじゅういっぷん', 'ごじゅうにふん', 'ごじゅうさんぷん', 'ごじゅうよんぷん', 'ごじゅうごふん', 'ごじゅうろっぷん', 'ごじゅうななふん', 'ごじゅうはっぷん', 'ごじゅうきゅうふん'
-        ];
-
-        const dayMap = {
-          1: 'ついたち', 2: 'ふつか', 3: 'みっか', 4: 'よっか', 5: 'いつか',
-          6: 'むいか', 7: 'なのか', 8: 'ようか', 9: 'ここのか', 10: 'とおか',
-          11: 'じゅういちにち', 12: 'じゅうににち', 13: 'じゅうさんにち', 14: 'じゅうよっか', 15: 'じゅうごにち',
-          16: 'じゅうろくにち', 17: 'じゅうしちにち', 18: 'じゅうはちにち', 19: 'じゅうくにち', 20: 'はつか',
-          21: 'にじゅういちにち', 22: 'にじゅうににち', 23: 'にじゅうさんにち', 24: 'にじゅうよっか', 25: 'にじゅうごにち',
-          26: 'にじゅうろくにち', 27: 'にじゅうしちにち', 28: 'にじゅうはちにち', 29: 'にじゅうくにち', 30: 'さんじゅうにち',
-          31: 'さんじゅういちにち'
-        };
-
-        const monthMap = {
-          1: 'いちがつ', 2: 'にがつ', 3: 'さんがつ', 4: 'しがつ', 5: 'ごがつ',
-          6: 'ろくがつ', 7: 'しちがつ', 8: 'はちがつ', 9: 'くがつ', 10: 'じゅうがつ',
-          11: 'じゅういちがつ', 12: 'じゅうにがつ'
-        };
-
-        const hK = hourMap[hours] || `${hours}じ`;
-        const mK = minuteMap[minutes] || `${minutes}ふん`;
-        const moK = monthMap[month] || `${month}がつ`;
-        const dK = dayMap[date] || `${date}にち`;
 
         return {
           clockDisplay: `${hours}時${minutes}分だニャン🐾`,
           dateDisplay: `今日は${month}月${date}日(${dayStr}曜日)だニャ🐾`,
           clock: `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`,
           logKey: `${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`,
-          fullDate: `${year}年${month}月${date}日(${dayStr}曜日)`,
-          clockSpokenSafe: `今の時間は、${hK}、${mK}だニャン！`,
-          dateSpokenSafe: `今日の日付は、${moK}、${dK}、${dayKana}だニャ！`
+          fullDate: `${year}年${month}月${date}日(${dayStr}曜日)`
         };
       }
     };
 
-    /* ★ 見た目は町名、実態はピンポイント座標直結のハイブリッド測位プロバイダ */
     const LocationProvider = {
       lat: null,
       lon: null,
@@ -1720,7 +1595,6 @@
           return;
         }
 
-        // 1. 緩やかな追跡（バッテリー保護＋移動追跡）
         this.watchId = navigator.geolocation.watchPosition(
           (pos) => {
             this.lat = pos.coords.latitude;
@@ -1731,11 +1605,9 @@
           { enableHighAccuracy: false, maximumAge: 40000, timeout: 12000 }
         );
 
-        // 2. 初回精密取得
         this.updateLocationPrecise();
       },
 
-      /* お店探しや「ここどこ？」発話時にオンデマンドで高精度ピンポイント取得 */
       async updateLocationPrecise(onComplete = null) {
         if (!('geolocation' in navigator)) {
           this.addressName = "位置情報非対応";
@@ -1935,7 +1807,7 @@
     }
 
     /* ==========================================================================
-       ★ MODULE 5: 思考・検索エンジン（Google Web Grounding）
+       ★ MODULE 5: 思考・実在スポット特定・グラウンディングAIエンジン
        ========================================================================== */
     class AIThoughtEngine {
       constructor() {
@@ -1959,10 +1831,7 @@
         this.proUsedToday = count;
       }
 
-      getRemainingProQuota() {
-        return Math.max(0, 20 - this.proUsedToday);
-      }
-
+      getRemainingProQuota() { return Math.max(0, 20 - this.proUsedToday); }
       incrementProQuota() {
         this.proUsedToday++;
         localStorage.setItem('kuro_pro_usage_count', this.proUsedToday);
@@ -2002,6 +1871,8 @@
       buildSystemPrompt(character, memories, isDiaryRequest = false) {
         const timeInfo = TimeProvider.getCurrentInfo();
         const locName = LocationProvider.addressName;
+        const lat = LocationProvider.lat || "";
+        const lon = LocationProvider.lon || "";
 
         return `
 あなたは${character.breed}の愛らしくて賢い女の子の子猫「${character.name}」（${character.age}）です。
@@ -2009,19 +1880,27 @@
 【現在情報】
 ・日付：${timeInfo.fullDate}
 ・時刻：${timeInfo.clock}
-・現在地：${locName}
+・現在地：${locName} (緯度:${lat}, 経度:${lon})
 
 【${character.name}の記憶帳】
 ${memories.map(m => `・${m}`).join('\n')}
 
-【検索リソース・知識方針】
-- Googleリアルタイム検索やYahoo等の最新情報をもとに正確に回答してください。
-- 飼い主さんが「僕の好きなニュース」などと言った場合は、記憶帳にある好みを踏まえて回答してください。
+【★重要：お店・スポット探しの絶対ルール】
+- 飼い主さんがラーメン、ランチ、カフェ、公園などの場所を聞いてきた場合：
+  1. Google検索ツールを使い、「現在地（${locName}）周辺」で【Googleマップ等の口コミ評価が高く、かつ現在地から一番近い実在の店舗・スポット】を特定してください。
+  2. 通常は【一番高評価で最寄りのイチオシ1店舗】を必ず【「正式店名」】と鍵括弧をつけて1文で短く可愛く紹介してください。
+  3. 飼い主さんが「3つ教えて」などと複数指定した時だけ、評価上位の【3店舗の正式名称】を簡潔に紹介してください。
+  4. 架空の店舗名や、現在地と全く無関係な遠方の店を捏造することは厳禁です。
+
+【★重要：ニュース・話題紹介のルール】
+- 飼い主さんが「面白そうなニュース」や「僕の好きそうなニュース」を聞いてきた場合：
+  1. Google検索ツールで今話題のポジティブなトピックや、記憶帳にある飼い主さんの趣味（テクノロジー、新型車、ラーメンなど）に合った最新記事をリサーチしてください。
+  2. そのニュースの核心（見出しやトピック）を短く愛らしく1文で紹介してください。
 
 【性格と返答スタイル】
 - 飼い主さんのことは「おやびん」または「ミッキーさん」と呼びます。
 - 語尾は「〜ニャ」「〜ニャン♪」「〜だニャ！」「〜なのニャ」。
-- 返答は必ず【短く愛らしい1〜2文（30〜45文字程度）】で返してください。長文は禁止です。
+- 返答は必ず【短く愛らしい1〜2文（35〜50文字程度）】で返してください。長文は禁止です。
 ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会話を振り返る可愛い子猫の日記（35〜50文字程度）を1文で書いてください。" : ""}
 `;
       }
@@ -2077,11 +1956,25 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
 
               if (res.ok) {
                 const data = await res.json();
-                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                const cand = data.candidates?.[0];
+                const text = cand?.content?.parts?.[0]?.text;
+                
+                // グラウンディング（参照された元ネタ記事URL）の抽出
+                let sourceUrl = null;
+                let sourceTitle = null;
+                const metadata = cand?.groundingMetadata;
+                if (metadata && metadata.groundingChunks && metadata.groundingChunks.length > 0) {
+                  const webChunk = metadata.groundingChunks.find(c => c.web && c.web.uri);
+                  if (webChunk) {
+                    sourceUrl = webChunk.web.uri;
+                    sourceTitle = webChunk.web.title || "元ネタのニュース記事を読む";
+                  }
+                }
+
                 if (text) {
                   const clean = text.replace(/[*#_~`]/g, '').trim();
                   if (isDiary) StorageManager.saveDiary(clean);
-                  return { success: true, text: clean, modelUsed: model };
+                  return { success: true, text: clean, modelUsed: model, sourceUrl, sourceTitle };
                 }
               }
             } catch(e) {
@@ -2108,7 +2001,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         "見た目：黒とシルバーのゴージャスなふわふわ毛並み、エメラルドグリーンの大きな瞳",
         "性格：人懐っこくて甘えん坊、とても賢い好奇心旺盛なおしゃまガール",
         "大好きなもの：おやびんになでなでされること、ブラッシング、ちゅ〜る、かつおぶし、高いところ",
-        "おやびんの好きなこと：ドライブ、ガジェット、最新テクノロジー、美味しいラーメン",
+        "おやびんの好きなこと：ドライブ、新型車、最新テクノロジー、ガジェット、美味しいラーメン",
         "飼い主さん：ミッキーさん、または「おやびん」",
         "飼い主さんのご家族：奥さんはかよちゃん、息子はりゅうせいくん、たいせいくん。友達はかまぶーくん"
       ]
@@ -2142,9 +2035,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         this._renderDiaryPreview();
         this._updateProBadge();
 
-        // スマート測位ウォッチャー開始
         LocationProvider.initWatcher();
-
         this.ai.scanModels();
 
         setInterval(() => {
@@ -2163,7 +2054,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         const box = document.getElementById('chat-timeline');
         box.innerHTML = '';
         if (this.history.length === 0) {
-          this.renderBubble('model', "おやびん、わたしはクロだニャ🐾 いつでも声で話しかけてニャン♪");
+          this.renderBubble('model', "おやびん、わたしはクロだニャ🐾 何でも声で話しかけてニャン♪");
           return;
         }
         this.history.forEach(h => this.renderBubble(h.role, h.text));
@@ -2283,22 +2174,117 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         if (el) el.remove();
       },
 
-      _extractUserInterestsFromMemories() {
-        for (const mem of this.memories) {
-          const match = mem.match(/(?:おやびんの好きなこと|趣味|好きなもの|大好きなもの|興味|関心)[：:は](.+)/);
-          if (match && match[1]) {
-            const items = match[1].split(/[,、\s]+/).filter(Boolean);
-            if (items.length > 0) return items[0];
+      /* ★ お店・スポット名 ＆ ニューストピックの抽出と直通カード生成 */
+      _generateSmartCards(userText, replyText, sourceUrl = null, sourceTitle = null) {
+        const cards = [];
+        const locClean = LocationProvider.addressName.replace(/付近|周辺/g, '').trim();
+
+        // 1. お店・スポット検索の場合（喋った店名でピンポイント直通）
+        const isSpotQuery = /(?:ラーメン|ランチ|カフェ|ご飯|居酒屋|コンビニ|スーパー|公園|病院|薬局|お店|スポット)/.test(userText);
+        if (isSpotQuery) {
+          // クロちゃんのセリフから「店名」または『店名』を抽出
+          const shopMatches = replyText.match(/[「『]([^」』]+)[」』]/g);
+          
+          if (shopMatches && shopMatches.length > 0) {
+            shopMatches.slice(0, 3).forEach(rawShop => {
+              const shopName = rawShop.replace(/[「『」』]/g, '').trim();
+              const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shopName + ' ' + locClean)}`;
+              cards.push({
+                type: 'map',
+                icon: '📍',
+                title: `Googleマップで「${shopName}」を開く`,
+                url: mapUrl
+              });
+            });
+          } else {
+            // 店名が括弧で囲まれていなかった場合の精密フォールバック
+            let keyword = userText.replace(/(?:近くの|美味しい|おすすめの|を|で|教えて|探して|検索して|マップ|地図|場所)/g, '').trim() || "スポット";
+            let mapUrl = (LocationProvider.lat && LocationProvider.lon)
+              ? `https://www.google.com/maps/search/${encodeURIComponent(keyword)}/@${LocationProvider.lat},${LocationProvider.lon},16z`
+              : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locClean + ' ' + keyword)}`;
+            cards.push({
+              type: 'map',
+              icon: '📍',
+              title: `Googleマップで最寄りの「${keyword}」を見る`,
+              url: mapUrl
+            });
           }
         }
-        return "最新テクノロジー";
+
+        // 2. ニュース・話題の場合（3大ニュース専用検索直通 ＋ 元ネタ記事）
+        const isNewsQuery = /(?:ニュース|速報|話題|出来事|トレンド)/.test(userText);
+        if (isNewsQuery) {
+          // クロちゃんが参照した元ネタ記事がある場合は最優先で先頭に表示
+          if (sourceUrl) {
+            cards.push({
+              type: 'source',
+              icon: '📖',
+              title: `📰 元ネタ記事: ${sourceTitle || '記事本文を読む'}`,
+              url: sourceUrl
+            });
+          }
+
+          // 検索トピックキーワードの策定
+          let newsTopic = "";
+          const bracketMatch = replyText.match(/[「『]([^」』]+)[」』]/);
+          if (bracketMatch) {
+            newsTopic = bracketMatch[1];
+          } else {
+            newsTopic = userText.replace(/(?:ニュース|教えて|今日の|最新|面白そうな|僕の好きそうな|ある|かな)/g, '').trim();
+          }
+
+          if (newsTopic) {
+            // Yahoo!ニュース専用検索直通
+            cards.push({
+              type: 'yahoo',
+              icon: '🔴',
+              title: `Yahoo!ニュースで「${newsTopic}」の関連記事`,
+              url: `https://news.yahoo.co.jp/search?p=${encodeURIComponent(newsTopic)}`
+            });
+            // Googleニュース専用検索直通
+            cards.push({
+              type: 'google',
+              icon: '🌐',
+              title: `Googleニュースで「${newsTopic}」の報道まとめ`,
+              url: `https://news.google.com/search?q=${encodeURIComponent(newsTopic)}`
+            });
+            // Microsoftニュース（Bingニュース）専用検索直通
+            cards.push({
+              type: 'ms',
+              icon: '🔷',
+              title: `Microsoftニュースで「${newsTopic}」をチェック`,
+              url: `https://www.bing.com/news/search?q=${encodeURIComponent(newsTopic)}`
+            });
+          } else {
+            // トピックが特定できない場合の3大ニュース総合トップ
+            cards.push({
+              type: 'yahoo',
+              icon: '🔴',
+              title: `Yahoo!ニュース（主要トピック一覧）`,
+              url: `https://news.yahoo.co.jp/topics/top-picks`
+            });
+            cards.push({
+              type: 'google',
+              icon: '🌐',
+              title: `Googleニュース（トップ速報）`,
+              url: `https://news.google.com/topstories?hl=ja&gl=JP&ceid=JP:ja`
+            });
+            cards.push({
+              type: 'ms',
+              icon: '🔷',
+              title: `Microsoftニュース（MSN速報）`,
+              url: `https://www.msn.com/ja-jp/news`
+            });
+          }
+        }
+
+        return cards;
       },
 
       async handleUserInput(text) {
         this.audio.playEffect('aizuchi');
         StorageManager.appendDailyLog('user', text);
 
-        // 位置関連の質問時はオンデマンドで高精度測位を実行
         if (/(?:近く|どこ|現在地|ラーメン|ランチ|カフェ|お店)/.test(text)) {
           LocationProvider.updateLocationPrecise();
         }
@@ -2349,52 +2335,23 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         let clean = text.replace(/^(?:ねえ|あのね|おーい)?\s*(?:クロちゃん|クロ|くろ)[、,\s]*/i, '').trim();
 
         if (!clean || /^(?:呼んだだけ|なんでもない|いる|お返事)$/.test(clean)) {
-          const callReplies = [
-            "ニャン！呼んだかニャ？おやびん♪",
-            "起きてるニャン！何でも話しかけてニャ🐾",
-            "ニャー♪ クロはここにいるニャン！"
-          ];
-          const rep = callReplies[Math.floor(Math.random() * callReplies.length)];
+          const reps = ["ニャン！呼んだかニャ？おやびん♪", "起きてるニャン！何でも話しかけてニャ🐾", "ニャー♪ クロはここにいるニャン！"];
+          const rep = reps[Math.floor(Math.random() * reps.length)];
           return { displayReply: rep, spokenReply: rep, cards: [] };
         }
 
-        if (/^(?:おはよう|おはよー|オハヨウ)/.test(clean)) {
-          const rep = "おやびん、おはようニャン🐾 今日も一日いい日にするニャ！";
-          return { displayReply: rep, spokenReply: rep, cards: [] };
-        }
-        if (/^(?:こんにちは|こんにちわ)/.test(clean)) {
-          const rep = "おやびん、こんにちはニャ♪ 今日も元気いっぱいニャン！";
-          return { displayReply: rep, spokenReply: rep, cards: [] };
-        }
-        if (/^(?:こんばんは|こんばんわ)/.test(clean)) {
-          const rep = "おやびん、こんばんはニャン🐾 今日もお疲れ様だニャ！";
-          return { displayReply: rep, spokenReply: rep, cards: [] };
-        }
-        if (/^(?:おやすみ|おやすみなさい|寝るね)/.test(clean)) {
-          const rep = "おやすみニャン…いい夢見てニャ、おやびん💤";
-          return { displayReply: rep, spokenReply: rep, cards: [] };
-        }
-        if (/^(?:ありがとう|サンキュー|感謝)/.test(clean)) {
-          const rep = "どういたしましてニャン♪ お役に立てて嬉しいニャ🐾";
-          return { displayReply: rep, spokenReply: rep, cards: [] };
-        }
-        if (/^(?:ただいま|帰ったよ)/.test(clean)) {
-          const rep = "おかえりニャさ〜い！首を長くして待ってたニャン🐾";
-          return { displayReply: rep, spokenReply: rep, cards: [] };
-        }
-        if (/^(?:お疲れ|お疲れ様|つかれた)/.test(clean)) {
-          const rep = "おやびん、お疲れ様ニャン！クロがなでなでして癒やすニャ♪";
-          return { displayReply: rep, spokenReply: rep, cards: [] };
-        }
+        if (/^(?:おはよう|おはよー)/.test(clean)) return { displayReply: "おやびん、おはようニャン🐾 今日もいい日にするニャ！", spokenReply: "おやびん、おはようニャン！", cards: [] };
+        if (/^(?:こんにちは|こんにちわ)/.test(clean)) return { displayReply: "おやびん、こんにちはニャ♪ 元気いっぱいニャン！", spokenReply: "おやびん、こんにちはニャ！", cards: [] };
+        if (/^(?:おやすみ|寝るね)/.test(clean)) return { displayReply: "おやすみニャン…いい夢見てニャ、おやびん💤", spokenReply: "おやすみニャン、いい夢見てニャ！", cards: [] };
 
-        if (/(?:いま|今)?(?:何時|なんじ|時間)/.test(clean) && !/(?:何日|いつ|日記|カレンダー)/.test(clean)) {
+        if (/(?:いま|今)?(?:何時|なんじ|時間)/.test(clean) && !/(?:何日|いつ|日記)/.test(clean)) {
           const info = TimeProvider.getCurrentInfo();
-          return { displayReply: info.clockDisplay, spokenReply: info.clockSpokenSafe, cards: [] };
+          return { displayReply: info.clockDisplay, spokenReply: `今の時間は、${info.clock}だニャン！`, cards: [] };
         }
 
         if (/(?:今日|きょう).*(?:何日|なんにち|いつ|何曜日|なんようび)|日付/.test(clean)) {
           const info = TimeProvider.getCurrentInfo();
-          return { displayReply: info.dateDisplay, spokenReply: info.dateSpokenSafe, cards: [] };
+          return { displayReply: info.dateDisplay, spokenReply: `今日の日付は、${info.fullDate}だニャ！`, cards: [] };
         }
 
         if (/(?:現在地|いまどこ|今どこ|ここどこ|どこにいる)/.test(clean)) {
@@ -2406,12 +2363,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           return {
             displayReply: `いまは${loc}にいるニャン🐾`,
             spokenReply: `今の場所は、${loc}にいるニャン！`,
-            cards: [{
-              type: 'map',
-              icon: '📍',
-              title: `Googleマップでピンポイント現在地を見る`,
-              url: mapUrl
-            }]
+            cards: [{ type: 'map', icon: '📍', title: `Googleマップでピンポイント現在地を見る`, url: mapUrl }]
           };
         }
         return null;
@@ -2422,9 +2374,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
 
         if (this.state.isWaitingForMemory) {
           this.state.isWaitingForMemory = false;
-          if (/^(?:やめた|キャンセル|いいや)/.test(clean)) {
-            return { reply: "了解ニャ！メモはやめておくニャン🐾", saved: null };
-          }
+          if (/^(?:やめた|キャンセル|いいや)/.test(clean)) return { reply: "了解ニャ！メモはやめておくニャン🐾", saved: null };
           if (clean.length >= 2) {
             this.memories.unshift(clean);
             StorageManager.saveMemories(this.memories);
@@ -2452,70 +2402,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           return { reply: `了解ニャン！記録帳に『${item}』ってしっかりメモしたニャ🐾`, saved: item };
         }
         return null;
-      },
-
-      /* ★ スマートな連携カード（精密座標マップ ＆ 直通ニュース・Gemini連携） */
-      _detectActionCards(userText) {
-        const cards = [];
-
-        // 1. お店・スポット検索（精密緯度経度座標をダイレクトに直結）
-        if (/(?:ラーメン|ランチ|カフェ|ご飯|居酒屋|コンビニ|スーパー|病院|薬局|近くの|マップ|地図|場所|案内して)/.test(userText)) {
-          let keyword = userText.replace(/(?:近くの|美味しい|おすすめの|を|で|教えて|探して|検索して|マップ|地図|場所)/g, '').trim() || "周辺スポット";
-          
-          let mapUrl = "";
-          if (LocationProvider.lat && LocationProvider.lon) {
-            // ピンポイント座標からの最寄り検索URL
-            mapUrl = `https://www.google.com/maps/search/${encodeURIComponent(keyword)}/@${LocationProvider.lat},${LocationProvider.lon},16z`;
-          } else {
-            const loc = LocationProvider.addressName.replace(/付近|周辺/g, '').trim();
-            mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc + ' ' + keyword)}`;
-          }
-
-          cards.push({
-            type: 'map',
-            icon: '📍',
-            title: `Googleマップで最寄りの「${keyword}」を見る`,
-            url: mapUrl
-          });
-        }
-
-        // 2. ニュース・調べ物（Yahoo主要トピック、Googleニュース速報、Gemini直通）
-        if (/(?:ニュース|最新情報|トレンド|出来事|調べて|検索して|とは|教えて)/.test(userText)) {
-          const isNews = /(?:ニュース|速報|出来事|トレンド)/.test(userText);
-
-          if (isNews) {
-            // Yahoo!ニュース主要トピック（直通）
-            cards.push({
-              type: 'yahoo',
-              icon: '🔴',
-              title: `Yahoo!ニュース（主要トピック速報）`,
-              url: `https://news.yahoo.co.jp/topics/top-picks`
-            });
-            // Googleニュース（速報直通）
-            cards.push({
-              type: 'news',
-              icon: '🌐',
-              title: `Googleニュース（トップ速報）`,
-              url: `https://news.google.com/topstories?hl=ja&gl=JP&ceid=JP:ja`
-            });
-          }
-
-          // Gemini深掘り（ログイン壁なくスマートに閲覧可能）
-          let searchKeyword = userText.replace(/(?:ニュース|最新情報|教えて|最新|今日の|調べて|検索して|とは)/g, '').trim();
-          if (!searchKeyword && /(?:僕の好き|おれの好き|私の好き|おすすめ|好み)/.test(userText)) {
-            searchKeyword = this._extractUserInterestsFromMemories();
-          }
-
-          if (searchKeyword) {
-            cards.push({
-              type: 'gemini',
-              icon: '✨',
-              title: `Googleで「${searchKeyword}」を深掘り`,
-              url: `https://www.google.com/search?q=${encodeURIComponent(searchKeyword)}`
-            });
-          }
-        }
-        return cards;
       },
 
       executeDirectReply(displayReply, cards = [], badgeText = null, spokenReply = null) {
@@ -2607,7 +2493,8 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           StorageManager.saveHistory(this.history);
           StorageManager.appendDailyLog('model', result.text);
 
-          const cards = this._detectActionCards(promptText);
+          // ★ AIの返答テキストから実在店名・ニュースキーワードを抽出しカードを完全同期生成
+          const cards = this._generateSmartCards(promptText, result.text, result.sourceUrl, result.sourceTitle);
 
           this.audio.speak(
             result.text,
@@ -2902,5 +2789,3 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
   </script>
 </body>
 </html>
-
-
