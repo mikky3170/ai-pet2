@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -998,7 +997,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[System] 950ms無音タイマー・四国めたん16秒安定化稼働中</div>
+        <div class="log-row log-info">[System] 助数詞完全平仮名・45〜50文字拡張エンジン稼働中</div>
       </div>
     </div>
   </div>
@@ -1023,8 +1022,8 @@
             「〜かな」「〜ですか」「何」「教えて」などと聞くと、飼い主さんの吹き出し末尾に自動で「？」が付きます。
           </div>
           <div class="guide-item">
-            <strong>🐱 呼びかけ・挨拶への即答</strong>
-            「クロちゃん」「おはよう」などにはGeminiの考え中に入らず、可愛い肉声でパッとお返事します。
+            <strong>🔢 数字・単位の完璧な肉声読み上げ</strong>
+            「20分」「15度」「500円」などもしっかり「にじゅっぷん」「じゅうごど」と肉声で発音します。
           </div>
         </div>
       </div>
@@ -1104,7 +1103,7 @@
     };
 
     /* ==========================================================================
-       ★ MODULE 1: 音声合成＆音声認識（息継ぎ950ms＋四国めたん爆速最適化）
+       ★ MODULE 1: 音声合成＆音声認識（助数詞完全平仮名＋45〜50文字拡張）
        ========================================================================== */
     class AudioSpeechEngine {
       constructor() {
@@ -1211,37 +1210,10 @@
         }
       }
 
+      /* ★ 助数詞（分、度、秒、円、キロ等）を完璧に平仮名化して数字飛ばしを完全防止 */
       _convertAllNumbersToKana(text) {
         if (!text) return "";
         let t = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-        t = t.replace(/(\d{1,2}):(\d{1,2})/g, '$1時$2分');
-
-        const hourMap = {
-          0: 'れいじ', 1: 'いちじ', 2: 'にじ', 3: 'さんじ', 4: 'よじ', 5: 'ごじ',
-          6: 'ろくじ', 7: 'しちじ', 8: 'はちじ', 9: 'くじ', 10: 'じゅうじ',
-          11: 'じゅういちじ', 12: 'じゅうにじ', 13: 'じゅうさんじ', 14: 'じゅうよじ',
-          15: 'じゅうごじ', 16: 'じゅうろくじ', 17: 'じゅうしちじ', 18: 'じゅうはちじ',
-          19: 'じゅうくじ', 20: 'にじゅうじ', 21: 'にじゅういちじ', 22: 'にじゅうにじ',
-          23: 'にじゅうさんじ', 24: 'にじゅうよじ'
-        };
-
-        const minuteMap = [
-          'ちょうど', 'いっぷん', 'にふん', 'さんぷん', 'よんぷん', 'ごふん', 'ろっぷん', 'ななふん', 'はっぷん', 'きゅうふん', 'じゅっぷん',
-          'じゅういっぷん', 'じゅうにふん', 'じゅうさんぷん', 'じゅうよんぷん', 'じゅうごふん', 'じゅうろっぷん', 'じゅうななふん', 'じゅうはっぷん', 'じゅうきゅうふん', 'にじゅっぷん',
-          'にじゅういっぷん', 'にじゅうにふん', 'にじゅうさんぷん', 'にじゅうよんぷん', 'にじゅうごふん', 'にじゅうろっぷん', 'にじゅうななふん', 'にじゅうはっぷん', 'にじゅうきゅうふん', 'さんじゅっぷん',
-          'さんじゅういっぷん', 'さんじゅうにふん', 'さんじゅうさんぷん', 'さんじゅうよんぷん', 'さんじゅうごふん', 'さんじゅうろっぷん', 'さんじゅうななふん', 'さんじゅうはっぷん', 'さんじゅうきゅうふん', 'よんじゅっぷん',
-          'よんじゅういっぷん', 'よんじゅうにふん', 'よんじゅうさんぷん', 'よんじゅうよんぷん', 'よんじゅうごふん', 'よんじゅうろっぷん', 'よんじゅうななふん', 'よんじゅうはっぷん', 'よんじゅうきゅうふん', 'ごじゅっぷん',
-          'ごじゅういっぷん', 'ごじゅうにふん', 'ごじゅうさんぷん', 'ごじゅうよんぷん', 'ごじゅうごふん', 'ごじゅうろっぷん', 'ごじゅうななふん', 'ごじゅうはっぷん', 'ごじゅうきゅうふん'
-        ];
-
-        t = t.replace(/(\d{1,2})時(?:(\d{1,2})分)?/g, (match, hStr, mStr) => {
-          const h = parseInt(hStr, 10);
-          const hKana = hourMap[h] || (h + 'じ');
-          if (mStr === undefined || mStr === '') return hKana;
-          const m = parseInt(mStr, 10);
-          const mKana = minuteMap[m] || (m + 'ふん');
-          return `${hKana}、${mKana}`;
-        });
 
         const numToKana = (n) => {
           if (n === 0) return 'ぜろ';
@@ -1279,22 +1251,94 @@
           return parse4(n);
         };
 
+        // 1. 分（1分〜59分、100分など促音変化も完全網羅）
+        const minuteUnits = [
+          'ぜろふん', 'いっぷん', 'にふん', 'さんぷん', 'よんぷん', 'ごふん', 'ろっぷん', 'ななふん', 'はっぷん', 'きゅうふん', 'じゅっぷん',
+          'じゅういっぷん', 'じゅうにふん', 'じゅうさんぷん', 'じゅうよんぷん', 'じゅうごふん', 'じゅうろっぷん', 'じゅうななふん', 'じゅうはっぷん', 'じゅうきゅうふん', 'にじゅっぷん',
+          'にじゅういっぷん', 'にじゅうにふん', 'にじゅうさんぷん', 'にじゅうよんぷん', 'にじゅうごふん', 'にじゅうろっぷん', 'にじゅうななふん', 'にじゅうはっぷん', 'にじゅうきゅうふん', 'さんじゅっぷん',
+          'さんじゅういっぷん', 'さんじゅうにふん', 'さんじゅうさんぷん', 'さんじゅうよんぷん', 'さんじゅうごふん', 'さんじゅうろっぷん', 'さんじゅうななふん', 'さんじゅうはっぷん', 'さんじゅうきゅうふん', 'よんじゅっぷん',
+          'よんじゅういっぷん', 'よんじゅうにふん', 'よんじゅうさんぷん', 'よんじゅうよんぷん', 'よんじゅうごふん', 'よんじゅうろっぷん', 'よんじゅうななふん', 'よんじゅうはっぷん', 'よんじゅうきゅうふん', 'ごじゅっぷん',
+          'ごじゅういっぷん', 'ごじゅうにふん', 'ごじゅうさんぷん', 'ごじゅうよんぷん', 'ごじゅうごふん', 'ごじゅうろっぷん', 'ごじゅうななふん', 'ごじゅうはっぷん', 'ごじゅうきゅうふん'
+        ];
+        t = t.replace(/(\d{1,2})分/g, (m, numStr) => {
+          const n = parseInt(numStr, 10);
+          return minuteUnits[n] || (numToKana(n) + 'ふん');
+        });
+
+        // 2. 気温・角度（15度、20℃、-5度）
+        t = t.replace(/マイナス(\d+)/g, 'まいなす$1');
+        t = t.replace(/-(\d+)/g, 'まいなす$1');
+        t = t.replace(/(\d+)(?:度|℃)/g, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'ど');
+
+        // 3. 秒
+        t = t.replace(/(\d+)秒/g, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'びょう');
+
+        // 4. 円
+        t = t.replace(/(\d+)円/g, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'えん');
+
+        // 5. キロ（km, kg）
+        t = t.replace(/(\d+)(?:キロ|km|kg)/gi, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'きろ');
+
+        // 6. 回・個・人・匹・歳
+        t = t.replace(/(\d+)回/g, (m, nStr) => {
+          const n = parseInt(nStr, 10);
+          if (n === 1) return 'いっかい';
+          if (n === 6) return 'ろっかい';
+          if (n === 8) return 'はっかい';
+          if (n === 10) return 'じゅっかい';
+          return numToKana(n) + 'かい';
+        });
+        t = t.replace(/(\d+)個/g, (m, nStr) => {
+          const n = parseInt(nStr, 10);
+          if (n === 1) return 'いっこ';
+          if (n === 6) return 'ろっこ';
+          if (n === 8) return 'はっこ';
+          if (n === 10) return 'じゅっこ';
+          return numToKana(n) + 'こ';
+        });
+        t = t.replace(/1人/g, 'ひとり').replace(/2人/g, 'ふたり').replace(/(\d+)人/g, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'にん');
+        t = t.replace(/1匹/g, 'いっぴき').replace(/(\d+)匹/g, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'ひき');
+        t = t.replace(/(\d+)(?:歳|才)/g, (m, nStr) => {
+          const n = parseInt(nStr, 10);
+          if (n === 1) return 'いっさい';
+          if (n === 8) return 'はっさい';
+          if (n === 10) return 'じゅっさい';
+          if (n === 20) return 'はたち';
+          return numToKana(n) + 'さい';
+        });
+        t = t.replace(/(\d+)(?:%|パーセント)/g, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'ぱーせんと');
+
+        // 7. 年
+        t = t.replace(/(\d{1,4})年/g, (m, yStr) => numToKana(parseInt(yStr, 10)) + 'ねん');
+
+        // 8. 残りの裸の数字
         t = t.replace(/\d+/g, m => numToKana(parseInt(m, 10)));
         return t;
       }
 
-      /* ★ 送信テキストを最初の1文（最大35文字）にスマート短縮し爆速生成 */
+      /* ★ 45〜50文字までしっかり含めて自然に喋らせる */
       _extractSpeechTarget(text) {
         if (!text) return "";
         let t = text.trim();
-        // 最初の句点や感嘆符で短く切る
-        const match = t.match(/^(.+?[。！!\?\n])/);
-        if (match && match[1] && match[1].length <= 40) {
-          t = match[1];
-        } else {
-          t = t.slice(0, 36);
+
+        // 50文字以内ならそのまま全文喋る
+        if (t.length <= 50) return t;
+
+        // 50文字を超える場合、40〜50文字の範囲にある句読点・感嘆符を探して綺麗に区切る
+        const segment = t.slice(0, 52);
+        const lastPunct = Math.max(
+          segment.lastIndexOf('。'),
+          segment.lastIndexOf('！'),
+          segment.lastIndexOf('!'),
+          segment.lastIndexOf('？'),
+          segment.lastIndexOf('?'),
+          segment.lastIndexOf('、')
+        );
+
+        if (lastPunct >= 38) {
+          return segment.slice(0, lastPunct + 1);
         }
-        return t;
+        return segment.slice(0, 48) + 'ニャ！';
       }
 
       /* ★ タイムアウト16秒（500ms×32回）＆APIキー任意付与対応 */
@@ -1433,7 +1477,7 @@
         if (window.speechSynthesis) window.speechSynthesis.cancel();
       }
 
-      /* ★ 息継ぎ配慮（無音タイマーを950msに設定） */
+      /* ★ 息継ぎ配慮（無音タイマー950ms） */
       _setupRecognition() {
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRec) {
@@ -1472,7 +1516,6 @@
             if (this.onInterimUpdate) this.onInterimUpdate(currentLive);
           }
 
-          // ★ 息継ぎでも区切られないよう950ms待機
           if (this.silenceTimeout) clearTimeout(this.silenceTimeout);
           this.silenceTimeout = setTimeout(() => {
             if (this.lastRecognizedText && !this.isSpeechCommitted) {
@@ -1882,6 +1925,7 @@
         return hardKeywords.some(k => text.includes(k));
       }
 
+      /* ★ 30〜45文字程度で調和したセリフを生成するプロンプト */
       buildSystemPrompt(character, memories, isDiaryRequest = false) {
         const timeInfo = TimeProvider.getCurrentInfo();
         const locName = LocationProvider.addressName;
@@ -1904,8 +1948,8 @@ ${memories.map(m => `・${m}`).join('\n')}
 【性格と返答スタイル】
 - 飼い主さんのことは「おやびん」または「ミッキーさん」と呼びます。
 - 語尾は「〜ニャ」「〜ニャン♪」「〜だニャ！」「〜なのニャ」。
-- 返答は必ず【短く愛らしい1文（20〜32文字程度）】で返してください。長文は禁止です。
-${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会話を振り返る可愛い子猫の日記（30〜50文字程度）を1文で書いてください。" : ""}
+- 返答は必ず【短く愛らしい1〜2文（30〜45文字程度）】で返してください。長文は禁止です。
+${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会話を振り返る可愛い子猫の日記（35〜50文字程度）を1文で書いてください。" : ""}
 `;
       }
 
@@ -2052,7 +2096,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         this.history.forEach(h => this.renderBubble(h.role, h.text));
       },
 
-      /* ★ 飼い主の疑問形判定（語尾・キーワード検知で自動クエスチョン付与） */
       _formatUserQuestion(text) {
         if (!text) return text;
         let t = text.trim();
@@ -2088,7 +2131,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           document.body.classList.remove('is-hearing');
           document.getElementById('status-text').textContent = "💭 考え中ニャ…";
 
-          // ★ 疑問文なら「？」を付けてユーザー画面に美しく表示
           const formattedText = this._formatUserQuestion(finalText);
 
           if (this.activeUserRow) {
@@ -2185,21 +2227,18 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         this.audio.playEffect('aizuchi');
         StorageManager.appendDailyLog('user', text);
 
-        // 1. 直接インテント（★ 呼びかけ・日常挨拶・時計・日付の高速即答化）
         const direct = this._checkDirectIntent(text);
         if (direct) {
           this.executeDirectReply(direct.displayReply, direct.cards, null, direct.spokenReply);
           return;
         }
 
-        // 2. 記憶帳インテント
         const memResult = this._checkMemoryIntent(text);
         if (memResult) {
           this.executeDirectReply(memResult.reply, [], memResult.saved);
           return;
         }
 
-        // 3. 3.8承認中の応答
         if (this.state.pending38Prompt) {
           if (/^(?:いいよ|お願い|はい|頼む|使って|3\.8で)/.test(text)) {
             const p = this.state.pending38Prompt;
@@ -2221,7 +2260,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           return;
         }
 
-        // 4. 難問判定
         const needsPro = this.ai.evaluateComplexity(text);
         if (needsPro && this.ai.getRemainingProQuota() > 0) {
           this.askProApproval(text);
@@ -2231,11 +2269,9 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         this.executeThought(text, false);
       },
 
-      /* ★ 呼びかけ＆日常挨拶の高速即答ロジック */
       _checkDirectIntent(text) {
         let clean = text.replace(/^(?:ねえ|あのね|おーい)?\s*(?:クロちゃん|クロ|くろ)[、,\s]*/i, '').trim();
 
-        // 呼びかけ単体（「クロちゃん」「クロ」だけ言われた場合）
         if (!clean || /^(?:呼んだだけ|なんでもない|いる|お返事)$/.test(clean)) {
           const callReplies = [
             "ニャン！呼んだかニャ？おやびん♪",
@@ -2246,7 +2282,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           return { displayReply: rep, spokenReply: rep, cards: [] };
         }
 
-        // 日常挨拶の即答（Geminiの考え中に入らない）
         if (/^(?:おはよう|おはよー|オハヨウ)/.test(clean)) {
           const rep = "おやびん、おはようニャン🐾 今日も一日いい日にするニャ！";
           return { displayReply: rep, spokenReply: rep, cards: [] };
@@ -2276,19 +2311,16 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           return { displayReply: rep, spokenReply: rep, cards: [] };
         }
 
-        // 時計
         if (/(?:いま|今)?(?:何時|なんじ|時間)/.test(clean) && !/(?:何日|いつ|日記|カレンダー)/.test(clean)) {
           const info = TimeProvider.getCurrentInfo();
           return { displayReply: info.clockDisplay, spokenReply: info.clockSpokenSafe, cards: [] };
         }
 
-        // 日付
         if (/(?:今日|きょう).*(?:何日|なんにち|いつ|何曜日|なんようび)|日付/.test(clean)) {
           const info = TimeProvider.getCurrentInfo();
           return { displayReply: info.dateDisplay, spokenReply: info.dateSpokenSafe, cards: [] };
         }
 
-        // 現在地
         if (/(?:現在地|いまどこ|今どこ|ここどこ|どこにいる)/.test(clean)) {
           const loc = LocationProvider.addressName;
           return {
@@ -2342,7 +2374,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         return null;
       },
 
-      /* ★ 検索リソース連携カード（検索時のみ控えめに表示） */
       _detectActionCards(userText) {
         const cards = [];
         const loc = LocationProvider.addressName.replace(/付近|周辺/g, '').trim();
@@ -2691,11 +2722,9 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         document.getElementById('test-voice-btn').onclick = () => {
           this.audio.unlockMasterAudio();
           this.audio.speak(
-            "18時45分だニャン！",
+            "ここからどっかんまで20分で行けるニャ！",
             CHARACTER_CONFIG.voiceSpeakerId,
-            null,
-            null,
-            "今の時間は、じゅうはちじ、よんじゅうごふんだニャン！"
+            () => this.renderBubble('model', "ここからどっかんまで20分で行けるニャ！")
           );
         };
 
