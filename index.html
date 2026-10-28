@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -90,7 +91,6 @@
       padding-left: 4px;
     }
 
-    /* ステータスバッジ（反転強調） */
     #status-badge-container {
       flex: 1;
       display: flex;
@@ -243,7 +243,7 @@
     .confirm-btn.yes { background: linear-gradient(135deg, #c026d3, #9333ea); color: white; box-shadow: 0 2px 6px rgba(192, 38, 211, 0.3); }
     .confirm-btn.no { background: #e2e8f0; color: #475569; }
 
-    /* マルチリソース・連携カード群（Yahoo対応） */
+    /* マルチリソース・連携カード群（Google・Yahoo・Geminiに最適化） */
     .action-card-box {
       margin-top: 6px;
       display: flex;
@@ -267,9 +267,9 @@
     }
     .link-action-card:active { transform: scale(0.97); background: #f8fafc; }
     .link-action-card.map-card { border-color: #bbf7d0; background: #f0fdf4; }
-    .link-action-card.gemini-card { border-color: #bae6fd; background: #f0f9ff; }
-    .link-action-card.copilot-card { border-color: #c7d2fe; background: #eef2ff; }
     .link-action-card.yahoo-card { border-color: #fecaca; background: #fef2f2; }
+    .link-action-card.news-card { border-color: #bae6fd; background: #f0f9ff; }
+    .link-action-card.gemini-card { border-color: #ddd6fe; background: #f5f3ff; }
     .card-left { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; }
     .card-icon { font-size: 15px; }
     .card-arrow { font-size: 11px; color: #64748b; font-weight: bold; }
@@ -1031,7 +1031,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[System] 数字最優先平仮名保護・Yahoo連携システム稼働中</div>
+        <div class="log-row log-info">[System] 精密GPS座標直結＆スマート情報連携稼働中</div>
       </div>
     </div>
   </div>
@@ -1052,8 +1052,8 @@
             認識違いの時や考え中の時に押すと、即座に中断してもう一度聞き取り状態に戻ります。
           </div>
           <div class="guide-item">
-            <strong>❓ 疑問文の自動「？」付与</strong>
-            「〜かな」「〜ですか」「何」「教えて」などと聞くと、飼い主さんの吹き出し末尾に自動で「？」が付きます。
+            <strong>📍 ピンポイントGPS座標直結</strong>
+            画面上は自然な「町名付近」で表示しつつ、お店を探す時は内部の精密座標から今いる地点の本当の最寄り店を検索します。
           </div>
           <div class="guide-item">
             <strong>🔢 数字・気温・分数の完全発音</strong>
@@ -1244,7 +1244,7 @@
         }
       }
 
-      /* ★ 助数詞（分、度、℃、°C、秒、円等）の空白や記号を完全吸収して平仮名化 */
+      /* 助数詞の空白や記号を平仮名化 */
       _convertAllNumbersToKana(text) {
         if (!text) return "";
         let t = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
@@ -1285,7 +1285,7 @@
           return parse4(n);
         };
 
-        // 1. 分（1〜59分の促音も完全網羅）
+        // 1. 分（促音完全網羅）
         const minuteUnits = [
           'ぜろふん', 'いっぷん', 'にふん', 'さんぷん', 'よんぷん', 'ごふん', 'ろっぷん', 'ななふん', 'はっぷん', 'きゅうふん', 'じゅっぷん',
           'じゅういっぷん', 'じゅうにふん', 'じゅうさんぷん', 'じゅうよんぷん', 'じゅうごふん', 'じゅうろっぷん', 'じゅうななふん', 'じゅうはっぷん', 'じゅうきゅうふん', 'にじゅっぷん',
@@ -1464,12 +1464,12 @@
 
         let targetText = spokenOverride || text;
 
-        // ★ 根本修正：まず最初に数字を平仮名化して保護！
+        // ★ 最優先で数字を平仮名化して保護
         if (!spokenOverride) {
           targetText = this._convertAllNumbersToKana(targetText);
         }
 
-        // ★ 安全な文字・絵文字クリーニング（\p{Emoji}の誤爆を排除）
+        // ★ 安全な記号クリーニング（\p{Emoji}の誤爆を排除し数字を守る）
         let clean = targetText
           .replace(/```[\s\S]*?```/g, '')
           .replace(/<[^>]*>/g, '')
@@ -1641,7 +1641,7 @@
     }
 
     /* ==========================================================================
-       ★ MODULE 2: 日時＆町丁名GPSプロバイダ
+       ★ MODULE 2: 日時＆スマート・ハイブリッドGPSプロバイダ
        ========================================================================== */
     const TimeProvider = {
       getCurrentInfo() {
@@ -1707,12 +1707,36 @@
       }
     };
 
+    /* ★ 見た目は町名、実態はピンポイント座標直結のハイブリッド測位プロバイダ */
     const LocationProvider = {
       lat: null,
       lon: null,
       addressName: "現在地を取得中…",
+      watchId: null,
 
-      async updateLocation(onComplete = null) {
+      initWatcher() {
+        if (!('geolocation' in navigator)) {
+          this.addressName = "位置情報非対応";
+          return;
+        }
+
+        // 1. 緩やかな追跡（バッテリー保護＋移動追跡）
+        this.watchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            this.lat = pos.coords.latitude;
+            this.lon = pos.coords.longitude;
+            this._reverseGeocode(this.lat, this.lon);
+          },
+          () => {},
+          { enableHighAccuracy: false, maximumAge: 40000, timeout: 12000 }
+        );
+
+        // 2. 初回精密取得
+        this.updateLocationPrecise();
+      },
+
+      /* お店探しや「ここどこ？」発話時にオンデマンドで高精度ピンポイント取得 */
+      async updateLocationPrecise(onComplete = null) {
         if (!('geolocation' in navigator)) {
           this.addressName = "位置情報非対応";
           if (onComplete) onComplete(false, this.addressName);
@@ -1723,39 +1747,41 @@
           async (pos) => {
             this.lat = pos.coords.latitude;
             this.lon = pos.coords.longitude;
-            try {
-              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${this.lat}&lon=${this.lon}&zoom=18&addressdetails=1&accept-language=ja`);
-              if (res.ok) {
-                const data = await res.json();
-                const a = data.address || {};
-                const pref = a.province || a.state || "";
-                const city = a.city || a.ward || a.town || a.suburb || a.village || "";
-                const town = a.suburb || a.neighbourhood || a.quarter || a.city_district || "";
-                
-                let combined = "";
-                if (pref && city) {
-                  combined = `${pref}${city}`;
-                  if (town && !city.includes(town)) combined += `${town}付近`;
-                  else combined += `付近`;
-                } else if (data.display_name) {
-                  const parts = data.display_name.split(', ');
-                  combined = parts.slice(0, 3).reverse().join('') + "付近";
-                }
-                this.addressName = combined || "現在地周辺";
-              } else {
-                this.addressName = "現在地周辺";
-              }
-            } catch(e) {
-              this.addressName = "現在地周辺";
-            }
+            await this._reverseGeocode(this.lat, this.lon);
             if (onComplete) onComplete(true, this.addressName);
           },
           () => {
-            this.addressName = "位置情報未許可";
+            if (!this.addressName || this.addressName.includes("取得中")) {
+              this.addressName = "位置情報未許可";
+            }
             if (onComplete) onComplete(false, this.addressName);
           },
-          { enableHighAccuracy: true, timeout: 9000, maximumAge: 0 }
+          { enableHighAccuracy: true, timeout: 7000, maximumAge: 0 }
         );
+      },
+
+      async _reverseGeocode(lat, lon) {
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=ja`);
+          if (res.ok) {
+            const data = await res.json();
+            const a = data.address || {};
+            const pref = a.province || a.state || "";
+            const city = a.city || a.ward || a.town || a.suburb || a.village || "";
+            const town = a.suburb || a.neighbourhood || a.quarter || a.city_district || "";
+            
+            let combined = "";
+            if (pref && city) {
+              combined = `${pref}${city}`;
+              if (town && !city.includes(town)) combined += `${town}付近`;
+              else combined += `付近`;
+            } else if (data.display_name) {
+              const parts = data.display_name.split(', ');
+              combined = parts.slice(0, 3).reverse().join('') + "付近";
+            }
+            this.addressName = combined || "現在地周辺";
+          }
+        } catch(e) {}
       }
     };
 
@@ -1989,7 +2015,7 @@
 ${memories.map(m => `・${m}`).join('\n')}
 
 【検索リソース・知識方針】
-- Googleのリアルタイム検索、CopilotやYahoo! JAPANのような多様で知的な最新情報を統合して回答してください。
+- Googleリアルタイム検索やYahoo等の最新情報をもとに正確に回答してください。
 - 飼い主さんが「僕の好きなニュース」などと言った場合は、記憶帳にある好みを踏まえて回答してください。
 
 【性格と返答スタイル】
@@ -2116,14 +2142,14 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         this._renderDiaryPreview();
         this._updateProBadge();
 
-        LocationProvider.updateLocation((ok, addr) => {
-          document.getElementById('loc-display-val').textContent = addr;
-        });
+        // スマート測位ウォッチャー開始
+        LocationProvider.initWatcher();
 
         this.ai.scanModels();
 
         setInterval(() => {
           document.getElementById('clock-display').textContent = TimeProvider.getCurrentInfo().clock;
+          document.getElementById('loc-display-val').textContent = LocationProvider.addressName;
         }, 1000);
 
         setTimeout(() => {
@@ -2272,6 +2298,11 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         this.audio.playEffect('aizuchi');
         StorageManager.appendDailyLog('user', text);
 
+        // 位置関連の質問時はオンデマンドで高精度測位を実行
+        if (/(?:近く|どこ|現在地|ラーメン|ランチ|カフェ|お店)/.test(text)) {
+          LocationProvider.updateLocationPrecise();
+        }
+
         const direct = this._checkDirectIntent(text);
         if (direct) {
           this.executeDirectReply(direct.displayReply, direct.cards, null, direct.spokenReply);
@@ -2368,14 +2399,18 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
 
         if (/(?:現在地|いまどこ|今どこ|ここどこ|どこにいる)/.test(clean)) {
           const loc = LocationProvider.addressName;
+          const mapUrl = (LocationProvider.lat && LocationProvider.lon)
+            ? `https://www.google.com/maps/search/?api=1&query=${LocationProvider.lat},${LocationProvider.lon}`
+            : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`;
+
           return {
             displayReply: `いまは${loc}にいるニャン🐾`,
             spokenReply: `今の場所は、${loc}にいるニャン！`,
             cards: [{
               type: 'map',
               icon: '📍',
-              title: `Googleマップで「${loc}」を開く`,
-              url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`
+              title: `Googleマップでピンポイント現在地を見る`,
+              url: mapUrl
             }]
           };
         }
@@ -2419,48 +2454,66 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         return null;
       },
 
-      /* ★ 検索カード（ChatGPT撤廃 ➔ Yahoo! JAPAN検索・ニュースに更新） */
+      /* ★ スマートな連携カード（精密座標マップ ＆ 直通ニュース・Gemini連携） */
       _detectActionCards(userText) {
         const cards = [];
-        const loc = LocationProvider.addressName.replace(/付近|周辺/g, '').trim();
 
+        // 1. お店・スポット検索（精密緯度経度座標をダイレクトに直結）
         if (/(?:ラーメン|ランチ|カフェ|ご飯|居酒屋|コンビニ|スーパー|病院|薬局|近くの|マップ|地図|場所|案内して)/.test(userText)) {
-          let keyword = userText.replace(/(?:近くの|美味しい|おすすめの|を|で|教えて|探して|検索して|マップ|地図|場所)/g, '').trim() || "おすすめスポット";
-          const query = `${loc} ${keyword}`.trim();
+          let keyword = userText.replace(/(?:近くの|美味しい|おすすめの|を|で|教えて|探して|検索して|マップ|地図|場所)/g, '').trim() || "周辺スポット";
+          
+          let mapUrl = "";
+          if (LocationProvider.lat && LocationProvider.lon) {
+            // ピンポイント座標からの最寄り検索URL
+            mapUrl = `https://www.google.com/maps/search/${encodeURIComponent(keyword)}/@${LocationProvider.lat},${LocationProvider.lon},16z`;
+          } else {
+            const loc = LocationProvider.addressName.replace(/付近|周辺/g, '').trim();
+            mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc + ' ' + keyword)}`;
+          }
+
           cards.push({
             type: 'map',
             icon: '📍',
-            title: `Googleマップで「${query}」を見る`,
-            url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+            title: `Googleマップで最寄りの「${keyword}」を見る`,
+            url: mapUrl
           });
         }
 
+        // 2. ニュース・調べ物（Yahoo主要トピック、Googleニュース速報、Gemini直通）
         if (/(?:ニュース|最新情報|トレンド|出来事|調べて|検索して|とは|教えて)/.test(userText)) {
-          let query = "";
-          if (/(?:僕の好き|おれの好き|私の好き|おすすめ|好み)/.test(userText)) {
-            query = this._extractUserInterestsFromMemories();
-          } else {
-            query = userText.replace(/(?:ニュース|最新情報|教えて|最新|今日の|調べて|検索して|とは)/g, '').trim() || "主要ニュース";
+          const isNews = /(?:ニュース|速報|出来事|トレンド)/.test(userText);
+
+          if (isNews) {
+            // Yahoo!ニュース主要トピック（直通）
+            cards.push({
+              type: 'yahoo',
+              icon: '🔴',
+              title: `Yahoo!ニュース（主要トピック速報）`,
+              url: `https://news.yahoo.co.jp/topics/top-picks`
+            });
+            // Googleニュース（速報直通）
+            cards.push({
+              type: 'news',
+              icon: '🌐',
+              title: `Googleニュース（トップ速報）`,
+              url: `https://news.google.com/topstories?hl=ja&gl=JP&ceid=JP:ja`
+            });
           }
-          
-          cards.push({
-            type: 'gemini',
-            icon: '🌐',
-            title: `Googleで「${query}」を検索`,
-            url: `https://www.google.com/search?q=${encodeURIComponent(query)}`
-          });
-          cards.push({
-            type: 'copilot',
-            icon: '🔷',
-            title: `Copilot (Bing) で深掘り`,
-            url: `https://www.bing.com/search?q=${encodeURIComponent(query)}`
-          });
-          cards.push({
-            type: 'yahoo',
-            icon: '🔴',
-            title: `Yahoo!ニュースで「${query}」を検索`,
-            url: `https://news.yahoo.co.jp/search?p=${encodeURIComponent(query)}`
-          });
+
+          // Gemini深掘り（ログイン壁なくスマートに閲覧可能）
+          let searchKeyword = userText.replace(/(?:ニュース|最新情報|教えて|最新|今日の|調べて|検索して|とは)/g, '').trim();
+          if (!searchKeyword && /(?:僕の好き|おれの好き|私の好き|おすすめ|好み)/.test(userText)) {
+            searchKeyword = this._extractUserInterestsFromMemories();
+          }
+
+          if (searchKeyword) {
+            cards.push({
+              type: 'gemini',
+              icon: '✨',
+              title: `Googleで「${searchKeyword}」を深掘り`,
+              url: `https://www.google.com/search?q=${encodeURIComponent(searchKeyword)}`
+            });
+          }
         }
         return cards;
       },
@@ -2740,7 +2793,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           this.audio.unlockMasterAudio();
           const btn = document.getElementById('refresh-location-btn');
           btn.innerHTML = `<span>⏳</span><span>取得中…</span>`;
-          LocationProvider.updateLocation((ok, addr) => {
+          LocationProvider.updateLocationPrecise((ok, addr) => {
             btn.innerHTML = `<span>🔄</span><span>更新</span>`;
             document.getElementById('loc-display-val').textContent = addr;
             if (ok) this.audio.playEffect('happy_meow');
