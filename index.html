@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -388,6 +389,9 @@
       opacity: 0;
       transform-origin: center center;
       transition: opacity 0.25s ease-out;
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
     }
     .pet-avatar-wrapper.is-real-mode.is-assistant-mode #real-cat-glasses {
       display: block;
@@ -960,11 +964,11 @@
     .log-error { color: #f87171; font-weight: bold; }
     .log-info { color: #94a3b8; }
 
-    /* ★ 7. メガネ位置アジャスターモーダル */
+    /* ★ 7. メガネ位置アジャスターモーダル（メイン画面と比率・高さを完全一致） */
     #glasses-adjust-modal {
       position: fixed;
       inset: 0;
-      background: rgba(15, 23, 42, 0.92);
+      background: rgba(15, 23, 42, 0.94);
       backdrop-filter: blur(8px);
       z-index: 300;
       display: none;
@@ -984,7 +988,7 @@
       color: white;
       font-weight: 800;
       font-size: 14px;
-      padding: 8px 0;
+      padding: 6px 0;
     }
 
     .adjust-tabs {
@@ -1014,11 +1018,12 @@
       box-shadow: 0 2px 8px rgba(244, 114, 182, 0.4);
     }
 
+    /* ★ メイン画面の #cat-stage-box と完全に同じ寸法・基準 */
     .adjust-preview-stage {
       position: relative;
       width: 100%;
-      max-width: 340px;
-      height: 270px;
+      max-width: 380px;
+      height: 300px;
       display: flex;
       justify-content: center;
       align-items: flex-end;
@@ -1028,8 +1033,9 @@
       position: absolute;
       bottom: 0;
       height: 100%;
-      max-height: 270px;
+      max-height: 300px;
       object-fit: contain;
+      object-position: bottom center;
       pointer-events: none;
     }
 
@@ -1038,11 +1044,11 @@
       max-width: 420px;
       background: #1e293b;
       border-radius: 20px;
-      padding: 14px 16px;
+      padding: 12px 16px;
       color: #e2e8f0;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
     }
     .adjust-row {
@@ -1054,7 +1060,7 @@
     }
     .adjust-row span:first-child { width: 68px; flex-shrink: 0; }
     .adjust-row input[type="range"] { flex: 1; accent-color: #f472b6; }
-    .adjust-row .val-disp { width: 38px; text-align: right; color: #38bdf8; font-family: monospace; }
+    .adjust-row .val-disp { width: 42px; text-align: right; color: #38bdf8; font-family: monospace; }
 
     .adjust-actions {
       display: flex;
@@ -1114,26 +1120,43 @@
         <img src="thinking.jpg" alt="考え中" class="cat-avatar-img" id="img-thinking">
         <img src="happy.jpg" alt="大喜び" class="cat-avatar-img" id="img-happy">
 
-        <!-- ★ リアル猫（写真）用丸メガネオーバーレイ -->
+        <!-- ★ リアル猫（写真）用丸メガネ（白黒ストライプ仕様） -->
         <svg viewBox="0 0 140 70" id="real-cat-glasses">
-          <!-- 左レンズとフレーム -->
-          <circle cx="36" cy="35" r="23" fill="rgba(255, 255, 255, 0.18)" stroke="#f59e0b" stroke-width="3.5"/>
-          <path d="M22 24 Q36 18 46 28" stroke="rgba(255, 255, 255, 0.75)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <defs>
+            <pattern id="stripe-bw-real" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+              <rect width="4" height="8" fill="#111827"/>
+              <rect x="4" width="4" height="8" fill="#ffffff"/>
+            </pattern>
+          </defs>
+
+          <!-- 左レンズ：白黒ストライプフレーム＋黒極細輪郭 -->
+          <circle cx="36" cy="35" r="23" fill="rgba(255, 255, 255, 0.18)" stroke="#090d16" stroke-width="5.5"/>
+          <circle cx="36" cy="35" r="23" fill="none" stroke="url(#stripe-bw-real)" stroke-width="4"/>
+          <path d="M22 24 Q36 18 46 28" stroke="rgba(255, 255, 255, 0.85)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
           
-          <!-- 右レンズとフレーム -->
-          <circle cx="104" cy="35" r="23" fill="rgba(255, 255, 255, 0.18)" stroke="#f59e0b" stroke-width="3.5"/>
-          <path d="M90 24 Q104 18 114 28" stroke="rgba(255, 255, 255, 0.75)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <!-- 右レンズ：白黒ストライプフレーム＋黒極細輪郭 -->
+          <circle cx="104" cy="35" r="23" fill="rgba(255, 255, 255, 0.18)" stroke="#090d16" stroke-width="5.5"/>
+          <circle cx="104" cy="35" r="23" fill="none" stroke="url(#stripe-bw-real)" stroke-width="4"/>
+          <path d="M90 24 Q104 18 114 28" stroke="rgba(255, 255, 255, 0.85)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
           
-          <!-- 中央ブリッジ -->
-          <path d="M59 34 Q70 27 81 34" stroke="#f59e0b" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <!-- 中央ブリッジ（白黒ストライプ） -->
+          <path d="M59 34 Q70 27 81 34" stroke="#090d16" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+          <path d="M59 34 Q70 27 81 34" stroke="url(#stripe-bw-real)" stroke-width="3.8" fill="none" stroke-linecap="round"/>
           
           <!-- 左右のツル（耳へ） -->
-          <path d="M13 35 Q3 32 0 28" stroke="#d97706" stroke-width="3" fill="none" stroke-linecap="round"/>
-          <path d="M127 35 Q137 32 140 28" stroke="#d97706" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M13 35 Q3 32 0 28" stroke="#111827" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M127 35 Q137 32 140 28" stroke="#111827" stroke-width="3" fill="none" stroke-linecap="round"/>
         </svg>
 
         <!-- ベクター猫 -->
         <svg viewBox="0 0 200 240" id="cat-vector-avatar" class="active-mode">
+          <defs>
+            <pattern id="stripe-bw-vector" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+              <rect width="4" height="8" fill="#111827"/>
+              <rect x="4" width="4" height="8" fill="#ffffff"/>
+            </pattern>
+          </defs>
+
           <g class="anim-tail">
             <path d="M140 195 Q185 180 180 130 Q175 95 195 75 Q185 85 165 125 Q150 160 135 195 Z" fill="#1e222d"/>
             <path d="M145 190 Q175 175 170 135 Q165 110 180 95 Q170 105 155 135 Q145 165 140 190 Z" fill="#475569" opacity="0.6"/>
@@ -1170,18 +1193,25 @@
             <circle cx="128" cy="100" r="1.8" fill="#ffffff" opacity="0.8"/>
           </g>
 
-          <!-- ★ アニメ（ベクター猫）用丸メガネ -->
+          <!-- ★ アニメ（ベクター猫）用丸メガネ（白黒ストライプ仕様） -->
           <g id="cat-vector-glasses">
-            <circle cx="74" cy="95" r="21" fill="rgba(255, 255, 255, 0.16)" stroke="#f59e0b" stroke-width="3"/>
-            <path d="M62 86 Q73 80 81 89" stroke="rgba(255, 255, 255, 0.75)" stroke-width="2" stroke-linecap="round" fill="none"/>
+            <!-- 左レンズ -->
+            <circle cx="74" cy="95" r="21" fill="rgba(255, 255, 255, 0.16)" stroke="#090d16" stroke-width="4.5"/>
+            <circle cx="74" cy="95" r="21" fill="none" stroke="url(#stripe-bw-vector)" stroke-width="3.2"/>
+            <path d="M62 86 Q73 80 81 89" stroke="rgba(255, 255, 255, 0.85)" stroke-width="2" stroke-linecap="round" fill="none"/>
             
-            <circle cx="126" cy="95" r="21" fill="rgba(255, 255, 255, 0.16)" stroke="#f59e0b" stroke-width="3"/>
-            <path d="M114 86 Q125 80 133 89" stroke="rgba(255, 255, 255, 0.75)" stroke-width="2" stroke-linecap="round" fill="none"/>
+            <!-- 右レンズ -->
+            <circle cx="126" cy="95" r="21" fill="rgba(255, 255, 255, 0.16)" stroke="#090d16" stroke-width="4.5"/>
+            <circle cx="126" cy="95" r="21" fill="none" stroke="url(#stripe-bw-vector)" stroke-width="3.2"/>
+            <path d="M114 86 Q125 80 133 89" stroke="rgba(255, 255, 255, 0.85)" stroke-width="2" stroke-linecap="round" fill="none"/>
             
-            <path d="M95 94 Q100 89 105 94" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <!-- 中央ブリッジ -->
+            <path d="M95 94 Q100 89 105 94" stroke="#090d16" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+            <path d="M95 94 Q100 89 105 94" stroke="url(#stripe-bw-vector)" stroke-width="3" fill="none" stroke-linecap="round"/>
             
-            <path d="M53 95 Q40 92 34 88" stroke="#d97706" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-            <path d="M147 95 Q160 92 166 88" stroke="#d97706" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <!-- 左右のツル -->
+            <path d="M53 95 Q40 92 34 88" stroke="#111827" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <path d="M147 95 Q160 92 166 88" stroke="#111827" stroke-width="2.5" fill="none" stroke-linecap="round"/>
           </g>
 
           <polygon points="100,108 94,102 106,102" fill="#f472b6"/>
@@ -1234,10 +1264,10 @@
     </div>
   </div>
 
-  <!-- ★ メガネ位置アジャスターモーダル -->
+  <!-- ★ メガネ位置アジャスターモーダル（完全比率同期 ＆ 白黒ストライプ） -->
   <div id="glasses-adjust-modal">
     <div class="adjust-header">
-      <span>👓 リアル写真のメガネ位置調整</span>
+      <span>👓 写真ごとのメガネ位置を微調整</span>
       <button type="button" class="diag-close-btn" id="close-adjust-btn">✕ 完了</button>
     </div>
 
@@ -1248,17 +1278,31 @@
       <button class="adjust-tab-btn" data-tab="happy">💖 喜び</button>
     </div>
 
+    <!-- メイン画面と寸法・基準を100%完全一致させたステージ -->
     <div class="adjust-preview-stage" id="adjust-preview-stage">
       <img src="idle.jpg" class="adjust-cat-img" id="adjust-cat-img" alt="調整対象">
       
-      <svg viewBox="0 0 140 70" id="adjust-glasses-overlay" style="position:absolute; width:140px; height:70px; pointer-events:none; z-index:20; transform-origin:center center;">
-        <circle cx="36" cy="35" r="23" fill="rgba(255, 255, 255, 0.2)" stroke="#f59e0b" stroke-width="3.5"/>
-        <path d="M22 24 Q36 18 46 28" stroke="rgba(255, 255, 255, 0.8)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-        <circle cx="104" cy="35" r="23" fill="rgba(255, 255, 255, 0.2)" stroke="#f59e0b" stroke-width="3.5"/>
-        <path d="M90 24 Q104 18 114 28" stroke="rgba(255, 255, 255, 0.8)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-        <path d="M59 34 Q70 27 81 34" stroke="#f59e0b" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-        <path d="M13 35 Q3 32 0 28" stroke="#d97706" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <path d="M127 35 Q137 32 140 28" stroke="#d97706" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 140 70" id="adjust-glasses-overlay" style="position:absolute; width:140px; height:70px; pointer-events:none; z-index:20; transform-origin:center center; bottom:120px; left:50%; transform:translateX(-50%);">
+        <defs>
+          <pattern id="stripe-bw-adj" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+            <rect width="4" height="8" fill="#111827"/>
+            <rect x="4" width="4" height="8" fill="#ffffff"/>
+          </pattern>
+        </defs>
+
+        <circle cx="36" cy="35" r="23" fill="rgba(255, 255, 255, 0.2)" stroke="#090d16" stroke-width="5.5"/>
+        <circle cx="36" cy="35" r="23" fill="none" stroke="url(#stripe-bw-adj)" stroke-width="4"/>
+        <path d="M22 24 Q36 18 46 28" stroke="rgba(255, 255, 255, 0.85)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        
+        <circle cx="104" cy="35" r="23" fill="rgba(255, 255, 255, 0.2)" stroke="#090d16" stroke-width="5.5"/>
+        <circle cx="104" cy="35" r="23" fill="none" stroke="url(#stripe-bw-adj)" stroke-width="4"/>
+        <path d="M90 24 Q104 18 114 28" stroke="rgba(255, 255, 255, 0.85)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        
+        <path d="M59 34 Q70 27 81 34" stroke="#090d16" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+        <path d="M59 34 Q70 27 81 34" stroke="url(#stripe-bw-adj)" stroke-width="3.8" fill="none" stroke-linecap="round"/>
+        
+        <path d="M13 35 Q3 32 0 28" stroke="#111827" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M127 35 Q137 32 140 28" stroke="#111827" stroke-width="3" fill="none" stroke-linecap="round"/>
       </svg>
     </div>
 
@@ -1270,7 +1314,7 @@
       </div>
       <div class="adjust-row">
         <span>上下 (Y):</span>
-        <input type="range" id="adj-y" min="20" max="240" step="1" value="120">
+        <input type="range" id="adj-y" min="20" max="250" step="1" value="120">
         <span class="val-disp" id="adj-y-val">120</span>
       </div>
       <div class="adjust-row">
@@ -1304,7 +1348,7 @@
         <div class="guide-content">
           <div class="guide-item">
             <strong>🐾 なかよし / 👓 おてつだい モード</strong>
-            下のボタンで切り替えられます。「なかよし」は日常の愛らしい雑談、「おてつだい」は現在地周辺の実在するお店や最新ニュースをGoogle検索して教えてくれます（どちらも完全無制限の 3.5 Lite で動きます）。おてつだいモードになると可愛い丸メガネをかけます！
+            下のボタンで切り替えられます。「なかよし」は日常の愛らしい雑談、「おてつだい」は現在地周辺の実在するお店や最新ニュースをGoogle検索して教えてくれます（どちらも完全無制限の 3.5 Lite で動きます）。おてつだいモードになると可愛い白黒ストライプ丸メガネをかけます！
           </div>
           <div class="guide-item">
             <strong>🧠 Flash 3.8 本気モード</strong>
@@ -1561,13 +1605,11 @@
         if (!text) return "";
         let t = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
 
-        // 1. 年の変換
         t = t.replace(/(\d{4})\s*年/g, (m, yStr) => {
           const y = parseInt(yStr, 10);
           return `${numToKana(y)}ねん`;
         });
 
-        // 2. 月の変換
         const monthMap = {
           1: 'いちがつ', 2: 'にがつ', 3: 'さんがつ', 4: 'しがつ', 5: 'ごがつ', 6: 'ろくがつ',
           7: 'しちがつ', 8: 'はちがつ', 9: 'くがつ', 10: 'じゅうがつ', 11: 'じゅういちがつ', 12: 'じゅうにがつ'
@@ -1577,7 +1619,6 @@
           return monthMap[mNum] ? monthMap[mNum] : `${numToKana(mNum)}がつ`;
         });
 
-        // 3. 日の暦読み
         const dayMap = {
           1: 'ついたち', 2: 'ふつか', 3: 'みっか', 4: 'よっか', 5: 'いつか',
           6: 'むいか', 7: 'なのか', 8: 'ようか', 9: 'ここのか', 10: 'とおか',
@@ -1593,7 +1634,6 @@
           return dayMap[dNum] ? dayMap[dNum] : `${numToKana(dNum)}にち`;
         });
 
-        // 4. 時刻の変換
         const hourUnit = (h) => {
           const map = {
             0: 'れいじ', 1: 'いちじ', 2: 'にじ', 3: 'さんじ', 4: 'よじ', 5: 'ごじ',
@@ -2088,14 +2128,14 @@
     const StorageManager = {
       defaultGlassesCoords: {
         idle: { x: 0, y: 120, scale: 1.0, rotate: 0 },
-        talking: { x: 0, y: 125, scale: 1.0, rotate: 0 },
-        thinking: { x: 0, y: 120, scale: 1.0, rotate: 2 },
-        happy: { x: 0, y: 120, scale: 1.0, rotate: -2 }
+        talking: { x: 0, y: 120, scale: 1.0, rotate: 0 },
+        thinking: { x: 0, y: 120, scale: 1.0, rotate: 0 },
+        happy: { x: 0, y: 120, scale: 1.0, rotate: 0 }
       },
 
       loadGlassesCoords() {
         try {
-          const raw = localStorage.getItem('kuro_glasses_coords_v1');
+          const raw = localStorage.getItem('kuro_glasses_coords_v2');
           if (raw) return JSON.parse(raw);
           return JSON.parse(JSON.stringify(this.defaultGlassesCoords));
         } catch(e) {
@@ -2105,7 +2145,7 @@
 
       saveGlassesCoords(coords) {
         try {
-          localStorage.setItem('kuro_glasses_coords_v1', JSON.stringify(coords));
+          localStorage.setItem('kuro_glasses_coords_v2', JSON.stringify(coords));
         } catch(e) {}
       },
 
@@ -2190,9 +2230,9 @@
         });
       }
 
-      applyRealGlassesTransform(emotion) {
+      applyRealGlassesTransform(emotion, liveCoords = null) {
         if (!this.realGlasses) return;
-        const c = this.glassesCoords[emotion] || this.glassesCoords.idle || { x: 0, y: 120, scale: 1.0, rotate: 0 };
+        const c = liveCoords || (this.glassesCoords[emotion] || this.glassesCoords.idle || { x: 0, y: 120, scale: 1.0, rotate: 0 });
         this.realGlasses.style.bottom = `${c.y}px`;
         this.realGlasses.style.left = `calc(50% + ${c.x}px)`;
         this.realGlasses.style.transform = `translateX(-50%) scale(${c.scale}) rotate(${c.rotate}deg)`;
@@ -2214,7 +2254,6 @@
               else images[k].classList.remove('active');
             }
           });
-          // リアルメガネをその表情の位置に追従
           this.applyRealGlassesTransform(emotion);
         }
 
@@ -2414,7 +2453,7 @@ ${memories.map(m => `・${m}`).join('\n')}
 
         if (isAssistantMode) {
           return basePrompt + `
-【★おてつだいモード発動中！（知的な丸メガネ装着！）】
+【★おてつだいモード発動中！（おしゃれな白黒ストライプ丸メガネ装着！）】
 - あなたは前世の天才頭脳を発揮し、おやびんの頼れる相棒として実在するお店や最新ニュースをGoogle検索ツールで調査して答えます。
 - 架空の創作や古い知識での回答は厳禁です。必ず検索結果に基づき回答してください。
 - ★重要【話題タグの出力】：
@@ -3202,7 +3241,6 @@ ${memories.map(m => `・${m}`).join('\n')}
         const status = document.getElementById('status-text');
         const avatarWrapper = document.getElementById('avatar-wrapper');
 
-        // ★ 丸メガネ装着クラスのトグル（リアル＆アニメ両連動）
         avatarWrapper.classList.toggle('is-assistant-mode', this.state.isAssistantMode);
 
         if (this.state.isAssistantMode) {
@@ -3238,7 +3276,7 @@ ${memories.map(m => `・${m}`).join('\n')}
         }
       },
 
-      /* ★ メガネアジャスターUIロジック */
+      /* ★ メガネアジャスターUIロジック（完全同期＆リアルタイム反映） */
       _bindGlassesAdjusterUI() {
         const modal = document.getElementById('glasses-adjust-modal');
         const previewImg = document.getElementById('adjust-cat-img');
@@ -3264,27 +3302,37 @@ ${memories.map(m => `・${m}`).join('\n')}
           valScale.textContent = parseFloat(c.scale).toFixed(2);
           valRotate.textContent = `${c.rotate}°`;
 
-          applyPreview();
+          applyLive(c);
         };
 
-        const applyPreview = () => {
-          const x = parseInt(slX.value, 10);
-          const y = parseInt(slY.value, 10);
-          const s = parseFloat(slScale.value);
-          const r = parseInt(slRotate.value, 10);
+        const applyLive = (c) => {
+          valX.textContent = c.x;
+          valY.textContent = c.y;
+          valScale.textContent = parseFloat(c.scale).toFixed(2);
+          valRotate.textContent = `${c.rotate}°`;
 
-          valX.textContent = x;
-          valY.textContent = y;
-          valScale.textContent = s.toFixed(2);
-          valRotate.textContent = `${r}°`;
+          // プレビュー側のメガネを動かす
+          previewGlasses.style.bottom = `${c.y}px`;
+          previewGlasses.style.left = `calc(50% + ${c.x}px)`;
+          previewGlasses.style.transform = `translateX(-50%) scale(${c.scale}) rotate(${c.rotate}deg)`;
 
-          previewGlasses.style.bottom = `${y}px`;
-          previewGlasses.style.left = `calc(50% + ${x}px)`;
-          previewGlasses.style.transform = `translateX(-50%) scale(${s}) rotate(${r}deg)`;
+          // ★ メイン画面側のメガネにも即時反映！
+          this.avatar.applyRealGlassesTransform(this.state.activeAdjustTab, c);
         };
 
-        // スライダー連動
-        [slX, slY, slScale, slRotate].forEach(el => el.addEventListener('input', applyPreview));
+        const onSliderInput = () => {
+          const c = {
+            x: parseInt(slX.value, 10),
+            y: parseInt(slY.value, 10),
+            scale: parseFloat(slScale.value),
+            rotate: parseInt(slRotate.value, 10)
+          };
+          this.avatar.glassesCoords[this.state.activeAdjustTab] = c;
+          applyLive(c);
+        };
+
+        // スライダー操作イベント
+        [slX, slY, slScale, slRotate].forEach(el => el.addEventListener('input', onSliderInput));
 
         // タブ切り替え
         document.querySelectorAll('.adjust-tab-btn').forEach(btn => {
@@ -3298,7 +3346,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           };
         });
 
-        // アジャスター開く
+        // アジャスターを開く
         document.getElementById('open-glasses-adjust-btn').onclick = () => {
           document.getElementById('modal-overlay').style.display = 'none';
           modal.classList.add('is-open');
@@ -3308,25 +3356,27 @@ ${memories.map(m => `・${m}`).join('\n')}
           updateSlidersFromData('idle');
         };
 
-        // アジャスター閉じる
+        // 完了（閉じる）
         document.getElementById('close-adjust-btn').onclick = () => {
           modal.classList.remove('is-open');
+          StorageManager.saveGlassesCoords(this.avatar.glassesCoords);
           this.avatar.applyRealGlassesTransform(this.avatar.currentEmotion);
         };
 
         // この写真の位置を保存
         document.getElementById('btn-adjust-save').onclick = () => {
           const tab = this.state.activeAdjustTab;
-          this.avatar.glassesCoords[tab] = {
+          const c = {
             x: parseInt(slX.value, 10),
             y: parseInt(slY.value, 10),
             scale: parseFloat(slScale.value),
             rotate: parseInt(slRotate.value, 10)
           };
+          this.avatar.glassesCoords[tab] = c;
           StorageManager.saveGlassesCoords(this.avatar.glassesCoords);
           this.avatar.applyRealGlassesTransform(this.avatar.currentEmotion);
           this.audio.playEffect('happy_meow');
-          alert(`「${tab}」のメガネ位置をバッチリ保存したニャン！👓✨`);
+          alert(`「${tab}」の白黒ストライプメガネ位置をバッチリ保存したニャン！👓✨`);
         };
 
         // リセット
@@ -3335,6 +3385,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           const def = StorageManager.defaultGlassesCoords[tab] || { x: 0, y: 120, scale: 1.0, rotate: 0 };
           this.avatar.glassesCoords[tab] = JSON.parse(JSON.stringify(def));
           updateSlidersFromData(tab);
+          this.avatar.applyRealGlassesTransform(tab, def);
         };
       },
 
