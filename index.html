@@ -377,6 +377,25 @@
     }
     .cat-avatar-img.active { opacity: 1; pointer-events: auto; }
 
+    /* ★ リアル猫（写真）用丸メガネオーバーレイ */
+    #real-cat-glasses {
+      position: absolute;
+      bottom: 120px;
+      width: 140px;
+      height: 70px;
+      pointer-events: none;
+      z-index: 15;
+      display: none;
+      opacity: 0;
+      transform: translateY(-16px) scale(0.9);
+      transition: opacity 0.35s ease-out, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .pet-avatar-wrapper.is-real-mode.is-assistant-mode #real-cat-glasses {
+      display: block;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
     /* ベクター猫 */
     #cat-vector-avatar {
       width: 250px;
@@ -431,6 +450,18 @@
     @keyframes catVectorBlink {
       0%, 94%, 100% { transform: scaleY(1); opacity: 1; }
       96%, 98% { transform: scaleY(0.08); opacity: 0.9; }
+    }
+
+    /* ★ アニメ（ベクター猫）用丸メガネ */
+    #cat-vector-glasses {
+      opacity: 0;
+      transform: translateY(-16px) scale(0.92);
+      transform-origin: 100px 95px;
+      transition: opacity 0.35s ease-out, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .pet-avatar-wrapper.is-assistant-mode #cat-vector-glasses {
+      opacity: 1;
+      transform: translateY(0) scale(1);
     }
 
     .cat-mouth-closed { display: block; }
@@ -942,6 +973,24 @@
         <img src="thinking.jpg" alt="考え中" class="cat-avatar-img" id="img-thinking">
         <img src="happy.jpg" alt="大喜び" class="cat-avatar-img" id="img-happy">
 
+        <!-- ★ リアル猫（写真）用丸メガネオーバーレイ -->
+        <svg viewBox="0 0 140 70" id="real-cat-glasses">
+          <!-- 左レンズとフレーム -->
+          <circle cx="36" cy="35" r="23" fill="rgba(255, 255, 255, 0.18)" stroke="#f59e0b" stroke-width="3.5"/>
+          <path d="M22 24 Q36 18 46 28" stroke="rgba(255, 255, 255, 0.75)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          
+          <!-- 右レンズとフレーム -->
+          <circle cx="104" cy="35" r="23" fill="rgba(255, 255, 255, 0.18)" stroke="#f59e0b" stroke-width="3.5"/>
+          <path d="M90 24 Q104 18 114 28" stroke="rgba(255, 255, 255, 0.75)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          
+          <!-- 中央ブリッジ -->
+          <path d="M59 34 Q70 27 81 34" stroke="#f59e0b" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          
+          <!-- 左右のツル（耳へ） -->
+          <path d="M13 35 Q3 32 0 28" stroke="#d97706" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M127 35 Q137 32 140 28" stroke="#d97706" stroke-width="3" fill="none" stroke-linecap="round"/>
+        </svg>
+
         <!-- ベクター猫 -->
         <svg viewBox="0 0 200 240" id="cat-vector-avatar" class="active-mode">
           <g class="anim-tail">
@@ -967,6 +1016,7 @@
             <path d="M145 58 Q132 45 125 58" stroke="#cbd5e1" stroke-width="2.5" fill="none"/>
           </g>
 
+          <!-- 瞳 -->
           <g class="anim-eye" style="transform-origin: 100px 95px;">
             <ellipse cx="74" cy="95" rx="13" ry="16" fill="#10b981"/>
             <ellipse cx="74" cy="95" rx="5" ry="13" fill="#090d16"/>
@@ -977,6 +1027,24 @@
             <ellipse cx="126" cy="95" rx="5" ry="13" fill="#090d16"/>
             <circle cx="122" cy="90" r="4" fill="#ffffff"/>
             <circle cx="128" cy="100" r="1.8" fill="#ffffff" opacity="0.8"/>
+          </g>
+
+          <!-- ★ アニメ（ベクター猫）用丸メガネ -->
+          <g id="cat-vector-glasses">
+            <!-- 左レンズ＆フレーム -->
+            <circle cx="74" cy="95" r="21" fill="rgba(255, 255, 255, 0.16)" stroke="#f59e0b" stroke-width="3"/>
+            <path d="M62 86 Q73 80 81 89" stroke="rgba(255, 255, 255, 0.75)" stroke-width="2" stroke-linecap="round" fill="none"/>
+            
+            <!-- 右レンズ＆フレーム -->
+            <circle cx="126" cy="95" r="21" fill="rgba(255, 255, 255, 0.16)" stroke="#f59e0b" stroke-width="3"/>
+            <path d="M114 86 Q125 80 133 89" stroke="rgba(255, 255, 255, 0.75)" stroke-width="2" stroke-linecap="round" fill="none"/>
+            
+            <!-- 中央ブリッジ -->
+            <path d="M95 94 Q100 89 105 94" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>
+            
+            <!-- 左右のツル -->
+            <path d="M53 95 Q40 92 34 88" stroke="#d97706" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <path d="M147 95 Q160 92 166 88" stroke="#d97706" stroke-width="2.5" fill="none" stroke-linecap="round"/>
           </g>
 
           <polygon points="100,108 94,102 106,102" fill="#f472b6"/>
@@ -1042,7 +1110,7 @@
         <div class="guide-content">
           <div class="guide-item">
             <strong>🐾 なかよし / 👓 おてつだい モード</strong>
-            下のボタンで切り替えられます。「なかよし」は日常の愛らしい雑談、「おてつだい」は現在地周辺の実在するお店や最新ニュースをGoogle検索して教えてくれます（どちらも完全無制限の 3.5 Lite で動きます）。
+            下のボタンで切り替えられます。「なかよし」は日常の愛らしい雑談、「おてつだい」は現在地周辺の実在するお店や最新ニュースをGoogle検索して教えてくれます（どちらも完全無制限の 3.5 Lite で動きます）。おてつだいモードになると可愛い丸メガネをかけます！
           </div>
           <div class="guide-item">
             <strong>🧠 Flash 3.8 本気モード</strong>
@@ -1925,9 +1993,11 @@
         const imgs = ['img-idle', 'img-talking', 'img-thinking', 'img-happy'].map(id => document.getElementById(id));
 
         if (this.mode === 'vector') {
+          this.wrapper.classList.remove('is-real-mode');
           imgs.forEach(img => { if (img) img.style.display = 'none'; });
           this.vectorAvatar.classList.add('active-mode');
         } else {
+          this.wrapper.classList.add('is-real-mode');
           this.vectorAvatar.classList.remove('active-mode');
           imgs.forEach(img => { if (img) img.style.display = 'block'; });
           this.setEmotion('idle');
@@ -1967,7 +2037,7 @@
 
     /* ==========================================================================
        ★ MODULE 5: 思考・AI対話エンジン（最新モデル Flash 3.5 lite / Flash 3.8 完全同期）
-       ========================================================================== */
+       ========================================================================= */
     class AIThoughtEngine {
       constructor() {
         this.apiKey = localStorage.getItem('kuro_api_key') || '';
@@ -2108,7 +2178,7 @@ ${memories.map(m => `・${m}`).join('\n')}
 
         if (isAssistantMode) {
           return basePrompt + `
-【★おてつだいモード発動中！】
+【★おてつだいモード発動中！（知的な丸メガネ装着！）】
 - あなたは前世の天才頭脳を発揮し、おやびんの頼れる相棒として実在するお店や最新ニュースをGoogle検索ツールで調査して答えます。
 - 架空の創作や古い知識での回答は厳禁です。必ず検索結果に基づき回答してください。
 - ★重要【話題タグの出力】：
@@ -2675,7 +2745,6 @@ ${memories.map(m => `・${m}`).join('\n')}
           return;
         }
 
-        // 通常・おてつだいは 3.5 Lite で実行
         this.executeThought(text, false);
       },
 
@@ -2901,6 +2970,10 @@ ${memories.map(m => `・${m}`).join('\n')}
         const icon = document.getElementById('mode-icon');
         const text = document.getElementById('mode-text');
         const status = document.getElementById('status-text');
+        const avatarWrapper = document.getElementById('avatar-wrapper');
+
+        // ★ 丸メガネ装着クラスのトグル（リアル＆アニメ両連動）
+        avatarWrapper.classList.toggle('is-assistant-mode', this.state.isAssistantMode);
 
         if (this.state.isAssistantMode) {
           btn.classList.add('is-assistant');
