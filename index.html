@@ -1945,7 +1945,7 @@
     }
 
     /* ==========================================================================
-       ★ MODULE 5: 思考・AI対話エンジン（実在モデル完全同期＆404/429多重自動リカバリー）
+       ★ MODULE 5: 思考・AI対話エンジン（最新モデル Flash 3.5 lite / Flash 3.8 完全同期）
        ========================================================================== */
     class AIThoughtEngine {
       constructor() {
@@ -1984,7 +1984,7 @@
         }
       }
 
-      /* ★ 核心：Google APIキーで「現実に使える実在モデル」を100%同期取得 */
+      /* ★ 核心：Google APIキーで実在モデルを同期取得し、最新Flash 3.5 lite / 3.8 に割り当て */
       async scanModels() {
         if (!this.apiKey) {
           Logger.log("[APIキー未設定] 歯車ボタンからAPIキーを入力してください", "warn");
@@ -2006,37 +2006,42 @@
             .map(m => m.name.replace(/^models\//, ''));
 
           this.availableModels = valid;
-          Logger.log(`[Google実在モデル検出: ${valid.length}件] ${valid.slice(0, 5).join(', ')}...`, "info");
+          Logger.log(`[Google実在モデル検出: ${valid.length}件] ${valid.slice(0, 6).join(', ')}...`, "info");
 
           if (valid.length === 0) {
             Logger.log("[モデルスキャン] generateContent対応モデルが0件です", "error");
             return false;
           }
 
-          // 1. Lite枠（通常・おてつだい検索用：制限に強い実在高速モデルから順に照合）
+          // 1. Lite枠（日常会話・おてつだい検索用：Flash 3.5 lite 優先リスト）
           const litePreferences = [
-            "gemini-2.0-flash",
-            "gemini-2.0-flash-lite",
-            "gemini-2.0-flash-lite-preview-02-05",
-            "gemini-1.5-flash-latest",
-            "gemini-1.5-flash-002",
-            "gemini-1.5-flash",
-            "gemini-2.5-flash"
+            "gemini-3.5-flash-lite",
+            "gemini-3.5-flash",
+            "gemini-3.0-flash-lite",
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-flash",
+            "gemini-3.8-flash"
           ];
-          this.activeLiteModel = litePreferences.find(m => valid.includes(m)) || valid.find(m => m.includes('flash')) || valid[0];
+          this.activeLiteModel = litePreferences.find(m => valid.includes(m))
+            || valid.find(m => m.includes('lite'))
+            || valid.find(m => m.includes('flash'))
+            || valid[0];
 
-          // 2. Pro枠（難問・本気モード用：高知能実在モデルから順に照合）
+          // 2. Pro枠（難問・本気モード用：Flash 3.8 優先リスト）
           const proPreferences = [
-            "gemini-2.0-flash",
-            "gemini-1.5-pro-latest",
-            "gemini-1.5-pro-002",
-            "gemini-1.5-pro",
-            "gemini-2.0-pro-exp",
+            "gemini-3.8-flash",
+            "gemini-3.7-flash",
+            "gemini-3.6-flash",
+            "gemini-3.5-flash",
+            "gemini-3.5-pro",
             "gemini-2.5-pro"
           ];
-          this.activeProModel = proPreferences.find(m => valid.includes(m)) || valid.find(m => m.includes('pro')) || this.activeLiteModel;
+          this.activeProModel = proPreferences.find(m => valid.includes(m))
+            || valid.find(m => m.includes('3.8'))
+            || valid.find(m => m.includes('pro'))
+            || this.activeLiteModel;
 
-          Logger.log(`[モデル完全同期] 3.5Lite枠➔『${this.activeLiteModel}』 / 3.8枠➔『${this.activeProModel}』`, "success");
+          Logger.log(`[モデル最新同期完了] 3.5Lite枠➔『${this.activeLiteModel}』 / 3.8枠➔『${this.activeProModel}』`, "success");
           return true;
 
         } catch (e) {
@@ -2207,7 +2212,7 @@ ${memories.map(m => `・${m}`).join('\n')}
                 let mainChunk = allChunks[0] || null;
                 if (isDiary) StorageManager.saveDiary(cleanText);
 
-                Logger.log(`[AI通信成功] 応答受信完了 (${cleanText.length}文字)`, "success");
+                Logger.log(`[AI通信成功] 応答受信完了 (${cleanText.length}文字) [${attempt.model}]`, "success");
 
                 return {
                   success: true,
@@ -2225,7 +2230,7 @@ ${memories.map(m => `・${m}`).join('\n')}
             const errJson = await res.json().catch(() => ({}));
             Logger.log(`[試行 ${i+1} 失敗] ステータス ${res.status}: ${JSON.stringify(errJson.error?.message || errJson)}`, "warn");
 
-            // 429の場合は少し待機してバーストを避ける
+            // 429の場合は少し待機
             if (res.status === 429) {
               await new Promise(r => setTimeout(r, 1500));
             }
@@ -2305,7 +2310,7 @@ ${memories.map(m => `・${m}`).join('\n')}
 
         LocationProvider.initWatcher();
 
-        // 起動時に実在モデルを確実にスキャン同期
+        // 起動時に最新実在モデルを確実にスキャン同期
         await this.ai.scanModels();
 
         const savedNewsCount = localStorage.getItem('kuro_news_count') || "2";
