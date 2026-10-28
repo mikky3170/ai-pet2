@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -1081,7 +1080,7 @@
         <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.05" value="1.05">
       </div>
 
-      <!-- ★ ニュース件数設定 -->
+      <!-- ニュース件数設定 -->
       <div class="form-group">
         <label>ニュースの紹介件数（追加枠数）:</label>
         <select id="news-count-select">
@@ -1093,7 +1092,7 @@
         </select>
       </div>
 
-      <!-- ★ お店・スポット候補数設定（完全復元！） -->
+      <!-- お店・スポット候補数設定 -->
       <div class="form-group">
         <label>お店・スポットの候補件数:</label>
         <select id="spot-count-select">
@@ -1269,7 +1268,6 @@
         }
       }
 
-      /* ★ 月日（10月28日等）の特殊暦読みを完全網羅したカナ変換 */
       _convertAllNumbersToKana(text) {
         if (!text) return "";
         let t = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
@@ -1280,7 +1278,7 @@
           return `${numToKana(y)}ねん`;
         });
 
-        // 2. 月の変換（10月＝じゅうがつ、4月＝しがつ、9月＝くがつ）
+        // 2. 月の変換
         const monthMap = {
           1: 'いちがつ', 2: 'にがつ', 3: 'さんがつ', 4: 'しがつ', 5: 'ごがつ', 6: 'ろくがつ',
           7: 'しちがつ', 8: 'はちがつ', 9: 'くがつ', 10: 'じゅうがつ', 11: 'じゅういちがつ', 12: 'じゅうにがつ'
@@ -1290,7 +1288,7 @@
           return monthMap[mNum] ? monthMap[mNum] : `${numToKana(mNum)}がつ`;
         });
 
-        // 3. 日の変換（1日〜31日の暦読み・和語読みを完全網羅）
+        // 3. 日の暦読み
         const dayMap = {
           1: 'ついたち', 2: 'ふつか', 3: 'みっか', 4: 'よっか', 5: 'いつか',
           6: 'むいか', 7: 'なのか', 8: 'ようか', 9: 'ここのか', 10: 'とおか',
@@ -1573,7 +1571,7 @@
         };
 
         this.recognition.onresult = (event) => {
-          if (this.isSpeaking) return;
+          if (this.isSpeaking || AppCore.state.isProcessingInput) return;
 
           let interim = '';
           let final = '';
@@ -1593,7 +1591,7 @@
 
           if (this.silenceTimeout) clearTimeout(this.silenceTimeout);
           this.silenceTimeout = setTimeout(() => {
-            if (this.lastRecognizedText && !this.isSpeechCommitted) {
+            if (this.lastRecognizedText && !this.isSpeechCommitted && !AppCore.state.isProcessingInput) {
               this._commitFinalSpeech(this.lastRecognizedText);
             }
           }, 950);
@@ -1607,7 +1605,7 @@
           this.isListening = false;
           if (this.onListeningStatus) this.onListeningStatus(false);
 
-          if (!this.isSpeechCommitted && this.lastRecognizedText) {
+          if (!this.isSpeechCommitted && this.lastRecognizedText && !AppCore.state.isProcessingInput) {
             this._commitFinalSpeech(this.lastRecognizedText);
           } else {
             this._scheduleRestart();
@@ -1616,7 +1614,7 @@
       }
 
       _commitFinalSpeech(text) {
-        if (!text || this.isSpeechCommitted) return;
+        if (!text || this.isSpeechCommitted || AppCore.state.isProcessingInput) return;
 
         if (this._isSelfEcho(text)) {
           Logger.log(`[エコーキャンセラー] 自声の跳ね返りを破棄: 「${text}」`, "warn");
@@ -1638,7 +1636,7 @@
       _scheduleRestart() {
         if (this.restartTime) clearTimeout(this.restartTime);
         this.restartTime = setTimeout(() => {
-          if (!this.isSpeaking && AppCore.state.isRunning && !AppCore.state.isThinking) {
+          if (!this.isSpeaking && AppCore.state.isRunning && !AppCore.state.isThinking && !AppCore.state.isProcessingInput) {
             this.startListening();
           }
         }, 800);
@@ -1646,7 +1644,7 @@
 
       _startWatchdog() {
         this.watchdogInterval = setInterval(() => {
-          if (AppCore.state.isRunning && !this.isSpeaking && !AppCore.state.isThinking && !this.isListening) {
+          if (AppCore.state.isRunning && !this.isSpeaking && !AppCore.state.isThinking && !AppCore.state.isProcessingInput && !this.isListening) {
             if (Date.now() - this.lastSpeechEndTime > 800) {
               this.startListening();
             }
@@ -1655,7 +1653,7 @@
       }
 
       startListening() {
-        if (!this.recognition || this.isSpeaking || this.isListening) return;
+        if (!this.recognition || this.isSpeaking || this.isListening || AppCore.state.isProcessingInput) return;
         try {
           this.lastRecognizedText = '';
           this.isSpeechCommitted = false;
@@ -1947,14 +1945,14 @@
     }
 
     /* ==========================================================================
-       ★ MODULE 5: 思考・AI対話エンジン（日常・検索は3.5 Lite、難問のみ3.8 Flash）
+       ★ MODULE 5: 思考・AI対話エンジン（実在稼働モデルに完全回帰＆429自動回復）
        ========================================================================== */
     class AIThoughtEngine {
       constructor() {
         this.apiKey = localStorage.getItem('kuro_api_key') || '';
-        // 初期値
-        this.activeLiteModel = "gemini-3.5-flash-lite"; // 日常雑談・おてつだい検索の標準
-        this.activeProModel = "gemini-3.8-flash";       // 難しい内容専用（1日20回制限）
+        // 過去に確実に安定稼働していた実績No.1の公式実在モデル
+        this.activeLiteModel = "gemini-1.5-flash"; // 3.5 Lite枠の内部エンジン
+        this.activeProModel = "gemini-1.5-pro";    // 3.8枠の内部エンジン
         this.proUsedToday = 0;
         this.currentAbortController = null;
         this._initProQuota();
@@ -1986,28 +1984,42 @@
         }
       }
 
-      /* モデルスキャン：APIキーで利用可能なモデル一覧から安全に取得 */
+      /* 確実に実在するモデルのみをスキャン選定（架空のモデル名は除外） */
       async scanModels() {
         if (!this.apiKey) return;
         try {
           const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${this.apiKey}`);
-          if (!res.ok) return;
+          if (!res.ok) {
+            Logger.log(`[モデル確認] ステータス: ${res.status}（既定の実績モデルを使用）`, "warn");
+            return;
+          }
           const data = await res.json();
           const validModels = (data.models || [])
             .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
-            .map(m => m.name.replace(/^models\//, ''))
-            .filter(m => !m.includes('2.5') && !m.includes('2.0')); // 404の原因となる非推奨モデルを除外
+            .map(m => m.name.replace(/^models\//, ''));
 
-          // 1. Lite（通常・日常・検索おてつだい用）
-          const liteCandidates = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-1.5-flash"];
-          this.activeLiteModel = liteCandidates.find(m => validModels.includes(m)) || validModels.find(m => m.includes('lite')) || "gemini-3.5-flash-lite";
+          // 1. Lite（通常・検索枠：制限に強く実績最強の現行実在モデル）
+          const litePreferences = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
+          for (const cand of litePreferences) {
+            if (validModels.includes(cand)) {
+              this.activeLiteModel = cand;
+              break;
+            }
+          }
 
-          // 2. Pro（難しい内容専用・1日20回枠）
-          const proCandidates = ["gemini-3.8-flash", "gemini-1.5-pro"];
-          this.activeProModel = proCandidates.find(m => validModels.includes(m)) || validModels.find(m => m.includes('3.8')) || "gemini-3.8-flash";
+          // 2. Pro（難問・本気枠：最高知能の実在モデル）
+          const proPreferences = ["gemini-1.5-pro", "gemini-2.0-flash", "gemini-2.0-pro"];
+          for (const cand of proPreferences) {
+            if (validModels.includes(cand)) {
+              this.activeProModel = cand;
+              break;
+            }
+          }
 
-          Logger.log(`[モデル選定] 日常・検索: ${this.activeLiteModel} / 本気モード: ${this.activeProModel}`, "success");
-        } catch(e) {}
+          Logger.log(`[稼働モデル確定] 3.5Lite枠: ${this.activeLiteModel} / 3.8枠: ${this.activeProModel}`, "success");
+        } catch(e) {
+          Logger.log(`[モデル確認スキップ] 既定の実績モデルで動作します: ${this.activeLiteModel}`, "info");
+        }
       }
 
       evaluateComplexity(text) {
@@ -2067,6 +2079,7 @@ ${memories.map(m => `・${m}`).join('\n')}
         }
       }
 
+      /* 429・400エラー時に自動フォールバックする耐障害生成メソッド */
       async generateReply(promptText, isPro, character, memories, history, isAssistantMode) {
         this.cancelCurrentRequest();
         this.currentAbortController = new AbortController();
@@ -2074,9 +2087,7 @@ ${memories.map(m => `・${m}`).join('\n')}
         const isDiary = /(?:今日|きょう)?(?:の)?(?:日記|にっき).*(?:書いて|教えて|見せて)/.test(promptText);
         const systemPrompt = this.buildSystemPrompt(character, memories, isDiary, isAssistantMode);
 
-        // ★ 大原則：isPro（承認された難問）のみ 3.8 Flash、日常・おてつだいはすべて 3.5 Lite
         const targetModel = isPro ? this.activeProModel : this.activeLiteModel;
-
         const historyToSend = history.slice(isPro ? -14 : -6);
         const contents = [];
         let lastRole = null;
@@ -2099,24 +2110,36 @@ ${memories.map(m => `・${m}`).join('\n')}
         }
 
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${this.apiKey}`;
-        
-        const bodyPayload = {
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents
-        };
 
-        // おてつだいモード時はGoogle検索Groundingを併用（3.5 Liteで動作）
-        if (isAssistantMode) {
-          bodyPayload.tools = [{ google_search: {} }];
-        }
+        // 試行関数（検索ツールの有無を切り替えて安全に再試行）
+        const doFetch = async (enableSearchTool) => {
+          const bodyPayload = {
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents
+          };
+          if (enableSearchTool) {
+            // 正式なキャメルケース構文
+            bodyPayload.tools = [{ googleSearch: {} }];
+          }
 
-        try {
           const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(bodyPayload),
             signal: this.currentAbortController.signal
           });
+          return res;
+        };
+
+        try {
+          let res = await doFetch(isAssistantMode);
+
+          // ★ 429（リクエスト過多）または 400（ツール非互換）が発生した場合の自動リカバリー
+          if (res.status === 429 || (!res.ok && isAssistantMode)) {
+            Logger.log(`[APIステータス ${res.status}] 検索ツールなしで自動フォールバック再試行...`, "warn");
+            await new Promise(r => setTimeout(r, 1200)); // 1.2秒待機してバーストを緩和
+            res = await doFetch(false); // 検索ツールを外して軽量リトライ
+          }
 
           if (!res.ok) {
             const errJson = await res.json().catch(() => ({}));
@@ -2220,6 +2243,7 @@ ${memories.map(m => `・${m}`).join('\n')}
       state: {
         isRunning: true,
         isThinking: false,
+        isProcessingInput: false, // 429二重送信防止用フラグ
         isAssistantMode: false,
         pending38Prompt: null,
         isWaitingForMemory: false,
@@ -2291,7 +2315,7 @@ ${memories.map(m => `・${m}`).join('\n')}
 
       _setupAudioCallbacks() {
         this.audio.onInterimUpdate = (text) => {
-          if (!this.state.isRunning || this.state.isThinking) return;
+          if (!this.state.isRunning || this.state.isThinking || this.state.isProcessingInput) return;
 
           document.body.classList.add('is-hearing');
           document.getElementById('status-text').textContent = "👂 聴いてるニャ…";
@@ -2310,6 +2334,9 @@ ${memories.map(m => `・${m}`).join('\n')}
         };
 
         this.audio.onSpeechFinal = (finalText) => {
+          if (this.state.isProcessingInput) return; // 二重送信ガード
+          this.state.isProcessingInput = true;
+
           document.body.classList.remove('is-hearing');
           document.getElementById('status-text').textContent = "💭 考え中ニャ…";
 
@@ -2412,6 +2439,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           () => {
             this.avatar.setEmotion('idle');
             this.state.isThinking = false;
+            this.state.isProcessingInput = false; // ロック解除
             this._updateModelBadge(false, false);
             document.getElementById('status-text').textContent = this.state.isAssistantMode ? "👓 お調べするニャ！" : "👂 聴いてるニャ♪";
             if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 800);
@@ -2421,7 +2449,6 @@ ${memories.map(m => `・${m}`).join('\n')}
         StorageManager.appendDailyLog('model', text);
       },
 
-      /* ★ 改善：設定件数（お店・ニュース）に完全連動したスマートカード生成 */
       _generateSmartCards(userText, replyText, aiResult) {
         if (!this.state.isAssistantMode) return [];
 
@@ -2473,11 +2500,10 @@ ${memories.map(m => `・${m}`).join('\n')}
             });
           }
 
-          // ② 設定された店舗候補数分、実在店舗カードを追加
+          // ② 店舗候補カード
           let spotAdded = 0;
           for (const chunk of allChunks) {
             if (spotAdded >= (desiredSpotCount - 1)) break;
-            // サイト名や詳細URL
             if (isDirectArticleUrl(chunk.uri)) {
               cards.push({
                 type: 'map-sub',
@@ -2504,7 +2530,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           const desiredNewsCount = parseInt(localStorage.getItem('kuro_news_count') || "2", 10);
           const effectiveTopic = topic || (replyText.match(/[「『]([^」』]+)[」』]/)?.[1]) || "最新ニュース";
 
-          // ① メイン詳細記事（話題に完全一致）
+          // ① メイン詳細記事
           if (mainChunk && isDirectArticleUrl(mainChunk.uri) && !isDomainOnlyTitle(mainChunk.title)) {
             cards.push({
               type: 'news-primary',
@@ -2521,7 +2547,7 @@ ${memories.map(m => `・${m}`).join('\n')}
             });
           }
 
-          // ② 設定された枠数分、別の注目ニュースを追加
+          // ② 追加枠
           let newsAdded = 0;
           for (const chunk of allChunks) {
             if (newsAdded >= desiredNewsCount) break;
@@ -2717,7 +2743,9 @@ ${memories.map(m => `・${m}`).join('\n')}
           this.executeThought(p, false);
         };
 
-        this.audio.speak(ask, CHARACTER_CONFIG.voiceSpeakerId);
+        this.audio.speak(ask, CHARACTER_CONFIG.voiceSpeakerId, () => {}, () => {
+          this.state.isProcessingInput = false;
+        });
       },
 
       async executeThought(promptText, isPro) {
@@ -2742,7 +2770,10 @@ ${memories.map(m => `・${m}`).join('\n')}
           this.state.isAssistantMode
         );
 
-        if (result.aborted) return;
+        if (result.aborted) {
+          this.state.isProcessingInput = false;
+          return;
+        }
 
         if (result.success && result.text) {
           this.history.push({ role: 'user', text: promptText });
@@ -2754,12 +2785,15 @@ ${memories.map(m => `・${m}`).join('\n')}
         } else {
           this.removeThinking();
           this.state.isThinking = false;
+          this.state.isProcessingInput = false;
           this.avatar.setEmotion('idle');
           this._updateModelBadge(false, false);
 
           let fallback = "みゃう？うまく聞き取れなかったニャ。もう一度お話ししてニャン🐾";
-          if (result.error) {
-            fallback = "みゃ？検索が混み合っているみたいニャ。もう一度聞いてほしいニャン🐾";
+          if (result.error && result.error.includes("429")) {
+            fallback = "おやびん、Googleの頭脳がちょっと混み合っているニャ！1分だけ待ってから話しかけてニャン🐾";
+          } else if (result.error) {
+            fallback = "みゃ？通信が混み合っているみたいニャ。もう一度聞いてほしいニャン🐾";
           }
 
           this.audio.speak(fallback, CHARACTER_CONFIG.voiceSpeakerId, () => {
@@ -2777,6 +2811,7 @@ ${memories.map(m => `・${m}`).join('\n')}
         this.ai.cancelCurrentRequest();
         this.audio.stopSpeaking();
         this.state.isThinking = false;
+        this.state.isProcessingInput = false;
         this.state.pending38Prompt = null;
         this.removeThinking();
         this.avatar.setEmotion('idle');
@@ -2826,6 +2861,7 @@ ${memories.map(m => `・${m}`).join('\n')}
             this.audio.speak(msg, CHARACTER_CONFIG.voiceSpeakerId, () => {
               this.renderBubble('model', msg);
             }, () => {
+              this.state.isProcessingInput = false;
               if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 800);
             });
           }
@@ -2840,6 +2876,7 @@ ${memories.map(m => `・${m}`).join('\n')}
             this.audio.speak(msg, CHARACTER_CONFIG.voiceSpeakerId, () => {
               this.renderBubble('model', msg);
             }, () => {
+              this.state.isProcessingInput = false;
               if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 800);
             });
           }
@@ -3088,6 +3125,7 @@ ${memories.map(m => `・${m}`).join('\n')}
             this.audio.speak("設定バッチリ保存したニャ！", CHARACTER_CONFIG.voiceSpeakerId, () => {
               this.renderBubble('model', "設定バッチリ保存したニャ！いつでも話しかけてニャン🐾");
             }, () => {
+              this.state.isProcessingInput = false;
               setTimeout(() => this.audio.startListening(), 800);
             });
           } else {
@@ -3096,7 +3134,7 @@ ${memories.map(m => `・${m}`).join('\n')}
         };
 
         document.addEventListener('visibilitychange', () => {
-          if (document.visibilityState === 'visible' && this.state.isRunning && !this.audio.isSpeaking) {
+          if (document.visibilityState === 'visible' && this.state.isRunning && !this.audio.isSpeaking && !this.state.isProcessingInput) {
             setTimeout(() => this.audio.startListening(), 800);
           }
         });
@@ -3137,5 +3175,4 @@ ${memories.map(m => `・${m}`).join('\n')}
   </script>
 </body>
 </html>
-
 
