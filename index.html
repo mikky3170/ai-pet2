@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -721,7 +720,7 @@
       padding: 9px 12px;
       border: 1px solid #d1d5db;
       border-radius: 12px;
-      font-size: 13.5px;
+      font-size: 13px;
       outline: none;
     }
 
@@ -730,18 +729,16 @@
       gap: 8px;
       align-items: center;
     }
-    .voice-badge-box {
+    .voice-select-box {
       flex: 1;
-      padding: 9px 12px;
-      background: #fdf2f8;
+      padding: 9px 10px;
       border: 1.5px solid #fbcfe8;
+      background: #fff5f8;
       border-radius: 12px;
-      color: #9d174d;
+      color: #831843;
       font-weight: bold;
       font-size: 12px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      outline: none;
     }
     .btn-voice-test {
       padding: 9px 12px;
@@ -1068,10 +1065,34 @@
         <input type="password" id="voicevox-key-input" placeholder="空欄のままで自動動作します">
       </div>
 
+      <!-- ボイスキャラクター選択 -->
       <div class="form-group">
-        <label>クロの肉声ボイス:</label>
+        <label>クロの肉声ボイス（VOICEVOX）:</label>
         <div class="voice-control-row">
-          <div class="voice-badge-box">🌸 四国めたん（あまあま・専用固定）</div>
+          <select id="voice-speaker-select" class="voice-select-box">
+            <optgroup label="🌸 定番・おすすめ">
+              <option value="0" selected>🌸 四国めたん（あまあま）</option>
+              <option value="2">🌸 四国めたん（ノーマル）</option>
+              <option value="6">🌸 四国めたん（ツンツン）</option>
+              <option value="1">🌱 ずんだもん（あまあま）</option>
+              <option value="3">🌱 ずんだもん（ノーマル）</option>
+              <option value="7">🌱 ずんだもん（ツンツン）</option>
+            </optgroup>
+            <optgroup label="🐱 猫系・おしゃまガール">
+              <option value="55">🐱 猫使アル（ノーマル）</option>
+              <option value="56">🐱 猫使アル（おちつき）</option>
+              <option value="58">🐱 猫使ビィ（ノーマル）</option>
+              <option value="59">🐱 猫使ビィ（おちつき）</option>
+            </optgroup>
+            <optgroup label="✨ 元気・キュート">
+              <option value="8">🌻 春日部つむぎ（ノーマル）</option>
+              <option value="10">💉 雨晴はう（ノーマル）</option>
+              <option value="14">🎀 冥鳴ひまり（ノーマル）</option>
+              <option value="9">⚡ 波音リツ（ノーマル）</option>
+              <option value="61">🐰 中国うさぎ（ノーマル）</option>
+              <option value="63">🐰 中国うさぎ（おどろき）</option>
+            </optgroup>
+          </select>
           <button type="button" class="btn-voice-test" id="test-voice-btn">🔊 声テスト</button>
         </div>
       </div>
@@ -1512,7 +1533,7 @@
         this.recentSpokenTexts.unshift(clean);
         if (this.recentSpokenTexts.length > 4) this.recentSpokenTexts.pop();
 
-        Logger.log(`[音声送信テキスト] ${clean}`, "info");
+        Logger.log(`[音声送信 (${speakerId})] ${clean}`, "info");
 
         try {
           const mp3Url = await this._fetchMetanMp3Url(clean, speakerId);
@@ -1984,7 +2005,6 @@
         }
       }
 
-      /* ★ 核心：Google APIキーで実在モデルを同期取得し、最新Flash 3.5 lite / 3.8 に割り当て */
       async scanModels() {
         if (!this.apiKey) {
           Logger.log("[APIキー未設定] 歯車ボタンからAPIキーを入力してください", "warn");
@@ -2000,7 +2020,6 @@
           }
 
           const data = await res.json();
-          // generateContent をサポートする実在モデルのみを抽出
           const valid = (data.models || [])
             .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
             .map(m => m.name.replace(/^models\//, ''));
@@ -2107,12 +2126,10 @@ ${memories.map(m => `・${m}`).join('\n')}
         }
       }
 
-      /* ★ 404・429を自動で復旧する耐障害生成ループ */
       async generateReply(promptText, isPro, character, memories, history, isAssistantMode) {
         this.cancelCurrentRequest();
         this.currentAbortController = new AbortController();
 
-        // モデル未特定時は即座に同期スキャン
         if (!this.activeLiteModel) {
           await this.scanModels();
         }
@@ -2141,21 +2158,17 @@ ${memories.map(m => `・${m}`).join('\n')}
           contents.push({ role: 'user', parts: [{ text: promptText }] });
         }
 
-        // 試行候補モデルの決定（優先モデル ＋ 代替実在モデル）
         let primaryModel = isPro ? this.activeProModel : this.activeLiteModel;
         if (!primaryModel && this.availableModels.length > 0) primaryModel = this.availableModels[0];
 
-        // 試行計画：[ { model, useSearch } ]
         const attempts = [
           { model: primaryModel, useSearch: isAssistantMode }
         ];
 
-        // 検索失敗用のフェイルセーフ
         if (isAssistantMode) {
           attempts.push({ model: primaryModel, useSearch: false });
         }
 
-        // リスト内の他モデルでのバックアップ
         if (this.availableModels.length > 1) {
           const fallbackModel = this.availableModels.find(m => m !== primaryModel) || this.availableModels[0];
           attempts.push({ model: fallbackModel, useSearch: false });
@@ -2225,12 +2238,10 @@ ${memories.map(m => `・${m}`).join('\n')}
               }
             }
 
-            // エラー時のハンドリング
             lastErrorStatus = res.status;
             const errJson = await res.json().catch(() => ({}));
             Logger.log(`[試行 ${i+1} 失敗] ステータス ${res.status}: ${JSON.stringify(errJson.error?.message || errJson)}`, "warn");
 
-            // 429の場合は少し待機
             if (res.status === 429) {
               await new Promise(r => setTimeout(r, 1500));
             }
@@ -2241,7 +2252,6 @@ ${memories.map(m => `・${m}`).join('\n')}
           }
         }
 
-        // 全ての試行が失敗した場合
         return { success: false, text: null, error: `HTTP_${lastErrorStatus || 'FAIL'}` };
       }
     }
@@ -2255,7 +2265,7 @@ ${memories.map(m => `・${m}`).join('\n')}
       breed: "ノルウェージャンフォレストキャット",
       age: "約1歳",
       gender: "女の子",
-      voiceSpeakerId: 0,
+      voiceSpeakerId: parseInt(localStorage.getItem('kuro_voice_speaker_id') || '0', 10),
       defaultMemories: [
         "わたしの名前：クロ（ノルウェージャンフォレストキャットの女の子、約1歳）",
         "見た目：黒とシルバーのゴージャスな毛並み、エメラルドグリーンの大きな瞳",
@@ -2315,10 +2325,15 @@ ${memories.map(m => `・${m}`).join('\n')}
 
         const savedNewsCount = localStorage.getItem('kuro_news_count') || "2";
         const savedSpotCount = localStorage.getItem('kuro_spot_count') || "2";
+        const savedSpeakerId = localStorage.getItem('kuro_voice_speaker_id') || "0";
+
         const newsSelect = document.getElementById('news-count-select');
         const spotSelect = document.getElementById('spot-count-select');
+        const voiceSelect = document.getElementById('voice-speaker-select');
+
         if (newsSelect) newsSelect.value = savedNewsCount;
         if (spotSelect) spotSelect.value = savedSpotCount;
+        if (voiceSelect) voiceSelect.value = savedSpeakerId;
 
         setInterval(() => {
           document.getElementById('clock-display').textContent = TimeProvider.getCurrentInfo().clock;
@@ -3068,6 +3083,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           const currentRate = parseFloat(localStorage.getItem('kuro_rate') || '1.05');
           const currentNewsCount = localStorage.getItem('kuro_news_count') || "2";
           const currentSpotCount = localStorage.getItem('kuro_spot_count') || "2";
+          const currentSpeakerId = localStorage.getItem('kuro_voice_speaker_id') || "0";
           const currentMemsJson = JSON.stringify(this.memories);
 
           this.state.settingsSnapshot = {
@@ -3076,6 +3092,7 @@ ${memories.map(m => `・${m}`).join('\n')}
             rate: currentRate,
             newsCount: currentNewsCount,
             spotCount: currentSpotCount,
+            speakerId: currentSpeakerId,
             memsJson: currentMemsJson
           };
 
@@ -3085,6 +3102,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           document.getElementById('rate-val').textContent = currentRate.toFixed(2);
           document.getElementById('news-count-select').value = currentNewsCount;
           document.getElementById('spot-count-select').value = currentSpotCount;
+          document.getElementById('voice-speaker-select').value = currentSpeakerId;
 
           this._renderMemories();
           this._renderDiaryPreview();
@@ -3106,9 +3124,10 @@ ${memories.map(m => `・${m}`).join('\n')}
 
         document.getElementById('test-voice-btn').onclick = () => {
           this.audio.unlockMasterAudio();
+          const selectedSpeaker = parseInt(document.getElementById('voice-speaker-select').value, 10);
           this.audio.speak(
             "おやびん、わたしはクロだニャン🐾",
-            CHARACTER_CONFIG.voiceSpeakerId,
+            selectedSpeaker,
             () => this.renderBubble('model', "おやびん、わたしはクロだニャン🐾")
           );
         };
@@ -3132,6 +3151,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           const newRate = parseFloat(document.getElementById('voice-rate').value);
           const newNewsCount = document.getElementById('news-count-select').value;
           const newSpotCount = document.getElementById('spot-count-select').value;
+          const newSpeakerId = document.getElementById('voice-speaker-select').value;
           const newMemsJson = JSON.stringify(this.memories);
 
           const snap = this.state.settingsSnapshot;
@@ -3141,17 +3161,20 @@ ${memories.map(m => `・${m}`).join('\n')}
             snap.rate !== newRate ||
             snap.newsCount !== newNewsCount ||
             snap.spotCount !== newSpotCount ||
+            snap.speakerId !== newSpeakerId ||
             snap.memsJson !== newMemsJson
           );
 
           this.ai.apiKey = newApiKey;
           this.audio.setRate(newRate);
+          CHARACTER_CONFIG.voiceSpeakerId = parseInt(newSpeakerId, 10);
 
           localStorage.setItem('kuro_api_key', newApiKey);
           localStorage.setItem('kuro_voicevox_key', newVvKey);
           localStorage.setItem('kuro_rate', newRate);
           localStorage.setItem('kuro_news_count', newNewsCount);
           localStorage.setItem('kuro_spot_count', newSpotCount);
+          localStorage.setItem('kuro_voice_speaker_id', newSpeakerId);
 
           if (newApiKey) await this.ai.scanModels();
           document.getElementById('modal-overlay').style.display = 'none';
@@ -3212,5 +3235,4 @@ ${memories.map(m => `・${m}`).join('\n')}
   </script>
 </body>
 </html>
-
 
