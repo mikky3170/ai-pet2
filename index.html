@@ -380,20 +380,18 @@
     /* ★ リアル猫（写真）用丸メガネオーバーレイ */
     #real-cat-glasses {
       position: absolute;
-      bottom: 120px;
       width: 140px;
       height: 70px;
       pointer-events: none;
       z-index: 15;
       display: none;
       opacity: 0;
-      transform: translateY(-16px) scale(0.9);
-      transition: opacity 0.35s ease-out, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transform-origin: center center;
+      transition: opacity 0.25s ease-out;
     }
     .pet-avatar-wrapper.is-real-mode.is-assistant-mode #real-cat-glasses {
       display: block;
       opacity: 1;
-      transform: translateY(0) scale(1);
     }
 
     /* ベクター猫 */
@@ -785,6 +783,24 @@
     }
     .btn-voice-test:active { transform: scale(0.95); background: #fce7f3; }
 
+    .btn-adjust-open {
+      width: 100%;
+      padding: 10px;
+      background: #fdf2f8;
+      border: 1.5px solid #f472b6;
+      color: #be185d;
+      border-radius: 12px;
+      font-size: 12.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-adjust-open:active { transform: scale(0.97); background: #fce7f3; }
+
     .memory-list {
       background: #f8fafc;
       border-radius: 14px;
@@ -943,6 +959,131 @@
     .log-warn { color: #facc15; }
     .log-error { color: #f87171; font-weight: bold; }
     .log-info { color: #94a3b8; }
+
+    /* ★ 7. メガネ位置アジャスターモーダル */
+    #glasses-adjust-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(8px);
+      z-index: 300;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: env(safe-area-inset-top, 10px) 14px env(safe-area-inset-bottom, 14px) 14px;
+    }
+    #glasses-adjust-modal.is-open { display: flex; }
+
+    .adjust-header {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+      font-weight: 800;
+      font-size: 14px;
+      padding: 8px 0;
+    }
+
+    .adjust-tabs {
+      display: flex;
+      width: 100%;
+      max-width: 420px;
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 4px;
+      gap: 4px;
+    }
+    .adjust-tab-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      padding: 8px 4px;
+      font-size: 11.5px;
+      font-weight: 800;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .adjust-tab-btn.active {
+      background: #f472b6;
+      color: white;
+      box-shadow: 0 2px 8px rgba(244, 114, 182, 0.4);
+    }
+
+    .adjust-preview-stage {
+      position: relative;
+      width: 100%;
+      max-width: 340px;
+      height: 270px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      background: transparent;
+    }
+    .adjust-cat-img {
+      position: absolute;
+      bottom: 0;
+      height: 100%;
+      max-height: 270px;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    .adjust-controls-box {
+      width: 100%;
+      max-width: 420px;
+      background: #1e293b;
+      border-radius: 20px;
+      padding: 14px 16px;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+    .adjust-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .adjust-row span:first-child { width: 68px; flex-shrink: 0; }
+    .adjust-row input[type="range"] { flex: 1; accent-color: #f472b6; }
+    .adjust-row .val-disp { width: 38px; text-align: right; color: #38bdf8; font-family: monospace; }
+
+    .adjust-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .btn-adjust-reset {
+      flex: 1;
+      padding: 10px;
+      background: #334155;
+      color: #cbd5e1;
+      border: none;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .btn-adjust-save {
+      flex: 2;
+      padding: 10px;
+      background: linear-gradient(135deg, #f472b6, #ec4899);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 12.5px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(244, 114, 182, 0.35);
+    }
   </style>
 </head>
 <body>
@@ -1031,18 +1172,14 @@
 
           <!-- ★ アニメ（ベクター猫）用丸メガネ -->
           <g id="cat-vector-glasses">
-            <!-- 左レンズ＆フレーム -->
             <circle cx="74" cy="95" r="21" fill="rgba(255, 255, 255, 0.16)" stroke="#f59e0b" stroke-width="3"/>
             <path d="M62 86 Q73 80 81 89" stroke="rgba(255, 255, 255, 0.75)" stroke-width="2" stroke-linecap="round" fill="none"/>
             
-            <!-- 右レンズ＆フレーム -->
             <circle cx="126" cy="95" r="21" fill="rgba(255, 255, 255, 0.16)" stroke="#f59e0b" stroke-width="3"/>
             <path d="M114 86 Q125 80 133 89" stroke="rgba(255, 255, 255, 0.75)" stroke-width="2" stroke-linecap="round" fill="none"/>
             
-            <!-- 中央ブリッジ -->
             <path d="M95 94 Q100 89 105 94" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>
             
-            <!-- 左右のツル -->
             <path d="M53 95 Q40 92 34 88" stroke="#d97706" stroke-width="2.5" fill="none" stroke-linecap="round"/>
             <path d="M147 95 Q160 92 166 88" stroke="#d97706" stroke-width="2.5" fill="none" stroke-linecap="round"/>
           </g>
@@ -1093,6 +1230,63 @@
       </div>
       <div class="diag-logs" id="diag-logs">
         <div class="log-row log-info">[System] AIペット クロちゃん対話エンジン稼働中</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ★ メガネ位置アジャスターモーダル -->
+  <div id="glasses-adjust-modal">
+    <div class="adjust-header">
+      <span>👓 リアル写真のメガネ位置調整</span>
+      <button type="button" class="diag-close-btn" id="close-adjust-btn">✕ 完了</button>
+    </div>
+
+    <div class="adjust-tabs">
+      <button class="adjust-tab-btn active" data-tab="idle">🐾 待機</button>
+      <button class="adjust-tab-btn" data-tab="talking">🗣️ お話し</button>
+      <button class="adjust-tab-btn" data-tab="thinking">💭 考え中</button>
+      <button class="adjust-tab-btn" data-tab="happy">💖 喜び</button>
+    </div>
+
+    <div class="adjust-preview-stage" id="adjust-preview-stage">
+      <img src="idle.jpg" class="adjust-cat-img" id="adjust-cat-img" alt="調整対象">
+      
+      <svg viewBox="0 0 140 70" id="adjust-glasses-overlay" style="position:absolute; width:140px; height:70px; pointer-events:none; z-index:20; transform-origin:center center;">
+        <circle cx="36" cy="35" r="23" fill="rgba(255, 255, 255, 0.2)" stroke="#f59e0b" stroke-width="3.5"/>
+        <path d="M22 24 Q36 18 46 28" stroke="rgba(255, 255, 255, 0.8)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <circle cx="104" cy="35" r="23" fill="rgba(255, 255, 255, 0.2)" stroke="#f59e0b" stroke-width="3.5"/>
+        <path d="M90 24 Q104 18 114 28" stroke="rgba(255, 255, 255, 0.8)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path d="M59 34 Q70 27 81 34" stroke="#f59e0b" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M13 35 Q3 32 0 28" stroke="#d97706" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M127 35 Q137 32 140 28" stroke="#d97706" stroke-width="3" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <div class="adjust-controls-box">
+      <div class="adjust-row">
+        <span>左右 (X):</span>
+        <input type="range" id="adj-x" min="-120" max="120" step="1" value="0">
+        <span class="val-disp" id="adj-x-val">0</span>
+      </div>
+      <div class="adjust-row">
+        <span>上下 (Y):</span>
+        <input type="range" id="adj-y" min="20" max="240" step="1" value="120">
+        <span class="val-disp" id="adj-y-val">120</span>
+      </div>
+      <div class="adjust-row">
+        <span>サイズ:</span>
+        <input type="range" id="adj-scale" min="0.5" max="1.8" step="0.02" value="1.0">
+        <span class="val-disp" id="adj-scale-val">1.0</span>
+      </div>
+      <div class="adjust-row">
+        <span>傾き (度):</span>
+        <input type="range" id="adj-rotate" min="-45" max="45" step="1" value="0">
+        <span class="val-disp" id="adj-rotate-val">0°</span>
+      </div>
+
+      <div class="adjust-actions">
+        <button class="btn-adjust-reset" id="btn-adjust-reset">リセット</button>
+        <button class="btn-adjust-save" id="btn-adjust-save">この写真の位置を保存するニャ！</button>
       </div>
     </div>
   </div>
@@ -1168,6 +1362,12 @@
       <div class="form-group">
         <label>話すスピード: <span id="rate-val">1.05</span></label>
         <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.05" value="1.05">
+      </div>
+
+      <!-- ★ メガネ位置アジャスターを開くボタン -->
+      <div class="form-group">
+        <label>写真モードのメガネ位置微調整:</label>
+        <button type="button" class="btn-adjust-open" id="open-glasses-adjust-btn">👓 写真ごとのメガネ位置を微調整する</button>
       </div>
 
       <!-- ニュース件数設定 -->
@@ -1883,9 +2083,32 @@
     };
 
     /* ==========================================================================
-       ★ MODULE 3: 履歴・記憶・日記ストレージ
+       ★ MODULE 3: 履歴・記憶・日記・メガネ設定ストレージ
        ========================================================================== */
     const StorageManager = {
+      defaultGlassesCoords: {
+        idle: { x: 0, y: 120, scale: 1.0, rotate: 0 },
+        talking: { x: 0, y: 125, scale: 1.0, rotate: 0 },
+        thinking: { x: 0, y: 120, scale: 1.0, rotate: 2 },
+        happy: { x: 0, y: 120, scale: 1.0, rotate: -2 }
+      },
+
+      loadGlassesCoords() {
+        try {
+          const raw = localStorage.getItem('kuro_glasses_coords_v1');
+          if (raw) return JSON.parse(raw);
+          return JSON.parse(JSON.stringify(this.defaultGlassesCoords));
+        } catch(e) {
+          return JSON.parse(JSON.stringify(this.defaultGlassesCoords));
+        }
+      },
+
+      saveGlassesCoords(coords) {
+        try {
+          localStorage.setItem('kuro_glasses_coords_v1', JSON.stringify(coords));
+        } catch(e) {}
+      },
+
       appendDailyLog(role, text) {
         const key = `kuro_daily_log_${TimeProvider.getCurrentInfo().logKey}`;
         let logs = [];
@@ -1936,18 +2159,22 @@
     };
 
     /* ==========================================================================
-       ★ MODULE 4: キャラクター・描画演出
+       ★ MODULE 4: キャラクター・描画演出 ＆ メガネ連動
        ========================================================================== */
     class CatAvatarRenderer {
       constructor() {
         this.wrapper = document.getElementById('avatar-wrapper');
         this.stageBox = document.getElementById('cat-stage-box');
         this.vectorAvatar = document.getElementById('cat-vector-avatar');
+        this.realGlasses = document.getElementById('real-cat-glasses');
         this.mode = localStorage.getItem('kuro_avatar_mode') || 'vector';
         this.isImageAvailable = true;
+        this.glassesCoords = StorageManager.loadGlassesCoords();
+        this.currentEmotion = 'idle';
 
         this._setupImageErrorHandling();
         this.applyMode(this.mode);
+        this.applyRealGlassesTransform('idle');
       }
 
       _setupImageErrorHandling() {
@@ -1963,7 +2190,16 @@
         });
       }
 
+      applyRealGlassesTransform(emotion) {
+        if (!this.realGlasses) return;
+        const c = this.glassesCoords[emotion] || this.glassesCoords.idle || { x: 0, y: 120, scale: 1.0, rotate: 0 };
+        this.realGlasses.style.bottom = `${c.y}px`;
+        this.realGlasses.style.left = `calc(50% + ${c.x}px)`;
+        this.realGlasses.style.transform = `translateX(-50%) scale(${c.scale}) rotate(${c.rotate}deg)`;
+      }
+
       setEmotion(emotion) {
+        this.currentEmotion = emotion;
         const images = {
           idle: document.getElementById('img-idle'),
           talking: document.getElementById('img-talking'),
@@ -1978,6 +2214,8 @@
               else images[k].classList.remove('active');
             }
           });
+          // リアルメガネをその表情の位置に追従
+          this.applyRealGlassesTransform(emotion);
         }
 
         this.wrapper.classList.remove('is-idling', 'is-talking', 'is-thinking');
@@ -2000,7 +2238,7 @@
           this.wrapper.classList.add('is-real-mode');
           this.vectorAvatar.classList.remove('active-mode');
           imgs.forEach(img => { if (img) img.style.display = 'block'; });
-          this.setEmotion('idle');
+          this.setEmotion(this.currentEmotion || 'idle');
         }
       }
 
@@ -2037,7 +2275,7 @@
 
     /* ==========================================================================
        ★ MODULE 5: 思考・AI対話エンジン（最新モデル Flash 3.5 lite / Flash 3.8 完全同期）
-       ========================================================================= */
+       ========================================================================== */
     class AIThoughtEngine {
       constructor() {
         this.apiKey = localStorage.getItem('kuro_api_key') || '';
@@ -2102,7 +2340,6 @@
             return false;
           }
 
-          // 1. Lite枠（日常会話・おてつだい検索用：Flash 3.5 lite 優先リスト）
           const litePreferences = [
             "gemini-3.5-flash-lite",
             "gemini-3.5-flash",
@@ -2116,7 +2353,6 @@
             || valid.find(m => m.includes('flash'))
             || valid[0];
 
-          // 2. Pro枠（難問・本気モード用：Flash 3.8 優先リスト）
           const proPreferences = [
             "gemini-3.8-flash",
             "gemini-3.7-flash",
@@ -2363,7 +2599,8 @@ ${memories.map(m => `・${m}`).join('\n')}
         pending38Prompt: null,
         isWaitingForMemory: false,
         editingMemoryIdx: null,
-        settingsSnapshot: null
+        settingsSnapshot: null,
+        activeAdjustTab: 'idle'
       },
 
       audio: new AudioSpeechEngine(),
@@ -2383,6 +2620,7 @@ ${memories.map(m => `・${m}`).join('\n')}
 
         this._setupAudioCallbacks();
         this._bindUI();
+        this._bindGlassesAdjusterUI();
         this._restoreTimelineHistory();
         this._renderMemories();
         this._renderDiaryPreview();
@@ -2390,7 +2628,6 @@ ${memories.map(m => `・${m}`).join('\n')}
 
         LocationProvider.initWatcher();
 
-        // 起動時に最新実在モデルを確実にスキャン同期
         await this.ai.scanModels();
 
         const savedNewsCount = localStorage.getItem('kuro_news_count') || "2";
@@ -2594,7 +2831,6 @@ ${memories.map(m => `・${m}`).join('\n')}
           return /\.(jp|com|net|org|co\.jp|ne\.jp)$/i.test(title.trim());
         };
 
-        // 1. お店・スポット判定
         const spotKeywords = [
           'ラーメン', '餃子', 'タイ料理', '焼肉', 'ホルモン', 'ランチ', 'カフェ',
           'ご飯', '居酒屋', 'お店', 'スポット', 'グルメ', '寿司', 'カレー',
@@ -2612,7 +2848,6 @@ ${memories.map(m => `・${m}`).join('\n')}
             if (m) primaryShopName = m[1].trim();
           }
 
-          // ① イチオシ店舗のGoogleマップピン
           if (primaryShopName) {
             cards.push({
               type: 'map-primary',
@@ -2622,7 +2857,6 @@ ${memories.map(m => `・${m}`).join('\n')}
             });
           }
 
-          // ② 店舗候補カード
           let spotAdded = 0;
           for (const chunk of allChunks) {
             if (spotAdded >= (desiredSpotCount - 1)) break;
@@ -2637,7 +2871,6 @@ ${memories.map(m => `・${m}`).join('\n')}
             }
           }
 
-          // ③ 周辺一括マップ
           cards.push({
             type: 'map-all',
             icon: '🗺️',
@@ -2646,13 +2879,11 @@ ${memories.map(m => `・${m}`).join('\n')}
           });
         }
 
-        // 2. ニュース判定
         const isNews = /(?:ニュース|速報|話題|出来事|トレンド)/.test(userText);
         if (isNews) {
           const desiredNewsCount = parseInt(localStorage.getItem('kuro_news_count') || "2", 10);
           const effectiveTopic = topic || (replyText.match(/[「『]([^」』]+)[」』]/)?.[1]) || "最新ニュース";
 
-          // ① メイン詳細記事
           if (mainChunk && isDirectArticleUrl(mainChunk.uri) && !isDomainOnlyTitle(mainChunk.title)) {
             cards.push({
               type: 'news-primary',
@@ -2669,7 +2900,6 @@ ${memories.map(m => `・${m}`).join('\n')}
             });
           }
 
-          // ② 追加枠
           let newsAdded = 0;
           for (const chunk of allChunks) {
             if (newsAdded >= desiredNewsCount) break;
@@ -3008,6 +3238,106 @@ ${memories.map(m => `・${m}`).join('\n')}
         }
       },
 
+      /* ★ メガネアジャスターUIロジック */
+      _bindGlassesAdjusterUI() {
+        const modal = document.getElementById('glasses-adjust-modal');
+        const previewImg = document.getElementById('adjust-cat-img');
+        const previewGlasses = document.getElementById('adjust-glasses-overlay');
+        const slX = document.getElementById('adj-x');
+        const slY = document.getElementById('adj-y');
+        const slScale = document.getElementById('adj-scale');
+        const slRotate = document.getElementById('adj-rotate');
+        const valX = document.getElementById('adj-x-val');
+        const valY = document.getElementById('adj-y-val');
+        const valScale = document.getElementById('adj-scale-val');
+        const valRotate = document.getElementById('adj-rotate-val');
+
+        const updateSlidersFromData = (tab) => {
+          const c = this.avatar.glassesCoords[tab] || { x: 0, y: 120, scale: 1.0, rotate: 0 };
+          slX.value = c.x;
+          slY.value = c.y;
+          slScale.value = c.scale;
+          slRotate.value = c.rotate;
+
+          valX.textContent = c.x;
+          valY.textContent = c.y;
+          valScale.textContent = parseFloat(c.scale).toFixed(2);
+          valRotate.textContent = `${c.rotate}°`;
+
+          applyPreview();
+        };
+
+        const applyPreview = () => {
+          const x = parseInt(slX.value, 10);
+          const y = parseInt(slY.value, 10);
+          const s = parseFloat(slScale.value);
+          const r = parseInt(slRotate.value, 10);
+
+          valX.textContent = x;
+          valY.textContent = y;
+          valScale.textContent = s.toFixed(2);
+          valRotate.textContent = `${r}°`;
+
+          previewGlasses.style.bottom = `${y}px`;
+          previewGlasses.style.left = `calc(50% + ${x}px)`;
+          previewGlasses.style.transform = `translateX(-50%) scale(${s}) rotate(${r}deg)`;
+        };
+
+        // スライダー連動
+        [slX, slY, slScale, slRotate].forEach(el => el.addEventListener('input', applyPreview));
+
+        // タブ切り替え
+        document.querySelectorAll('.adjust-tab-btn').forEach(btn => {
+          btn.onclick = () => {
+            document.querySelectorAll('.adjust-tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const tab = btn.dataset.tab;
+            this.state.activeAdjustTab = tab;
+            previewImg.src = `${tab}.jpg`;
+            updateSlidersFromData(tab);
+          };
+        });
+
+        // アジャスター開く
+        document.getElementById('open-glasses-adjust-btn').onclick = () => {
+          document.getElementById('modal-overlay').style.display = 'none';
+          modal.classList.add('is-open');
+          this.state.activeAdjustTab = 'idle';
+          document.querySelectorAll('.adjust-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'idle'));
+          previewImg.src = 'idle.jpg';
+          updateSlidersFromData('idle');
+        };
+
+        // アジャスター閉じる
+        document.getElementById('close-adjust-btn').onclick = () => {
+          modal.classList.remove('is-open');
+          this.avatar.applyRealGlassesTransform(this.avatar.currentEmotion);
+        };
+
+        // この写真の位置を保存
+        document.getElementById('btn-adjust-save').onclick = () => {
+          const tab = this.state.activeAdjustTab;
+          this.avatar.glassesCoords[tab] = {
+            x: parseInt(slX.value, 10),
+            y: parseInt(slY.value, 10),
+            scale: parseFloat(slScale.value),
+            rotate: parseInt(slRotate.value, 10)
+          };
+          StorageManager.saveGlassesCoords(this.avatar.glassesCoords);
+          this.avatar.applyRealGlassesTransform(this.avatar.currentEmotion);
+          this.audio.playEffect('happy_meow');
+          alert(`「${tab}」のメガネ位置をバッチリ保存したニャン！👓✨`);
+        };
+
+        // リセット
+        document.getElementById('btn-adjust-reset').onclick = () => {
+          const tab = this.state.activeAdjustTab;
+          const def = StorageManager.defaultGlassesCoords[tab] || { x: 0, y: 120, scale: 1.0, rotate: 0 };
+          this.avatar.glassesCoords[tab] = JSON.parse(JSON.stringify(def));
+          updateSlidersFromData(tab);
+        };
+      },
+
       _renderMemories() {
         const container = document.getElementById('memory-list-container');
         container.innerHTML = '';
@@ -3308,4 +3638,5 @@ ${memories.map(m => `・${m}`).join('\n')}
   </script>
 </body>
 </html>
+
 
