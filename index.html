@@ -1048,7 +1048,7 @@
           </div>
           <div class="guide-item">
             <strong>📍 Googleマップ＆厳選ニュース連携（おてつだい時）</strong>
-            お店を聞くと確実にGoogleマップや実在サイトが開き、ニュースを聞くとGoogle検索が実際に参照した実在記事の個別URLがそのまま開きます。
+            お店を聞くとGoogleマップや実在サイトが開き、ニュースを聞くとクロちゃんが話した話題に完全一致するニュース詳細記事へ直行できます。
           </div>
         </div>
       </div>
@@ -1077,13 +1077,13 @@
       </div>
 
       <div class="form-group">
-        <label>他に紹介するニュースの件数:</label>
+        <label>他に追加する注目ニュースの枠数:</label>
         <select id="news-count-select">
-          <option value="1">1件（クロちゃんのニュース ＋ 別の注目ニュース1件）</option>
-          <option value="2" selected>2件【標準】（クロちゃんのニュース ＋ 別の注目ニュース2件）</option>
-          <option value="3">3件（クロちゃんのニュース ＋ 別の注目ニュース3件）</option>
-          <option value="4">4件（クロちゃんのニュース ＋ 別の注目ニュース4件）</option>
-          <option value="5">5件（クロちゃんのニュース ＋ 別の注目ニュース5件）</option>
+          <option value="1">1枠（クロちゃんの話題 ＋ 別の注目ニュース1件）</option>
+          <option value="2" selected>2枠【標準】（クロちゃんの話題 ＋ 別の注目ニュース2件）</option>
+          <option value="3">3枠（クロちゃんの話題 ＋ 別の注目ニュース3件）</option>
+          <option value="4">4枠（クロちゃんの話題 ＋ 別の注目ニュース4件）</option>
+          <option value="5">5枠（クロちゃんの話題 ＋ 別の注目ニュース5件）</option>
         </select>
       </div>
 
@@ -1128,7 +1128,7 @@
     };
 
     /* ==========================================================================
-       ★ MODULE 1: 音声合成＆音声認識（40〜50文字完全発声・完全同期）
+       ★ MODULE 1: 音声合成＆音声認識（日付・月日完全自然読み上げ対応）
        ========================================================================== */
     class AudioSpeechEngine {
       constructor() {
@@ -1247,11 +1247,68 @@
         }
       }
 
+      /* ★ 改善：月日（10月28日等）の特殊暦読みを完全網羅したカナ変換 */
       _convertAllNumbersToKana(text) {
         if (!text) return "";
         let t = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
 
-        const numToKana = (n) => {
+        // 1. 年の変換 (例: 2025年 -> にせんにじゅうごねん)
+        t = t.replace(/(\d{4})\s*年/g, (m, yStr) => {
+          const y = parseInt(yStr, 10);
+          return `${numToKana(y)}ねん`;
+        });
+
+        // 2. 月の変換（「10月」を「じゅうがつ」に、「4月」を「しがつ」、「9月」を「くがつ」）
+        const monthMap = {
+          1: 'いちがつ', 2: 'にがつ', 3: 'さんがつ', 4: 'しがつ', 5: 'ごがつ', 6: 'ろくがつ',
+          7: 'しちがつ', 8: 'はちがつ', 9: 'くがつ', 10: 'じゅうがつ', 11: 'じゅういちがつ', 12: 'じゅうにがつ'
+        };
+        t = t.replace(/(\d{1,2})\s*月/g, (m, mStr) => {
+          const mNum = parseInt(mStr, 10);
+          return monthMap[mNum] ? monthMap[mNum] : `${numToKana(mNum)}がつ`;
+        });
+
+        // 3. 日の変換（1日〜31日の暦読み・和語読みを完全網羅）
+        const dayMap = {
+          1: 'ついたち', 2: 'ふつか', 3: 'みっか', 4: 'よっか', 5: 'いつか',
+          6: 'むいか', 7: 'なのか', 8: 'ようか', 9: 'ここのか', 10: 'とおか',
+          11: 'じゅういちにち', 12: 'じゅうににち', 13: 'じゅうさんにち', 14: 'じゅうよっか',
+          15: 'じゅうごにち', 16: 'じゅうろくにち', 17: 'じゅうしちにち', 18: 'じゅうはちにち',
+          19: 'じゅうくにち', 20: 'はつか', 21: 'にじゅういちにち', 22: 'にじゅうににち',
+          23: 'にじゅうさんにち', 24: 'にじゅうよっか', 25: 'にじゅうごにち', 26: 'にじゅうろくにち',
+          27: 'にじゅうしちにち', 28: 'にじゅうはちにち', 29: 'にじゅうくにち', 30: 'さんじゅうにち',
+          31: 'さんじゅういちにち'
+        };
+        t = t.replace(/(\d{1,2})\s*日/g, (m, dStr) => {
+          const dNum = parseInt(dStr, 10);
+          return dayMap[dNum] ? dayMap[dNum] : `${numToKana(dNum)}にち`;
+        });
+
+        // 4. 時刻の変換
+        const hourUnit = (h) => {
+          const map = {
+            0: 'れいじ', 1: 'いちじ', 2: 'にじ', 3: 'さんじ', 4: 'よじ', 5: 'ごじ',
+            6: 'ろくじ', 7: 'しちじ', 8: 'はちじ', 9: 'くじ', 10: 'じゅうじ',
+            11: 'じゅういちじ', 12: 'じゅうにじ', 13: 'じゅうさんじ', 14: 'じゅうよじ',
+            15: 'じゅうごじ', 16: 'じゅうろくじ', 17: 'じゅうしちじ', 18: 'じゅうはちじ',
+            19: 'じゅうくじ', 20: 'にじゅうじ', 21: 'にじゅういちじ', 22: 'にじゅうにじ',
+            23: 'にじゅうさんじ', 24: 'にじゅうよじ'
+          };
+          return map[h] || (numToKana(h) + 'じ');
+        };
+
+        const minuteUnit = (m) => {
+          if (m === 0) return 'ぜろふん';
+          const ones = ['', 'いっぷん', 'にふん', 'さんぷん', 'よんぷん', 'ごふん', 'ろっぷん', 'ななふん', 'はっぷん', 'きゅうふん', 'じゅっぷん'];
+          if (m <= 10) return ones[m];
+          const tens = Math.floor(m / 10);
+          const rem = m % 10;
+          const tensPrefix = (tens === 1 ? 'じゅう' : numToKana(tens) + 'じゅう');
+          if (rem === 0) return tensPrefix + 'っぷん';
+          return tensPrefix + ones[rem];
+        };
+
+        function numToKana(n) {
           if (n === 0) return 'ぜろ';
           const d = ['', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう'];
           const parse4 = (val) => {
@@ -1285,30 +1342,7 @@
             return (man === 1 ? 'いちまん' : parse4(man) + 'まん') + (rem > 0 ? parse4(rem) : '');
           }
           return parse4(n);
-        };
-
-        const hourUnit = (h) => {
-          const map = {
-            0: 'れいじ', 1: 'いちじ', 2: 'にじ', 3: 'さんじ', 4: 'よじ', 5: 'ごじ',
-            6: 'ろくじ', 7: 'しちじ', 8: 'はちじ', 9: 'くじ', 10: 'じゅうじ',
-            11: 'じゅういちじ', 12: 'じゅうにじ', 13: 'じゅうさんじ', 14: 'じゅうよじ',
-            15: 'じゅうごじ', 16: 'じゅうろくじ', 17: 'じゅうしちじ', 18: 'じゅうはちじ',
-            19: 'じゅうくじ', 20: 'にじゅうじ', 21: 'にじゅういちじ', 22: 'にじゅうにじ',
-            23: 'にじゅうさんじ', 24: 'にじゅうよじ'
-          };
-          return map[h] || (numToKana(h) + 'じ');
-        };
-
-        const minuteUnit = (m) => {
-          if (m === 0) return 'ぜろふん';
-          const ones = ['', 'いっぷん', 'にふん', 'さんぷん', 'よんぷん', 'ごふん', 'ろっぷん', 'ななふん', 'はっぷん', 'きゅうふん', 'じゅっぷん'];
-          if (m <= 10) return ones[m];
-          const tens = Math.floor(m / 10);
-          const rem = m % 10;
-          const tensPrefix = (tens === 1 ? 'じゅう' : numToKana(tens) + 'じゅう');
-          if (rem === 0) return tensPrefix + 'っぷん';
-          return tensPrefix + ones[rem];
-        };
+        }
 
         t = t.replace(/(\d{1,2}):(\d{1,2})/g, (m, hStr, mStr) => `${hourUnit(parseInt(hStr, 10))}${minuteUnit(parseInt(mStr, 10))}`);
         t = t.replace(/(\d{1,2})\s*時/g, (match, nStr) => hourUnit(parseInt(nStr, 10)));
@@ -1331,7 +1365,6 @@
       _extractSpeechTarget(text) {
         if (!text) return "";
         let t = text.trim();
-        // 55文字以内であればカットせずそのまま最後まで読み上げる
         if (t.length <= 55) return t;
 
         const segment = t.slice(0, 55);
@@ -1850,13 +1883,14 @@
     }
 
     /* ==========================================================================
-       ★ MODULE 5: 思考・AI対話エンジン（Grounding直接連携＆シンプルプロンプト）
+       ★ MODULE 5: 思考・AI対話エンジン（Grounding固定＆話題タグ完全分離）
        ========================================================================== */
     class AIThoughtEngine {
       constructor() {
         this.apiKey = localStorage.getItem('kuro_api_key') || '';
         this.activeLiteModel = "gemini-2.0-flash-lite";
-        this.activeProModel = "gemini-1.5-pro";
+        this.activeSearchModel = "gemini-2.0-flash"; // 検索Grounding対応の固定主力モデル
+        this.activeProModel = "gemini-2.0-flash";
         this.proUsedToday = 0;
         this.currentAbortController = null;
         this._initProQuota();
@@ -1898,8 +1932,10 @@
             .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
             .map(m => m.name.replace(/^models\//, ''));
 
-          this.activeLiteModel = models.find(m => /2\.0-flash-lite|flash.*lite/i.test(m)) || "gemini-1.5-flash";
-          this.activeProModel = models.find(m => /3\.8|1\.5-pro|pro/i.test(m)) || "gemini-1.5-pro";
+          this.activeLiteModel = models.find(m => /2\.0-flash-lite/i.test(m)) || "gemini-1.5-flash";
+          this.activeSearchModel = models.find(m => /2\.0-flash$/i.test(m)) || models.find(m => /flash/i.test(m)) || "gemini-2.0-flash";
+          this.activeProModel = models.find(m => /3\.8|1\.5-pro|pro/i.test(m)) || "gemini-2.0-flash";
+          Logger.log(`[Modelスキャン] Lite:${this.activeLiteModel} / Search:${this.activeSearchModel} / Pro:${this.activeProModel}`, "info");
         } catch(e) {}
       }
 
@@ -1911,7 +1947,7 @@
         return hardKeywords.some(k => text.includes(k));
       }
 
-      /* ★ 独自タグ指示を全廃し、Google検索を100%確実に発動させるプロンプト */
+      /* ★ 改善：隠しタグ <!--TOPIC:〇〇--> を指示するプロンプト */
       buildSystemPrompt(character, memories, isDiaryRequest, isAssistantMode) {
         const timeInfo = TimeProvider.getCurrentInfo();
         const detailedLoc = LocationProvider.detailedAddress;
@@ -1933,7 +1969,7 @@ ${memories.map(m => `・${m}`).join('\n')}
 - 語尾は「〜ニャ」「〜ニャン♪」「〜だニャ！」「〜なのニャ」。
 - 【前世は大発明家】：テクノロジーや発明品の話題になると、たまに「前世の自分の大発明」をクスッと自慢しちゃう可愛いおしゃまガールです。
 - 夜更かししがちなおやびんを「早く寝てニャ！」と心配してお世話するお姉さん気取りです。
-- ★お返事は【必ず40〜50文字以内（1〜2文）】で完結させてください。音声で最後まで一気に読み上げられる長さが必須です。長文は絶対に禁止です。
+- ★お返事のセリフは【必ず40〜50文字以内（1〜2文）】で完結させてください。音声で最後まで一気に読み上げられる長さが必須です。長文は絶対に禁止です。
 - 文字数カウントや注釈・説明文（例：「（〇文字）」など）は絶対に出力に含めないでください。
 `;
 
@@ -1944,9 +1980,13 @@ ${memories.map(m => `・${m}`).join('\n')}
         if (isAssistantMode) {
           return basePrompt + `
 【★おてつだいモード発動中！】
-- あなたは前世の天才頭脳を発揮し、おやびんの頼れる相棒として実在するお店や最新ニュースを調査して答えます。
-- Google検索ツールを必ず使い、現在地周辺（${detailedLoc}）の実在するお店、または最新ニュースを調査してください。架空の創作は厳禁です。
-- セリフでは、実在するイチオシ店舗やニューストピックを必ず【「正式名称」】と鍵括弧をつけて短く可愛く紹介してください（40〜50文字以内）。
+- あなたは前世の天才頭脳を発揮し、おやびんの頼れる相棒として実在するお店や最新ニュースをGoogle検索ツールで調査して答えます。
+- 架空の創作や古い知識での回答は厳禁です。必ず検索結果に基づき回答してください。
+- ★重要【話題タグの出力】：
+  回答の末尾に、紹介する話題の検索用キーワードを必ず <!--TOPIC:話題名または店名--> という隠しタグ形式で1つだけ付加してください。
+  （例：<!--TOPIC:宇宙船帰還--> や <!--TOPIC:麺処丸め 武蔵村山-->）
+  ※このタグはシステム内部でのみ参照され、文字数制限（40〜50文字）には含まれません。
+- セリフ本文では、イチオシ店舗やニューストピックを短く愛らしく紹介してください（40〜50文字以内）。
 `;
         } else {
           return basePrompt + `
@@ -1964,9 +2004,13 @@ ${memories.map(m => `・${m}`).join('\n')}
         const isDiary = /(?:今日|きょう)?(?:の)?(?:日記|にっき).*(?:書いて|教えて|見せて)/.test(promptText);
         const systemPrompt = this.buildSystemPrompt(character, memories, isDiary, isAssistantMode);
 
-        const candidates = isPro 
-          ? [this.activeProModel, "gemini-1.5-pro", "gemini-2.0-flash"]
-          : [this.activeLiteModel, "gemini-1.5-flash", "gemini-2.0-flash-lite"];
+        // 検索が必要なおてつだいモード時は SearchGrounding が安定するモデルを選択
+        let targetModel = this.activeLiteModel;
+        if (isPro) {
+          targetModel = this.activeProModel;
+        } else if (isAssistantMode) {
+          targetModel = this.activeSearchModel;
+        }
 
         const historyToSend = history.slice(isPro ? -14 : -6);
         const contents = [];
@@ -1989,58 +2033,97 @@ ${memories.map(m => `・${m}`).join('\n')}
           contents.push({ role: 'user', parts: [{ text: promptText }] });
         }
 
-        for (const model of candidates) {
-          if (!model) continue;
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
-          
-          const payloads = [];
-          if (isAssistantMode) {
-            payloads.push({ system_instruction: { parts: [{ text: systemPrompt }] }, contents, tools: [{ googleSearch: {} }] });
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${this.apiKey}`;
+        
+        const bodyPayload = {
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents
+        };
+
+        // おてつだいモード時は Google検索ツールを適用
+        if (isAssistantMode) {
+          bodyPayload.tools = [{ google_search: {} }];
+        }
+
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyPayload),
+            signal: this.currentAbortController.signal
+          });
+
+          if (!res.ok) {
+            const errJson = await res.json().catch(() => ({}));
+            Logger.log(`[AI APIエラー] ${res.status}: ${JSON.stringify(errJson)}`, "error");
+            return { success: false, text: null, error: `HTTP_${res.status}` };
           }
-          payloads.push({ system_instruction: { parts: [{ text: systemPrompt }] }, contents });
 
-          for (const bodyPayload of payloads) {
-            try {
-              const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(bodyPayload),
-                signal: this.currentAbortController.signal
-              });
+          const data = await res.json();
+          const cand = data.candidates?.[0];
+          const rawText = cand?.content?.parts?.[0]?.text;
 
-              if (res.ok) {
-                const data = await res.json();
-                const cand = data.candidates?.[0];
-                const text = cand?.content?.parts?.[0]?.text;
+          if (!rawText) {
+            return { success: false, text: null };
+          }
 
-                if (text) {
-                  // ★ Google Search Groundingから実在する個別WebページURLを安全に完全抽出
-                  const groundingWebs = [];
-                  const chunks = cand.groundingMetadata?.groundingChunks || [];
-                  chunks.forEach(c => {
-                    const uri = c.web?.uri || c.uri;
-                    const title = c.web?.title || c.title;
-                    if (uri && title) {
-                      groundingWebs.push({ uri, title });
-                    }
-                  });
+          // ★ ①話題タグの抽出と、セリフからの完全除去
+          let topicTag = "";
+          const topicMatch = rawText.match(/<!--TOPIC:(.*?)-->/i);
+          if (topicMatch && topicMatch[1]) {
+            topicTag = topicMatch[1].trim();
+          }
 
-                  let clean = text
-                    .replace(/<!--[\s\S]*?-->/g, '')
-                    .replace(/[（\(]\s*約?\d+\s*文字\s*[）\)]/g, '')
-                    .replace(/[*#_~`]/g, '')
-                    .trim();
+          let cleanText = rawText
+            .replace(/<!--[\s\S]*?-->/g, '')
+            .replace(/[（\(]\s*約?\d+\s*文字\s*[）\)]/g, '')
+            .replace(/[*#_~`]/g, '')
+            .trim();
 
-                  if (isDiary) StorageManager.saveDiary(clean);
-                  return { success: true, text: clean, modelUsed: model, groundingWebs };
+          // ★ ② Groundingメタデータの精密抽出
+          const groundingMetadata = cand.groundingMetadata || {};
+          const rawChunks = groundingMetadata.groundingChunks || [];
+          const groundingSupports = groundingMetadata.groundingSupports || [];
+
+          // 全chunksのフォーマット
+          const allChunks = rawChunks.map(c => ({
+            uri: c.web?.uri || c.uri || '',
+            title: c.web?.title || c.title || ''
+          })).filter(c => c.uri);
+
+          // groundingSupports を使って、発話テキストに直接紐付いたメインチャンクを特定
+          let mainChunk = null;
+          if (groundingSupports.length > 0 && allChunks.length > 0) {
+            for (const sup of groundingSupports) {
+              if (sup.groundingChunkIndices && sup.groundingChunkIndices.length > 0) {
+                const targetIdx = sup.groundingChunkIndices[0];
+                if (allChunks[targetIdx]) {
+                  mainChunk = allChunks[targetIdx];
+                  break;
                 }
               }
-            } catch(e) {
-              if (e.name === 'AbortError') return { success: false, aborted: true };
             }
           }
+          if (!mainChunk && allChunks.length > 0) {
+            mainChunk = allChunks[0];
+          }
+
+          if (isDiary) StorageManager.saveDiary(cleanText);
+
+          return {
+            success: true,
+            text: cleanText,
+            topicTag,
+            modelUsed: targetModel,
+            mainChunk,
+            allChunks
+          };
+
+        } catch (e) {
+          if (e.name === 'AbortError') return { success: false, aborted: true };
+          Logger.log(`[AI通信例外] ${e.message}`, "error");
+          return { success: false, text: null };
         }
-        return { success: false, text: null };
       }
     }
 
@@ -2274,12 +2357,15 @@ ${memories.map(m => `・${m}`).join('\n')}
         StorageManager.appendDailyLog('model', text);
       },
 
-      /* ★ 改善：Grounding実在検索データから確実にカードを組み立てる */
-      _generateSmartCards(userText, replyText, groundingWebs = []) {
+      /* ★ 改善：ニュースリンク浄化・話題一致・追加枠制御 */
+      _generateSmartCards(userText, replyText, aiResult) {
         if (!this.state.isAssistantMode) return [];
 
         const cards = [];
         const area = LocationProvider.cityArea || "";
+        const topic = aiResult.topicTag || "";
+        const mainChunk = aiResult.mainChunk;
+        const allChunks = aiResult.allChunks || [];
 
         // 1. お店・スポット判定
         const spotKeywords = [
@@ -2291,19 +2377,13 @@ ${memories.map(m => `・${m}`).join('\n')}
         
         if (isSpot) {
           const matchedGenre = spotKeywords.find(k => userText.includes(k)) || "グルメ";
+          let shopName = topic;
 
-          // セリフ内の【「店名」】を最優先抽出
-          let shopName = "";
-          const m = replyText.match(/[「『]([^」』]+)[」』]/);
-          if (m) shopName = m[1].trim();
-
-          // セリフから取れなかった場合、検索Webタイトルから店名らしき候補を取得
-          if (!shopName && groundingWebs.length > 0) {
-            const rawTitle = groundingWebs[0].title;
-            shopName = rawTitle.split(/[-–|/]/)[0].replace(/食べログ|Retty|ホットペッパー|公式サイト/g, '').trim();
+          if (!shopName) {
+            const m = replyText.match(/[「『]([^」』]+)[」』]/);
+            if (m) shopName = m[1].trim();
           }
 
-          // A. イチオシ店舗のGoogleマップURL（店名 ＋ 市区町村で確実にピンが立つ）
           if (shopName) {
             cards.push({
               type: 'map-primary',
@@ -2313,19 +2393,15 @@ ${memories.map(m => `・${m}`).join('\n')}
             });
           }
 
-          // B. Google検索で見つかった実在の店舗情報Webサイト（食べログ、公式等）
-          if (groundingWebs.length > 0) {
-            groundingWebs.slice(0, 2).forEach(w => {
-              cards.push({
-                type: 'web-primary',
-                icon: '🌐',
-                title: `${w.title}`,
-                url: w.uri
-              });
+          if (mainChunk && mainChunk.uri) {
+            cards.push({
+              type: 'web-primary',
+              icon: '🌐',
+              title: mainChunk.title || `${shopName} の詳細情報`,
+              url: mainChunk.uri
             });
           }
 
-          // C. 現在地周辺の一覧マップ
           cards.push({
             type: 'map-all',
             icon: '🗺️',
@@ -2334,38 +2410,69 @@ ${memories.map(m => `・${m}`).join('\n')}
           });
         }
 
-        // 2. ニュース判定（Google検索が実際に参照した実在の個別記事URLをそのままカード化）
+        // 2. ニュース判定（話題とリンクの完全一致 ＋ リンク浄化 ＋ 追加枠）
         const isNews = /(?:ニュース|速報|話題|出来事|トレンド)/.test(userText);
         if (isNews) {
           const desiredOtherCount = parseInt(localStorage.getItem('kuro_news_count') || "2", 10);
+          const effectiveTopic = topic || (replyText.match(/[「『]([^」』]+)[」』]/)?.[1]) || "最新ニュース";
 
-          if (groundingWebs.length > 0) {
-            // A. クロちゃんが選んだ本命の実在個別記事直行URL
-            const topNews = groundingWebs[0];
+          // URLの妥当性チェック関数（中継URLやドメイン直下を検知）
+          const isDirectArticleUrl = (uri) => {
+            if (!uri || !uri.startsWith('http')) return false;
+            if (uri.includes('vertexaisearch') || uri.includes('google.com/url')) return false;
+            try {
+              const u = new URL(uri);
+              return u.pathname && u.pathname.length > 3; // ドメイン直下でなくパスがあること
+            } catch(e) { return false; }
+          };
+
+          const isDomainOnlyTitle = (title) => {
+            if (!title) return true;
+            return /\.(jp|com|net|org|co\.jp|ne\.jp)$/i.test(title.trim());
+          };
+
+          // A. メインの話題カード（話した内容に100%一致）
+          if (mainChunk && isDirectArticleUrl(mainChunk.uri) && !isDomainOnlyTitle(mainChunk.title)) {
             cards.push({
               type: 'news-primary',
               icon: '📰',
-              title: `【実在記事直行】${topNews.title}`,
-              url: topNews.uri
+              title: `【詳細記事】${mainChunk.title}`,
+              url: mainChunk.uri
             });
+          } else {
+            // 中継リンクやドメインだけの場合は、話題キーワードによるダイレクトニュース検索へフォールバック
+            cards.push({
+              type: 'news-primary',
+              icon: '📰',
+              title: `【記事を検索】「${effectiveTopic}」のニュース一覧`,
+              url: `https://news.google.com/search?q=${encodeURIComponent(effectiveTopic)}&hl=ja&gl=JP&ceid=JP:ja`
+            });
+          }
 
-            // B. Google検索で見つかった別の実在個別記事URL（設定件数分）
-            for (let i = 1; i < groundingWebs.length && i <= desiredOtherCount; i++) {
-              const other = groundingWebs[i];
+          // B. 追加枠（設定された件数分、他の注目ニュースカードを追加）
+          let addedCount = 0;
+          for (const chunk of allChunks) {
+            if (addedCount >= desiredOtherCount) break;
+            if (mainChunk && chunk.uri === mainChunk.uri) continue; // メインと同一ならスキップ
+
+            if (isDirectArticleUrl(chunk.uri) && !isDomainOnlyTitle(chunk.title)) {
               cards.push({
                 type: 'news-sub',
                 icon: '💡',
-                title: `${other.title}`,
-                url: other.uri
+                title: `${chunk.title}`,
+                url: chunk.uri
               });
+              addedCount++;
             }
-          } else {
-            // 万一グラウンディングが取れなかった場合の安全な主要ポータル
+          }
+
+          // 追加枠が空だった場合のYahoo検索フォールバック
+          if (addedCount === 0 && effectiveTopic) {
             cards.push({
-              type: 'news-primary',
-              icon: '🏆',
-              title: `Yahoo!ニュース 主要トピックス一覧`,
-              url: `https://news.yahoo.co.jp/`
+              type: 'news-sub',
+              icon: '💡',
+              title: `Yahoo!で「${effectiveTopic}」を調べる`,
+              url: `https://search.yahoo.co.jp/news/search?p=${encodeURIComponent(effectiveTopic)}`
             });
           }
         }
@@ -2570,14 +2677,19 @@ ${memories.map(m => `・${m}`).join('\n')}
           this.history.push({ role: 'model', text: result.text });
           StorageManager.saveHistory(this.history);
 
-          const cards = this._generateSmartCards(promptText, result.text, result.groundingWebs);
+          const cards = this._generateSmartCards(promptText, result.text, result);
           this._playCatSpeech(result.text, cards);
         } else {
           this.removeThinking();
           this.state.isThinking = false;
           this.avatar.setEmotion('idle');
           this._updateModelBadge(false, false);
-          const fallback = "みゃう？うまく聞き取れなかったニャ。もう一度お話ししてニャン🐾";
+
+          let fallback = "みゃう？うまく聞き取れなかったニャ。もう一度お話ししてニャン🐾";
+          if (result.error) {
+            fallback = "みゃ？検索が混み合っているみたいニャ。もう一度聞いてほしいニャン🐾";
+          }
+
           this.audio.speak(fallback, CHARACTER_CONFIG.voiceSpeakerId, () => {
             this.renderBubble('model', fallback);
           }, () => {
@@ -2936,3 +3048,5 @@ ${memories.map(m => `・${m}`).join('\n')}
   </script>
 </body>
 </html>
+
+
