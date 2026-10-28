@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -1167,7 +1168,6 @@
         this.silenceTimeout = null;
         this.watchdogInterval = null;
 
-        // 自声エコー防止用
         this.recentSpokenTexts = [];
         this.lastSpeechEndTime = 0;
 
@@ -1945,14 +1945,14 @@
     }
 
     /* ==========================================================================
-       ★ MODULE 5: 思考・AI対話エンジン（実在稼働モデルに完全回帰＆429自動回復）
+       ★ MODULE 5: 思考・AI対話エンジン（実在モデル完全同期＆404/429多重自動リカバリー）
        ========================================================================== */
     class AIThoughtEngine {
       constructor() {
         this.apiKey = localStorage.getItem('kuro_api_key') || '';
-        // 過去に確実に安定稼働していた実績No.1の公式実在モデル
-        this.activeLiteModel = "gemini-1.5-flash"; // 3.5 Lite枠の内部エンジン
-        this.activeProModel = "gemini-1.5-pro";    // 3.8枠の内部エンジン
+        this.availableModels = [];
+        this.activeLiteModel = null;
+        this.activeProModel = null;
         this.proUsedToday = 0;
         this.currentAbortController = null;
         this._initProQuota();
@@ -1984,41 +1984,64 @@
         }
       }
 
-      /* 確実に実在するモデルのみをスキャン選定（架空のモデル名は除外） */
+      /* ★ 核心：Google APIキーで「現実に使える実在モデル」を100%同期取得 */
       async scanModels() {
-        if (!this.apiKey) return;
+        if (!this.apiKey) {
+          Logger.log("[APIキー未設定] 歯車ボタンからAPIキーを入力してください", "warn");
+          return false;
+        }
+
         try {
           const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${this.apiKey}`);
           if (!res.ok) {
-            Logger.log(`[モデル確認] ステータス: ${res.status}（既定の実績モデルを使用）`, "warn");
-            return;
+            const errJson = await res.json().catch(() => ({}));
+            Logger.log(`[APIキー確認失敗] ${res.status}: ${errJson.error?.message || '不明なエラー'}`, "error");
+            return false;
           }
+
           const data = await res.json();
-          const validModels = (data.models || [])
+          // generateContent をサポートする実在モデルのみを抽出
+          const valid = (data.models || [])
             .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
             .map(m => m.name.replace(/^models\//, ''));
 
-          // 1. Lite（通常・検索枠：制限に強く実績最強の現行実在モデル）
-          const litePreferences = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
-          for (const cand of litePreferences) {
-            if (validModels.includes(cand)) {
-              this.activeLiteModel = cand;
-              break;
-            }
+          this.availableModels = valid;
+          Logger.log(`[Google実在モデル検出: ${valid.length}件] ${valid.slice(0, 5).join(', ')}...`, "info");
+
+          if (valid.length === 0) {
+            Logger.log("[モデルスキャン] generateContent対応モデルが0件です", "error");
+            return false;
           }
 
-          // 2. Pro（難問・本気枠：最高知能の実在モデル）
-          const proPreferences = ["gemini-1.5-pro", "gemini-2.0-flash", "gemini-2.0-pro"];
-          for (const cand of proPreferences) {
-            if (validModels.includes(cand)) {
-              this.activeProModel = cand;
-              break;
-            }
-          }
+          // 1. Lite枠（通常・おてつだい検索用：制限に強い実在高速モデルから順に照合）
+          const litePreferences = [
+            "gemini-2.0-flash",
+            "gemini-2.0-flash-lite",
+            "gemini-2.0-flash-lite-preview-02-05",
+            "gemini-1.5-flash-latest",
+            "gemini-1.5-flash-002",
+            "gemini-1.5-flash",
+            "gemini-2.5-flash"
+          ];
+          this.activeLiteModel = litePreferences.find(m => valid.includes(m)) || valid.find(m => m.includes('flash')) || valid[0];
 
-          Logger.log(`[稼働モデル確定] 3.5Lite枠: ${this.activeLiteModel} / 3.8枠: ${this.activeProModel}`, "success");
-        } catch(e) {
-          Logger.log(`[モデル確認スキップ] 既定の実績モデルで動作します: ${this.activeLiteModel}`, "info");
+          // 2. Pro枠（難問・本気モード用：高知能実在モデルから順に照合）
+          const proPreferences = [
+            "gemini-2.0-flash",
+            "gemini-1.5-pro-latest",
+            "gemini-1.5-pro-002",
+            "gemini-1.5-pro",
+            "gemini-2.0-pro-exp",
+            "gemini-2.5-pro"
+          ];
+          this.activeProModel = proPreferences.find(m => valid.includes(m)) || valid.find(m => m.includes('pro')) || this.activeLiteModel;
+
+          Logger.log(`[モデル完全同期] 3.5Lite枠➔『${this.activeLiteModel}』 / 3.8枠➔『${this.activeProModel}』`, "success");
+          return true;
+
+        } catch (e) {
+          Logger.log(`[モデルスキャン例外] ${e.message}`, "error");
+          return false;
         }
       }
 
@@ -2079,15 +2102,19 @@ ${memories.map(m => `・${m}`).join('\n')}
         }
       }
 
-      /* 429・400エラー時に自動フォールバックする耐障害生成メソッド */
+      /* ★ 404・429を自動で復旧する耐障害生成ループ */
       async generateReply(promptText, isPro, character, memories, history, isAssistantMode) {
         this.cancelCurrentRequest();
         this.currentAbortController = new AbortController();
 
+        // モデル未特定時は即座に同期スキャン
+        if (!this.activeLiteModel) {
+          await this.scanModels();
+        }
+
         const isDiary = /(?:今日|きょう)?(?:の)?(?:日記|にっき).*(?:書いて|教えて|見せて)/.test(promptText);
         const systemPrompt = this.buildSystemPrompt(character, memories, isDiary, isAssistantMode);
 
-        const targetModel = isPro ? this.activeProModel : this.activeLiteModel;
         const historyToSend = history.slice(isPro ? -14 : -6);
         const contents = [];
         let lastRole = null;
@@ -2109,105 +2136,108 @@ ${memories.map(m => `・${m}`).join('\n')}
           contents.push({ role: 'user', parts: [{ text: promptText }] });
         }
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${this.apiKey}`;
+        // 試行候補モデルの決定（優先モデル ＋ 代替実在モデル）
+        let primaryModel = isPro ? this.activeProModel : this.activeLiteModel;
+        if (!primaryModel && this.availableModels.length > 0) primaryModel = this.availableModels[0];
 
-        // 試行関数（検索ツールの有無を切り替えて安全に再試行）
-        const doFetch = async (enableSearchTool) => {
+        // 試行計画：[ { model, useSearch } ]
+        const attempts = [
+          { model: primaryModel, useSearch: isAssistantMode }
+        ];
+
+        // 検索失敗用のフェイルセーフ
+        if (isAssistantMode) {
+          attempts.push({ model: primaryModel, useSearch: false });
+        }
+
+        // リスト内の他モデルでのバックアップ
+        if (this.availableModels.length > 1) {
+          const fallbackModel = this.availableModels.find(m => m !== primaryModel) || this.availableModels[0];
+          attempts.push({ model: fallbackModel, useSearch: false });
+        }
+
+        let lastErrorStatus = null;
+
+        for (let i = 0; i < attempts.length; i++) {
+          const attempt = attempts[i];
+          const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${attempt.model}:generateContent?key=${this.apiKey}`;
+
           const bodyPayload = {
             system_instruction: { parts: [{ text: systemPrompt }] },
             contents
           };
-          if (enableSearchTool) {
-            // 正式なキャメルケース構文
+
+          if (attempt.useSearch) {
             bodyPayload.tools = [{ googleSearch: {} }];
           }
 
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyPayload),
-            signal: this.currentAbortController.signal
-          });
-          return res;
-        };
+          try {
+            Logger.log(`[AIリクエスト ${i+1}/${attempts.length}] モデル: ${attempt.model} (検索:${attempt.useSearch})`, "info");
 
-        try {
-          let res = await doFetch(isAssistantMode);
+            const res = await fetch(targetUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(bodyPayload),
+              signal: this.currentAbortController.signal
+            });
 
-          // ★ 429（リクエスト過多）または 400（ツール非互換）が発生した場合の自動リカバリー
-          if (res.status === 429 || (!res.ok && isAssistantMode)) {
-            Logger.log(`[APIステータス ${res.status}] 検索ツールなしで自動フォールバック再試行...`, "warn");
-            await new Promise(r => setTimeout(r, 1200)); // 1.2秒待機してバーストを緩和
-            res = await doFetch(false); // 検索ツールを外して軽量リトライ
-          }
+            if (res.ok) {
+              const data = await res.json();
+              const cand = data.candidates?.[0];
+              const rawText = cand?.content?.parts?.[0]?.text;
 
-          if (!res.ok) {
-            const errJson = await res.json().catch(() => ({}));
-            Logger.log(`[AI APIエラー] ${res.status}: ${JSON.stringify(errJson)}`, "error");
-            return { success: false, text: null, error: `HTTP_${res.status}` };
-          }
+              if (rawText) {
+                let topicTag = "";
+                const topicMatch = rawText.match(/<!--TOPIC:(.*?)-->/i);
+                if (topicMatch && topicMatch[1]) topicTag = topicMatch[1].trim();
 
-          const data = await res.json();
-          const cand = data.candidates?.[0];
-          const rawText = cand?.content?.parts?.[0]?.text;
+                let cleanText = rawText
+                  .replace(/<!--[\s\S]*?-->/g, '')
+                  .replace(/[（\(]\s*約?\d+\s*文字\s*[）\)]/g, '')
+                  .replace(/[*#_~`]/g, '')
+                  .trim();
 
-          if (!rawText) return { success: false, text: null };
+                const groundingMetadata = cand.groundingMetadata || {};
+                const rawChunks = groundingMetadata.groundingChunks || [];
+                const allChunks = rawChunks.map(c => ({
+                  uri: c.web?.uri || c.uri || '',
+                  title: c.web?.title || c.title || ''
+                })).filter(c => c.uri);
 
-          // 話題タグの抽出
-          let topicTag = "";
-          const topicMatch = rawText.match(/<!--TOPIC:(.*?)-->/i);
-          if (topicMatch && topicMatch[1]) {
-            topicTag = topicMatch[1].trim();
-          }
+                let mainChunk = allChunks[0] || null;
+                if (isDiary) StorageManager.saveDiary(cleanText);
 
-          let cleanText = rawText
-            .replace(/<!--[\s\S]*?-->/g, '')
-            .replace(/[（\(]\s*約?\d+\s*文字\s*[）\)]/g, '')
-            .replace(/[*#_~`]/g, '')
-            .trim();
+                Logger.log(`[AI通信成功] 応答受信完了 (${cleanText.length}文字)`, "success");
 
-          // Groundingメタデータの抽出
-          const groundingMetadata = cand.groundingMetadata || {};
-          const rawChunks = groundingMetadata.groundingChunks || [];
-          const groundingSupports = groundingMetadata.groundingSupports || [];
-
-          const allChunks = rawChunks.map(c => ({
-            uri: c.web?.uri || c.uri || '',
-            title: c.web?.title || c.title || ''
-          })).filter(c => c.uri);
-
-          let mainChunk = null;
-          if (groundingSupports.length > 0 && allChunks.length > 0) {
-            for (const sup of groundingSupports) {
-              if (sup.groundingChunkIndices && sup.groundingChunkIndices.length > 0) {
-                const targetIdx = sup.groundingChunkIndices[0];
-                if (allChunks[targetIdx]) {
-                  mainChunk = allChunks[targetIdx];
-                  break;
-                }
+                return {
+                  success: true,
+                  text: cleanText,
+                  topicTag,
+                  modelUsed: attempt.model,
+                  mainChunk,
+                  allChunks
+                };
               }
             }
+
+            // エラー時のハンドリング
+            lastErrorStatus = res.status;
+            const errJson = await res.json().catch(() => ({}));
+            Logger.log(`[試行 ${i+1} 失敗] ステータス ${res.status}: ${JSON.stringify(errJson.error?.message || errJson)}`, "warn");
+
+            // 429の場合は少し待機してバーストを避ける
+            if (res.status === 429) {
+              await new Promise(r => setTimeout(r, 1500));
+            }
+
+          } catch (fetchErr) {
+            if (fetchErr.name === 'AbortError') return { success: false, aborted: true };
+            Logger.log(`[通信例外] ${fetchErr.message}`, "warn");
           }
-          if (!mainChunk && allChunks.length > 0) {
-            mainChunk = allChunks[0];
-          }
-
-          if (isDiary) StorageManager.saveDiary(cleanText);
-
-          return {
-            success: true,
-            text: cleanText,
-            topicTag,
-            modelUsed: targetModel,
-            mainChunk,
-            allChunks
-          };
-
-        } catch (e) {
-          if (e.name === 'AbortError') return { success: false, aborted: true };
-          Logger.log(`[AI通信例外] ${e.message}`, "error");
-          return { success: false, text: null };
         }
+
+        // 全ての試行が失敗した場合
+        return { success: false, text: null, error: `HTTP_${lastErrorStatus || 'FAIL'}` };
       }
     }
 
@@ -2243,7 +2273,7 @@ ${memories.map(m => `・${m}`).join('\n')}
       state: {
         isRunning: true,
         isThinking: false,
-        isProcessingInput: false, // 429二重送信防止用フラグ
+        isProcessingInput: false,
         isAssistantMode: false,
         pending38Prompt: null,
         isWaitingForMemory: false,
@@ -2258,7 +2288,7 @@ ${memories.map(m => `・${m}`).join('\n')}
       history: [],
       activeUserRow: null,
 
-      init() {
+      async init() {
         this.avatar = new CatAvatarRenderer();
         this.memories = StorageManager.loadMemories(CHARACTER_CONFIG.defaultMemories);
         this.history = StorageManager.loadHistory();
@@ -2274,7 +2304,9 @@ ${memories.map(m => `・${m}`).join('\n')}
         this._updateModelBadge();
 
         LocationProvider.initWatcher();
-        this.ai.scanModels();
+
+        // 起動時に実在モデルを確実にスキャン同期
+        await this.ai.scanModels();
 
         const savedNewsCount = localStorage.getItem('kuro_news_count') || "2";
         const savedSpotCount = localStorage.getItem('kuro_spot_count') || "2";
@@ -2334,7 +2366,7 @@ ${memories.map(m => `・${m}`).join('\n')}
         };
 
         this.audio.onSpeechFinal = (finalText) => {
-          if (this.state.isProcessingInput) return; // 二重送信ガード
+          if (this.state.isProcessingInput) return;
           this.state.isProcessingInput = true;
 
           document.body.classList.remove('is-hearing');
@@ -2439,7 +2471,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           () => {
             this.avatar.setEmotion('idle');
             this.state.isThinking = false;
-            this.state.isProcessingInput = false; // ロック解除
+            this.state.isProcessingInput = false;
             this._updateModelBadge(false, false);
             document.getElementById('status-text').textContent = this.state.isAssistantMode ? "👓 お調べするニャ！" : "👂 聴いてるニャ♪";
             if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 800);
@@ -2623,7 +2655,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           return;
         }
 
-        // 日常・おてつだい検索はすべて 3.5 Lite で実行
+        // 通常・おてつだいは 3.5 Lite で実行
         this.executeThought(text, false);
       },
 
@@ -3175,4 +3207,5 @@ ${memories.map(m => `・${m}`).join('\n')}
   </script>
 </body>
 </html>
+
 
