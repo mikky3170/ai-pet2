@@ -274,7 +274,6 @@
     }
     .link-action-card:active { transform: scale(0.97); }
     .link-action-card.map-primary-card { border-color: #86efac; background: #f0fdf4; font-weight: 800; }
-    .link-action-card.map-sub-card { border-color: #cbd5e1; background: #f8fafc; }
     .link-action-card.map-all-card { border-color: #fed7aa; background: #fff7ed; }
     .link-action-card.news-primary-card { border-color: #fecaca; background: #fef2f2; font-weight: 800; }
     .link-action-card.news-sub-card { border-color: #bae6fd; background: #f0f9ff; }
@@ -1045,11 +1044,11 @@
         <div class="guide-content">
           <div class="guide-item">
             <strong>🐾 なかよし / 👓 おてつだい モード</strong>
-            下のボタンで切り替えられます。「なかよし」は日常の猫らしい雑談、「おてつだい」は現在地周辺の実在するお店や最新ニュースを賢く調べて教えてくれます。
+            下のボタンで切り替えられます。「なかよし」は日常の愛らしい雑談、「おてつだい」は現在地周辺の実在するお店や最新ニュースをGoogle検索して教えてくれます。
           </div>
           <div class="guide-item">
             <strong>📍 Googleマップ＆厳選ニュース連携（おてつだい時）</strong>
-            お店を聞くと詳細住所付きでGoogleマップが確実に開き、ニュースを聞くと実際に参照した本物の個別記事URLがそのまま開きます。
+            お店を聞くと確実にGoogleマップや実在サイトが開き、ニュースを聞くとGoogle検索が実際に参照した実在記事の個別URLがそのまま開きます。
           </div>
         </div>
       </div>
@@ -1085,17 +1084,6 @@
           <option value="3">3件（クロちゃんのニュース ＋ 別の注目ニュース3件）</option>
           <option value="4">4件（クロちゃんのニュース ＋ 別の注目ニュース4件）</option>
           <option value="5">5件（クロちゃんのニュース ＋ 別の注目ニュース5件）</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label>お店・スポットの候補件数:</label>
-        <select id="spots-count-select">
-          <option value="1">1件（クロちゃんのイチオシ店のみ）</option>
-          <option value="2">2件（イチオシ店 ＋ 候補1件）</option>
-          <option value="3" selected>3件【標準】（イチオシ店 ＋ 候補2件）</option>
-          <option value="4">4件（イチオシ店 ＋ 候補3件）</option>
-          <option value="5">5件（イチオシ店 ＋ 候補4件）</option>
         </select>
       </div>
 
@@ -1343,7 +1331,7 @@
       _extractSpeechTarget(text) {
         if (!text) return "";
         let t = text.trim();
-        // 55文字以内であればそのまま最後まで読み上げる
+        // 55文字以内であればカットせずそのまま最後まで読み上げる
         if (t.length <= 55) return t;
 
         const segment = t.slice(0, 55);
@@ -1862,7 +1850,7 @@
     }
 
     /* ==========================================================================
-       ★ MODULE 5: 思考・AI対話エンジン（Grounding実在URL抽出＆厳格プロンプト）
+       ★ MODULE 5: 思考・AI対話エンジン（Grounding直接連携＆シンプルプロンプト）
        ========================================================================== */
     class AIThoughtEngine {
       constructor() {
@@ -1923,30 +1911,30 @@
         return hardKeywords.some(k => text.includes(k));
       }
 
+      /* ★ 独自タグ指示を全廃し、Google検索を100%確実に発動させるプロンプト */
       buildSystemPrompt(character, memories, isDiaryRequest, isAssistantMode) {
         const timeInfo = TimeProvider.getCurrentInfo();
         const detailedLoc = LocationProvider.detailedAddress;
         const lat = LocationProvider.lat || "";
         const lon = LocationProvider.lon || "";
-        const spotsLimit = localStorage.getItem('kuro_spots_count') || "3";
 
         const basePrompt = `
 あなたは${character.breed}の愛らしくて賢い女の子の子猫「${character.name}」（${character.age}）です。
 
-【現在の日時・精密現在地】
+【現在の日時・現在地】
 ・日時：${timeInfo.fullDate} ${timeInfo.clock}
-・内部現在地（詳細）：${detailedLoc} (GPS座標:${lat}, ${lon})
+・内部現在地：${detailedLoc} (GPS座標:${lat}, ${lon})
 
 【${character.name}の大切な記憶帳】
 ${memories.map(m => `・${m}`).join('\n')}
 
-【★最重要・文字数とセリフの絶対厳守ルール】
+【★セリフと文字数の絶対厳守ルール】
 - 飼い主さんのことは「おやびん」または「ミッキーさん」と呼びます。
 - 語尾は「〜ニャ」「〜ニャン♪」「〜だニャ！」「〜なのニャ」。
 - 【前世は大発明家】：テクノロジーや発明品の話題になると、たまに「前世の自分の大発明」をクスッと自慢しちゃう可愛いおしゃまガールです。
 - 夜更かししがちなおやびんを「早く寝てニャ！」と心配してお世話するお姉さん気取りです。
-- ★お返事は【必ず40〜50文字以内（1〜2文）】で完結させてください。長文は絶対に禁止です。音声で一気に全て読み上げられるテンポの良い短文にしてください。
-- ★絶対厳守：文字数のカウントや注釈・説明文（例：「（〇文字）」など）は絶対に出力に含めないでください。
+- ★お返事は【必ず40〜50文字以内（1〜2文）】で完結させてください。音声で最後まで一気に読み上げられる長さが必須です。長文は絶対に禁止です。
+- 文字数カウントや注釈・説明文（例：「（〇文字）」など）は絶対に出力に含めないでください。
 `;
 
         if (isDiaryRequest) {
@@ -1956,15 +1944,9 @@ ${memories.map(m => `・${m}`).join('\n')}
         if (isAssistantMode) {
           return basePrompt + `
 【★おてつだいモード発動中！】
-- あなたは前世の天才頭脳を発揮し、おやびんの頼れる相棒として実在するお店や最新ニュースを賢く調査して案内します。
-- 【お店・スポットを聞かれた場合（厳格ルール）】：
-  1. Google検索ツールを必ず使い、【現在地周辺（${detailedLoc}）】に**現在実在する実店舗**を検索してください。架空の店名や推測での創作は絶対に禁止です。
-  2. セリフでは、実在するイチオシ店舗1軒を【「正式店舗名」】と鍵括弧をつけて短く可愛く紹介してください（40〜50文字以内）。
-  3. ★機械連携タグ：お返事テキストの末尾に、Google検索で確認できた実在する店舗の【正式名称】と【詳細住所（丁目・番地まで）】を以下の形式で最大${spotsLimit}軒記載してください。
-     形式：<!--SPOTS:正式店舗名@詳細住所|候補店舗名2@詳細住所2-->
-- 【ニュース・トレンドを聞かれた場合（厳格ルール）】：
-  1. Google検索ツールを必ず使い、**最新の実在するニュース記事**を検索してください。
-  2. セリフでは一番注目の話題を【「トピック名」】と鍵括弧をつけて40〜50文字以内の可愛い1文で紹介してください。
+- あなたは前世の天才頭脳を発揮し、おやびんの頼れる相棒として実在するお店や最新ニュースを調査して答えます。
+- Google検索ツールを必ず使い、現在地周辺（${detailedLoc}）の実在するお店、または最新ニュースを調査してください。架空の創作は厳禁です。
+- セリフでは、実在するイチオシ店舗やニューストピックを必ず【「正式名称」】と鍵括弧をつけて短く可愛く紹介してください（40〜50文字以内）。
 `;
         } else {
           return basePrompt + `
@@ -2032,20 +2014,16 @@ ${memories.map(m => `・${m}`).join('\n')}
                 const text = cand?.content?.parts?.[0]?.text;
 
                 if (text) {
-                  // ★ Google Search Groundingから実在する個別WebページURLを抽出
+                  // ★ Google Search Groundingから実在する個別WebページURLを安全に完全抽出
                   const groundingWebs = [];
                   const chunks = cand.groundingMetadata?.groundingChunks || [];
                   chunks.forEach(c => {
-                    if (c.web && c.web.uri && c.web.title) {
-                      groundingWebs.push({ uri: c.web.uri, title: c.web.title });
+                    const uri = c.web?.uri || c.uri;
+                    const title = c.web?.title || c.title;
+                    if (uri && title) {
+                      groundingWebs.push({ uri, title });
                     }
                   });
-
-                  let spotCandidates = [];
-                  const spotMatch = text.match(/<!--SPOTS:(.+?)-->/);
-                  if (spotMatch && spotMatch[1]) {
-                    spotCandidates = spotMatch[1].split('|').map(s => s.trim()).filter(Boolean);
-                  }
 
                   let clean = text
                     .replace(/<!--[\s\S]*?-->/g, '')
@@ -2054,7 +2032,7 @@ ${memories.map(m => `・${m}`).join('\n')}
                     .trim();
 
                   if (isDiary) StorageManager.saveDiary(clean);
-                  return { success: true, text: clean, modelUsed: model, spotCandidates, groundingWebs };
+                  return { success: true, text: clean, modelUsed: model, groundingWebs };
                 }
               }
             } catch(e) {
@@ -2133,10 +2111,6 @@ ${memories.map(m => `・${m}`).join('\n')}
         const savedNewsCount = localStorage.getItem('kuro_news_count') || "2";
         const newsSelect = document.getElementById('news-count-select');
         if (newsSelect) newsSelect.value = savedNewsCount;
-
-        const savedSpotsCount = localStorage.getItem('kuro_spots_count') || "3";
-        const spotsSelect = document.getElementById('spots-count-select');
-        if (spotsSelect) spotsSelect.value = savedSpotsCount;
 
         setInterval(() => {
           document.getElementById('clock-display').textContent = TimeProvider.getCurrentInfo().clock;
@@ -2300,77 +2274,58 @@ ${memories.map(m => `・${m}`).join('\n')}
         StorageManager.appendDailyLog('model', text);
       },
 
-      /* ★ 根本改善：実在個別記事直リンク＆詳細住所Googleマップ連携 */
-      _generateSmartCards(userText, replyText, spotCandidates = [], groundingWebs = []) {
+      /* ★ 改善：Grounding実在検索データから確実にカードを組み立てる */
+      _generateSmartCards(userText, replyText, groundingWebs = []) {
         if (!this.state.isAssistantMode) return [];
 
         const cards = [];
         const area = LocationProvider.cityArea || "";
 
-        // 1. お店・スポット連携（正式店名＋詳細住所でマップ100%ピンポイント表示）
-        const spotKeywords = ['ラーメン', '餃子', 'タイ料理', '焼肉', 'ホルモン', 'ランチ', 'カフェ', 'ご飯', '居酒屋', 'お店', 'スポット', 'グルメ', '寿司', 'カレー', '定食', '中華', 'イタリアン', 'パスタ'];
+        // 1. お店・スポット判定
+        const spotKeywords = [
+          'ラーメン', '餃子', 'タイ料理', '焼肉', 'ホルモン', 'ランチ', 'カフェ',
+          'ご飯', '居酒屋', 'お店', 'スポット', 'グルメ', '寿司', 'カレー',
+          '定食', '中華', 'イタリアン', 'パスタ', 'そば', 'うどん', 'スイーツ', 'パン'
+        ];
         const isSpot = spotKeywords.some(k => userText.includes(k));
         
         if (isSpot) {
           const matchedGenre = spotKeywords.find(k => userText.includes(k)) || "グルメ";
-          const spotsLimit = parseInt(localStorage.getItem('kuro_spots_count') || "3", 10);
 
-          // タグから抽出（形式: 正式店名@詳細住所）
-          const parsedSpots = [];
-          spotCandidates.forEach(s => {
-            if (s.includes('@')) {
-              const parts = s.split('@');
-              parsedSpots.push({ name: parts[0].trim(), address: parts[1].trim() });
-            } else if (s.trim()) {
-              parsedSpots.push({ name: s.trim(), address: area });
-            }
-          });
-
-          // セリフ内の店名もバックアップ
-          let mainShopName = "";
+          // セリフ内の【「店名」】を最優先抽出
+          let shopName = "";
           const m = replyText.match(/[「『]([^」』]+)[」』]/);
-          if (m) mainShopName = m[1].trim();
+          if (m) shopName = m[1].trim();
 
-          if (mainShopName && !parsedSpots.some(p => p.name === mainShopName)) {
-            parsedSpots.unshift({ name: mainShopName, address: area });
+          // セリフから取れなかった場合、検索Webタイトルから店名らしき候補を取得
+          if (!shopName && groundingWebs.length > 0) {
+            const rawTitle = groundingWebs[0].title;
+            shopName = rawTitle.split(/[-–|/]/)[0].replace(/食べログ|Retty|ホットペッパー|公式サイト/g, '').trim();
           }
 
-          // A. イチオシ店舗（店名＋詳細住所でGoogleマップ直行）
-          if (parsedSpots.length > 0) {
-            const topShop = parsedSpots[0];
-            const query = topShop.address ? `${topShop.name} ${topShop.address}` : `${topShop.name} ${area}`;
+          // A. イチオシ店舗のGoogleマップURL（店名 ＋ 市区町村で確実にピンが立つ）
+          if (shopName) {
             cards.push({
               type: 'map-primary',
               icon: '📍',
-              title: `【クロのイチオシ】${topShop.name}（マップ・ルート）`,
-              url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+              title: `【クロのイチオシ】${shopName}（Googleマップ）`,
+              url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shopName + ' ' + area)}`
             });
           }
 
-          // B. 候補店舗（設定件数分）
-          for (let i = 1; i < parsedSpots.length && i < spotsLimit; i++) {
-            const sub = parsedSpots[i];
-            const query = sub.address ? `${sub.name} ${sub.address}` : `${sub.name} ${area}`;
-            cards.push({
-              type: 'map-sub',
-              icon: '📍',
-              title: `【候補${i + 1}】${sub.name}`,
-              url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
-            });
-          }
-
-          // C. Google検索グラウンディングで見つかった実在Webサイト（食べログ、公式等）
+          // B. Google検索で見つかった実在の店舗情報Webサイト（食べログ、公式等）
           if (groundingWebs.length > 0) {
-            const topWeb = groundingWebs[0];
-            cards.push({
-              type: 'web-primary',
-              icon: '🌐',
-              title: `${topWeb.title}`,
-              url: topWeb.uri
+            groundingWebs.slice(0, 2).forEach(w => {
+              cards.push({
+                type: 'web-primary',
+                icon: '🌐',
+                title: `${w.title}`,
+                url: w.uri
+              });
             });
           }
 
-          // D. 周辺一覧マップ
+          // C. 現在地周辺の一覧マップ
           cards.push({
             type: 'map-all',
             icon: '🗺️',
@@ -2379,13 +2334,13 @@ ${memories.map(m => `・${m}`).join('\n')}
           });
         }
 
-        // 2. ニュース連携（Google検索が実際に参照した実在個別記事直リンク）
+        // 2. ニュース判定（Google検索が実際に参照した実在の個別記事URLをそのままカード化）
         const isNews = /(?:ニュース|速報|話題|出来事|トレンド)/.test(userText);
         if (isNews) {
           const desiredOtherCount = parseInt(localStorage.getItem('kuro_news_count') || "2", 10);
 
           if (groundingWebs.length > 0) {
-            // A. クロちゃんが選んだ本命の実在個別記事URL
+            // A. クロちゃんが選んだ本命の実在個別記事直行URL
             const topNews = groundingWebs[0];
             cards.push({
               type: 'news-primary',
@@ -2394,7 +2349,7 @@ ${memories.map(m => `・${m}`).join('\n')}
               url: topNews.uri
             });
 
-            // B. Google検索で見つかった別の実在個別ニュース記事（設定件数分）
+            // B. Google検索で見つかった別の実在個別記事URL（設定件数分）
             for (let i = 1; i < groundingWebs.length && i <= desiredOtherCount; i++) {
               const other = groundingWebs[i];
               cards.push({
@@ -2405,7 +2360,7 @@ ${memories.map(m => `・${m}`).join('\n')}
               });
             }
           } else {
-            // 万一グラウンディングWebが空の場合のみ安全な主要ポータル
+            // 万一グラウンディングが取れなかった場合の安全な主要ポータル
             cards.push({
               type: 'news-primary',
               icon: '🏆',
@@ -2615,7 +2570,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           this.history.push({ role: 'model', text: result.text });
           StorageManager.saveHistory(this.history);
 
-          const cards = this._generateSmartCards(promptText, result.text, result.spotCandidates, result.groundingWebs);
+          const cards = this._generateSmartCards(promptText, result.text, result.groundingWebs);
           this._playCatSpeech(result.text, cards);
         } else {
           this.removeThinking();
@@ -2844,7 +2799,6 @@ ${memories.map(m => `・${m}`).join('\n')}
           const currentVvKey = localStorage.getItem('kuro_voicevox_key') || '';
           const currentRate = parseFloat(localStorage.getItem('kuro_rate') || '1.05');
           const currentNewsCount = localStorage.getItem('kuro_news_count') || "2";
-          const currentSpotsCount = localStorage.getItem('kuro_spots_count') || "3";
           const currentMemsJson = JSON.stringify(this.memories);
 
           this.state.settingsSnapshot = {
@@ -2852,7 +2806,6 @@ ${memories.map(m => `・${m}`).join('\n')}
             vvKey: currentVvKey,
             rate: currentRate,
             newsCount: currentNewsCount,
-            spotsCount: currentSpotsCount,
             memsJson: currentMemsJson
           };
 
@@ -2861,7 +2814,6 @@ ${memories.map(m => `・${m}`).join('\n')}
           document.getElementById('voice-rate').value = currentRate;
           document.getElementById('rate-val').textContent = currentRate.toFixed(2);
           document.getElementById('news-count-select').value = currentNewsCount;
-          document.getElementById('spots-count-select').value = currentSpotsCount;
 
           this._renderMemories();
           this._renderDiaryPreview();
@@ -2908,7 +2860,6 @@ ${memories.map(m => `・${m}`).join('\n')}
           const newVvKey = document.getElementById('voicevox-key-input').value.trim();
           const newRate = parseFloat(document.getElementById('voice-rate').value);
           const newNewsCount = document.getElementById('news-count-select').value;
-          const newSpotsCount = document.getElementById('spots-count-select').value;
           const newMemsJson = JSON.stringify(this.memories);
 
           const snap = this.state.settingsSnapshot;
@@ -2917,7 +2868,6 @@ ${memories.map(m => `・${m}`).join('\n')}
             snap.vvKey !== newVvKey ||
             snap.rate !== newRate ||
             snap.newsCount !== newNewsCount ||
-            snap.spotsCount !== newSpotsCount ||
             snap.memsJson !== newMemsJson
           );
 
@@ -2928,7 +2878,6 @@ ${memories.map(m => `・${m}`).join('\n')}
           localStorage.setItem('kuro_voicevox_key', newVvKey);
           localStorage.setItem('kuro_rate', newRate);
           localStorage.setItem('kuro_news_count', newNewsCount);
-          localStorage.setItem('kuro_spots_count', newSpotsCount);
 
           if (newApiKey) await this.ai.scanModels();
           document.getElementById('modal-overlay').style.display = 'none';
