@@ -237,12 +237,13 @@
     .confirm-btn.yes { background: linear-gradient(135deg, #c026d3, #9333ea); color: white; box-shadow: 0 2px 6px rgba(192, 38, 211, 0.3); }
     .confirm-btn.no { background: #e2e8f0; color: #475569; }
 
+    /* マルチリソース・アクションカード群 */
     .action-card-box {
       margin-top: 6px;
       display: flex;
       flex-direction: column;
       gap: 6px;
-      max-width: 86%;
+      max-width: 90%;
       animation: fadeIn 0.3s ease-out;
     }
     .link-action-card {
@@ -250,20 +251,22 @@
       align-items: center;
       justify-content: space-between;
       background: #ffffff;
-      border: 1.5px solid #e0e7ff;
-      border-radius: 14px;
-      padding: 8px 12px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 7px 11px;
       text-decoration: none;
       color: #1e293b;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+      transition: all 0.15s ease-out;
     }
     .link-action-card:active { transform: scale(0.97); background: #f8fafc; }
     .link-action-card.map-card { border-color: #bbf7d0; background: #f0fdf4; }
-    .link-action-card.news-card { border-color: #bae6fd; background: #f0f9ff; }
-    .card-left { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; }
-    .card-icon { font-size: 18px; }
-    .card-arrow { font-size: 12px; color: #64748b; font-weight: bold; }
+    .link-action-card.gemini-card { border-color: #bae6fd; background: #f0f9ff; }
+    .link-action-card.copilot-card { border-color: #c7d2fe; background: #eef2ff; }
+    .link-action-card.chatgpt-card { border-color: #a7f3d0; background: #ecfdf5; }
+    .card-left { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; }
+    .card-icon { font-size: 15px; }
+    .card-arrow { font-size: 11px; color: #64748b; font-weight: bold; }
 
     /* 3. クロちゃん本体ステージ */
     .pet-avatar-wrapper {
@@ -541,7 +544,6 @@
     .btn-action:active { transform: scale(0.97); background: #374151; }
     .btn-action.is-paused { background: #450a0a; color: #fca5a5; border-color: #7f1d1d; }
 
-    /* ★ 🛑 中断ストップボタン */
     .btn-stop {
       height: 48px;
       padding: 0 14px;
@@ -920,7 +922,7 @@
         <img src="thinking.jpg" alt="考え中" class="cat-avatar-img" id="img-thinking">
         <img src="happy.jpg" alt="大喜び" class="cat-avatar-img" id="img-happy">
 
-        <!-- ベクター猫 -->
+        <!-- ベクター猫（ノルウェージャンフォレストキャット） -->
         <svg viewBox="0 0 200 240" id="cat-vector-avatar" class="active-mode">
           <g class="anim-tail">
             <path d="M140 195 Q185 180 180 130 Q175 95 195 75 Q185 85 165 125 Q150 160 135 195 Z" fill="#1e222d"/>
@@ -969,7 +971,7 @@
       </div>
     </div>
 
-    <!-- 4. 最下部操作バー（🛑 中断ストップボタン新設） -->
+    <!-- 4. 最下部操作バー -->
     <div class="bottom-controls">
       <div class="action-bar" id="action-bar">
         <button class="btn-action" id="pause-btn">
@@ -977,7 +979,6 @@
           <span id="pause-text">会話中</span>
         </button>
 
-        <!-- ★ 思考・お話しを即座に取り消すストップボタン -->
         <button class="btn-stop" id="stop-action-btn" title="考え中・お話しを途中で取り消すニャ！">
           <span>🛑</span><span>ストップ</span>
         </button>
@@ -996,7 +997,7 @@
         <button class="diag-close-btn" id="diag-close-btn">✕ 閉じる</button>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[System] 頭切れ防止前置きクッション・ストップ制御起動</div>
+        <div class="log-row log-info">[System] 950ms無音タイマー・即答挨拶・疑問符判定起動完了</div>
       </div>
     </div>
   </div>
@@ -1017,12 +1018,12 @@
             認識違いの時や考え中の時に押すと、即座に中断してもう一度聞き取り状態に戻ります。
           </div>
           <div class="guide-item">
-            <strong>⏰ 時間と日付の確実な聞き分け</strong>
-            前置きクッションにより、頭切れを起こさず「今の時間は、○時○分だニャン！」と確実に数字を肉声で読み上げます。
+            <strong>❓ 疑問文の自動「？」付与</strong>
+            「〜かな」「〜ですか」「何」「教えて」などと聞くと、飼い主さんの吹き出し末尾に自動で「？」が付きます。
           </div>
           <div class="guide-item">
-            <strong>📰 僕の好きなニュース</strong>
-            「僕の好きなニュース教えて」と頼むと、記憶帳にある好みを自動で調べてカードを表示します。
+            <strong>🐱 呼びかけ・挨拶への即答</strong>
+            「クロちゃん」「おはよう」などにはGeminiの考え中に入らず、可愛い肉声でパッとお返事します。
           </div>
         </div>
       </div>
@@ -1097,7 +1098,7 @@
     };
 
     /* ==========================================================================
-       ★ MODULE 1: 音声合成＆音声認識（頭切れ防止クッション＋完全平仮名）
+       ★ MODULE 1: 音声合成＆音声認識（息継ぎ配慮950ms・クッション付平仮名）
        ========================================================================== */
     class AudioSpeechEngine {
       constructor() {
@@ -1204,7 +1205,6 @@
         }
       }
 
-      /* ★ 汎用平仮名コンバーター（AI生成文用） */
       _convertAllNumbersToKana(text) {
         if (!text) return "";
         let t = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
@@ -1228,22 +1228,6 @@
           'ごじゅういっぷん', 'ごじゅうにふん', 'ごじゅうさんぷん', 'ごじゅうよんぷん', 'ごじゅうごふん', 'ごじゅうろっぷん', 'ごじゅうななふん', 'ごじゅうはっぷん', 'ごじゅうきゅうふん'
         ];
 
-        const dayMap = {
-          1: 'ついたち', 2: 'ふつか', 3: 'みっか', 4: 'よっか', 5: 'いつか',
-          6: 'むいか', 7: 'なのか', 8: 'ようか', 9: 'ここのか', 10: 'とおか',
-          11: 'じゅういちにち', 12: 'じゅうににち', 13: 'じゅうさんにち', 14: 'じゅうよっか', 15: 'じゅうごにち',
-          16: 'じゅうろくにち', 17: 'じゅうしちにち', 18: 'じゅうはちにち', 19: 'じゅうくにち', 20: 'はつか',
-          21: 'にじゅういちにち', 22: 'にじゅうににち', 23: 'にじゅうさんにち', 24: 'にじゅうよっか', 25: 'にじゅうごにち',
-          26: 'にじゅうろくにち', 27: 'にじゅうしちにち', 28: 'にじゅうはちにち', 29: 'にじゅうくにち', 30: 'さんじゅうにち',
-          31: 'さんじゅういちにち'
-        };
-
-        const monthMap = {
-          1: 'いちがつ', 2: 'にがつ', 3: 'さんがつ', 4: 'しがつ', 5: 'ごがつ',
-          6: 'ろくがつ', 7: 'しちがつ', 8: 'はちがつ', 9: 'くがつ', 10: 'じゅうがつ',
-          11: 'じゅういちがつ', 12: 'じゅうにがつ'
-        };
-
         t = t.replace(/(\d{1,2})時(?:(\d{1,2})分)?/g, (match, hStr, mStr) => {
           const h = parseInt(hStr, 10);
           const hKana = hourMap[h] || (h + 'じ');
@@ -1251,14 +1235,6 @@
           const m = parseInt(mStr, 10);
           const mKana = minuteMap[m] || (m + 'ふん');
           return `${hKana}、${mKana}`;
-        });
-
-        t = t.replace(/(\d{1,2})月(\d{1,2})日/g, (match, moStr, dStr) => {
-          const mo = parseInt(moStr, 10);
-          const d = parseInt(dStr, 10);
-          const moKana = monthMap[mo] || (mo + 'がつ');
-          const dKana = dayMap[d] || (d + 'にち');
-          return `${moKana}、${dKana}`;
         });
 
         const numToKana = (n) => {
@@ -1297,7 +1273,6 @@
           return parse4(n);
         };
 
-        t = t.replace(/(\d{1,4})年/g, (m, yStr) => numToKana(parseInt(yStr, 10)) + 'ねん');
         t = t.replace(/\d+/g, m => numToKana(parseInt(m, 10)));
         return t;
       }
@@ -1368,7 +1343,6 @@
         window.speechSynthesis.speak(uttr);
       }
 
-      /* ★ 画面表示テキストと音声読み上げテキストを分離指定可能に強化 */
       async speak(text, speakerId = 0, onStart = null, onEnd = null, spokenOverride = null) {
         this.stopListening();
         this.stopSpeaking();
@@ -1380,7 +1354,7 @@
           .replace(/```[\s\S]*?```/g, '')
           .replace(/<[^>]*>/g, '')
           .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}\uFE0F\u200D]/gu, '')
-          .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖]/gu, '')
+          .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🟢]/gu, '')
           .replace(/[（\(【\[][^）\)】\]]*[）\)】\]]/g, '')
           .replace(/\n+/g, ' ')
           .trim();
@@ -1434,7 +1408,7 @@
         if (window.speechSynthesis) window.speechSynthesis.cancel();
       }
 
-      /* ★ 安定自律マイク */
+      /* ★ 息継ぎ配慮（無音タイマーを950msに延長） */
       _setupRecognition() {
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRec) {
@@ -1473,16 +1447,13 @@
             if (this.onInterimUpdate) this.onInterimUpdate(currentLive);
           }
 
-          if (final.trim()) {
-            this._commitFinalSpeech(final.trim());
-          } else if (currentLive) {
-            if (this.silenceTimeout) clearTimeout(this.silenceTimeout);
-            this.silenceTimeout = setTimeout(() => {
-              if (this.lastRecognizedText && !this.isSpeechCommitted) {
-                this._commitFinalSpeech(this.lastRecognizedText);
-              }
-            }, 650);
-          }
+          // ★ 息継ぎでも区切られないよう950ms待機
+          if (this.silenceTimeout) clearTimeout(this.silenceTimeout);
+          this.silenceTimeout = setTimeout(() => {
+            if (this.lastRecognizedText && !this.isSpeechCommitted) {
+              this._commitFinalSpeech(this.lastRecognizedText);
+            }
+          }, 950);
         };
 
         this.recognition.onerror = (e) => {
@@ -1554,7 +1525,7 @@
     }
 
     /* ==========================================================================
-       ★ MODULE 2: 日時＆町丁名GPSプロバイダ（頭切れ防止クッション付き平仮名生成）
+       ★ MODULE 2: 日時＆町丁名GPSプロバイダ
        ========================================================================== */
     const TimeProvider = {
       getCurrentInfo() {
@@ -1609,14 +1580,11 @@
         const dK = dayMap[date] || `${date}にち`;
 
         return {
-          // 画面表示用
           clockDisplay: `${hours}時${minutes}分だニャン🐾`,
           dateDisplay: `今日は${month}月${date}日(${dayStr}曜日)だニャ🐾`,
           clock: `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`,
           logKey: `${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`,
           fullDate: `${year}年${month}月${date}日(${dayStr}曜日)`,
-
-          // ★ 音声用（助走クッション付きで頭切れを物理的に回避し、数字を確実に読ませる）
           clockSpokenSafe: `今の時間は、${hK}、${mK}だニャン！`,
           dateSpokenSafe: `今日の日付は、${moK}、${dK}、${dayKana}だニャ！`
         };
@@ -1825,7 +1793,7 @@
     }
 
     /* ==========================================================================
-       ★ MODULE 5: 思考・検索エンジン（AbortController対応）
+       ★ MODULE 5: 思考・検索エンジン（Google Web Grounding）
        ========================================================================== */
     class AIThoughtEngine {
       constructor() {
@@ -1904,8 +1872,8 @@
 【${character.name}の記憶帳】
 ${memories.map(m => `・${m}`).join('\n')}
 
-【検索リソース】
-- Gemini、Copilot、ChatGPT の知識を統合して最新情報を元に回答してください。
+【検索リソース・知識方針】
+- GoogleのリアルタイムWeb検索情報に加え、CopilotやChatGPTのような知的な多角的視点を統合して回答してください。
 - 飼い主さんが「僕の好きなニュース」などと言った場合は、記憶帳にある好みを踏まえて回答してください。
 
 【性格と返答スタイル】
@@ -2042,7 +2010,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           document.getElementById('clock-display').textContent = TimeProvider.getCurrentInfo().clock;
         }, 1000);
 
-        // 起動直後から完全自動で聞き取り待機
         setTimeout(() => {
           if (this.state.isRunning) this.audio.startListening();
         }, 600);
@@ -2058,6 +2025,18 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           return;
         }
         this.history.forEach(h => this.renderBubble(h.role, h.text));
+      },
+
+      /* ★ 飼い主の疑問形判定（語尾・キーワード検知で自動クエスチョン付与） */
+      _formatUserQuestion(text) {
+        if (!text) return text;
+        let t = text.trim();
+        if (t.endsWith('?') || t.endsWith('？')) return t;
+
+        const isQuestion = /(?:かな|かなー|ですか|ますか|でしょうか|かい|だい|のかしら|の|っけ)$/.test(t) ||
+                           /(?:何|なに|なん|どこ|いつ|だれ|誰|なぜ|どうして|どう|どれ|教えて|知ってる|分かる|わかる|どう思う)/.test(t);
+
+        return isQuestion ? `${t}？` : t;
       },
 
       _setupAudioCallbacks() {
@@ -2084,12 +2063,15 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           document.body.classList.remove('is-hearing');
           document.getElementById('status-text').textContent = "💭 考え中ニャ…";
 
+          // ★ 疑問文なら「？」を付けてユーザー画面に美しく表示
+          const formattedText = this._formatUserQuestion(finalText);
+
           if (this.activeUserRow) {
             const txtSpan = this.activeUserRow.querySelector('.user-text');
-            if (txtSpan) txtSpan.textContent = finalText;
+            if (txtSpan) txtSpan.textContent = formattedText;
             this.activeUserRow = null;
           } else {
-            this.renderBubble('user', finalText);
+            this.renderBubble('user', formattedText);
           }
 
           this.handleUserInput(finalText);
@@ -2132,7 +2114,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
             link.target = '_blank';
             link.rel = 'noopener noreferrer';
             link.innerHTML = `
-              <div class="card-left"><span class="card-icon">${c.type === 'map' ? '🗺️' : '📰'}</span><span>${c.title}</span></div>
+              <div class="card-left"><span class="card-icon">${c.icon}</span><span>${c.title}</span></div>
               <span class="card-arrow">開く ➔</span>
             `;
             cardBox.appendChild(link);
@@ -2178,7 +2160,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         this.audio.playEffect('aizuchi');
         StorageManager.appendDailyLog('user', text);
 
-        // 1. 直接インテント（★ 時計・日付の助走クッション付き読み上げ）
+        // 1. 直接インテント（★ 呼びかけ・日常挨拶・時計・日付の即答化）
         const direct = this._checkDirectIntent(text);
         if (direct) {
           this.executeDirectReply(direct.displayReply, direct.cards, null, direct.spokenReply);
@@ -2224,27 +2206,61 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         this.executeThought(text, false);
       },
 
+      /* ★ 呼びかけ＆日常挨拶の高速即答ロジック */
       _checkDirectIntent(text) {
-        const clean = text.replace(/^(?:ねえ|あのね|おーい)?\s*(?:クロちゃん|クロ|くろ)[、,\s]*/i, '').trim();
+        let clean = text.replace(/^(?:ねえ|あのね|おーい)?\s*(?:クロちゃん|クロ|くろ)[、,\s]*/i, '').trim();
 
-        // ★ 時計の確実な読み上げ（表示と音声を完全分離）
-        if (/(?:いま|今)?(?:何時|なんじ|時間)/.test(clean) && !/(?:何日|いつ|日記|カレンダー)/.test(clean)) {
-          const info = TimeProvider.getCurrentInfo();
-          return {
-            displayReply: info.clockDisplay,
-            spokenReply: info.clockSpokenSafe,
-            cards: []
-          };
+        // 呼びかけ単体（「クロちゃん」「クロ」だけ言われた場合）
+        if (!clean || /^(?:呼んだだけ|なんでもない|いる|お返事)$/.test(clean)) {
+          const callReplies = [
+            "ニャン！呼んだかニャ？おやびん♪",
+            "起きてるニャン！何でも話しかけてニャ🐾",
+            "ニャー♪ クロはここにいるニャン！"
+          ];
+          const rep = callReplies[Math.floor(Math.random() * callReplies.length)];
+          return { displayReply: rep, spokenReply: rep, cards: [] };
         }
 
-        // ★ 日付の確実な読み上げ（表示と音声を完全分離）
+        // 日常挨拶の即答（Geminiの考え中に入らない）
+        if (/^(?:おはよう|おはよー|オハヨウ)/.test(clean)) {
+          const rep = "おやびん、おはようニャン🐾 今日も一日いい日にするニャ！";
+          return { displayReply: rep, spokenReply: rep, cards: [] };
+        }
+        if (/^(?:こんにちは|こんにちわ)/.test(clean)) {
+          const rep = "おやびん、こんにちはニャ♪ 今日も元気いっぱいニャン！";
+          return { displayReply: rep, spokenReply: rep, cards: [] };
+        }
+        if (/^(?:こんばんは|こんばんわ)/.test(clean)) {
+          const rep = "おやびん、こんばんはニャン🐾 今日もお疲れ様だニャ！";
+          return { displayReply: rep, spokenReply: rep, cards: [] };
+        }
+        if (/^(?:おやすみ|おやすみなさい|寝るね)/.test(clean)) {
+          const rep = "おやすみニャン…いい夢見てニャ、おやびん💤";
+          return { displayReply: rep, spokenReply: rep, cards: [] };
+        }
+        if (/^(?:ありがとう|サンキュー|感謝)/.test(clean)) {
+          const rep = "どういたしましてニャン♪ お役に立てて嬉しいニャ🐾";
+          return { displayReply: rep, spokenReply: rep, cards: [] };
+        }
+        if (/^(?:ただいま|帰ったよ)/.test(clean)) {
+          const rep = "おかえりニャさ〜い！首を長くして待ってたニャン🐾";
+          return { displayReply: rep, spokenReply: rep, cards: [] };
+        }
+        if (/^(?:お疲れ|お疲れ様|つかれた)/.test(clean)) {
+          const rep = "おやびん、お疲れ様ニャン！クロがなでなでして癒やすニャ♪";
+          return { displayReply: rep, spokenReply: rep, cards: [] };
+        }
+
+        // 時計
+        if (/(?:いま|今)?(?:何時|なんじ|時間)/.test(clean) && !/(?:何日|いつ|日記|カレンダー)/.test(clean)) {
+          const info = TimeProvider.getCurrentInfo();
+          return { displayReply: info.clockDisplay, spokenReply: info.clockSpokenSafe, cards: [] };
+        }
+
+        // 日付
         if (/(?:今日|きょう).*(?:何日|なんにち|いつ|何曜日|なんようび)|日付/.test(clean)) {
           const info = TimeProvider.getCurrentInfo();
-          return {
-            displayReply: info.dateDisplay,
-            spokenReply: info.dateSpokenSafe,
-            cards: []
-          };
+          return { displayReply: info.dateDisplay, spokenReply: info.dateSpokenSafe, cards: [] };
         }
 
         // 現在地
@@ -2255,7 +2271,8 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
             spokenReply: `今の場所は、${loc}にいるニャン！`,
             cards: [{
               type: 'map',
-              title: `📍 Googleマップで「${loc}」を開く`,
+              icon: '📍',
+              title: `Googleマップで「${loc}」を開く`,
               url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`
             }]
           };
@@ -2300,6 +2317,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         return null;
       },
 
+      /* ★ マルチAIダイレクト連携カード（検索時のみ控えめに表示） */
       _detectActionCards(userText) {
         const cards = [];
         const loc = LocationProvider.addressName.replace(/付近|周辺/g, '').trim();
@@ -2309,22 +2327,38 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
           const query = `${loc} ${keyword}`.trim();
           cards.push({
             type: 'map',
-            title: `📍 Googleマップで「${query}」を見る`,
+            icon: '📍',
+            title: `Googleマップで「${query}」を見る`,
             url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
           });
         }
 
-        if (/(?:ニュース|最新情報|トレンド|出来事)/.test(userText)) {
+        if (/(?:ニュース|最新情報|トレンド|出来事|調べて|検索して|とは|教えて)/.test(userText)) {
           let query = "";
           if (/(?:僕の好き|おれの好き|私の好き|おすすめ|好み)/.test(userText)) {
             query = this._extractUserInterestsFromMemories();
           } else {
-            query = userText.replace(/(?:ニュース|最新情報|教えて|最新|今日の|調べて|検索して)/g, '').trim() || "主要ニュース";
+            query = userText.replace(/(?:ニュース|最新情報|教えて|最新|今日の|調べて|検索して|とは)/g, '').trim() || "主要ニュース";
           }
+          
+          // 3大リソースへのダイレクト連携
           cards.push({
-            type: 'news',
-            title: `📰 Googleニュースで「${query}」を見る`,
-            url: `https://news.google.com/search?q=${encodeURIComponent(query)}&hl=ja&gl=JP&ceid=JP:ja`
+            type: 'gemini',
+            icon: '🌐',
+            title: `Googleで「${query}」を検索`,
+            url: `https://www.google.com/search?q=${encodeURIComponent(query)}`
+          });
+          cards.push({
+            type: 'copilot',
+            icon: '🔷',
+            title: `Copilot (Bing) で深掘り`,
+            url: `https://www.bing.com/search?q=${encodeURIComponent(query)}`
+          });
+          cards.push({
+            type: 'chatgpt',
+            icon: '🟢',
+            title: `ChatGPTで開く`,
+            url: `https://chatgpt.com/?q=${encodeURIComponent(query)}`
           });
         }
         return cards;
@@ -2334,7 +2368,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         this.state.isThinking = true;
         this.avatar.setEmotion('thinking');
         document.getElementById('status-text').textContent = "💭 確認中ニャ…";
-        this.showThinking("💭 時計や場所を確認してるニャ…");
+        this.showThinking("💭 クロちゃんがお返事準備中ニャ…");
 
         this.audio.playEffect('happy_meow');
         this.audio.speak(
@@ -2411,10 +2445,7 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
 
         const result = await this.ai.generateReply(promptText, isPro, CHARACTER_CONFIG, this.memories, this.history);
 
-        if (result.aborted) {
-          // ストップボタンで中止された場合
-          return;
-        }
+        if (result.aborted) return;
 
         if (result.success && result.text) {
           this.history.push({ role: 'user', text: promptText });
@@ -2453,24 +2484,17 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
         }
       },
 
-      /* ★ 🛑 ストップボタン押下時の完全リセット処理 */
       handleStopAction() {
         this.audio.unlockMasterAudio();
         Logger.log("[ユーザー操作] 🛑 ストップが押されました", "warn");
 
-        // 1. AI思考リクエストの即時強制中断
         this.ai.cancelCurrentRequest();
-
-        // 2. 音声再生の強制停止
         this.audio.stopSpeaking();
-
-        // 3. UIとステートのリセット
         this.state.isThinking = false;
         this.state.pending38Prompt = null;
         this.removeThinking();
         this.avatar.setEmotion('idle');
 
-        // 4. 取り消し案内と即時集音復帰
         const cancelMsg = "取り消したニャ！もう一回ゆっくり話してニャン🐾";
         this.renderBubble('model', "🛑 " + cancelMsg);
 
@@ -2558,7 +2582,6 @@ ${isDiaryRequest ? "- 日記のリクエストの場合は、今日あった会�
       },
 
       _bindUI() {
-        // ★ 🛑 ストップボタンのイベント紐付け
         document.getElementById('stop-action-btn').onclick = () => this.handleStopAction();
 
         document.getElementById('transform-btn').onclick = () => {
