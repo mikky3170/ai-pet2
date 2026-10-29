@@ -453,7 +453,7 @@
       96%, 98% { transform: scaleY(0.08); opacity: 0.9; }
     }
 
-    /* ★ アニメ（ベクター猫）用丸メガネ */
+    /* ★ アニメ用丸メガネ */
     #cat-vector-glasses {
       opacity: 0;
       transform: translateY(-16px) scale(0.92);
@@ -756,30 +756,6 @@
       outline: none;
     }
 
-    /* 設定バリデーション結果バッジ */
-    #settings-validation-status {
-      display: none;
-      margin-bottom: 12px;
-      padding: 8px 12px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: bold;
-      line-height: 1.4;
-      animation: fadeIn 0.2s ease-out;
-    }
-    #settings-validation-status.status-error {
-      display: block;
-      background: #fef2f2;
-      border: 1.5px solid #fecaca;
-      color: #b91c1c;
-    }
-    #settings-validation-status.status-success {
-      display: block;
-      background: #f0fdf4;
-      border: 1.5px solid #bbf7d0;
-      color: #15803d;
-    }
-
     .voice-control-row {
       display: flex;
       gap: 8px;
@@ -907,6 +883,31 @@
       gap: 6px;
       margin-top: 10px;
     }
+
+    /* ★ 保存ボタンの真上に配置した視認性抜群の通知バッジ */
+    #settings-validation-status {
+      display: none;
+      margin-top: 12px;
+      padding: 9px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.45;
+      animation: fadeIn 0.2s ease-out;
+    }
+    #settings-validation-status.status-error {
+      display: block;
+      background: #fef2f2;
+      border: 1.5px solid #fca5a5;
+      color: #dc2626;
+    }
+    #settings-validation-status.status-success {
+      display: block;
+      background: #f0fdf4;
+      border: 1.5px solid #86efac;
+      color: #16a34a;
+    }
+
     .btn-save {
       width: 100%;
       padding: 12px;
@@ -917,9 +918,11 @@
       font-weight: bold;
       font-size: 14px;
       cursor: pointer;
-      margin-top: 12px;
+      margin-top: 8px;
       box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+      transition: all 0.2s;
     }
+    .btn-save:active { transform: scale(0.98); }
 
     /* 6. 診断モニタモーダル */
     #diag-panel {
@@ -1151,17 +1154,21 @@
             </pattern>
           </defs>
 
+          <!-- 左レンズ -->
           <circle cx="36" cy="35" r="23" fill="rgba(255, 255, 255, 0.18)" stroke="#090d16" stroke-width="5.5"/>
           <circle cx="36" cy="35" r="23" fill="none" stroke="url(#stripe-bw-real)" stroke-width="4"/>
           <path d="M22 24 Q36 18 46 28" stroke="rgba(255, 255, 255, 0.85)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
           
+          <!-- 右レンズ -->
           <circle cx="104" cy="35" r="23" fill="rgba(255, 255, 255, 0.18)" stroke="#090d16" stroke-width="5.5"/>
           <circle cx="104" cy="35" r="23" fill="none" stroke="url(#stripe-bw-real)" stroke-width="4"/>
           <path d="M90 24 Q104 18 114 28" stroke="rgba(255, 255, 255, 0.85)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
           
+          <!-- 中央ブリッジ -->
           <path d="M59 34 Q70 27 81 34" stroke="#090d16" stroke-width="5.5" fill="none" stroke-linecap="round"/>
           <path d="M59 34 Q70 27 81 34" stroke="url(#stripe-bw-real)" stroke-width="3.8" fill="none" stroke-linecap="round"/>
           
+          <!-- 左右のツル -->
           <path d="M13 35 Q3 32 0 28" stroke="#111827" stroke-width="3" fill="none" stroke-linecap="round"/>
           <path d="M127 35 Q137 32 140 28" stroke="#111827" stroke-width="3" fill="none" stroke-linecap="round"/>
         </svg>
@@ -1353,9 +1360,6 @@
     <div class="modal-card">
       <h3>⚙️ 設定・記憶・日記</h3>
 
-      <!-- ★ 設定バリデーション結果通知エリア -->
-      <div id="settings-validation-status"></div>
-
       <div class="guide-box" id="guide-box">
         <div class="guide-header" id="guide-header">
           <span>📖 クロちゃんとのふれあい方</span>
@@ -1474,6 +1478,9 @@
       </div>
 
       <button type="button" class="btn-diag-open" id="open-diag-modal-btn">🩺 システム診断モニタを開く</button>
+
+      <!-- ★ 保存ボタンの真上に配置した通知バッジ（スクロール不要で100%見える） -->
+      <div id="settings-validation-status"></div>
       <button class="btn-save" id="save-settings-btn">設定と記憶を保存するニャン♪</button>
     </div>
   </div>
@@ -1497,7 +1504,7 @@
     };
 
     /* ==========================================================================
-       ★ MODULE 1: 音声合成＆音声認識（完全スリープ・音声キャッシュ・声での割り込み）
+       ★ MODULE 1: 音声合成＆音声認識（完全スリープ・話者別URLキャッシュ・声割り込み）
        ========================================================================== */
     class AudioSpeechEngine {
       constructor() {
@@ -1519,8 +1526,8 @@
         this.silenceTimeout = null;
         this.watchdogInterval = null;
 
-        // ★ 音声Blobキャッシュ（最大40件のLRUキャッシュ）
-        this.audioCache = new Map();
+        // ★ 話者IDごとに独立したURLスマートキャッシュ（CORS制限を完全回避）
+        this.audioUrlCache = new Map();
 
         this.recentSpokenTexts = [];
         this.lastSpeechEndTime = 0;
@@ -1561,48 +1568,57 @@
         });
       }
 
-      /* ★ リアルな喉鳴らし（ゴロゴロ低音＋スマホの微振動ハプティクス） */
+      /* ★ リアル喉鳴らし（スマホスピーカーの物理限界を突破した可聴音響合成 85Hz〜120Hz ＋ LFO振幅変調） */
       playEffect(type) {
         const ctx = this._getAudioContext();
         if (!ctx) return;
         const now = ctx.currentTime;
 
         if (type === 'purr') {
-          // 本物の猫の喉鳴らし（低周波28〜40Hzのうねり音）
-          const osc1 = ctx.createOscillator();
-          const osc2 = ctx.createOscillator();
-          const gain = ctx.createGain();
+          // スマホの小型スピーカーでも豊かに聞こえる可聴域（85Hz〜120Hz）と高調波フィルター
+          const oscBase = ctx.createOscillator();
+          const oscSub = ctx.createOscillator();
+          const lfo = ctx.createOscillator(); // 25Hzのプルプル震える猫の喉パルス
+          const lfoGain = ctx.createGain();
+          const mainGain = ctx.createGain();
           const filter = ctx.createBiquadFilter();
 
-          osc1.type = 'triangle';
-          osc1.frequency.setValueAtTime(32, now);
-          osc1.frequency.linearRampToValueAtTime(38, now + 0.35);
-          osc1.frequency.linearRampToValueAtTime(30, now + 0.75);
+          oscBase.type = 'triangle';
+          oscBase.frequency.setValueAtTime(88, now);
+          oscBase.frequency.linearRampToValueAtTime(105, now + 0.35);
+          oscBase.frequency.linearRampToValueAtTime(84, now + 0.75);
 
-          osc2.type = 'sine';
-          osc2.frequency.setValueAtTime(64, now);
-          osc2.frequency.linearRampToValueAtTime(76, now + 0.35);
-          osc2.frequency.linearRampToValueAtTime(60, now + 0.75);
+          oscSub.type = 'sine';
+          oscSub.frequency.setValueAtTime(176, now);
+          oscSub.frequency.linearRampToValueAtTime(210, now + 0.35);
+          oscSub.frequency.linearRampToValueAtTime(168, now + 0.75);
 
           filter.type = 'lowpass';
-          filter.frequency.setValueAtTime(140, now);
+          filter.frequency.setValueAtTime(260, now);
 
-          gain.gain.setValueAtTime(0, now);
-          gain.gain.linearRampToValueAtTime(0.35, now + 0.15);
-          gain.gain.linearRampToValueAtTime(0.25, now + 0.45);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
+          // LFOによる振幅変調（25Hzの喉の震え）
+          lfo.type = 'sine';
+          lfo.frequency.setValueAtTime(25, now);
+          lfoGain.gain.setValueAtTime(0.35, now);
 
-          osc1.connect(filter);
-          osc2.connect(filter);
-          filter.connect(gain);
-          gain.connect(ctx.destination);
+          mainGain.gain.setValueAtTime(0, now);
+          mainGain.gain.linearRampToValueAtTime(0.42, now + 0.12);
+          mainGain.gain.linearRampToValueAtTime(0.35, now + 0.45);
+          mainGain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
 
-          osc1.start(now); osc1.stop(now + 0.85);
-          osc2.start(now); osc2.stop(now + 0.85);
+          lfo.connect(mainGain.gain);
+          oscBase.connect(filter);
+          oscSub.connect(filter);
+          filter.connect(mainGain);
+          mainGain.connect(ctx.destination);
 
-          // ★ スマホの微細ハプティクス振動（本物の猫の喉の震え）
+          lfo.start(now); lfo.stop(now + 0.85);
+          oscBase.start(now); oscBase.stop(now + 0.85);
+          oscSub.start(now); oscSub.stop(now + 0.85);
+
+          // スマホの繊細ハプティクス微振動（Android/Chrome等対応機）
           if ('vibrate' in navigator) {
-            try { navigator.vibrate([40, 50, 45, 50, 40]); } catch(e) {}
+            try { navigator.vibrate([40, 50, 40, 50, 40]); } catch(e) {}
           }
 
         } else if (type === 'aizuchi') {
@@ -1641,22 +1657,15 @@
           const osc1 = ctx.createOscillator();
           const osc2 = ctx.createOscillator();
           const gain = ctx.createGain();
-
           osc1.type = 'sine';
           osc1.frequency.setValueAtTime(520, now);
           osc1.frequency.exponentialRampToValueAtTime(1040, now + 0.14);
-
           osc2.type = 'triangle';
           osc2.frequency.setValueAtTime(320, now);
           osc2.frequency.exponentialRampToValueAtTime(70, now + 0.25);
-
           gain.gain.setValueAtTime(0.35, now);
           gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-
-          osc1.connect(gain);
-          osc2.connect(gain);
-          gain.connect(ctx.destination);
-
+          osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
           osc1.start(now); osc1.stop(now + 0.28);
           osc2.start(now); osc2.stop(now + 0.28);
         }
@@ -1665,7 +1674,6 @@
       _convertAllNumbersToKana(text) {
         if (!text) return "";
         let t = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-
         t = t.replace(/(\d{4})\s*年/g, (m, yStr) => `${numToKana(parseInt(yStr, 10))}ねん`);
 
         const monthMap = {
@@ -1763,6 +1771,7 @@
         t = t.replace(/(\d+)\s*(?:キロ|km|kg)/gi, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'きろ');
         t = t.replace(/1\s*人/g, 'ひとり').replace(/2\s*人/g, 'ふたり').replace(/(\d+)\s*人/g, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'にん');
         t = t.replace(/1\s*匹/g, 'いっぴき').replace(/(\d+)\s*匹/g, (m, nStr) => numToKana(parseInt(nStr, 10)) + 'ひき');
+        t = t.replace(/1\s*つ/g, 'ひとつ').replace(/2\s*つ/g, 'ふたつ').replace(/3\s*つ/g, 'みっつ');
         t = t.replace(/(\d+)\s*(?:歳|才)/g, (m, nStr) => (parseInt(nStr, 10) === 20 ? 'はたち' : numToKana(parseInt(nStr, 10)) + 'さい'));
         t = t.replace(/\d+/g, m => numToKana(parseInt(m, 10)));
         return t;
@@ -1783,15 +1792,16 @@
         return segment.slice(0, 40) + 'ニャ！';
       }
 
-      /* ★ 音声キャッシュ＆TTS Quest通信 */
+      /* ★ 話者ごとの独立URLスマートキャッシュ（CORS制限フリー・待ち時間0秒再生） */
       async _fetchMetanMp3Url(text, speakerId = 0) {
         const target = this._extractSpeechTarget(text);
         const cacheKey = `${speakerId}_${target}`;
 
-        // キャッシュヒット時は通信不要・即座に再生
-        if (this.audioCache.has(cacheKey)) {
-          Logger.log(`[音声キャッシュHit⚡] ${target}`, "success");
-          return this.audioCache.get(cacheKey);
+        // 話者IDごとのキャッシュをチェック
+        if (this.audioUrlCache.has(cacheKey)) {
+          const cachedUrl = this.audioUrlCache.get(cacheKey);
+          Logger.log(`[話者ID:${speakerId} キャッシュHit⚡] ${target}`, "success");
+          return cachedUrl;
         }
 
         const encodedText = encodeURIComponent(target);
@@ -1831,22 +1841,12 @@
 
         if (!downloadUrl) throw new Error("タイムアウト");
 
-        // キャッシュに保存（最大40件）
-        try {
-          const blobRes = await fetch(downloadUrl);
-          if (blobRes.ok) {
-            const blob = await blobRes.blob();
-            const blobUrl = URL.createObjectURL(blob);
-            if (this.audioCache.size >= 40) {
-              const firstKey = this.audioCache.keys().next().value;
-              const oldUrl = this.audioCache.get(firstKey);
-              URL.revokeObjectURL(oldUrl);
-              this.audioCache.delete(firstKey);
-            }
-            this.audioCache.set(cacheKey, blobUrl);
-            return blobUrl;
-          }
-        } catch(e) {}
+        // キャッシュに保存（最大50件のメモリ管理）
+        if (this.audioUrlCache.size >= 50) {
+          const oldestKey = this.audioUrlCache.keys().next().value;
+          this.audioUrlCache.delete(oldestKey);
+        }
+        this.audioUrlCache.set(cacheKey, downloadUrl);
 
         return downloadUrl;
       }
@@ -1924,7 +1924,7 @@
         this.recentSpokenTexts.unshift(clean);
         if (this.recentSpokenTexts.length > 4) this.recentSpokenTexts.pop();
 
-        Logger.log(`[音声送信 (${speakerId})] ${clean}`, "info");
+        Logger.log(`[音声送信 (話者:${speakerId})] ${clean}`, "info");
 
         try {
           const mp3Url = await this._fetchMetanMp3Url(clean, speakerId);
@@ -1994,10 +1994,10 @@
 
           const currentLive = (final || interim).trim();
 
-          // ★ 声での割り込み（バージイン機能）：喋っている最中に「ストップ」「待って」「クロ」
+          // ★ 声での割り込み（バージイン機能）：自声エコーを回避し「ストップ」「待って」「やめて」の明確な停止コマンドのみに反応
           if (this.isSpeaking && currentLive) {
-            if (/(?:ストップ|待って|まって|ちょっと|やめて|クロ|くろ)/.test(currentLive)) {
-              Logger.log(`[声での割り込み検知] 「${currentLive}」➔ 発話を停止します`, "warn");
+            if (/(?:ストップ|待って|まって|やめて|ストップして)/.test(currentLive)) {
+              Logger.log(`[声での割り込み検知] 「${currentLive}」➔ 発話を停止し聞き役に回ります`, "warn");
               this.stopSpeaking();
               if (this.onBargeIn) this.onBargeIn();
               return;
@@ -2020,7 +2020,7 @@
         };
 
         this.recognition.onerror = (e) => {
-          // お休み中ならエラーを完全無視
+          // お休み中はブラウザからの切断エラーを完全無視
           if (!AppCore.state.isRunning) return;
           if (e.error !== 'no-speech') Logger.log(`[マイク] ${e.error}`, "warn");
         };
@@ -2029,7 +2029,7 @@
           this.isListening = false;
           if (this.onListeningStatus) this.onListeningStatus(false);
 
-          // ★ お休み中は絶対に再起動しない（ループ遮断）
+          // ★ お休み中は絶対に再起動しない（ループ・エラー完全遮断）
           if (!AppCore.state.isRunning) return;
 
           if (!this.isSpeechCommitted && this.lastRecognizedText && !AppCore.state.isProcessingInput && !this.isSpeaking) {
@@ -2073,7 +2073,7 @@
 
       _startWatchdog() {
         this.watchdogInterval = setInterval(() => {
-          // ★ お休み中・発話中・思考中は完全停止
+          // お休み中・発話中・思考中は完全停止
           if (AppCore.state.isRunning && !this.isSpeaking && !AppCore.state.isThinking && !AppCore.state.isProcessingInput && !this.isListening) {
             if (Date.now() - this.lastSpeechEndTime > 1000) {
               this.startListening();
@@ -2414,7 +2414,7 @@
     }
 
     /* ==========================================================================
-       ★ MODULE 5: 思考・AI対話エンジン（賢い自動判定 ＆ Flash 3.5 lite / 3.8）
+       ★ MODULE 5: 思考・AI対話エンジン（Flash 3.5 lite / 3.8 賢い自動判定）
        ========================================================================== */
     class AIThoughtEngine {
       constructor() {
@@ -2512,17 +2512,17 @@
         }
       }
 
-      /* ★ 難易度・思考要求の賢い自動判定（キーワード＋文章長＋タスク深度） */
+      /* ★ 難易度・思考要求の賢い自動判定（キーワード＋長文指示＋多段タスク判定） */
       evaluateComplexity(text) {
         if (!text) return false;
         const t = text.trim();
 
-        // 1. 明示的な指名キーワード
+        // 1. 直接指定
         if (t.includes('3.8') || t.includes('本気で考えて') || t.includes('プログラミング') || t.includes('コード書いて') || t.includes('スクリプト')) {
           return true;
         }
 
-        // 2. 高度な思考キーワード
+        // 2. 高度思考キーワード
         const hardKeywords = [
           '論文', '論理的', 'アルゴリズム', '数理', '哲学', '矛盾点',
           '英文翻訳して詳しく', '詳しく比較', 'メリットとデメリット', '徹底解説',
@@ -2531,7 +2531,7 @@
         if (hardKeywords.some(k => t.includes(k))) return true;
 
         // 3. 70文字以上の長文指示で、かつ複数の要望を含む場合
-        if (t.length >= 70 && (t.includes('そして') || t.includes('さらに') || t.includes('教えて'))) {
+        if (t.length >= 70 && (t.includes('そして') || t.includes('さらに') || t.includes('教えて') || t.includes('まとめて'))) {
           return true;
         }
 
@@ -2821,7 +2821,7 @@ ${memories.map(m => `・${m}`).join('\n')}
       },
 
       _setupAudioCallbacks() {
-        // 声での割り込み発生時
+        // 声での割り込み停止発生時
         this.audio.onBargeIn = () => {
           this.avatar.setEmotion('idle');
           this.state.isThinking = false;
@@ -3614,7 +3614,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           }, 950);
 
           strokeCount++;
-          // ★ なでなで時の「リアル喉鳴らし＆触覚微振動」
+          // ★ なでなで時の「可聴リアル喉鳴らし＆触覚微振動」
           this.audio.playEffect('purr');
 
           if (strokeCount >= 3) {
@@ -3712,7 +3712,7 @@ ${memories.map(m => `・${m}`).join('\n')}
           }
         };
 
-        // ★ 設定保存と「APIキー間違いチェック（親切な日本語判定）」
+        // ★ 設定保存と「APIキー間違いチェック（ボタン直前の親切な日本語判定）」
         document.getElementById('save-settings-btn').onclick = async () => {
           this.audio.unlockMasterAudio();
           const statusBadge = document.getElementById('settings-validation-status');
