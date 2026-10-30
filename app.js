@@ -4,7 +4,8 @@
    - セリフの長さ（40〜80文字）を完全キープ ＆ 音声完全バッファ再生（途切れ・抜け解消）
    - 自然な会話の間（0.35秒）による聞き漏らしゼロ ＆ 鉄壁エコーガード
    - 操作ボタンの軽快な「ひとこと肉声（0.5秒）」化（日記・タイムライン完全保護）
-   - 18時以降の夜の会話の自動取り込み ＆ 翌朝起動時の自動補完確定システム
+   - 18時以降の夜の会話の自動取り込み ＆ 翌朝起動時の会話件数差分検知による自動補完システム
+   - 日記リソースの選定（おてつだい検索の機械的データ除外＆情緒的思い出への昇華）
    - 会話セリフのローカル永続復元 ＆ 画面表示クリア（内部データ安全保護）
    - 手動バックアップの日時付きファイル名（クロちゃんデータ_YYYYMMDD_HHmm.json）
    - 純粋な1日1ページ絵日記アルバム（写真解除・日記削除の誤操作防止警告つき）
@@ -1103,7 +1104,7 @@ const LocationProvider = {
 };
 
 /* ==========================================================================
-   ★ MODULE 3: 鉄壁ストレージ管理（生活リズム対応 ＆ 日時付きファイル名）
+   ★ MODULE 3: 鉄壁ストレージ管理（生活リズム対応 ＆ 会話数差分検知付き）
    ========================================================================== */
 const DATA_KEYS = {
   MEMORIES: 'kuro_data_memories',
@@ -1167,9 +1168,12 @@ const StorageManager = {
   appendChatLog(role, text, photoUrl = null) {
     if (!text || typeof text !== 'string') return;
     const timeInfo = TimeProvider.getCurrentInfo();
+    const mode = AppCore.state.isAssistantMode ? 'assistant' : 'pet';
+
     const entry = {
       role,
       text,
+      mode, // モード属性（pet: なかよし, assistant: おてつだい）
       time: timeInfo.clock,
       date: timeInfo.lifeLogKey, // 午前4時生活日キー
       photoUrl: photoUrl || null,
@@ -1238,7 +1242,7 @@ const StorageManager = {
     } catch(e) {}
   },
 
-  saveDiary(entryText, customDateKey = null, customFullDate = null, photoData = null) {
+  saveDiary(entryText, customDateKey = null, customFullDate = null, photoData = null, currentLogCount = null) {
     if (!entryText || entryText.length < 20) return false;
 
     const timeInfo = TimeProvider.getCurrentInfo();
@@ -1247,6 +1251,9 @@ const StorageManager = {
     const weather = LocationProvider.weather;
     const temp = LocationProvider.temperature;
 
+    // 現在のログ件数を取得して記録（差分検知用）
+    const totalLogsNow = (currentLogCount !== null) ? currentLogCount : this.getDailyLogs(dateKey).length;
+
     const diaryData = {
       dateKey,
       fullDate,
@@ -1254,7 +1261,8 @@ const StorageManager = {
       temperature: temp,
       content: entryText,
       photo: photoData || null,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      logCountAtSave: totalLogsNow // ★ 日記作成時の会話ログ件数を保存
     };
 
     let list = this.loadAllDiaries();
@@ -1262,10 +1270,10 @@ const StorageManager = {
     if (existingIdx >= 0) {
       if (!photoData && list[existingIdx].photo) diaryData.photo = list[existingIdx].photo;
       list[existingIdx] = diaryData;
-      Logger.log(`[Diary] ${dateKey} の日記を夜の会話を含めて更新完了`, "info");
+      Logger.log(`[Diary] ${dateKey} の日記を夜の会話を含めて更新完了（総会話数: ${totalLogsNow}件）`, "info");
     } else {
       list.unshift(diaryData);
-      Logger.log(`[Diary] ${dateKey} の新規日記を安全保存完了`, "info");
+      Logger.log(`[Diary] ${dateKey} の新規日記を安全保存完了（総会話数: ${totalLogsNow}件）`, "info");
     }
 
     this.saveAllDiaries(list);
@@ -1584,7 +1592,7 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   ★ MODULE 5: 思考・AI対話エンジン（Flash Lite 特化 ＆ 3.8 完全禁止）
+   ★ MODULE 5: 思考・AI対話エンジン（Flash Lite 特化 ＆ 日記ログ厳選）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
@@ -1791,6 +1799,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
     return { success: false, error: "ALL_LITE_MODELS_FAILED" };
   }
 
+  /* ★ 日記リソースの厳選：機械的なニュースや店舗検索リストを除外し、生活・情緒の思い出に昇華 */
   async generateDailyDiarySummary(dailyAllLogs, targetLifeDateKey = null, targetLifeFullDate = null) {
     if (!this.apiKey) return { success: false };
 
@@ -1801,29 +1810,46 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 
     const fullDate = targetLifeFullDate || timeInfo.lifeFullDate;
 
-    const conversationHistoryText = dailyAllLogs
-      .filter(l => l.text && !/(?:今日|きょう)?(?:の)?(?:日記|にっき).*(?:書いて|まとめて)/.test(l.text))
+    // 日記用リソースの選別・フィルタリング
+    const filteredLogs = dailyAllLogs.filter(l => {
+      if (!l.text) return false;
+      // 日記作成コマンドの除外
+      if (/(?:今日|きょう)?(?:の)?(?:日記|にっき).*(?:書いて|まとめて)/.test(l.text)) return false;
+      // 単なるURLやリンク案内だけの除外
+      if (l.text.startsWith('http') || l.text.includes('Googleマップで見る')) return false;
+
+      // おてつだいモード中かつ純粋な検索応答（ニュース一覧読み上げや住所特定だけ）のノイズを低減
+      if (l.mode === 'assistant') {
+        const isMechanicalSearch = /(?:最新ニュース|トップニュース|Googleマップ|検索結果|付近のスポット一覧)/.test(l.text);
+        if (isMechanicalSearch) return false;
+      }
+      return true;
+    });
+
+    const conversationHistoryText = filteredLogs
       .map(l => `${l.role === 'user' ? 'おやびん' : 'クロ'}: ${l.text}`)
       .join('\n');
 
     const diaryPrompt = `
 あなたはノルウェージャンフォレストキャットの1歳の子猫の女の子「クロ」です。
-おやびん（飼い主さん）と過ごした思い出を振り返り、クロちゃん目線の愛らしい絵日記を書いてください。
-夕方だけでなく、夜や深夜にお話しした内容がある場合は、その夜の出来事もしっかり盛り込んで1日全体の絵日記にまとめてください。
+おやびん（飼い主さん）と過ごした大切な1日を振り返り、クロちゃん目線の心温まる愛らしい絵日記を書いてください。
+夕方だけでなく、夜や深夜にお話しした内容がある場合は、その夜のまったりした出来事もしっかり盛り込んで1日全体の絵日記にまとめてください。
 
 【対象日の情報】
 ・日付: ${fullDate}
 ・場所: ${townArea}
 ・天気: ${weather} / 気温: ${temp}度
 
-【おやびんと話した全会話ログ（朝から夜・深夜まで）】
+【おやびんと話した会話ログ（朝から夜・深夜まで）】
 ${conversationHistoryText || '今日はおやびんとまったりお家で過ごしたニャン♪'}
 
-【執筆ルール】
+【★絵日記の執筆ルール】
 - 文字数上限は【500文字以内（250〜450文字程度）】で、起承転結のある心温まる文章にしてください。
 - 語尾は「〜ニャ」「〜ニャン♪」「〜だニャ🐾」を使ってください。
-- 今日歩いた場所（${townArea}）や話した内容、写真を撮ったこと、夜のまったりした会話などを具体的に散りばめてください。
-- 出力は日記の本文のみを出力してください（タイトルやト書き、挨拶文は不要です）。
+- 【重要】お調べした機械的なニュースの見出しや、お店のリスト案内をそのまま日記に書くのは禁止です。
+  おやびんが「何に興味を持っていたか」「ラーメンを食べたがっていた」「こんなお話をした」という生活の思い出・感情として優しく昇華して書いてください。
+- 今日歩いた場所（${townArea}）や景色、写真を一緒に見たこと、夜のおしゃべりなどを具体的に散りばめてください。
+- 出力は日記の本文のみを出力してください（タイトルやト書き、挨拶文は一切不要です）。
 `;
 
     const targetModel = (this.discoveredLiteModels[0] || "gemini-3.5-flash-lite").replace(/^models\//, '');
@@ -1970,7 +1996,7 @@ const AppCore = {
         });
       }
 
-      // 翌朝起動時チェック：昨日の日記が未完成のまま夜の会話が残っていれば自動補完
+      // ★ 翌朝起動時チェック：会話数差分検知による自動補完確定システム
       this.checkAndFinalizeYesterdayDiary();
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 600);
@@ -1980,8 +2006,10 @@ const AppCore = {
     }
   },
 
+  /* ★ 翌朝起動時チェック：昨日の日記が未作成、または差分会話がある場合に自動更新 */
   async checkAndFinalizeYesterdayDiary() {
     const timeInfo = TimeProvider.getCurrentInfo();
+    // 深夜（0:00〜3:59）は「昨日の夜の延長中」なので補完判定は行わない
     if (timeInfo.isLateNight) return;
 
     const now = new Date();
@@ -1991,22 +2019,35 @@ const AppCore = {
     const yKey = `${yesterdayObj.getFullYear()}-${pad(yesterdayObj.getMonth() + 1)}-${pad(yesterdayObj.getDate())}`;
     const yFull = `${yesterdayObj.getFullYear()}年${yesterdayObj.getMonth() + 1}月${yesterdayObj.getDate()}日 (${dayNames[yesterdayObj.getDay()]})`;
 
+    const yLogs = StorageManager.getDailyLogs(yKey);
+    // 昨日の会話ログがそもそも2件未満（挨拶程度以下）ならスキップ
+    if (!yLogs || yLogs.length < 2) return;
+
     const allDiaries = StorageManager.loadAllDiaries();
     const yDiary = allDiaries.find(d => d.dateKey === yKey);
-    if (!yDiary) return;
 
-    const yLogs = StorageManager.getDailyLogs(yKey);
-    if (yLogs.length === 0) return;
+    let needsUpdate = false;
+    let reason = "";
 
-    const lastLogTime = yLogs[yLogs.length - 1].timestamp || 0;
-    const diarySaveTime = yDiary.timestamp || 0;
+    if (!yDiary) {
+      // 1. 昨日の日記が1度も書かれていなかった場合
+      needsUpdate = true;
+      reason = "未作成のため新規自動生成";
+    } else {
+      // 2. 昨日の日記が存在するが、会話ログ件数に差分がある場合
+      const savedCount = yDiary.logCountAtSave || 0;
+      if (yLogs.length > savedCount) {
+        needsUpdate = true;
+        reason = `差分検知（前回作成時 ${savedCount}件 ➔ 昨日の総会話 ${yLogs.length}件）`;
+      }
+    }
 
-    if (lastLogTime > diarySaveTime + 60000) {
-      Logger.log(`[自動補完] 昨日の夜の会話を反映するため ${yKey} の日記を自動更新中…`, "info");
+    if (needsUpdate) {
+      Logger.log(`[自動補完検知] 昨日の日記（${yKey}）の再生成を開始ニャ（理由: ${reason}）…`, "info");
       const res = await this.ai.generateDailyDiarySummary(yLogs, yKey, yFull);
       if (res.success && res.diaryText) {
-        StorageManager.saveDiary(res.diaryText, yKey, yFull, yDiary.photo);
-        Logger.log(`[自動補完完了⚡] ${yKey} の昨日の絵日記が夜の会話を含めて完全完成したニャ！`, "success");
+        StorageManager.saveDiary(res.diaryText, yKey, yFull, yDiary?.photo || null, yLogs.length);
+        Logger.log(`[自動補完完了⚡] ${yKey} の絵日記が夜の会話差分を含めて最新化されたニャ！`, "success");
       }
     }
   },
@@ -2396,7 +2437,7 @@ const AppCore = {
 
     this.ai.generateDailyDiarySummary(allLogs, lifeKey, timeInfo.lifeFullDate).then(res => {
       if (res.success && res.diaryText) {
-        StorageManager.saveDiary(res.diaryText, lifeKey, timeInfo.lifeFullDate, existingDiary?.photo || null);
+        StorageManager.saveDiary(res.diaryText, lifeKey, timeInfo.lifeFullDate, existingDiary?.photo || null, allLogs.length);
         Logger.log(`[おやすみ自動更新完了⚡] ${lifeKey} の最終絵日記を保存完了`, "success");
       }
     });
@@ -2423,7 +2464,7 @@ const AppCore = {
     const diaryRes = await this.ai.generateDailyDiarySummary(allLogs, lifeKey, timeInfo.lifeFullDate);
 
     if (diaryRes.success && diaryRes.diaryText) {
-      StorageManager.saveDiary(diaryRes.diaryText, lifeKey, timeInfo.lifeFullDate);
+      StorageManager.saveDiary(diaryRes.diaryText, lifeKey, timeInfo.lifeFullDate, null, allLogs.length);
       const diaryData = StorageManager.getTodayDiary();
 
       StorageManager.appendChatLog('user', promptText);
@@ -3445,5 +3486,4 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
-
 
