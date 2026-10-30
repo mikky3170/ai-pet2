@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>AIペット クロちゃん🐾</title>
 
-  <!-- キャッシュ完全無効化設定（スマホの古いキャッシュを強制破棄） -->
+  <!-- キャッシュ完全無効化設定 -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -112,7 +112,7 @@
       margin-bottom: 6px;
       gap: 6px;
     }
-    .top-header-left, .top-header-right { display: flex; align-items: center; flex-shrink: 0; }
+    .top-header-left, .top-header-right { display: flex; align-items: center; flex-shrink: 0; gap: 5px; }
     #clock-display { font-size: 12px; font-weight: 800; color: #334155; padding-left: 2px; }
 
     #status-badge-container {
@@ -147,6 +147,22 @@
     }
     .is-paused-mode #status-text { background: #450a0a; color: #fca5a5; }
 
+    .btn-top-diary {
+      background: #fdf2f8;
+      color: #db2777;
+      border: 1.2px solid #f472b6;
+      border-radius: 12px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      transition: all 0.15s;
+    }
+    .btn-top-diary:active { transform: scale(0.93); background: #fce7f3; }
+
     .model-badge {
       padding: 4px 8px;
       border-radius: 12px;
@@ -156,16 +172,6 @@
       white-space: nowrap;
     }
     .model-badge.lite { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
-    .model-badge.pro {
-      background: #fdf4ff;
-      color: #c026d3;
-      border: 1px solid #f5d0fe;
-      animation: proPulse 1.8s ease-in-out infinite alternate;
-    }
-    @keyframes proPulse {
-      0% { transform: scale(1); }
-      100% { transform: scale(1.05); box-shadow: 0 0 8px rgba(192, 38, 211, 0.35); }
-    }
 
     #timer-active-badge {
       display: none;
@@ -228,24 +234,45 @@
       font-weight: 500;
     }
 
-    .confirm-actions { display: flex; gap: 8px; margin-top: 8px; }
-    .confirm-btn {
-      flex: 1;
-      padding: 7px 10px;
-      border-radius: 12px;
-      border: none;
-      font-size: 12px;
-      font-weight: 800;
-      cursor: pointer;
+    /* ★ タイムライン用「クロの日記カード」 */
+    .timeline-diary-card {
+      width: 95%;
+      max-width: 420px;
+      background: linear-gradient(135deg, #fffdfa 0%, #fff7ed 100%);
+      border: 2px solid #fed7aa;
+      border-radius: 18px;
+      padding: 12px 14px;
+      box-shadow: 0 4px 14px rgba(234, 88, 12, 0.1);
+      margin-top: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      animation: fadeIn 0.3s ease-out;
+    }
+    .timeline-diary-header {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 4px;
-      transition: transform 0.15s;
+      justify-content: space-between;
+      border-bottom: 1px dashed #fdba74;
+      padding-bottom: 6px;
+      font-size: 12px;
+      font-weight: 900;
+      color: #c2410c;
     }
-    .confirm-btn:active { transform: scale(0.95); }
-    .confirm-btn.yes { background: linear-gradient(135deg, #c026d3, #9333ea); color: white; box-shadow: 0 2px 6px rgba(192, 38, 211, 0.3); }
-    .confirm-btn.no { background: #e2e8f0; color: #475569; }
+    .timeline-diary-meta {
+      font-size: 11px;
+      font-weight: 700;
+      color: #ea580c;
+      display: flex;
+      gap: 8px;
+    }
+    .timeline-diary-body {
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: #431407;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
 
     /* おてつだい連携カード */
     .action-card-box { margin-top: 6px; display: flex; flex-direction: column; gap: 6px; max-width: 92%; }
@@ -277,7 +304,7 @@
       position: relative;
       flex-shrink: 0;
       width: 100%;
-      height: 330px; /* 1.2倍サイズに対応したゆったりステージ */
+      height: 335px;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
@@ -292,29 +319,30 @@
       position: relative;
       width: 100%;
       max-width: 400px;
-      height: 320px;
+      height: 325px;
       display: flex;
       justify-content: center;
       align-items: flex-end;
       transform-origin: bottom center;
-      transition: transform 0.4s ease-out;
+      transition: transform 0.35s ease-out;
       background: transparent;
+      pointer-events: none;
     }
 
+    /* 呼吸・浮遊アニメーション */
     .pet-avatar-wrapper.is-idling #cat-stage-box { animation: catStageBreathe 4.8s ease-in-out infinite; }
     @keyframes catStageBreathe {
-      0%, 100% { transform: scale(1, 1) translateY(0) rotate(0deg); }
-      30% { transform: scale(1.012, 0.988) translateY(-2px) rotate(-0.5deg); }
-      70% { transform: scale(1.012, 0.988) translateY(-2px) rotate(0.5deg); }
+      0%, 100% { transform: scale(1, 1) translateY(0); }
+      50% { transform: scale(1.012, 0.99) translateY(-2px); }
     }
-    .pet-avatar-wrapper.is-talking #cat-stage-box { animation: catStageTalk 0.9s ease-in-out infinite alternate; }
+    .pet-avatar-wrapper.is-talking #cat-stage-box { animation: catStageTalk 0.8s ease-in-out infinite alternate; }
     @keyframes catStageTalk { 0% { transform: translateY(0); } 100% { transform: translateY(-3px) scale(1.01); } }
     .pet-avatar-wrapper.is-thinking #cat-stage-box { animation: catStageThink 2.4s ease-in-out infinite alternate; }
-    @keyframes catStageThink { 0% { transform: scale(1) rotate(-2.5deg); } 100% { transform: scale(1.01) rotate(2.5deg); } }
-    .pet-avatar-wrapper.is-happy #cat-stage-box { animation: catStageHappy 0.6s ease-in-out infinite alternate; }
-    @keyframes catStageHappy { 0% { transform: translateY(0) scale(1); } 100% { transform: translateY(-6px) scale(1.02); } }
+    @keyframes catStageThink { 0% { transform: scale(1) rotate(-1.5deg); } 100% { transform: scale(1.01) rotate(2deg); } }
+    .pet-avatar-wrapper.is-happy #cat-stage-box { animation: catStageHappy 0.45s ease-in-out infinite alternate; }
+    @keyframes catStageHappy { 0% { transform: translateY(0) scale(1); } 100% { transform: translateY(-7px) scale(1.03); } }
 
-    /* 煙（モクモクパフ）エフェクト */
+    /* 煙エフェクト */
     #transform-smoke {
       position: absolute;
       bottom: 25px;
@@ -349,7 +377,7 @@
       pointer-events: none;
       transition: opacity 0.35s ease-in-out;
     }
-    .cat-frame.active { opacity: 1; pointer-events: auto; }
+    .cat-frame.active { opacity: 1; pointer-events: none; }
 
     .cat-avatar-img {
       position: absolute;
@@ -361,6 +389,7 @@
       background: transparent !important;
       mix-blend-mode: multiply;
       display: block;
+      pointer-events: none;
     }
 
     .accessory-layer {
@@ -380,8 +409,6 @@
       animation: tasselSwing 3.2s ease-in-out infinite alternate;
     }
     @keyframes tasselSwing { 0% { transform: rotate(0deg); } 100% { transform: rotate(14deg); } }
-    .spark-idea .mortar-tassel { animation: tasselJump 0.35s ease-in-out 4 alternate !important; }
-    @keyframes tasselJump { 0% { transform: rotate(-8deg) scaleY(1); } 100% { transform: rotate(22deg) scaleY(1.15); } }
 
     #idea-bulb {
       position: absolute;
@@ -396,123 +423,149 @@
     }
     #idea-bulb.active { opacity: 1; transform: scale(1.2) translateY(0); }
 
-    /* ★ アニメ（イラスト）猫：1.2倍サイズ ＆ ノルウェージャン愛され子猫デザイン */
+    /* ベクター猫アニメーション */
     #cat-vector-avatar {
-      width: 250px;       /* 従来(208px)の約1.2倍に拡大！配信でも大迫力 */
-      height: 320px;      /* 従来(298px)の約1.1倍〜1.2倍で縦横ベスト比率 */
+      width: 270px;
+      height: 325px;
       position: absolute;
       bottom: 0;
       display: none;
       transform-origin: bottom center;
       z-index: 10;
+      pointer-events: none;
     }
     #cat-vector-avatar.active-mode { display: block; }
 
-    .anim-body-group {
-      transform-origin: 100px 230px;
-      animation: catBodyBreath 4.0s ease-in-out infinite;
-    }
-    @keyframes catBodyBreath {
-      0%, 100% { transform: scale(1, 1); }
-      50% { transform: scale(0.99, 1.018) translateY(-2.5px); }
-    }
+    .pose-group { display: none; }
+    .pose-idle-active #pose-idle { display: block; }
+    .pose-talking-active #pose-talking { display: block; }
+    .pose-thinking-active #pose-thinking { display: block; }
+    .pose-happy-active #pose-happy { display: block; }
 
-    .anim-chest-ruff {
-      transform-origin: 100px 145px;
-      animation: catChestRuff 4.0s ease-in-out infinite;
-    }
-    @keyframes catChestRuff {
-      0%, 100% { transform: scale(1, 1); }
-      50% { transform: scale(1.03, 1.02); }
-    }
-
-    .anim-tail {
-      transform-origin: 140px 200px;
-      animation: catTailWave 4.6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-    }
-    @keyframes catTailWave {
-      0% { transform: rotate(0deg) skewX(0deg); }
-      22% { transform: rotate(12deg) skewX(-4deg) translateY(-2px); }
-      50% { transform: rotate(-3deg) skewX(2deg); }
-      75% { transform: rotate(-10deg) skewX(4deg) translateY(1px); }
-      100% { transform: rotate(0deg) skewX(0deg); }
-    }
-    /* 大喜び時のハイパーしっぽ振り */
-    .is-happy #cat-vector-avatar .anim-tail {
-      animation: catTailHappy 0.4s ease-in-out infinite alternate !important;
-    }
-    @keyframes catTailHappy {
-      0% { transform: rotate(8deg) translateY(-4px); }
-      100% { transform: rotate(-14deg) translateY(-8px); }
-    }
-
-    .anim-head-group {
+    .anim-idle-head {
       transform-origin: 100px 125px;
-      animation: catHeadTilt 6.2s ease-in-out infinite;
+      animation: idleHeadTilt 5.6s ease-in-out infinite alternate;
     }
-    @keyframes catHeadTilt {
-      0%, 100% { transform: rotate(0deg) translateY(0); }
-      25% { transform: rotate(-2.5deg) translateY(-1px); }
-      70% { transform: rotate(2.8deg) translateY(-0.5px); }
-    }
-    .is-talking #cat-vector-avatar .anim-head-group {
-      animation: catHeadTalking 0.38s ease-in-out infinite alternate !important;
-    }
-    @keyframes catHeadTalking {
-      0% { transform: rotate(-1.5deg) translateY(0); }
-      100% { transform: rotate(1.5deg) translateY(-2px); }
+    @keyframes idleHeadTilt {
+      0% { transform: rotate(0deg) translateY(0); }
+      35% { transform: rotate(-2.5deg) translateY(-1px); }
+      75% { transform: rotate(2deg) translateY(-0.5px); }
+      100% { transform: rotate(0deg) translateY(0); }
     }
 
-    /* 愛らしい猫耳のぴくぴくアニメ */
-    .anim-ear-left {
+    .anim-idle-body {
+      transform-origin: 100px 220px;
+      animation: idleBreathe 4.5s ease-in-out infinite;
+    }
+    @keyframes idleBreathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.015, 0.985); }
+    }
+    .anim-idle-ruff {
+      transform-origin: 100px 145px;
+      animation: ruffFluff 4.5s ease-in-out infinite;
+    }
+    @keyframes ruffFluff {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04, 1.02); }
+    }
+    .anim-idle-tail {
+      transform-origin: 140px 190px;
+      animation: idleTailWave 5.0s ease-in-out infinite;
+    }
+    @keyframes idleTailWave {
+      0%, 100% { transform: rotate(0deg); }
+      30% { transform: rotate(8deg) translateY(-2px); }
+      70% { transform: rotate(-5deg) translateY(1px); }
+    }
+
+    .anim-talking-head {
+      transform-origin: 100px 125px;
+      animation: talkHeadBob 0.35s ease-in-out infinite alternate;
+    }
+    @keyframes talkHeadBob {
+      0% { transform: rotate(-2deg) translateY(0); }
+      100% { transform: rotate(2deg) translateY(-3px); }
+    }
+    .anim-talking-tail {
+      transform-origin: 145px 160px;
+      animation: talkTailShake 0.6s ease-in-out infinite alternate;
+    }
+    @keyframes talkTailShake {
+      0% { transform: rotate(-6deg); }
+      100% { transform: rotate(10deg); }
+    }
+
+    .anim-thinking-head {
+      transform-origin: 100px 125px;
+      animation: thinkHeadTilt 3.0s ease-in-out infinite alternate;
+    }
+    @keyframes thinkHeadTilt {
+      0% { transform: rotate(-4deg); }
+      100% { transform: rotate(3deg); }
+    }
+    .anim-thinking-paw {
+      transform-origin: 85px 160px;
+      animation: thinkPawTap 2.0s ease-in-out infinite alternate;
+    }
+    @keyframes thinkPawTap {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-2px) rotate(-1deg); }
+    }
+
+    .anim-happy-arms {
+      transform-origin: 100px 160px;
+      animation: happyArmsWave 0.4s ease-in-out infinite alternate;
+    }
+    @keyframes happyArmsWave {
+      0% { transform: translateY(0) rotate(-2deg); }
+      100% { transform: translateY(-6px) rotate(2deg); }
+    }
+    .anim-happy-tail {
+      transform-origin: 140px 175px;
+      animation: happyTailHyper 0.28s ease-in-out infinite alternate;
+    }
+    @keyframes happyTailHyper {
+      0% { transform: rotate(12deg) scale(1.02); }
+      100% { transform: rotate(-16deg) scale(1); }
+    }
+
+    .anim-ear-l {
       transform-origin: 66px 65px;
-      animation: catEarTwitchLeft 5.5s ease-in-out infinite;
+      animation: earTwitchL 6.0s ease-in-out infinite;
     }
-    @keyframes catEarTwitchLeft {
-      0%, 86%, 100% { transform: rotate(0deg); }
-      89% { transform: rotate(-5deg); }
-      92% { transform: rotate(3deg); }
-      95% { transform: rotate(-1deg); }
+    @keyframes earTwitchL {
+      0%, 88%, 100% { transform: rotate(0deg); }
+      92% { transform: rotate(-6deg); }
+      96% { transform: rotate(3deg); }
     }
-    .anim-ear-right {
+    .anim-ear-r {
       transform-origin: 134px 65px;
-      animation: catEarTwitchRight 6.8s ease-in-out infinite;
+      animation: earTwitchR 7.2s ease-in-out infinite;
     }
-    @keyframes catEarTwitchRight {
-      0%, 78%, 100% { transform: rotate(0deg); }
-      81% { transform: rotate(5deg); }
-      84% { transform: rotate(-3deg); }
-      87% { transform: rotate(2deg); }
+    @keyframes earTwitchR {
+      0%, 82%, 100% { transform: rotate(0deg); }
+      86% { transform: rotate(6deg); }
+      90% { transform: rotate(-3deg); }
     }
-    .is-happy #cat-vector-avatar .anim-ear-left { transform: rotate(-6deg) translateY(2px); }
-    .is-happy #cat-vector-avatar .anim-ear-right { transform: rotate(6deg) translateY(2px); }
 
-    /* 目（通常パチクリ・大喜び三日月目） */
-    .eye-normal { display: block; transform-origin: center; animation: catEyeBlink 4.2s ease-in-out infinite; }
-    .eye-happy { display: none; }
-    @keyframes catEyeBlink {
-      0%, 93%, 100% { transform: scaleY(1); }
-      95%, 97% { transform: scaleY(0.06); }
+    .cat-eye-blink {
+      transform-origin: center;
+      animation: eyeBlinkAnim 4.6s ease-in-out infinite;
     }
-    .is-happy #cat-vector-avatar .eye-normal { display: none !important; }
-    .is-happy #cat-vector-avatar .eye-happy { display: block !important; }
-
-    /* 口（通常閉・お話し開閉・大喜び） */
-    .cat-mouth-closed { display: block; }
-    .cat-mouth-open { display: none; }
-    .cat-mouth-happy { display: none; }
-
-    .is-talking #cat-vector-avatar .cat-mouth-closed { display: none; }
-    .is-talking #cat-vector-avatar .cat-mouth-open {
-      display: block;
-      transform-origin: 100px 115px;
-      animation: catVectorMouthSync 0.24s ease-in-out infinite alternate;
+    @keyframes eyeBlinkAnim {
+      0%, 92%, 100% { transform: scaleY(1); }
+      95%, 97% { transform: scaleY(0.08); }
     }
-    @keyframes catVectorMouthSync { 0% { transform: scale(1, 0.35); } 100% { transform: scale(1.15, 1.3); } }
 
-    .is-happy #cat-vector-avatar .cat-mouth-closed { display: none; }
-    .is-happy #cat-vector-avatar .cat-mouth-open { display: none; }
-    .is-happy #cat-vector-avatar .cat-mouth-happy { display: block; }
+    .mouth-talking {
+      transform-origin: 100px 114px;
+      animation: mouthSyncAnim 0.24s ease-in-out infinite alternate;
+    }
+    @keyframes mouthSyncAnim {
+      0% { transform: scale(0.9, 0.35); }
+      100% { transform: scale(1.15, 1.25); }
+    }
 
     #cat-vector-accessories {
       opacity: 0;
@@ -524,9 +577,9 @@
 
     .cat-ground-shadow {
       position: absolute;
-      bottom: 10px;
-      width: 230px;
-      height: 20px;
+      bottom: 8px;
+      width: 240px;
+      height: 22px;
       background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.25) 0%, rgba(0, 0, 0, 0) 75%);
       border-radius: 50%;
       pointer-events: none;
@@ -551,6 +604,7 @@
       gap: 5px;
       box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
       z-index: 35;
+      pointer-events: auto;
       transition: transform 0.15s;
     }
     .btn-transform-floating:active { transform: scale(0.92); }
@@ -572,6 +626,7 @@
       gap: 5px;
       box-shadow: 0 6px 18px rgba(244, 114, 182, 0.3);
       z-index: 35;
+      pointer-events: auto;
       transition: transform 0.15s;
     }
     .btn-snack-floating:active { transform: scale(0.92); }
@@ -656,7 +711,7 @@
       color: #ffffff;
     }
 
-    /* 5. 設定モーダル ＆ 取り扱い説明書 */
+    /* 5. モーダル共通スタイル */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -680,6 +735,128 @@
     }
     .modal-card h3 { margin-top: 0; color: #1f2937; font-size: 17px; display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
 
+    /* ★ 6. 「クロの思い出日記帳」モーダル */
+    #diary-book-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(6px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 220;
+      padding: 14px;
+    }
+    #diary-book-modal.is-open { display: flex; }
+    .diary-book-card {
+      background: #fffdfa;
+      width: 100%;
+      max-width: 460px;
+      height: 85vh;
+      border-radius: 24px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+      border: 2px solid #fed7aa;
+      overflow: hidden;
+    }
+    .diary-book-header {
+      background: linear-gradient(135deg, #ffedd5 0%, #fee2e2 100%);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #fed7aa;
+    }
+    .diary-book-title {
+      font-size: 16px;
+      font-weight: 900;
+      color: #9a3412;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .diary-book-actions { display: flex; gap: 8px; align-items: center; }
+    .btn-diary-action {
+      background: #ffffff;
+      border: 1px solid #fdba74;
+      color: #c2410c;
+      padding: 5px 9px;
+      border-radius: 10px;
+      font-size: 11.5px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .btn-diary-action:active { background: #ffedd5; }
+    .btn-diary-close {
+      background: #7c2d12;
+      border: none;
+      color: #ffffff;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .diary-book-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: #fffdfa;
+    }
+    .diary-entry-card {
+      background: #ffffff;
+      border: 1.5px solid #fed7aa;
+      border-radius: 16px;
+      padding: 12px 14px;
+      box-shadow: 0 2px 8px rgba(234, 88, 12, 0.06);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .diary-entry-card:hover { border-color: #f97316; }
+    .diary-entry-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12.5px;
+      font-weight: 900;
+      color: #c2410c;
+      border-bottom: 1px dashed #fed7aa;
+      padding-bottom: 5px;
+    }
+    .diary-entry-meta {
+      font-size: 11px;
+      color: #ea580c;
+      font-weight: 700;
+      display: flex;
+      gap: 8px;
+    }
+    .diary-entry-content {
+      font-size: 13px;
+      line-height: 1.65;
+      color: #334155;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+    .diary-empty-state {
+      text-align: center;
+      color: #9a3412;
+      padding: 40px 10px;
+      font-size: 13.5px;
+      font-weight: 700;
+      line-height: 1.8;
+    }
+
+    /* 7. 設定モーダルフォーム */
     .form-group { margin-bottom: 14px; }
     .form-group label { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; color: #4b5563; margin-bottom: 5px; }
     .form-group input, .form-group select {
@@ -698,7 +875,6 @@
     }
     @keyframes shakeInput { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 
-    /* 取り扱い説明書 */
     .manual-details {
       background: #f8fafc;
       border: 1.5px solid #e2e8f0;
@@ -799,20 +975,6 @@
     .memory-add-box input { flex: 1; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 12px; }
     .memory-add-box button { background: var(--primary-color); color: white; border: none; border-radius: 10px; padding: 0 14px; font-weight: bold; font-size: 12px; cursor: pointer; }
 
-    .diary-preview-card {
-      background: #fffbeb;
-      border: 1.5px solid #fde68a;
-      border-radius: 14px;
-      padding: 10px 12px;
-      font-size: 12px;
-      line-height: 1.5;
-      color: #92400e;
-      margin-top: 6px;
-      max-height: 120px;
-      overflow-y: auto;
-    }
-    .diary-preview-title { font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
-
     .btn-save {
       width: 100%;
       padding: 13px;
@@ -843,7 +1005,6 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* キャッシュ強制破棄ボタン */
     .btn-force-refresh {
       width: 100%;
       padding: 10px;
@@ -862,7 +1023,7 @@
     }
     .btn-force-refresh:active { background: #1e293b; }
 
-    /* 6. システム診断モニタ */
+    /* 8. システム診断モニタ */
     #diag-panel {
       position: fixed;
       inset: 0;
@@ -897,7 +1058,7 @@
     .log-error { color: #f87171; font-weight: bold; }
     .log-info { color: #94a3b8; }
 
-    /* 7. メガネ・帽子位置アジャスターモーダル */
+    /* 9. メガネ・帽子アジャスター */
     #glasses-adjust-modal {
       position: fixed;
       inset: 0;
@@ -939,6 +1100,7 @@
     <div class="top-header">
       <div class="top-header-left">
         <span id="clock-display">00:00</span>
+        <button type="button" class="btn-top-diary" id="top-diary-btn" title="これまでのクロ日記帳を開くニャ！">📖 日記帳</button>
         <div id="timer-active-badge">⏱️ <span id="timer-count-disp">03:00</span></div>
       </div>
 
@@ -947,13 +1109,13 @@
       </div>
 
       <div class="top-header-right">
-        <span id="model-badge" class="model-badge lite">🐾 3.5 Lite</span>
+        <span id="model-badge" class="model-badge lite">🐾 Flash Lite</span>
       </div>
     </div>
 
     <div id="chat-timeline"></div>
 
-    <div class="pet-avatar-wrapper is-idling" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
+    <div class="pet-avatar-wrapper is-idling pose-idle-active" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
       <div class="cat-ground-shadow"></div>
       <div id="idea-bulb">💡</div>
 
@@ -976,6 +1138,7 @@
       </svg>
 
       <div id="cat-stage-box">
+        <!-- リアル写真モード用フレーム -->
         <div class="cat-frame active" id="frame-idle">
           <img src="idle.jpg" alt="待機中" class="cat-avatar-img" id="img-idle">
           <div class="accessory-layer" id="acc-idle"></div>
@@ -993,125 +1156,201 @@
           <div class="accessory-layer" id="acc-happy"></div>
         </div>
 
-        <!-- ★ アニメ（イラスト）猫：1.2倍サイズ ＆ ノルウェージャン愛され子猫デザイン -->
+        <!-- ★ 新・ノルウェージャン「クロちゃん」ベクターアニメーション -->
         <svg viewBox="0 0 200 240" id="cat-vector-avatar" class="active-mode">
           <defs>
+            <radialGradient id="grad-fur-black" cx="50%" cy="40%" r="60%">
+              <stop offset="0%" stop-color="#262933"/>
+              <stop offset="60%" stop-color="#14161f"/>
+              <stop offset="100%" stop-color="#0a0c12"/>
+            </radialGradient>
+
+            <linearGradient id="grad-silver-ruff" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#f1f5f9"/>
+              <stop offset="35%" stop-color="#cbd5e1"/>
+              <stop offset="70%" stop-color="#94a3b8"/>
+              <stop offset="100%" stop-color="#475569"/>
+            </linearGradient>
+
+            <linearGradient id="grad-tail-smoke" x1="0%" y1="100%" x2="50%" y2="0%">
+              <stop offset="0%" stop-color="#0f1118"/>
+              <stop offset="65%" stop-color="#334155"/>
+              <stop offset="100%" stop-color="#94a3b8"/>
+            </linearGradient>
+
+            <radialGradient id="grad-emerald-eye" cx="45%" cy="40%" r="55%">
+              <stop offset="0%" stop-color="#a7f3d0"/>
+              <stop offset="45%" stop-color="#10b981"/>
+              <stop offset="85%" stop-color="#047857"/>
+              <stop offset="100%" stop-color="#064e3b"/>
+            </radialGradient>
+
             <pattern id="stripe-bw-vector" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
               <rect width="4" height="8" fill="#111827"/>
               <rect x="4" width="4" height="8" fill="#ffffff"/>
             </pattern>
           </defs>
 
-          <!-- しっぽ -->
-          <g class="anim-tail">
-            <path d="M136 195 C170 180 182 145 176 115 C172 90 185 75 190 70 C182 78 165 105 156 130 C146 155 138 180 134 195 Z" fill="#181a24"/>
-            <path d="M140 190 C165 178 174 150 168 125 C164 105 175 92 178 86 C172 94 158 116 150 136 C144 154 138 178 138 190 Z" fill="#334155" opacity="0.55"/>
-          </g>
-
-          <!-- 体 ＆ 胸毛（ノルウェージャンの豊かな飾り毛） -->
-          <g class="anim-body-group">
-            <path d="M56 226 C42 180 50 145 52 130 C46 120 48 100 56 85 C68 45 82 50 100 50 C118 50 132 45 144 85 C152 100 154 120 148 130 C150 145 158 180 144 226 Z" fill="#14161f"/>
-            <path d="M72 140 C90 125 110 125 128 140 C138 180 132 215 100 222 C68 215 62 180 72 140 Z" fill="#475569" opacity="0.3"/>
-
-            <g class="anim-chest-ruff">
-              <path d="M72 136 C86 120 114 120 128 136 C136 160 126 192 100 205 C74 192 64 160 72 136 Z" fill="#cbd5e1"/>
-              <path d="M80 142 C92 132 108 132 120 142 C126 162 118 186 100 196 C82 186 74 162 80 142 Z" fill="#f8fafc"/>
-              <path d="M100 145 L100 185 M92 155 L96 175 M108 155 L104 175" stroke="#94a3b8" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
+          <!-- POSE 1: 待機中 -->
+          <g id="pose-idle" class="pose-group">
+            <g class="anim-idle-tail">
+              <path d="M125 195 C165 185 195 150 188 115 C182 85 195 72 196 68 C188 76 172 98 162 125 C152 152 144 178 128 194 Z" fill="url(#grad-tail-smoke)"/>
+              <path d="M136 190 C168 180 182 148 178 120 C174 100 184 88 188 82 C180 92 166 114 156 138 C148 160 140 182 136 190 Z" fill="#cbd5e1" opacity="0.45"/>
+            </g>
+            <g class="anim-idle-body">
+              <path d="M52 226 C42 185 50 145 54 130 C48 120 48 100 56 85 C68 45 82 50 100 50 C118 50 132 45 144 85 C152 100 152 120 146 130 C150 145 158 185 148 226 Z" fill="url(#grad-fur-black)"/>
+              <ellipse cx="80" cy="225" rx="14" ry="9" fill="#14161f"/>
+              <ellipse cx="120" cy="225" rx="14" ry="9" fill="#14161f"/>
+              <g class="anim-idle-ruff">
+                <path d="M66 128 C55 145 60 178 80 198 C92 210 108 210 120 198 C140 178 145 145 134 128 Z" fill="url(#grad-silver-ruff)"/>
+                <path d="M76 134 Q90 120 100 135 Q110 120 124 134 Q132 165 118 190 Q100 204 82 190 Q68 165 76 134 Z" fill="#f8fafc" opacity="0.9"/>
+                <path d="M85 140 Q100 128 115 140 Q122 168 108 185 Q100 192 92 185 Q78 168 85 140 Z" fill="#ffffff"/>
+                <path d="M100 138 L100 188 M90 148 L94 176 M110 148 L106 176 M80 158 L86 174 M120 158 L114 174" stroke="#94a3b8" stroke-width="1.3" stroke-linecap="round" opacity="0.5"/>
+              </g>
             </g>
           </g>
 
-          <!-- 頭部（ふんわり猫耳 ＆ クリッとした目 ＆ お口） -->
-          <g class="anim-head-group">
+          <!-- POSE 2: お話し中 -->
+          <g id="pose-talking" class="pose-group">
+            <g class="anim-talking-tail">
+              <path d="M136 175 C160 160 188 120 182 85 C178 60 192 42 196 35 C186 46 172 70 164 96 C155 125 148 155 136 175 Z" fill="url(#grad-tail-smoke)"/>
+              <path d="M142 170 C165 155 178 122 174 95 C170 76 182 60 186 52 C178 64 165 88 156 114 C148 140 142 160 142 170 Z" fill="#cbd5e1" opacity="0.45"/>
+            </g>
+            <path d="M56 226 C48 180 52 145 56 130 C48 120 50 100 58 85 C68 45 82 50 100 50 C118 50 132 45 142 85 C150 100 152 120 144 130 C148 145 152 180 144 226 Z" fill="url(#grad-fur-black)"/>
+            <rect x="68" y="180" width="18" height="48" rx="9" fill="#14161f"/>
+            <rect x="114" y="180" width="18" height="48" rx="9" fill="#14161f"/>
+            <path d="M68 126 C56 142 62 175 80 192 C92 204 108 204 120 192 C138 175 144 142 132 126 Z" fill="url(#grad-silver-ruff)"/>
+            <path d="M78 132 Q100 118 122 132 Q130 160 118 184 Q100 198 82 184 Q70 160 78 132 Z" fill="#ffffff" opacity="0.95"/>
+          </g>
 
-            <!-- ★ 左耳（柔らかな曲線とふわふわイヤーファーの愛らしい子猫耳） -->
-            <g class="anim-ear-left">
-              <!-- 外耳ベース（自然な丸みを帯びた三角） -->
-              <path d="M52 74 C50 60 62 30 73 24 C75 22 78 24 79 27 C84 40 88 56 86 70 Z" fill="#14161f"/>
-              <!-- 内耳（やさしい子猫ピンク） -->
-              <path d="M57 70 C56 58 64 36 73 30 C75 32 82 52 81 68 Z" fill="#fbcfe8"/>
-              <!-- ふわふわイヤーファー（耳の中から溢れる白い毛束） -->
-              <path d="M54 68 Q68 56 72 65 Q66 48 76 56 Q70 42 75 38" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" fill="none" opacity="0.95"/>
-              <path d="M60 66 Q70 54 77 62" stroke="#fce7f3" stroke-width="1.8" stroke-linecap="round" fill="none"/>
-              <!-- 耳先のチャームポイント（タフト） -->
-              <path d="M73 24 Q72 16 68 14" stroke="#14161f" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+          <!-- POSE 3: 考え中 -->
+          <g id="pose-thinking" class="pose-group">
+            <path d="M125 195 C165 185 195 150 188 115 C182 85 195 72 196 68 C188 76 172 98 162 125 Z" fill="url(#grad-tail-smoke)"/>
+            <path d="M52 226 C42 185 50 145 54 130 C48 120 48 100 56 85 C68 45 82 50 100 50 C118 50 132 45 144 85 C152 100 152 120 146 130 C150 145 158 185 148 226 Z" fill="url(#grad-fur-black)"/>
+            <ellipse cx="125" cy="225" rx="14" ry="9" fill="#14161f"/>
+            <path d="M66 128 C55 145 60 178 80 198 C92 210 108 210 120 198 C140 178 145 145 134 128 Z" fill="url(#grad-silver-ruff)"/>
+            <path d="M78 132 Q100 118 122 132 Q130 160 118 184 Q100 198 82 184 Q70 160 78 132 Z" fill="#ffffff" opacity="0.95"/>
+            <g class="anim-thinking-paw">
+              <path d="M60 210 C55 180 72 145 84 126 C88 120 94 122 92 128 C84 145 74 180 74 210 Z" fill="#181a24"/>
+              <ellipse cx="86" cy="122" rx="9" ry="8" fill="#262933"/>
+              <ellipse cx="86" cy="122" rx="4.5" ry="4" fill="#fda4af" opacity="0.8"/>
+            </g>
+          </g>
+
+          <!-- POSE 4: 大喜び -->
+          <g id="pose-happy" class="pose-group">
+            <g class="anim-happy-tail">
+              <path d="M136 175 C165 150 195 110 188 75 C184 50 196 36 200 30 C190 40 175 65 166 92 C156 122 148 152 136 175 Z" fill="url(#grad-tail-smoke)"/>
+            </g>
+            <path d="M54 226 C46 175 52 145 56 130 C48 120 50 100 58 85 C68 45 82 50 100 50 C118 50 132 45 142 85 C150 100 152 120 144 130 C148 145 154 175 146 226 Z" fill="url(#grad-fur-black)"/>
+            <ellipse cx="78" cy="228" rx="13" ry="8" fill="#14161f"/>
+            <ellipse cx="122" cy="228" rx="13" ry="8" fill="#14161f"/>
+            <path d="M68 126 C56 142 62 175 80 192 C92 204 108 204 120 192 C138 175 144 142 132 126 Z" fill="url(#grad-silver-ruff)"/>
+            <path d="M78 132 Q100 118 122 132 Q130 160 118 184 Q100 198 82 184 Q70 160 78 132 Z" fill="#ffffff" opacity="0.95"/>
+            <g class="anim-happy-arms">
+              <path d="M62 145 C50 125 38 95 44 76 C46 70 54 74 56 80 C54 95 65 125 72 140 Z" fill="#181a24"/>
+              <ellipse cx="44" cy="74" rx="11" ry="10" fill="#262933"/>
+              <ellipse cx="44" cy="74" rx="5.5" ry="4.5" fill="#fda4af"/>
+              <circle cx="38" cy="67" r="2.2" fill="#fda4af"/>
+              <circle cx="43" cy="64" r="2.2" fill="#fda4af"/>
+              <circle cx="49" cy="65" r="2.2" fill="#fda4af"/>
+              <circle cx="53" cy="70" r="2.0" fill="#fda4af"/>
+
+              <path d="M138 145 C150 125 162 95 156 76 C154 70 146 74 144 80 C146 95 135 125 128 140 Z" fill="#181a24"/>
+              <ellipse cx="156" cy="74" rx="11" ry="10" fill="#262933"/>
+              <ellipse cx="156" cy="74" rx="5.5" ry="4.5" fill="#fda4af"/>
+              <circle cx="162" cy="67" r="2.2" fill="#fda4af"/>
+              <circle cx="157" cy="64" r="2.2" fill="#fda4af"/>
+              <circle cx="151" cy="65" r="2.2" fill="#fda4af"/>
+              <circle cx="147" cy="70" r="2.0" fill="#fda4af"/>
+            </g>
+          </g>
+
+          <!-- お顔ユニット -->
+          <g id="head-unit" class="anim-idle-head">
+            <g class="anim-ear-l">
+              <path d="M50 75 C48 58 62 26 74 18 C77 16 80 18 81 22 C86 36 90 54 88 70 Z" fill="url(#grad-fur-black)"/>
+              <path d="M55 70 C54 56 63 32 74 24 C76 26 83 48 82 66 Z" fill="#fbcfe8" opacity="0.9"/>
+              <path d="M52 68 Q68 54 72 65 Q66 45 76 54 Q70 38 76 34" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+              <path d="M58 66 Q70 52 78 62" stroke="#f1f5f9" stroke-width="2.0" stroke-linecap="round" fill="none"/>
+              <path d="M74 18 Q72 10 67 8" stroke="#181a24" stroke-width="2.4" stroke-linecap="round" fill="none"/>
             </g>
 
-            <!-- ★ 右耳（柔らかな曲線とふわふわイヤーファーの愛らしい子猫耳） -->
-            <g class="anim-ear-right">
-              <!-- 外耳ベース -->
-              <path d="M148 74 C150 60 138 30 127 24 C125 22 122 24 121 27 C116 40 112 56 114 70 Z" fill="#14161f"/>
-              <!-- 内耳（やさしい子猫ピンク） -->
-              <path d="M143 70 C144 58 136 36 127 30 C125 32 118 52 119 68 Z" fill="#fbcfe8"/>
-              <!-- ふわふわイヤーファー束 -->
-              <path d="M146 68 Q132 56 128 65 Q134 48 124 56 Q130 42 125 38" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" fill="none" opacity="0.95"/>
-              <path d="M140 66 Q130 54 123 62" stroke="#fce7f3" stroke-width="1.8" stroke-linecap="round" fill="none"/>
-              <!-- 耳先のチャームポイント（タフト） -->
-              <path d="M127 24 Q128 16 132 14" stroke="#14161f" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            <g class="anim-ear-r">
+              <path d="M150 75 C152 58 138 26 126 18 C123 16 120 18 119 22 C114 36 110 54 112 70 Z" fill="url(#grad-fur-black)"/>
+              <path d="M145 70 C146 56 137 32 126 24 C124 26 117 48 118 66 Z" fill="#fbcfe8" opacity="0.9"/>
+              <path d="M148 68 Q132 54 128 65 Q134 45 124 54 Q130 38 124 34" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+              <path d="M142 66 Q130 52 122 62" stroke="#f1f5f9" stroke-width="2.0" stroke-linecap="round" fill="none"/>
+              <path d="M126 18 Q128 10 133 8" stroke="#181a24" stroke-width="2.4" stroke-linecap="round" fill="none"/>
             </g>
 
-            <!-- 顔の輪郭 -->
-            <path d="M64 74 C50 86 52 98 60 106 C52 110 56 120 70 122 C82 124 92 128 100 128 C108 128 118 124 130 122 C144 120 148 110 140 106 C148 98 150 86 136 74 C124 64 76 64 64 74 Z" fill="#181a24"/>
+            <path d="M62 74 C46 86 48 100 58 108 C50 112 54 122 70 124 C82 126 92 129 100 129 C108 129 118 126 130 124 C146 122 150 112 142 108 C152 100 154 86 138 74 C124 64 76 64 62 74 Z" fill="url(#grad-fur-black)"/>
+            <path d="M66 105 C60 111 66 117 76 119 C70 115 68 109 66 105 Z" fill="#94a3b8" opacity="0.5"/>
+            <path d="M134 105 C140 111 134 117 124 119 C130 115 132 109 134 105 Z" fill="#94a3b8" opacity="0.5"/>
 
-            <!-- 頬の毛並みハイライト -->
-            <path d="M68 104 C62 110 68 116 78 118 C72 114 70 108 68 104 Z" fill="#94a3b8" opacity="0.6"/>
-            <path d="M132 104 C138 110 132 116 122 118 C128 114 130 108 132 104 Z" fill="#94a3b8" opacity="0.6"/>
+            <g id="eyes-normal" class="cat-eye-blink" style="transform-origin: 100px 96px;">
+              <ellipse cx="77" cy="96" rx="11" ry="14" fill="url(#grad-emerald-eye)"/>
+              <ellipse cx="77" cy="96" rx="4.5" ry="11.5" fill="#090d16"/>
+              <circle cx="74" cy="92" r="3.6" fill="#ffffff"/>
+              <circle cx="79" cy="100" r="1.6" fill="#ffffff" opacity="0.85"/>
 
-            <!-- 目（通常時のエメラルドグリーンの瞳） -->
-            <g class="eye-normal" style="transform-origin: 100px 96px;">
-              <ellipse cx="78" cy="96" rx="10.5" ry="13.5" fill="#10b981"/>
-              <ellipse cx="78" cy="96" rx="4" ry="11" fill="#090d16"/>
-              <circle cx="75" cy="92" r="3.2" fill="#ffffff"/>
-              <circle cx="80" cy="100" r="1.5" fill="#ffffff" opacity="0.85"/>
-              
-              <ellipse cx="122" cy="96" rx="10.5" ry="13.5" fill="#10b981"/>
-              <ellipse cx="122" cy="96" rx="4" ry="11" fill="#090d16"/>
-              <circle cx="119" cy="92" r="3.2" fill="#ffffff"/>
-              <circle cx="124" cy="100" r="1.5" fill="#ffffff" opacity="0.85"/>
+              <ellipse cx="123" cy="96" rx="11" ry="14" fill="url(#grad-emerald-eye)"/>
+              <ellipse cx="123" cy="96" rx="4.5" ry="11.5" fill="#090d16"/>
+              <circle cx="120" cy="92" r="3.6" fill="#ffffff"/>
+              <circle cx="125" cy="100" r="1.6" fill="#ffffff" opacity="0.85"/>
             </g>
 
-            <!-- ★ 目（大喜び時のキュッと細めた三日月スマイル目） -->
-            <g class="eye-happy">
-              <path d="M68 98 Q78 86 88 98" stroke="#10b981" stroke-width="4.5" stroke-linecap="round" fill="none"/>
-              <path d="M68 98 Q78 86 88 98" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-              <path d="M112 98 Q122 86 132 98" stroke="#10b981" stroke-width="4.5" stroke-linecap="round" fill="none"/>
-              <path d="M112 98 Q122 86 132 98" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <g id="eyes-happy" style="display:none;">
+              <path d="M66 98 Q77 84 88 98" stroke="#10b981" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+              <path d="M66 98 Q77 84 88 98" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+              <path d="M112 98 Q123 84 134 98" stroke="#10b981" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+              <path d="M112 98 Q123 84 134 98" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" fill="none"/>
             </g>
 
-            <!-- おてつだい装備（博士帽＆丸メガネ） -->
+            <polygon points="100,107 94,101 106,101" fill="#f472b6"/>
+
+            <g id="mouth-closed">
+              <path d="M94 109 Q100 114 100 109 Q100 114 106 109" stroke="#64748b" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            </g>
+
+            <g id="mouth-talking" style="display:none;" class="mouth-talking">
+              <path d="M93 108 Q100 124 107 108 Z" fill="#be123c"/>
+              <ellipse cx="100" cy="116" rx="4.5" ry="3.5" fill="#fb7185"/>
+              <polygon points="95,108 96,111 97,108" fill="#ffffff"/>
+              <polygon points="103,108 104,111 105,108" fill="#ffffff"/>
+            </g>
+
+            <g id="mouth-happy" style="display:none;">
+              <path d="M91 108 Q100 127 109 108 Z" fill="#9f1239" stroke="#be123c" stroke-width="1.5"/>
+              <ellipse cx="100" cy="119" rx="6" ry="4.5" fill="#f43f5e"/>
+              <polygon points="94,108 95,112 97,108" fill="#ffffff"/>
+              <polygon points="103,108 105,112 106,108" fill="#ffffff"/>
+            </g>
+
+            <path d="M64 106 Q44 104 28 108" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.9"/>
+            <path d="M63 112 Q44 114 30 120" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.9"/>
+            <path d="M136 106 Q156 104 172 108" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.9"/>
+            <path d="M137 112 Q156 114 170 120" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.9"/>
+
+            <!-- おてつだい装備 -->
             <g id="cat-vector-accessories">
               <g id="vec-acc-hat">
-                <path d="M72 52 Q100 44 128 52 L124 60 Q100 52 76 60 Z" fill="#1e293b"/>
-                <polygon points="100,24 148,38 100,52 52,38" fill="#0f172a" stroke="#334155" stroke-width="1.3"/>
-                <circle cx="100" cy="38" r="3" fill="#eab308"/>
+                <path d="M72 50 Q100 42 128 50 L124 58 Q100 50 76 58 Z" fill="#1e293b"/>
+                <polygon points="100,22 148,36 100,50 52,36" fill="#0f172a" stroke="#334155" stroke-width="1.3"/>
+                <circle cx="100" cy="36" r="3" fill="#eab308"/>
                 <g class="mortar-tassel">
-                  <path d="M100 38 Q124 40 130 58" stroke="#ca8a04" stroke-width="2.2" fill="none"/>
-                  <polygon points="128,58 133,58 135,72 126,72" fill="#eab308"/>
+                  <path d="M100 36 Q124 38 130 56" stroke="#ca8a04" stroke-width="2.2" fill="none"/>
+                  <polygon points="128,56 133,56 135,70 126,70" fill="#eab308"/>
                 </g>
               </g>
               <g id="vec-acc-glasses">
-                <circle cx="78" cy="96" r="17" fill="rgba(255, 255, 255, 0.16)" stroke="#090d16" stroke-width="3.8"/>
-                <circle cx="78" cy="96" r="17" fill="none" stroke="url(#stripe-bw-vector)" stroke-width="2.6"/>
-                <circle cx="122" cy="96" r="17" fill="rgba(255, 255, 255, 0.16)" stroke="#090d16" stroke-width="3.8"/>
-                <circle cx="122" cy="96" r="17" fill="none" stroke="url(#stripe-bw-vector)" stroke-width="2.6"/>
-                <path d="M95 95 Q100 90 105 95" stroke="#090d16" stroke-width="3.8" fill="none"/>
+                <circle cx="77" cy="96" r="17.5" fill="rgba(255, 255, 255, 0.16)" stroke="#090d16" stroke-width="3.8"/>
+                <circle cx="77" cy="96" r="17.5" fill="none" stroke="url(#stripe-bw-vector)" stroke-width="2.6"/>
+                <circle cx="123" cy="96" r="17.5" fill="rgba(255, 255, 255, 0.16)" stroke="#090d16" stroke-width="3.8"/>
+                <circle cx="123" cy="96" r="17.5" fill="none" stroke="url(#stripe-bw-vector)" stroke-width="2.6"/>
+                <path d="M94.5 95 Q100 90 105.5 95" stroke="#090d16" stroke-width="3.8" fill="none"/>
               </g>
             </g>
-
-            <!-- 鼻 -->
-            <polygon points="100,107 95,102 105,102" fill="#f472b6"/>
-
-            <!-- 口（通常閉口） -->
-            <path d="M95 109 Q100 114 100 109 Q100 114 105 109" stroke="#475569" stroke-width="2.2" fill="none" class="cat-mouth-closed"/>
-            <!-- 口（お話し中のパクパク開口） -->
-            <ellipse cx="100" cy="113" rx="5.5" ry="4.5" fill="#e11d48" class="cat-mouth-open"/>
-            <!-- ★ 口（大喜び時のニッコリごきげん口） -->
-            <path d="M93 108 Q100 119 107 108" fill="#e11d48" stroke="#be123c" stroke-width="1.8" class="cat-mouth-happy"/>
-
-            <!-- おひげ -->
-            <path d="M64 106 Q46 104 32 108" stroke="#cbd5e1" stroke-width="1.6" stroke-linecap="round" fill="none"/>
-            <path d="M63 112 Q46 114 34 119" stroke="#cbd5e1" stroke-width="1.6" stroke-linecap="round" fill="none"/>
-            <path d="M136 106 Q154 104 168 108" stroke="#cbd5e1" stroke-width="1.6" stroke-linecap="round" fill="none"/>
-            <path d="M137 112 Q154 114 166 119" stroke="#cbd5e1" stroke-width="1.6" stroke-linecap="round" fill="none"/>
           </g>
         </svg>
       </div>
@@ -1141,7 +1380,26 @@
           <span id="pause-text">会話中</span>
         </button>
 
-        <button class="btn-circle" id="settings-btn" title="設定・日記・記憶・トリセツ">⚙️</button>
+        <button class="btn-circle" id="settings-btn" title="設定・記憶・トリセツ">⚙️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ★ 専用「クロの思い出日記帳」モーダル -->
+  <div id="diary-book-modal">
+    <div class="diary-book-card">
+      <div class="diary-book-header">
+        <div class="diary-book-title">
+          <span>📖</span>
+          <span>クロの思い出日記帳</span>
+        </div>
+        <div class="diary-book-actions">
+          <button type="button" class="btn-diary-action" id="btn-copy-all-diaries" title="全日記をクリップボードにコピー">📋 全文コピー</button>
+          <button type="button" class="btn-diary-close" id="btn-close-diary-book">✕</button>
+        </div>
+      </div>
+      <div class="diary-book-list" id="diary-book-list">
+        <!-- JSで永続日記カードがずらりと描画されます -->
       </div>
     </div>
   </div>
@@ -1215,7 +1473,7 @@
   <!-- 設定モーダル -->
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal-card">
-      <h3>⚙️ 設定・記憶・日記</h3>
+      <h3>⚙️ 設定・記憶帳</h3>
 
       <details class="manual-details">
         <summary class="manual-summary">
@@ -1226,21 +1484,23 @@
           <div class="manual-sec-title">🐾 基本のお話し方</div>
           <div>マイクに向かって「おはよう」「今何時？」「今日何日？」と気軽に話しかけてニャ！名前を呼ぶだけでも喜んでお返事するニャン♪</div>
 
+          <div class="manual-sec-title">📖 500文字の思い出日記＆昔話</div>
+          <div>「今日の日記書いて」と頼むと、今日のお話しをギュッと凝縮した可愛い絵日記を書き込みますニャ！昔話（「先週話したラーメン屋覚えてる？」など）を振られても過去の日記からバッチリ思い出して会話するニャン♪</div>
+
           <div class="manual-sec-title">👓 なかよしモード と おてつだいモード</div>
           <div>左下のボタンで切り替えできるニャ！
           ・<b>🐾 なかよし</b>：のんびり雑談やお遊びをする通常モードニャ。
           ・<b>👓 おてつだい</b>：博士帽とメガネを装着！ネット検索して「近くのラーメン屋」や「最新ニュース」をGoogleマップ付きで案内するニャ！</div>
 
-          <div class="manual-sec-title">🧠 賢い頭脳（3.5 Lite と 3.8）</div>
-          <div>普段はサクサク動く「Flash 3.5 Lite」で考えて、難しい論文やプログラミング、複雑な相談の時は本気モードの「Flash 3.8」をクロから提案するニャン！</div>
+          <div class="manual-sec-title">🧠 賢くサクサク動く頭脳（Flash Lite）</div>
+          <div>クロの頭脳は制限が緩く1日に何度でもおしゃべりできる「Flash Lite」と連動！何日経っても初日と同じ爆速スピードでお話しできるニャン！</div>
 
           <div class="manual-sec-title">🐟 おやつ と なでなで</div>
           <div>・左下の「おやつ」を押すとちゅ〜るを食べるニャ！3回連続であげると極楽ゴロゴロ鳴くニャ〜♡
           ・画面のクロをタップすると「なでなで」されて喉を鳴らして喜ぶニャ！</div>
 
-          <div class="manual-sec-title">⏱️ キッチンタイマー ＆ 日記</div>
-          <div>・「3分測って」と言うとタイマーが作動するニャ！
-          ・「今日の日記書いて」と頼むと、一日の思い出を可愛く綴るニャン♪</div>
+          <div class="manual-sec-title">⏱️ キッチンタイマー</div>
+          <div>「3分測って」と言うとタイマーが作動するニャ！</div>
         </div>
       </details>
 
@@ -1267,7 +1527,7 @@
         <label>おてつだいモードの装備スタイル:</label>
         <select id="accessory-style-select">
           <option value="both" selected>🎓👓 博士帽 ＋ 丸メガネ（天才フル装備！）</option>
-          <option value="hat">🎓 昔の大学の博士帽のみ</option>
+          <option value="hat">🎓 博士帽のみ</option>
           <option value="glasses">👓 白黒ストライプ丸メガネのみ</option>
         </select>
       </div>
@@ -1326,15 +1586,7 @@
       </div>
 
       <div class="form-group">
-        <label>📖 最新のクロ日記:</label>
-        <div class="diary-preview-card" id="diary-preview-container">
-          <div class="diary-preview-title">🐾 まだ今日の日記はないニャ！</div>
-          <div>「今日の日記書いて」と話しかけると、ここに思い出が綴られるニャ♪</div>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>📔 クロの記憶帳:</label>
+        <label>📔 クロの記憶帳（一生忘れない基本設定）:</label>
         <div class="memory-list" id="memory-list-container"></div>
         <div class="memory-add-box">
           <input type="text" id="new-memory-input" placeholder="新しい記憶（例: 趣味はドライブ）">
@@ -1344,7 +1596,6 @@
 
       <button type="button" class="btn-adjust-open" style="background:#0f172a;color:#38bdf8;border-color:#334155;margin-top:8px;" id="open-diag-modal-btn">🩺 システム診断モニタを開く</button>
 
-      <!-- キャッシュ強制破棄ボタン -->
       <button type="button" class="btn-force-refresh" id="force-refresh-btn">🔄 キャッシュを全消去してアプリを強制更新</button>
 
       <button class="btn-save" id="save-settings-btn">
@@ -1354,8 +1605,9 @@
     </div>
   </div>
 
-  <!-- ★ キャッシュバスター更新（最新版を強制読み込み） -->
-  <script src="app.js?v=20250524_update02"></script>
+  <!-- ★ 最新版 app.js を読み込み -->
+  <script src="app.js?v=20250524_diary_v2"></script>
 </body>
 </html>
+
 

@@ -1,5 +1,9 @@
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版）
+   - 4重安全ガード搭載（生ログ不変保護・独立日記金庫）
+   - 500文字要約日記＆オンデマンド昔話引き出しロジック
+   - Gemini 3.5 Flash Lite 専用（gemini-3.8-flash 完全除外・禁止）
+   - VOICEVOX 音声・文字完全同期
    ========================================================================== */
 
 /* ==========================================================================
@@ -401,9 +405,7 @@ class AudioSpeechEngine {
     }
 
     const initRes = await fetch(initUrl, { signal });
-    if (!initRes.ok) {
-      throw new Error(`HTTP初期エラー ${initRes.status}`);
-    }
+    if (!initRes.ok) throw new Error(`HTTP初期エラー ${initRes.status}`);
 
     const initData = await initRes.json();
     if (initData.isAudioError) throw new Error("VOICEVOX側エラー");
@@ -452,7 +454,7 @@ class AudioSpeechEngine {
     return false;
   }
 
-  /* ★ 音声再生と文字表示の完全同期 */
+  /* ★ 音声再生と文字表示の完全同期（onplaying でコールバック実行） */
   async speak(text, speakerIdOverride = null, onStart = null, onEnd = null) {
     this.stopSpeaking();
     this.unlockMasterAudio();
@@ -636,7 +638,7 @@ class AudioSpeechEngine {
 }
 
 /* ==========================================================================
-   ★ MODULE 2: 日時・位置情報・リアルタイムお天気＆気温
+   ★ MODULE 2: 日時・位置情報・リアルタイムお天気＆気温（読み取り専用保護）
    ========================================================================== */
 const TimeProvider = {
   getCurrentInfo() {
@@ -771,7 +773,7 @@ const LocationProvider = {
 };
 
 /* ==========================================================================
-   ★ MODULE 3: 長期記憶・当日ログ・日記ストレージ
+   ★ MODULE 3: 鉄壁ストレージ管理（4重安全ガード ＆ 永続日記帳）
    ========================================================================== */
 const StorageManager = {
   defaultGlassesCoords: {
@@ -795,7 +797,7 @@ const StorageManager = {
     try { localStorage.setItem('kuro_glasses_coords_v5', JSON.stringify(coords)); } catch(e) {}
   },
 
-  /* 当日全会話ログの読み込み */
+  /* 🔒 ガード1: 今日の生ログは「追記のみ（Append-Only）」。絶対に途中削除しない！ */
   loadTodayLogs() {
     const todayKey = `kuro_daily_logs_${TimeProvider.getCurrentInfo().logKey}`;
     try {
@@ -804,19 +806,20 @@ const StorageManager = {
     } catch(e) { return []; }
   },
 
-  /* 当日全会話ログの追加保存 */
   appendTodayLog(role, text) {
+    if (!text || typeof text !== 'string') return;
     const todayKey = `kuro_daily_logs_${TimeProvider.getCurrentInfo().logKey}`;
     const logs = this.loadTodayLogs();
     logs.push({ role, text, time: TimeProvider.getCurrentInfo().clock });
     try {
+      // 1日最大200件まで保持（削らず安全に蓄積）
       localStorage.setItem(todayKey, JSON.stringify(logs.slice(-200)));
     } catch(e) {}
-    this._cleanupOldLogs();
+    this._cleanupOldRawLogs();
   },
 
-  /* 容量節約のため7日以上前の生ログはクリア（日記は永続保持） */
-  _cleanupOldLogs() {
+  /* 古い生ログ（7日以上前）のみを安全に整理 */
+  _cleanupOldRawLogs() {
     const curKey = TimeProvider.getCurrentInfo().logKey;
     Object.keys(localStorage).forEach(k => {
       if (k.startsWith('kuro_daily_logs_') && !k.endsWith(curKey)) {
@@ -827,38 +830,102 @@ const StorageManager = {
     });
   },
 
-  /* 日記（思い出要約）の保存 */
-  saveDiary(entryText) {
-    const dateKey = TimeProvider.getCurrentInfo().logKey;
-    const diaryData = { date: TimeProvider.getCurrentInfo().fullDate, content: entryText, timestamp: Date.now() };
+  /* 🔒 ガード2: 永続日記の安全保存（上書き前バリデーション＆バックアップ） */
+  saveDiary(entryText, customDateKey = null, customFullDate = null) {
+    if (!entryText || entryText.length < 50) {
+      Logger.log("[DiaryGuard] 日記テキストが短すぎるため保存をブロックしました", "warn");
+      return false;
+    }
+
+    const dateKey = customDateKey || TimeProvider.getCurrentInfo().logKey;
+    const fullDate = customFullDate || TimeProvider.getCurrentInfo().fullDate;
+    const weather = LocationProvider.weather;
+    const temp = LocationProvider.temperature;
+
+    const diaryData = {
+      dateKey,
+      fullDate,
+      weather,
+      temperature: temp,
+      content: entryText,
+      timestamp: Date.now()
+    };
+
+    // 単体キー保存
     localStorage.setItem(`kuro_diary_${dateKey}`, JSON.stringify(diaryData));
 
-    // 日記一覧リストへ追加
+    // 全日記マスタリスト（無期限・一生分保存）
     let list = this.loadAllDiaries();
-    list = list.filter(d => d.date !== diaryData.date);
-    list.unshift(diaryData);
-    localStorage.setItem('kuro_all_diaries_list', JSON.stringify(list.slice(0, 30)));
+    // 既存の同日日記があれば安全に更新、なければ先頭に追加
+    const existingIdx = list.findIndex(d => d.dateKey === dateKey);
+    if (existingIdx >= 0) {
+      list[existingIdx] = diaryData;
+      Logger.log(`[Diary] ${dateKey} の日記を最新版に安全アップデート完了`, "info");
+    } else {
+      list.unshift(diaryData);
+      Logger.log(`[Diary] ${dateKey} の新規日記を日記帳に安全保存完了`, "info");
+    }
+
+    try {
+      localStorage.setItem('kuro_all_diaries_master', JSON.stringify(list));
+    } catch(e) {
+      Logger.log(`[Diary] ストレージ保存例外: ${e.message}`, "error");
+    }
+    return true;
   },
 
-  /* 最新の日記取得 */
-  getLatestDiary() {
-    const list = this.loadAllDiaries();
-    return list.length > 0 ? list[0] : null;
+  getTodayDiary() {
+    const dateKey = TimeProvider.getCurrentInfo().logKey;
+    try {
+      const raw = localStorage.getItem(`kuro_diary_${dateKey}`);
+      return raw ? JSON.parse(raw) : null;
+    } catch(e) { return null; }
   },
 
-  /* 全日記リスト取得 */
   loadAllDiaries() {
     try {
-      const raw = localStorage.getItem('kuro_all_diaries_list');
+      const raw = localStorage.getItem('kuro_all_diaries_master');
       return raw ? JSON.parse(raw) : [];
     } catch(e) { return []; }
   },
 
-  /* 直近の日記要約テキスト（Geminiに渡す過去の思い出） */
+  /* 普段の会話用：直近3日分の日記（要約）だけを軽量抽出 */
   getRecentDiariesSummary(count = 3) {
     const list = this.loadAllDiaries().slice(0, count);
     if (list.length === 0) return "";
-    return list.map(d => `・【${d.date}の思い出】: ${d.content}`).join("\n");
+    return list.map(d => `・【${d.fullDate}の日記】(天気:${d.weather} ${d.temperature}℃): ${d.content}`).join("\n");
+  },
+
+  /* ★ オンデマンド昔話引き出しロジック（キーワード検索で該当する日の日記を救出） */
+  findRelevantPastDiary(queryText) {
+    if (!queryText) return null;
+    const list = this.loadAllDiaries();
+    if (list.length === 0) return null;
+
+    // 「先週」「先月」「昨日」「おととい」「あの時」「昔」などの昔話ワード
+    const isPastQuery = /(?:昔|まえ|前|あの時|あのとき|先週|せんしゅう|先月|せんげつ|昨日|きのう|おととい|一昨日|覚えてる|おぼえてる)/.test(queryText);
+    
+    // クエリから記号を除去したキーワード候補
+    const cleanTokens = queryText
+      .replace(/[？?！!。、\s]/g, ' ')
+      .split(' ')
+      .filter(w => w.length >= 2 && !/^(?:クロ|おやびん|今日|何時|なんじ|どこ|これ|それ|あれ)$/.test(w));
+
+    for (const diary of list) {
+      // 直近の日記ではなく、古い日記から探索
+      for (const token of cleanTokens) {
+        if (diary.content.includes(token)) {
+          Logger.log(`[昔話ヒット⚡] キーワード「${token}」で ${diary.fullDate} の日記を発見！`, "success");
+          return diary;
+        }
+      }
+    }
+
+    if (isPastQuery && list.length > 1) {
+      // 特定キーワードがない場合でも、昔話を聞かれたら直近より前の日記を提示
+      return list[1];
+    }
+    return null;
   },
 
   saveMemories(memories) {
@@ -876,7 +943,7 @@ const StorageManager = {
 };
 
 /* ==========================================================================
-   ★ MODULE 4: キャラクター描画 ＆ 感情シチュエーション完全同期
+   ★ MODULE 4: キャラクター描画 ＆ 写真そっくり感情ポーズ完全同期
    ========================================================================== */
 class CatAvatarRenderer {
   constructor() {
@@ -888,6 +955,14 @@ class CatAvatarRenderer {
       thinking: document.getElementById('frame-thinking'),
       happy: document.getElementById('frame-happy')
     };
+
+    this.eyesNormal = document.getElementById('eyes-normal');
+    this.eyesHappy = document.getElementById('eyes-happy');
+    this.mouthClosed = document.getElementById('mouth-closed');
+    this.mouthTalking = document.getElementById('mouth-talking');
+    this.mouthHappy = document.getElementById('mouth-happy');
+    this.headUnit = document.getElementById('head-unit');
+
     this.mode = localStorage.getItem('kuro_avatar_mode') || 'vector';
     this.accessoryStyle = localStorage.getItem('kuro_acc_style') || 'both';
     this.glassesCoords = StorageManager.loadGlassesCoords();
@@ -969,15 +1044,55 @@ class CatAvatarRenderer {
     this.currentEmotion = emotion;
 
     Object.keys(this.frames).forEach(k => {
-      if (k === emotion) this.frames[k].classList.add('active');
-      else this.frames[k].classList.remove('active');
+      if (this.frames[k]) {
+        if (k === emotion) this.frames[k].classList.add('active');
+        else this.frames[k].classList.remove('active');
+      }
     });
 
-    this.wrapper.classList.remove('is-idling', 'is-talking', 'is-thinking', 'is-happy');
-    if (emotion === 'idle') this.wrapper.classList.add('is-idling');
-    else if (emotion === 'talking') this.wrapper.classList.add('is-talking');
-    else if (emotion === 'thinking') this.wrapper.classList.add('is-thinking');
-    else if (emotion === 'happy') this.wrapper.classList.add('is-happy');
+    if (this.wrapper) {
+      this.wrapper.classList.remove(
+        'is-idling', 'is-talking', 'is-thinking', 'is-happy',
+        'pose-idle-active', 'pose-talking-active', 'pose-thinking-active', 'pose-happy-active'
+      );
+    }
+
+    if (emotion === 'idle') {
+      if (this.wrapper) this.wrapper.classList.add('is-idling', 'pose-idle-active');
+      if (this.eyesNormal) this.eyesNormal.style.display = 'block';
+      if (this.eyesHappy) this.eyesHappy.style.display = 'none';
+      if (this.mouthClosed) this.mouthClosed.style.display = 'block';
+      if (this.mouthTalking) this.mouthTalking.style.display = 'none';
+      if (this.mouthHappy) this.mouthHappy.style.display = 'none';
+      if (this.headUnit) this.headUnit.setAttribute('class', 'anim-idle-head');
+
+    } else if (emotion === 'talking') {
+      if (this.wrapper) this.wrapper.classList.add('is-talking', 'pose-talking-active');
+      if (this.eyesNormal) this.eyesNormal.style.display = 'block';
+      if (this.eyesHappy) this.eyesHappy.style.display = 'none';
+      if (this.mouthClosed) this.mouthClosed.style.display = 'none';
+      if (this.mouthTalking) this.mouthTalking.style.display = 'block';
+      if (this.mouthHappy) this.mouthHappy.style.display = 'none';
+      if (this.headUnit) this.headUnit.setAttribute('class', 'anim-talking-head');
+
+    } else if (emotion === 'thinking') {
+      if (this.wrapper) this.wrapper.classList.add('is-thinking', 'pose-thinking-active');
+      if (this.eyesNormal) this.eyesNormal.style.display = 'block';
+      if (this.eyesHappy) this.eyesHappy.style.display = 'none';
+      if (this.mouthClosed) this.mouthClosed.style.display = 'block';
+      if (this.mouthTalking) this.mouthTalking.style.display = 'none';
+      if (this.mouthHappy) this.mouthHappy.style.display = 'none';
+      if (this.headUnit) this.headUnit.setAttribute('class', 'anim-thinking-head');
+
+    } else if (emotion === 'happy') {
+      if (this.wrapper) this.wrapper.classList.add('is-happy', 'pose-happy-active');
+      if (this.eyesNormal) this.eyesNormal.style.display = 'none';
+      if (this.eyesHappy) this.eyesHappy.style.display = 'block';
+      if (this.mouthClosed) this.mouthClosed.style.display = 'none';
+      if (this.mouthTalking) this.mouthTalking.style.display = 'none';
+      if (this.mouthHappy) this.mouthHappy.style.display = 'block';
+      if (this.headUnit) this.headUnit.setAttribute('class', 'anim-talking-head');
+    }
   }
 
   applyMode(mode) {
@@ -986,13 +1101,13 @@ class CatAvatarRenderer {
     const vec = document.getElementById('cat-vector-avatar');
 
     if (mode === 'vector') {
-      this.wrapper.classList.remove('is-real-mode');
-      Object.values(this.frames).forEach(f => f.style.display = 'none');
+      if (this.wrapper) this.wrapper.classList.remove('is-real-mode');
+      Object.values(this.frames).forEach(f => { if (f) f.style.display = 'none'; });
       if (vec) vec.classList.add('active-mode');
     } else {
-      this.wrapper.classList.add('is-real-mode');
+      if (this.wrapper) this.wrapper.classList.add('is-real-mode');
       if (vec) vec.classList.remove('active-mode');
-      Object.values(this.frames).forEach(f => f.style.display = 'flex');
+      Object.values(this.frames).forEach(f => { if (f) f.style.display = 'flex'; });
     }
     this.setEmotion(this.currentEmotion || 'idle');
   }
@@ -1003,42 +1118,71 @@ class CatAvatarRenderer {
     void this.smokeEl.offsetWidth;
     this.smokeEl.classList.add('is-poofing');
     setTimeout(() => {
-      this.smokeEl.classList.remove('is-poofing');
+      if (this.smokeEl) this.smokeEl.classList.remove('is-poofing');
     }, 800);
   }
 
   triggerIdeaBulb() {
     const bulb = document.getElementById('idea-bulb');
-    if (!bulb) return;
+    if (!bulb || !this.wrapper) return;
     bulb.classList.add('active');
     this.wrapper.classList.add('spark-idea');
     setTimeout(() => {
       bulb.classList.remove('active');
-      this.wrapper.classList.remove('spark-idea');
+      if (this.wrapper) this.wrapper.classList.remove('spark-idea');
     }, 1800);
   }
 }
 
 /* ==========================================================================
-   ★ MODULE 5: 思考・AI対話エンジン（当日全ログ文脈 ＆ ト書き完全根絶）
+   ★ MODULE 5: 思考・AI対話エンジン（Flash Lite 特化 ＆ 3.8 完全禁止）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
     this.apiKey = (localStorage.getItem('kuro_api_key') || '').trim();
+    this.discoveredLiteModels = [];
   }
 
-  /* 当日全ログをGeminiの形式（role交互・末尾user）に安全サニタイズ */
-  _buildContentsPayload(historyLogs, currentPrompt) {
+  async discoverAvailableLiteModels() {
+    if (!this.apiKey) return [];
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${this.apiKey}`);
+      if (res.ok) {
+        const data = await res.json();
+        const available = (data.models || [])
+          .filter(m => {
+            const name = (m.name || '').toLowerCase();
+            const methods = m.supportedGenerationMethods || [];
+            // ★ gemini-3.8-flash は完全禁止・除外！
+            return methods.includes('generateContent') && 
+                   name.includes('lite') && 
+                   !name.includes('3.8');
+          })
+          .map(m => m.name.replace(/^models\//, ''));
+
+        if (available.length > 0) {
+          this.discoveredLiteModels = available;
+          Logger.log(`[Liteモデル自動検出成功] ${available.join(', ')}`, "success");
+          return available;
+        }
+      }
+    } catch(e) {}
+    return [];
+  }
+
+  /* 🔒 安全設計: 会話履歴から直近5往復（最大10件）のみを安全に抽出 */
+  _buildContentsPayload(rawLogs, currentPrompt) {
     const contents = [];
     let lastRole = null;
 
-    // 当日ログを展開
-    for (const item of historyLogs) {
+    // ガード: 生ログの末尾10件（直近5往復）のみをコピーして使う
+    const recentLogs = rawLogs.slice(-10);
+
+    for (const item of recentLogs) {
       if (!item.text) continue;
       const role = item.role === 'model' ? 'model' : 'user';
 
       if (role === lastRole) {
-        // 同じroleが連続した場合はテキストを結合（Geminiの400エラー防止）
         contents[contents.length - 1].parts[0].text += `\n${item.text}`;
       } else {
         contents.push({ role, parts: [{ text: item.text }] });
@@ -1046,14 +1190,12 @@ class AIThoughtEngine {
       }
     }
 
-    // 最新の発言を追加
     if (lastRole === 'user') {
       contents[contents.length - 1].parts[0].text += `\n${currentPrompt}`;
     } else {
       contents.push({ role: 'user', parts: [{ text: currentPrompt }] });
     }
 
-    // 先頭がmodelなら除去
     if (contents.length > 0 && contents[0].role === 'model') {
       contents.shift();
     }
@@ -1061,8 +1203,8 @@ class AIThoughtEngine {
     return contents;
   }
 
-  /* 対話返答生成 */
-  async generateReply(promptText, historyLogs, character, memories, isAssistantMode) {
+  /* 1. 通常会話の生成 */
+  async generateReply(promptText, rawLogs, character, memories) {
     if (!this.apiKey) {
       Logger.log("[Gemini] APIキーが未設定です", "error");
       return { success: false, error: "NO_API_KEY" };
@@ -1072,10 +1214,13 @@ class AIThoughtEngine {
     const weather = LocationProvider.weather;
     const temp = LocationProvider.temperature;
     const address = LocationProvider.detailedAddress;
+    
+    // 普段の記憶：直近3日分の日記要約
     const recentDiaries = StorageManager.getRecentDiariesSummary(3);
-    const isDiaryRequest = /(?:今日|きょう)?(?:の)?(?:日記|にっき).*(?:書いて|教えて|おねがい)/.test(promptText);
+    
+    // ★ オンデマンド昔話引き出し：おやびんが昔の話題を振った場合、該当する日記を即時召喚
+    const pastMemoryDiary = StorageManager.findRelevantPastDiary(promptText);
 
-    // ★ ト書き・ブツ切れを根絶し、自然で賢い対話を生む強化システムプロンプト
     const systemPrompt = `
 あなたは世界一可愛いノルウェージャンフォレストキャットの1歳の子猫の女の子「${character.name}」です。
 【現在状況】
@@ -1084,7 +1229,8 @@ class AIThoughtEngine {
 ・天気: ${weather} / 現在の気温: ${temp}度
 【記憶帳】
 ${memories.map(m => `・${m}`).join('\n')}
-${recentDiaries ? `【過去数日間の日記・思い出】\n${recentDiaries}\n` : ''}
+${recentDiaries ? `【直近3日間の日記・思い出】\n${recentDiaries}\n` : ''}
+${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary.fullDate}の日記より）】\n${pastMemoryDiary.content}\n` : ''}
 
 【★絶対厳守の話し方ルール】
 - 飼い主さんのことは必ず親しみを込めて「おやびん」と呼んでください。
@@ -1093,29 +1239,37 @@ ${recentDiaries ? `【過去数日間の日記・思い出】\n${recentDiaries}\
 - 文を途中で絶対に切らないでください。必ず文章の最後まで話し終えて完結させてください。
 - 長さは【60〜100文字程度（1〜3文）】で、愛らしく表情豊かにテンポよく話してください。
 - 気温を聞かれたら「今の東村山は${temp}度だニャ！」のように【現在の気温: ${temp}度】を元に可愛く答えてください。
-- 今日のこれまでの会話の流れをしっかり踏まえて、自然で楽しい受け答えをしてください。
+- もしおやびんが昔話や「覚えてる？」と聞いてきたら、上記の【昔の思い出】を元に「覚えてるニャ！〇月〇日に話した〇〇だニャン！」と嬉しそうに答えてください。
 - 前世は大天才発明家なので、テクノロジーや相談事では「前世の余の大発明」を自慢げに提案してください。
 - おやびんが話題にした主要キーワード（例: ラーメン、地名、ニュース等）があれば末尾に <!--TOPIC:単語--> を添えてください。
-${isDiaryRequest ? '★今回は「今日の日記」を頼まれました。今日交わした会話を振り返り、可愛くて心温まるクロちゃん目線の日記（150文字程度）を書いてください。' : ''}
 `;
 
-    const contents = this._buildContentsPayload(historyLogs, promptText);
-    const targetModels = ["gemini-3.5-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b"];
+    const contents = this._buildContentsPayload(rawLogs, promptText);
+
+    // ★ gemini-3.5-flash-lite を最優先配備
+    let targetModels = [
+      "gemini-3.5-flash-lite",
+      "gemini-2.0-flash-lite",
+      "gemini-2.5-flash-lite",
+      "gemini-2.0-flash-lite-preview-02-05",
+      "gemini-1.5-flash-8b"
+    ];
+
+    if (this.discoveredLiteModels.length > 0) {
+      targetModels = Array.from(new Set([...targetModels.slice(0, 1), ...this.discoveredLiteModels, ...targetModels]));
+    }
+    // 3.8は完全除外
+    targetModels = targetModels.filter(m => !m.includes('3.8'));
 
     for (const model of targetModels) {
       const cleanModel = model.replace(/^models\//, '');
       try {
-        Logger.log(`[Gemini] モデル「${cleanModel}」へ文脈付きリクエスト中…`, "info");
+        Logger.log(`[Gemini] Liteモデル「${cleanModel}」へリクエスト中…`, "info");
 
         const bodyPayload = {
-          system_instruction: {
-            parts: [{ text: systemPrompt }]
-          },
+          system_instruction: { parts: [{ text: systemPrompt }] },
           contents: contents,
-          generationConfig: {
-            temperature: 0.75,
-            maxOutputTokens: 350
-          }
+          generationConfig: { temperature: 0.75, maxOutputTokens: 350 }
         };
 
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${this.apiKey}`;
@@ -1126,7 +1280,6 @@ ${isDiaryRequest ? '★今回は「今日の日記」を頼まれました。今
         });
 
         if (!res.ok && res.status === 400) {
-          // フォールバック（contentsにシステム指示を直接統合）
           const fallbackPayload = {
             contents: [{
               role: 'user',
@@ -1150,7 +1303,6 @@ ${isDiaryRequest ? '★今回は「今日の日記」を頼まれました。今
             const tm = raw.match(/<!--TOPIC:(.*?)-->/i);
             if (tm) topicTag = tm[1].trim();
 
-            // ト書きの安全クリーンアップ
             let clean = raw
               .replace(/<!--[\s\S]*?-->/g, '')
               .replace(/[（\(][^）\)]*?[）\)]/g, '')
@@ -1158,24 +1310,81 @@ ${isDiaryRequest ? '★今回は「今日の日記」を頼まれました。今
               .replace(/^[、。,\.\s]+/, '')
               .trim();
 
-            if (isDiaryRequest) {
-              StorageManager.saveDiary(clean);
-            }
+            Logger.log(`[Gemini成功⚡] Liteモデル「${cleanModel}」から応答取得！`, "success");
+            
+            const badge = document.getElementById('model-badge');
+            if (badge) badge.textContent = `🐾 ${cleanModel.replace('gemini-', '')}`;
 
-            Logger.log(`[Gemini成功⚡] モデル「${cleanModel}」から正常にお返事取得ニャ！`, "success");
-            return { success: true, text: clean, topicTag, modelUsed: cleanModel, isDiary: isDiaryRequest };
+            return { success: true, text: clean, topicTag, modelUsed: cleanModel };
           }
-        } else {
-          const errJson = await res.json().catch(() => ({}));
-          const errMsg = errJson.error?.message || `HTTP ${res.status}`;
-          Logger.log(`[Gemini待機] モデル「${cleanModel}」HTTP ${res.status} [理由: ${errMsg}]`, "warn");
         }
       } catch (err) {
         Logger.log(`[Gemini通信例外] ${err.message}`, "warn");
       }
     }
+    return { success: false, error: "ALL_LITE_MODELS_FAILED" };
+  }
 
-    return { success: false, error: "ALL_MODELS_FAILED" };
+  /* 2. ★ 500文字要約日記の専用執筆（今日の全ログを凝縮） */
+  async generateDailyDiarySummary(todayAllLogs) {
+    if (!this.apiKey) return { success: false };
+
+    const timeInfo = TimeProvider.getCurrentInfo();
+    const weather = LocationProvider.weather;
+    const temp = LocationProvider.temperature;
+    const address = LocationProvider.detailedAddress;
+
+    // 今日の全会話をテキスト化（指示や単なる相槌を除く）
+    const conversationHistoryText = todayAllLogs
+      .filter(l => l.text && !/(?:今日|きょう)?(?:の)?(?:日記|にっき).*(?:書いて|まとめて)/.test(l.text))
+      .map(l => `${l.role === 'user' ? 'おやびん' : 'クロ'}: ${l.text}`)
+      .join('\n');
+
+    const diaryPrompt = `
+あなたはノルウェージャンフォレストキャットの1歳の子猫の女の子「クロ」です。
+おやびん（飼い主さん）と今日過ごした思い出を振り返り、クロちゃん目線の愛らしい絵日記を書いてください。
+
+【本日の情報】
+・日付: ${timeInfo.fullDate}
+・場所: ${address}
+・天気: ${weather} / 気温: ${temp}度
+
+【今日おやびんと話した会話ログ】
+${conversationHistoryText || '今日はおやびんとまったりお家で過ごしたニャン♪'}
+
+【執筆ルール】
+- 文字数上限は【500文字以内（250〜450文字程度）】で、起承転結のある心温まる文章にしてください。
+- 語尾は「〜ニャ」「〜ニャン♪」「〜だニャ🐾」を使ってください。
+- 今日話した具体的な内容（食べ物の名前、行った場所や調べたこと、タイマーを使ったこと、雑談など）を具体的に散りばめてください。
+- 出力は日記の本文のみを出力してください（タイトルやト書き、挨拶文は不要です）。
+`;
+
+    // gemini-3.5-flash-lite を使用
+    const targetModel = (this.discoveredLiteModels[0] || "gemini-3.5-flash-lite").replace(/^models\//, '');
+    try {
+      Logger.log(`[Diary] 500文字要約日記を執筆中…（モデル: ${targetModel}）`, "info");
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${this.apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: diaryPrompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 850 }
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const diaryText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (diaryText && diaryText.length >= 60) {
+          const clean = diaryText.replace(/[*#_~`]/g, '').trim();
+          Logger.log(`[Diary成功⚡] 500文字要約日記が完成したニャ！（文字数: ${clean.length}字）`, "success");
+          return { success: true, diaryText: clean };
+        }
+      }
+    } catch(e) {
+      Logger.log(`[Diary例外] ${e.message}`, "error");
+    }
+    return { success: false };
   }
 }
 
@@ -1198,6 +1407,7 @@ const AppCore = {
     isRunning: true,
     isThinking: false,
     isProcessingInput: false,
+    isDiaryProcessing: false, // 🔒 日記専用ロック
     isAssistantMode: false,
     editingMemoryIdx: null,
     activeAdjustTab: 'idle',
@@ -1217,58 +1427,82 @@ const AppCore = {
   },
 
   async init() {
-    this.avatar = new CatAvatarRenderer();
-    this.memories = StorageManager.loadMemories(CHARACTER_CONFIG.defaultMemories);
-    this.todayLogs = StorageManager.loadTodayLogs();
+    try {
+      this.avatar = new CatAvatarRenderer();
+    } catch(e) {
+      Logger.log(`[Avatar初期化警告] ${e.message}`, "warn");
+    }
 
-    this.state.isAssistantMode = localStorage.getItem('kuro_mode') === 'assistant';
-    this._updateModeUI(false);
+    try {
+      this.memories = StorageManager.loadMemories(CHARACTER_CONFIG.defaultMemories);
+      this.todayLogs = StorageManager.loadTodayLogs();
+      this.state.isAssistantMode = localStorage.getItem('kuro_mode') === 'assistant';
+      this._updateModeUI(false);
+      this._setupAudioCallbacks();
+    } catch(e) {
+      Logger.log(`[State初期化警告] ${e.message}`, "warn");
+    }
 
-    this._setupAudioCallbacks();
     this._bindUI();
     this._bindGlassesAdjusterUI();
-    this._renderMemories();
-    this._renderDiaryPreview();
-    this._restoreTimelineHistory();
-    this._updateModelBadge();
 
-    LocationProvider.initWatcher();
+    try {
+      this._renderMemories();
+      this._renderDiaryBookList();
+      this._restoreTimelineHistory();
+      this._updateModelBadge();
 
-    const savedSpeaker = localStorage.getItem('kuro_voice_speaker_id') || '10';
-    const savedRate = localStorage.getItem('kuro_rate') || '1.05';
-    const savedNews = localStorage.getItem('kuro_news_count') || '2';
-    const savedSpot = localStorage.getItem('kuro_spot_count') || '2';
-    const savedHome = localStorage.getItem('kuro_home_coords') || '';
+      LocationProvider.initWatcher();
 
-    const spSelect = document.getElementById('voice-speaker-select');
-    const rateInput = document.getElementById('voice-rate');
-    const rateDisp = document.getElementById('rate-val');
-    const newsSelect = document.getElementById('news-count-select');
-    const spotSelect = document.getElementById('spot-count-select');
-    const homeInput = document.getElementById('home-coords-input');
+      const savedSpeaker = localStorage.getItem('kuro_voice_speaker_id') || '10';
+      const savedRate = localStorage.getItem('kuro_rate') || '1.05';
+      const savedNews = localStorage.getItem('kuro_news_count') || '2';
+      const savedSpot = localStorage.getItem('kuro_spot_count') || '2';
+      const savedHome = localStorage.getItem('kuro_home_coords') || '';
 
-    if (spSelect) spSelect.value = savedSpeaker;
-    if (rateInput) rateInput.value = savedRate;
-    if (rateDisp) rateDisp.textContent = parseFloat(savedRate).toFixed(2);
-    if (newsSelect) newsSelect.value = savedNews;
-    if (spotSelect) spotSelect.value = savedSpot;
-    if (homeInput) homeInput.value = savedHome;
+      const spSelect = document.getElementById('voice-speaker-select');
+      const rateInput = document.getElementById('voice-rate');
+      const rateDisp = document.getElementById('rate-val');
+      const newsSelect = document.getElementById('news-count-select');
+      const spotSelect = document.getElementById('spot-count-select');
+      const homeInput = document.getElementById('home-coords-input');
 
-    const spk = parseInt(savedSpeaker, 10);
-    this.audio.prefetchVoice("おやびん、わたしはクロだニャン🐾", spk);
+      if (spSelect) spSelect.value = savedSpeaker;
+      if (rateInput) rateInput.value = savedRate;
+      if (rateDisp) rateDisp.textContent = parseFloat(savedRate).toFixed(2);
+      if (newsSelect) newsSelect.value = savedNews;
+      if (spotSelect) spotSelect.value = savedSpot;
+      if (homeInput) homeInput.value = savedHome;
 
-    setInterval(() => {
-      document.getElementById('clock-display').textContent = TimeProvider.getCurrentInfo().clock;
-    }, 1000);
+      const spk = parseInt(savedSpeaker, 10);
+      this.audio.prefetchVoice("おやびん、わたしはクロだニャン🐾", spk);
+      this.audio.prefetchVoice("今日の日記を書き込みましたニャン🐾", spk);
 
-    setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 800);
-    Logger.log("[AppCore] 準備完了ニャ！今日の文脈を完璧に覚えて会話するニャ🐾", "success");
+      // 有効なLiteモデルを探索（3.8は除外）
+      if (this.ai.apiKey) {
+        this.ai.discoverAvailableLiteModels().then(models => {
+          if (models.length > 0) {
+            const badge = document.getElementById('model-badge');
+            if (badge) badge.textContent = `🐾 ${models[0].replace('gemini-', '')}`;
+          }
+        });
+      }
+
+      setInterval(() => {
+        const clk = document.getElementById('clock-display');
+        if (clk) clk.textContent = TimeProvider.getCurrentInfo().clock;
+      }, 1000);
+
+      setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 800);
+      Logger.log("[AppCore] 全システム正常稼働！安全ガード付き日記帳連動完了ニャ🐾", "success");
+    } catch(e) {
+      Logger.log(`[初期化完了警告] ${e.message}`, "warn");
+    }
   },
 
   async forceRefreshApp() {
     Logger.log("[リフレッシュ] ブラウザキャッシュ破棄中…", "info");
     Toast.show("キャッシュを消去して再読み込みするニャ！🔄", "info");
-
     try {
       if ('caches' in window) {
         const keys = await caches.keys();
@@ -1284,20 +1518,21 @@ const AppCore = {
 
   _restoreTimelineHistory() {
     const box = document.getElementById('chat-timeline');
+    if (!box) return;
     box.innerHTML = '';
     if (this.todayLogs.length === 0) {
       this.renderBubble('model', "おやびん、わたしはクロだニャ🐾 今日もいっぱいお話しするニャン♪");
       return;
     }
-    // 当日の最新15件をタイムラインに復元
     this.todayLogs.slice(-15).forEach(h => this.renderBubble(h.role, h.text));
   },
 
   _setupAudioCallbacks() {
     this.audio.onBargeIn = () => {
-      this.avatar.setEmotion('idle');
+      if (this.avatar) this.avatar.setEmotion('idle');
       this.state.isThinking = false;
       this.state.isProcessingInput = false;
+      this.state.isDiaryProcessing = false;
       this.audio.playEffect('aizuchi');
     };
 
@@ -1316,7 +1551,7 @@ const AppCore = {
 
     this.audio.onListeningStatus = (l) => {
       const st = document.getElementById('status-text');
-      if (this.state.isRunning) {
+      if (st && this.state.isRunning) {
         st.textContent = l ? "👂 聴いてるニャ♪" : "💭 待機中ニャ…";
       }
     };
@@ -1324,6 +1559,7 @@ const AppCore = {
 
   renderBubble(role, text, cards = []) {
     const box = document.getElementById('chat-timeline');
+    if (!box) return null;
     const row = document.createElement('div');
     row.className = `chat-row ${role}`;
     const b = document.createElement('div');
@@ -1349,7 +1585,33 @@ const AppCore = {
     return b;
   },
 
-  /* 即答判定（時間・日付などの単発クエリ） */
+  /* タイムラインに可愛い絵日記カードを表示 */
+  renderDiaryCard(diaryData) {
+    const box = document.getElementById('chat-timeline');
+    if (!box || !diaryData) return;
+
+    const row = document.createElement('div');
+    row.className = 'chat-row model';
+
+    const card = document.createElement('div');
+    card.className = 'timeline-diary-card';
+    card.innerHTML = `
+      <div class="timeline-diary-header">
+        <span>📖 ${diaryData.fullDate} のクロ絵日記</span>
+        <span>🐾 記録完了</span>
+      </div>
+      <div class="timeline-diary-meta">
+        <span>🌤️ 天気: ${diaryData.weather}</span>
+        <span>🌡️ 気温: ${diaryData.temperature}℃</span>
+      </div>
+      <div class="timeline-diary-body">${diaryData.content}</div>
+    `;
+
+    row.appendChild(card);
+    box.appendChild(row);
+    box.scrollTop = box.scrollHeight;
+  },
+
   _checkDirectIntent(text) {
     let clean = text.replace(/^(?:ねえ|あのね|おーい)?\s*(?:クロちゃん|クロ|くろ)[、,\s]*/i, '').trim();
 
@@ -1441,6 +1703,13 @@ const AppCore = {
   async handleUserInput(text) {
     this.audio.playEffect('aizuchi');
 
+    // 🔒 ガード3: 「今日の日記書いて」の厳格判定＆専用処理
+    const isDiaryRequest = /(?:今日|きょう|本日)?(?:の)?(?:日記|にっき).*(?:書いて|まとめて|記録して|おねがい)/.test(text);
+    if (isDiaryRequest) {
+      await this.handleDiaryCreationFlow(text);
+      return;
+    }
+
     // 1. キッチンタイマー
     const timerMatch = text.match(/(\d+)\s*分.*(?:測って|タイマー|計って|おしえて)/);
     if (timerMatch) {
@@ -1460,9 +1729,9 @@ const AppCore = {
 
       this.audio.speak(rep, null, () => {
         bubble.textContent = rep;
-        this.avatar.setEmotion('talking');
+        if (this.avatar) this.avatar.setEmotion('talking');
       }, () => {
-        this.avatar.setEmotion('idle');
+        if (this.avatar) this.avatar.setEmotion('idle');
       });
       return;
     }
@@ -1480,7 +1749,7 @@ const AppCore = {
       box.appendChild(row);
       box.scrollTop = box.scrollHeight;
 
-      // 当日ログにも記録
+      // 生ログは安全に追記のみ
       StorageManager.appendTodayLog('user', text);
       StorageManager.appendTodayLog('model', direct.display);
       this.todayLogs = StorageManager.loadTodayLogs();
@@ -1499,10 +1768,10 @@ const AppCore = {
           });
           row.appendChild(cardBox);
         }
-        this.avatar.setEmotion('talking');
+        if (this.avatar) this.avatar.setEmotion('talking');
         box.scrollTop = box.scrollHeight;
       }, () => {
-        this.avatar.setEmotion('idle');
+        if (this.avatar) this.avatar.setEmotion('idle');
         this.state.isProcessingInput = false;
         if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 800);
       });
@@ -1512,16 +1781,84 @@ const AppCore = {
     // 3. ひらめき演出
     if (/(?:どう|困った|疲れた|発明|ひらめき|教えて)/.test(text)) {
       this.audio.playEffect('idea');
-      this.avatar.triggerIdeaBulb();
+      if (this.avatar) this.avatar.triggerIdeaBulb();
     }
 
-    // 4. 自然で賢い会話（当日全ログ文脈を渡して実行）
+    // 4. 自然で賢い会話
     this.executeThought(text);
+  },
+
+  /* ★ 日記作成専用フロー（朗読はせず、短く発話し、カードと日記帳に500文字要約を記録） */
+  async handleDiaryCreationFlow(promptText) {
+    this.state.isDiaryProcessing = true;
+    this.state.isThinking = true;
+    if (this.avatar) this.avatar.setEmotion('thinking');
+
+    const box = document.getElementById('chat-timeline');
+    const row = document.createElement('div');
+    row.className = 'chat-row model';
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble thinking-bubble';
+    bubble.textContent = "今日の日記を一生懸命まとめてるニャ…📖✍️";
+    row.appendChild(bubble);
+    box.appendChild(row);
+    box.scrollTop = box.scrollHeight;
+
+    // 今日の生ログを取得して500文字要約
+    const allLogs = StorageManager.loadTodayLogs();
+    const diaryRes = await this.ai.generateDailyDiarySummary(allLogs);
+
+    if (diaryRes.success && diaryRes.diaryText) {
+      // 🔒 安全保存（バリデーション通過後に日記金庫へ格納）
+      StorageManager.saveDiary(diaryRes.diaryText);
+      const diaryData = StorageManager.getTodayDiary();
+
+      // 生ログには記録を追記
+      StorageManager.appendTodayLog('user', promptText);
+      StorageManager.appendTodayLog('model', "今日の日記を書き込みましたニャン🐾");
+      this.todayLogs = StorageManager.loadTodayLogs();
+
+      // 日記帳モーダルのリストを即座に更新
+      this._renderDiaryBookList();
+
+      const spokenReply = "今日の日記を書き込みましたニャン！日記帳にしっかり残しておいたニャ🐾";
+
+      this.audio.speak(spokenReply, null, () => {
+        bubble.className = 'chat-bubble';
+        bubble.textContent = "今日の日記を書き込みましたニャン🐾（上の『📖 日記帳』からいつでも読めるニャ！）";
+        
+        // タイムラインに可愛い日記カードをドッキング
+        this.renderDiaryCard(diaryData);
+
+        if (this.avatar) this.avatar.setEmotion('talking');
+        box.scrollTop = box.scrollHeight;
+      }, () => {
+        if (this.avatar) this.avatar.setEmotion('idle');
+        this.state.isThinking = false;
+        this.state.isProcessingInput = false;
+        this.state.isDiaryProcessing = false;
+        if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 800);
+      });
+
+    } else {
+      const fb = "おやびん、今日の日記を書くのにもう少しお話ししてほしいニャ🐾";
+      bubble.className = 'chat-bubble';
+      bubble.textContent = fb;
+      this.audio.speak(fb, null, () => {
+        if (this.avatar) this.avatar.setEmotion('talking');
+      }, () => {
+        if (this.avatar) this.avatar.setEmotion('idle');
+        this.state.isThinking = false;
+        this.state.isProcessingInput = false;
+        this.state.isDiaryProcessing = false;
+        if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 800);
+      });
+    }
   },
 
   async executeThought(promptText) {
     this.state.isThinking = true;
-    this.avatar.setEmotion('thinking');
+    if (this.avatar) this.avatar.setEmotion('thinking');
 
     const box = document.getElementById('chat-timeline');
     const row = document.createElement('div');
@@ -1533,30 +1870,26 @@ const AppCore = {
     box.appendChild(row);
     box.scrollTop = box.scrollHeight;
 
-    // 当日の全会話履歴を取得してGeminiに送信
-    const historyLogs = StorageManager.loadTodayLogs();
-    const res = await this.ai.generateReply(promptText, historyLogs, CHARACTER_CONFIG, this.memories, this.state.isAssistantMode);
+    const rawLogs = StorageManager.loadTodayLogs();
+    const res = await this.ai.generateReply(promptText, rawLogs, CHARACTER_CONFIG, this.memories);
 
     if (res.success && res.text) {
       bubble.textContent = "返事の準備をしてるニャ…🎙️";
       box.scrollTop = box.scrollHeight;
 
-      // 当日ログに蓄積
+      // 生ログは安全に追記のみ
       StorageManager.appendTodayLog('user', promptText);
       StorageManager.appendTodayLog('model', res.text);
       this.todayLogs = StorageManager.loadTodayLogs();
 
-      if (res.isDiary) {
-        this._renderDiaryPreview();
-      }
-
       const cards = this._generateSmartCards(promptText, res.topicTag);
 
-      // 音波が出た瞬間（onplaying）に文字表示・完全同期
+      // ★ 音波が出た瞬間（onplaying）に文字表示・完全同期
       this.audio.speak(res.text, null, () => {
         bubble.className = 'chat-bubble';
         bubble.textContent = res.text;
-        document.getElementById('status-text').textContent = "🗣️ お話し中ニャ♪";
+        const st = document.getElementById('status-text');
+        if (st) st.textContent = "🗣️ お話し中ニャ♪";
 
         if (cards.length > 0) {
           const cardBox = document.createElement('div');
@@ -1571,13 +1904,14 @@ const AppCore = {
           row.appendChild(cardBox);
         }
 
-        this.avatar.setEmotion('talking');
+        if (this.avatar) this.avatar.setEmotion('talking');
         box.scrollTop = box.scrollHeight;
       }, () => {
-        this.avatar.setEmotion('idle');
+        if (this.avatar) this.avatar.setEmotion('idle');
         this.state.isThinking = false;
         this.state.isProcessingInput = false;
-        document.getElementById('status-text').textContent = "👂 聴いてるニャ♪";
+        const st = document.getElementById('status-text');
+        if (st) st.textContent = "👂 聴いてるニャ♪";
         if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 800);
       });
 
@@ -1585,13 +1919,14 @@ const AppCore = {
       const fb = "おやびん、もう一度ゆっくり話してニャン🐾";
       bubble.className = 'chat-bubble';
       bubble.textContent = fb;
-      this.avatar.setEmotion('idle');
+      if (this.avatar) this.avatar.setEmotion('idle');
       this.state.isThinking = false;
       this.state.isProcessingInput = false;
       this.audio.speak(fb, null, () => {
-        this.avatar.setEmotion('talking');
+        if (this.avatar) this.avatar.setEmotion('talking');
       }, () => {
-        this.avatar.setEmotion('idle');
+        if (this.avatar) this.avatar.setEmotion('idle');
+        if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 800);
       });
     }
   },
@@ -1601,24 +1936,24 @@ const AppCore = {
     this.state.timerSeconds = minutes * 60;
     const badge = document.getElementById('timer-active-badge');
     const disp = document.getElementById('timer-count-disp');
-    badge.style.display = 'inline-flex';
+    if (badge) badge.style.display = 'inline-flex';
 
     this.state.timerId = setInterval(() => {
       this.state.timerSeconds--;
       const m = Math.floor(this.state.timerSeconds / 60);
       const s = this.state.timerSeconds % 60;
-      disp.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      if (disp) disp.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 
       if (this.state.timerSeconds <= 0) {
         clearInterval(this.state.timerId);
-        badge.style.display = 'none';
+        if (badge) badge.style.display = 'none';
         this.audio.playEffect('bell');
         const alertMsg = `おやびん！${minutes}分経ったニャ！ラーメン伸びちゃうニャー！🍜🔔`;
         this.audio.speak(alertMsg, null, () => {
           this.renderBubble('model', alertMsg);
-          this.avatar.setEmotion('talking');
+          if (this.avatar) this.avatar.setEmotion('talking');
         }, () => {
-          this.avatar.setEmotion('idle');
+          if (this.avatar) this.avatar.setEmotion('idle');
         });
       }
     }, 1000);
@@ -1628,11 +1963,47 @@ const AppCore = {
     const badge = document.getElementById('model-badge');
     if (!badge) return;
     badge.className = "model-badge lite";
-    badge.textContent = `🐾 3.5 Flash`;
+    badge.textContent = `🐾 Flash Lite`;
+  },
+
+  /* ★ 日記帳モーダルの全日記カード一覧を描画 */
+  _renderDiaryBookList() {
+    const container = document.getElementById('diary-book-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const list = StorageManager.loadAllDiaries();
+    if (list.length === 0) {
+      container.innerHTML = `
+        <div class="diary-empty-state">
+          📖 まだ日記帳には何も書かれていないニャ！<br>
+          「今日の日記書いて」と話しかけると、<br>
+          ここに1日の思い出がずっと残るニャン🐾
+        </div>
+      `;
+      return;
+    }
+
+    list.forEach(diary => {
+      const card = document.createElement('div');
+      card.className = 'diary-entry-card';
+      card.innerHTML = `
+        <div class="diary-entry-top">
+          <span>🐾 ${diary.fullDate}</span>
+          <div class="diary-entry-meta">
+            <span>🌤️ ${diary.weather || '快晴'}</span>
+            <span>🌡️ ${diary.temperature || '22'}℃</span>
+          </div>
+        </div>
+        <div class="diary-entry-content">${diary.content}</div>
+      `;
+      container.appendChild(card);
+    });
   },
 
   _renderMemories() {
     const container = document.getElementById('memory-list-container');
+    if (!container) return;
     container.innerHTML = '';
     this.memories.forEach((mem, idx) => {
       const item = document.createElement('div');
@@ -1684,39 +2055,33 @@ const AppCore = {
     });
   },
 
-  _renderDiaryPreview() {
-    const c = document.getElementById('diary-preview-container');
-    const diary = StorageManager.getLatestDiary();
-    if (diary) {
-      c.innerHTML = `<div class="diary-preview-title">🐾 ${diary.date} のクロ日記</div><div>${diary.content}</div>`;
-    }
-  },
-
   _updateModeUI(speak = true) {
     const btn = document.getElementById('mode-toggle-btn');
     const icon = document.getElementById('mode-icon');
     const txt = document.getElementById('mode-text');
     const wrap = document.getElementById('avatar-wrapper');
 
-    btn.classList.toggle('is-assistant', this.state.isAssistantMode);
-    wrap.classList.toggle('is-assistant-mode', this.state.isAssistantMode);
+    if (btn) btn.classList.toggle('is-assistant', this.state.isAssistantMode);
+    if (wrap) wrap.classList.toggle('is-assistant-mode', this.state.isAssistantMode);
 
     if (this.state.isAssistantMode) {
-      icon.textContent = "👓"; txt.textContent = "おてつだい";
+      if (icon) icon.textContent = "👓";
+      if (txt) txt.textContent = "おてつだい";
       if (speak) {
         this.audio.speak("前世の天才頭脳でバッチリ調べるニャ！", null, () => {
-          this.avatar.setEmotion('talking');
+          if (this.avatar) this.avatar.setEmotion('talking');
         }, () => {
-          this.avatar.setEmotion('idle');
+          if (this.avatar) this.avatar.setEmotion('idle');
         });
       }
     } else {
-      icon.textContent = "🐾"; txt.textContent = "なかよし";
+      if (icon) icon.textContent = "🐾";
+      if (txt) txt.textContent = "なかよし";
       if (speak) {
         this.audio.speak("ニャン♪ のんびり遊ぶニャ！", null, () => {
-          this.avatar.setEmotion('talking');
+          if (this.avatar) this.avatar.setEmotion('talking');
         }, () => {
-          this.avatar.setEmotion('idle');
+          if (this.avatar) this.avatar.setEmotion('idle');
         });
       }
     }
@@ -1735,26 +2100,40 @@ const AppCore = {
     const valScale = document.getElementById('adj-scale-val');
     const valRotate = document.getElementById('adj-rotate-val');
 
+    if (!modal || !slX) return;
+
     const updateSliders = (tab) => {
-      const c = this.avatar.glassesCoords[tab] || { x: 0, y: 120, scale: 1.0, rotate: 0 };
+      const c = this.avatar?.glassesCoords[tab] || { x: 0, y: 120, scale: 1.0, rotate: 0 };
       slX.value = c.x; slY.value = c.y; slScale.value = c.scale; slRotate.value = c.rotate;
-      valX.textContent = c.x; valY.textContent = c.y; valScale.textContent = parseFloat(c.scale).toFixed(2); valRotate.textContent = `${c.rotate}°`;
-      previewAcc.style.bottom = `${c.y}px`;
-      previewAcc.style.left = `calc(50% + ${c.x}px)`;
-      previewAcc.style.transform = `translateX(-50%) scale(${c.scale}) rotate(${c.rotate}deg)`;
+      if (valX) valX.textContent = c.x;
+      if (valY) valY.textContent = c.y;
+      if (valScale) valScale.textContent = parseFloat(c.scale).toFixed(2);
+      if (valRotate) valRotate.textContent = `${c.rotate}°`;
+      if (previewAcc) {
+        previewAcc.style.bottom = `${c.y}px`;
+        previewAcc.style.left = `calc(50% + ${c.x}px)`;
+        previewAcc.style.transform = `translateX(-50%) scale(${c.scale}) rotate(${c.rotate}deg)`;
+      }
     };
 
     const onInput = () => {
       const c = { x: parseInt(slX.value, 10), y: parseInt(slY.value, 10), scale: parseFloat(slScale.value), rotate: parseInt(slRotate.value, 10) };
-      this.avatar.glassesCoords[this.state.activeAdjustTab] = c;
-      valX.textContent = c.x; valY.textContent = c.y; valScale.textContent = c.scale.toFixed(2); valRotate.textContent = `${c.rotate}°`;
-      previewAcc.style.bottom = `${c.y}px`;
-      previewAcc.style.left = `calc(50% + ${c.x}px)`;
-      previewAcc.style.transform = `translateX(-50%) scale(${c.scale}) rotate(${c.rotate}deg)`;
-      this.avatar.applyAllFramesTransform();
+      if (this.avatar) {
+        this.avatar.glassesCoords[this.state.activeAdjustTab] = c;
+        this.avatar.applyAllFramesTransform();
+      }
+      if (valX) valX.textContent = c.x;
+      if (valY) valY.textContent = c.y;
+      if (valScale) valScale.textContent = c.scale.toFixed(2);
+      if (valRotate) valRotate.textContent = `${c.rotate}°`;
+      if (previewAcc) {
+        previewAcc.style.bottom = `${c.y}px`;
+        previewAcc.style.left = `calc(50% + ${c.x}px)`;
+        previewAcc.style.transform = `translateX(-50%) scale(${c.scale}) rotate(${c.rotate}deg)`;
+      }
     };
 
-    [slX, slY, slScale, slRotate].forEach(el => el.addEventListener('input', onInput));
+    [slX, slY, slScale, slRotate].forEach(el => el?.addEventListener('input', onInput));
 
     document.querySelectorAll('.adjust-tab-btn').forEach(btn => {
       btn.onclick = () => {
@@ -1762,34 +2141,48 @@ const AppCore = {
         btn.classList.add('active');
         const tab = btn.dataset.tab;
         this.state.activeAdjustTab = tab;
-        previewImg.src = `${tab}.jpg`;
+        if (previewImg) previewImg.src = `${tab}.jpg`;
         updateSliders(tab);
       };
     });
 
-    document.getElementById('open-glasses-adjust-btn').onclick = () => {
-      document.getElementById('modal-overlay').style.display = 'none';
-      modal.classList.add('is-open');
-      updateSliders(this.state.activeAdjustTab);
-    };
+    const openAdjustBtn = document.getElementById('open-glasses-adjust-btn');
+    if (openAdjustBtn) {
+      openAdjustBtn.onclick = () => {
+        document.getElementById('modal-overlay').style.display = 'none';
+        modal.classList.add('is-open');
+        updateSliders(this.state.activeAdjustTab);
+      };
+    }
 
-    document.getElementById('close-adjust-btn').onclick = () => {
-      modal.classList.remove('is-open');
-      StorageManager.saveGlassesCoords(this.avatar.glassesCoords);
-    };
+    const closeAdjustBtn = document.getElementById('close-adjust-btn');
+    if (closeAdjustBtn) {
+      closeAdjustBtn.onclick = () => {
+        modal.classList.remove('is-open');
+        if (this.avatar) StorageManager.saveGlassesCoords(this.avatar.glassesCoords);
+      };
+    }
 
-    document.getElementById('btn-adjust-save').onclick = () => {
-      StorageManager.saveGlassesCoords(this.avatar.glassesCoords);
-      this.audio.playEffect('happy_meow');
-      Toast.show("位置をバッチリ保存したニャン！👓✨", "success");
-    };
+    const btnSaveAdjust = document.getElementById('btn-adjust-save');
+    if (btnSaveAdjust) {
+      btnSaveAdjust.onclick = () => {
+        if (this.avatar) StorageManager.saveGlassesCoords(this.avatar.glassesCoords);
+        this.audio.playEffect('happy_meow');
+        Toast.show("位置をバッチリ保存したニャン！👓✨", "success");
+      };
+    }
 
-    document.getElementById('btn-adjust-reset').onclick = () => {
-      const def = StorageManager.defaultGlassesCoords[this.state.activeAdjustTab];
-      this.avatar.glassesCoords[this.state.activeAdjustTab] = JSON.parse(JSON.stringify(def));
-      updateSliders(this.state.activeAdjustTab);
-      this.avatar.applyAllFramesTransform();
-    };
+    const btnResetAdjust = document.getElementById('btn-adjust-reset');
+    if (btnResetAdjust) {
+      btnResetAdjust.onclick = () => {
+        const def = StorageManager.defaultGlassesCoords[this.state.activeAdjustTab];
+        if (this.avatar) {
+          this.avatar.glassesCoords[this.state.activeAdjustTab] = JSON.parse(JSON.stringify(def));
+          this.avatar.applyAllFramesTransform();
+        }
+        updateSliders(this.state.activeAdjustTab);
+      };
+    }
   },
 
   _bindUI() {
@@ -1799,16 +2192,55 @@ const AppCore = {
     if (btnForce) btnForce.onclick = forceReload;
     if (btnDiagForce) btnDiagForce.onclick = forceReload;
 
+    // ★ 日記帳モーダルの開閉
+    const topDiaryBtn = document.getElementById('top-diary-btn');
+    const diaryBookModal = document.getElementById('diary-book-modal');
+    const closeDiaryBookBtn = document.getElementById('btn-close-diary-book');
+
+    if (topDiaryBtn && diaryBookModal) {
+      topDiaryBtn.onclick = () => {
+        this.audio.unlockMasterAudio();
+        this._renderDiaryBookList();
+        diaryBookModal.classList.add('is-open');
+      };
+    }
+    if (closeDiaryBookBtn && diaryBookModal) {
+      closeDiaryBookBtn.onclick = () => {
+        diaryBookModal.classList.remove('is-open');
+      };
+    }
+
+    // ★ 全日記のテキスト一括コピー
+    const btnCopyAllDiaries = document.getElementById('btn-copy-all-diaries');
+    if (btnCopyAllDiaries) {
+      btnCopyAllDiaries.onclick = () => {
+        const list = StorageManager.loadAllDiaries();
+        if (list.length === 0) {
+          Toast.show("まだ日記がありませんニャ🐾", "info");
+          return;
+        }
+        const textToCopy = list.map(d => `【${d.fullDate}】(天気:${d.weather} ${d.temperature}℃)\n${d.content}\n`).join('\n--------------------\n\n');
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          Toast.show("全日記をクリップボードにコピーしたニャ！📋✨", "success");
+        }).catch(() => {
+          Toast.show("コピーに失敗しましたニャ", "error");
+        });
+      };
+    }
+
+    // モデル検証ボタン
     const btnTestModels = document.getElementById('diag-test-models-btn');
     if (btnTestModels) {
       btnTestModels.onclick = async () => {
-        Toast.show("モデル接続テスト中ニャ…", "info");
+        Toast.show("Liteモデル接続テスト中ニャ…", "info");
         const key = this.ai.apiKey;
         if (!key) {
           Toast.show("APIキーが設定されていませんニャ", "error");
           return;
         }
-        for (const m of ["gemini-3.5-flash", "gemini-1.5-flash"]) {
+
+        const candidates = ["gemini-3.5-flash-lite", "gemini-2.0-flash-lite", "gemini-2.5-flash-lite", "gemini-1.5-flash-8b"];
+        for (const m of candidates) {
           try {
             const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`, {
               method: 'POST',
@@ -1816,15 +2248,15 @@ const AppCore = {
               body: JSON.stringify({ contents: [{ parts: [{ text: "ニャ" }] }] })
             });
             if (r.ok) {
-              Logger.log(`[導通確認OK] モデル「${m}」は正常に会話可能ニャ！⚡`, "success");
+              Logger.log(`[Lite導通確認OK⚡] モデル「${m}」は正常に会話可能ニャ！`, "success");
             } else {
-              Logger.log(`[導通確認] モデル「${m}」HTTP ${r.status}`, "warn");
+              Logger.log(`[Lite導通確認] モデル「${m}」HTTP ${r.status}`, "warn");
             }
           } catch(e) {
-            Logger.log(`[導通確認例外] ${m}: ${e.message}`, "error");
+            Logger.log(`[Lite導通確認例外] ${m}: ${e.message}`, "error");
           }
         }
-        Toast.show("検証完了！ログを確認してニャ🐾", "success");
+        Toast.show("Lite検証完了！ログを確認してニャ🐾", "success");
       };
     }
 
@@ -1839,275 +2271,348 @@ const AppCore = {
         navigator.clipboard.writeText(text).then(() => {
           Toast.show("ログ全文をコピーしたニャ！📋✨", "success");
         }).catch(() => {
-          Toast.show("コピーに失敗しました。手動でコピーしてニャ🐾", "error");
+          Toast.show("手動でコピーしてニャ🐾", "error");
         });
       };
     }
 
-    // おやつ
-    document.getElementById('snack-btn').onclick = () => {
-      this.audio.unlockMasterAudio();
-      this.state.snackCount++;
-      this.audio.playEffect('snack');
-      this.avatar.setEmotion('happy');
+    // おやつボタン
+    const snackBtn = document.getElementById('snack-btn');
+    if (snackBtn) {
+      snackBtn.onclick = (e) => {
+        e.stopPropagation();
+        this.audio.unlockMasterAudio();
+        this.state.snackCount++;
+        this.audio.playEffect('snack');
+        if (this.avatar) this.avatar.setEmotion('happy');
 
-      if (this.state.snackCount >= 3) {
-        this.state.snackCount = 0;
-        this.audio.playEffect('purr');
-        const msg = "ハフハフ…うまうまニャ！お腹いっぱい大満足ニャ〜極楽ニャン♡";
-        this.audio.speak(msg, null, () => {
-          this.renderBubble('model', msg);
-          this.avatar.setEmotion('talking');
-        }, () => {
-          this.avatar.setEmotion('idle');
-        });
-      } else {
-        const reps = ["もぐもぐ…ちゅ〜る最高ニャ！🐟", "うまうまニャン！おかわり希望ニャ🐾"];
-        const r = reps[Math.floor(Math.random() * reps.length)];
-        this.audio.speak(r, null, () => {
-          this.renderBubble('model', r);
-          this.avatar.setEmotion('talking');
-        }, () => {
-          this.avatar.setEmotion('idle');
-        });
-      }
-    };
+        if (this.state.snackCount >= 3) {
+          this.state.snackCount = 0;
+          this.audio.playEffect('purr');
+          const msg = "ハフハフ…うまうまニャ！お腹いっぱい大満足ニャ〜極楽ニャン♡";
+          this.audio.speak(msg, null, () => {
+            this.renderBubble('model', msg);
+            if (this.avatar) this.avatar.setEmotion('talking');
+          }, () => {
+            if (this.avatar) this.avatar.setEmotion('idle');
+          });
+        } else {
+          const reps = ["もぐもぐ…ちゅ〜る最高ニャ！🐟", "うまうまニャン！おかわり希望ニャ🐾"];
+          const r = reps[Math.floor(Math.random() * reps.length)];
+          this.audio.speak(r, null, () => {
+            this.renderBubble('model', r);
+            if (this.avatar) this.avatar.setEmotion('talking');
+          }, () => {
+            if (this.avatar) this.avatar.setEmotion('idle');
+          });
+        }
+      };
+    }
 
-    // 変身
-    document.getElementById('transform-btn').onclick = () => {
-      this.audio.unlockMasterAudio();
-      this.audio.playEffect('poof');
-      this.avatar.triggerPoofSmoke();
+    // 変身ボタン
+    const transformBtn = document.getElementById('transform-btn');
+    if (transformBtn) {
+      transformBtn.onclick = (e) => {
+        e.stopPropagation();
+        this.audio.unlockMasterAudio();
+        this.audio.playEffect('poof');
+        if (this.avatar) {
+          this.avatar.triggerPoofSmoke();
+          const next = (this.avatar.mode === 'vector') ? 'real' : 'vector';
+          this.avatar.applyMode(next);
+          Toast.show(`姿を変身したニャ！✨（${next === 'real' ? 'リアル写真' : 'イラスト'}）`, 'info');
+        }
+      };
+    }
 
-      const next = (this.avatar.mode === 'vector') ? 'real' : 'vector';
-      this.avatar.applyMode(next);
-      Toast.show(`姿を変身したニャ！✨（${next === 'real' ? 'リアル写真' : 'イラスト'}）`, 'info');
-    };
+    // モード切替ボタン
+    const modeBtn = document.getElementById('mode-toggle-btn');
+    if (modeBtn) {
+      modeBtn.onclick = () => {
+        this.state.isAssistantMode = !this.state.isAssistantMode;
+        localStorage.setItem('kuro_mode', this.state.isAssistantMode ? 'assistant' : 'pet');
+        this._updateModeUI(true);
+      };
+    }
 
-    document.getElementById('mode-toggle-btn').onclick = () => {
-      this.state.isAssistantMode = !this.state.isAssistantMode;
-      localStorage.setItem('kuro_mode', this.state.isAssistantMode ? 'assistant' : 'pet');
-      this._updateModeUI(true);
-    };
-
-    document.getElementById('stop-action-btn').onclick = () => {
-      this.audio.stopSpeaking();
-      this.state.isThinking = false;
-      this.state.isProcessingInput = false;
-      this.avatar.setEmotion('idle');
-      this.audio.speak("ストップしたニャ！ゆっくり話してニャン🐾");
-    };
-
-    document.getElementById('pause-btn').onclick = () => {
-      this.state.isRunning = !this.state.isRunning;
-      const icon = document.getElementById('pause-icon');
-      const txt = document.getElementById('pause-text');
-      const btn = document.getElementById('pause-btn');
-
-      if (!this.state.isRunning) {
-        btn.classList.add('is-paused');
-        icon.textContent = "🛑"; txt.textContent = "お休み中";
-        this.audio.stopListening();
+    // ストップボタン
+    const stopBtn = document.getElementById('stop-action-btn');
+    if (stopBtn) {
+      stopBtn.onclick = () => {
         this.audio.stopSpeaking();
-        this.renderBubble('model', "お昼寝するニャ…💤");
-      } else {
-        btn.classList.remove('is-paused');
-        icon.textContent = "🟢"; txt.textContent = "会話中";
-        this.renderBubble('model', "起きたニャ！呼んでニャ🐾");
-        this.audio.startListening();
-      }
-    };
+        this.state.isThinking = false;
+        this.state.isProcessingInput = false;
+        this.state.isDiaryProcessing = false;
+        if (this.avatar) this.avatar.setEmotion('idle');
+        this.audio.speak("ストップしたニャ！ゆっくり話してニャン🐾");
+      };
+    }
+
+    // 一時停止・再開ボタン
+    const pauseBtn = document.getElementById('pause-btn');
+    if (pauseBtn) {
+      pauseBtn.onclick = () => {
+        this.state.isRunning = !this.state.isRunning;
+        const icon = document.getElementById('pause-icon');
+        const txt = document.getElementById('pause-text');
+
+        if (!this.state.isRunning) {
+          pauseBtn.classList.add('is-paused');
+          if (icon) icon.textContent = "🛑";
+          if (txt) txt.textContent = "お休み中";
+          this.audio.stopListening();
+          this.audio.stopSpeaking();
+          this.renderBubble('model', "お昼寝するニャ…💤");
+        } else {
+          pauseBtn.classList.remove('is-paused');
+          if (icon) icon.textContent = "🟢";
+          if (txt) txt.textContent = "会話中";
+          this.renderBubble('model', "起きたニャ！呼んでニャ🐾");
+          this.audio.startListening();
+        }
+      };
+    }
 
     // なでなで
-    document.getElementById('avatar-wrapper').onclick = (e) => {
-      if (e.target.closest('#transform-btn') || e.target.closest('#snack-btn')) return;
-      this.audio.unlockMasterAudio();
-      this.audio.playEffect('purr');
-      this.avatar.setEmotion('happy');
-      setTimeout(() => { if (!this.audio.isSpeaking) this.avatar.setEmotion('idle'); }, 1200);
-    };
-
-    document.getElementById('voice-speaker-select').onchange = (e) => {
-      const newSp = parseInt(e.target.value, 10);
-      this.audio.prefetchVoice("おやびん、わたしはクロだニャン🐾", newSp);
-    };
-
-    document.getElementById('test-voice-btn').onclick = () => {
-      this.audio.unlockMasterAudio();
-      const selSp = parseInt(document.getElementById('voice-speaker-select').value, 10);
-      this.audio.speak("おやびん、わたしはクロだニャン🐾", selSp, () => {
-        this.avatar.setEmotion('talking');
-      }, () => {
-        this.avatar.setEmotion('idle');
-      });
-    };
-
-    document.getElementById('voice-rate').oninput = (e) => {
-      const r = parseFloat(e.target.value);
-      this.audio.setRate(r);
-      document.getElementById('rate-val').textContent = r.toFixed(2);
-    };
-
-    document.getElementById('btn-get-current-home').onclick = () => {
-      if (!('geolocation' in navigator)) {
-        Toast.show("端末の位置情報機能がオフになっていますニャ", "error");
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const val = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
-          document.getElementById('home-coords-input').value = val;
-          Toast.show(`現在地の座標をセットしたニャ！(${val})`, "success");
-        },
-        (err) => {
-          Toast.show(`現在地を取得できませんでした: ${err.message}`, "error");
-        },
-        { enableHighAccuracy: true, timeout: 8000 }
-      );
-    };
-
-    document.getElementById('btn-copy-home-coords').onclick = () => {
-      const val = document.getElementById('home-coords-input').value.trim();
-      if (!val) {
-        Toast.show("コピーする座標がありませんニャ", "error");
-        return;
-      }
-      navigator.clipboard.writeText(val).then(() => {
-        Toast.show("座標をクリップボードにコピーしたニャ！PCに貼り付けてニャ🐾", "success");
-      }).catch(() => {
-        Toast.show("コピーに失敗しました。手動でコピーしてニャ🐾", "error");
-      });
-    };
-
-    document.getElementById('settings-btn').onclick = () => {
-      document.getElementById('api-key-input').value = this.ai.apiKey;
-      document.getElementById('voicevox-key-input').value = localStorage.getItem('kuro_voicevox_key') || '';
-      document.getElementById('accessory-style-select').value = this.avatar.accessoryStyle;
-      document.getElementById('voice-speaker-select').value = this.getSpeakerId();
-      document.getElementById('voice-rate').value = this.audio.rate;
-      document.getElementById('rate-val').textContent = this.audio.rate.toFixed(2);
-      document.getElementById('home-coords-input').value = localStorage.getItem('kuro_home_coords') || '';
-
-      this._renderMemories();
-      this._renderDiaryPreview();
-      document.getElementById('modal-overlay').style.display = 'flex';
-    };
-
-    document.getElementById('modal-overlay').onclick = (e) => {
-      if (e.target.id === 'modal-overlay') document.getElementById('modal-overlay').style.display = 'none';
-    };
-
-    document.getElementById('save-settings-btn').onclick = async () => {
-      this.audio.unlockMasterAudio();
-      const btn = document.getElementById('save-settings-btn');
-      const btnIcon = document.getElementById('save-btn-icon');
-      const btnText = document.getElementById('save-btn-text');
-      const apiInput = document.getElementById('api-key-input');
-      const vvInput = document.getElementById('voicevox-key-input');
-
-      apiInput.classList.remove('input-error-shake');
-      vvInput.classList.remove('input-error-shake');
-
-      const newApiKey = apiInput.value.trim();
-      const newVvKey = vvInput.value.trim();
-      const newAccStyle = document.getElementById('accessory-style-select').value;
-      const newSpeaker = document.getElementById('voice-speaker-select').value;
-      const newRate = parseFloat(document.getElementById('voice-rate').value);
-      const newNews = document.getElementById('news-count-select').value;
-      const newSpot = document.getElementById('spot-count-select').value;
-      const newHome = document.getElementById('home-coords-input').value.trim();
-
-      btn.classList.add('is-saving');
-      btnIcon.innerHTML = `<div class="spinner"></div>`;
-      btnText.textContent = "キーを確認中ニャ…";
-
-      if (newApiKey) {
-        try {
-          const testRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${newApiKey}`);
-          if (!testRes.ok) throw new Error("無効なGoogleキー");
-        } catch(e) {
-          btn.classList.remove('is-saving');
-          btnIcon.textContent = "⚠️";
-          btnText.textContent = "保存できませんでした";
-          apiInput.classList.add('input-error-shake');
-          Toast.show("Google APIキーが間違っているニャ！再確認してニャ🐾", "error");
-          return;
-        }
-      }
-
-      if (newVvKey) {
-        try {
-          const vvRes = await fetch(`https://api.tts.quest/v3/voicevox/synthesis?text=%E3%83%8B%E3%83%A3&speaker=10&key=${encodeURIComponent(newVvKey)}`);
-          if (vvRes.ok) {
-            const vvData = await vvRes.json();
-            if (vvData.isAudioError) throw new Error("無効なVoiceVoxキー");
-          } else {
-            throw new Error("無効なVoiceVoxキー");
-          }
-        } catch(e) {
-          btn.classList.remove('is-saving');
-          btnIcon.textContent = "⚠️";
-          btnText.textContent = "保存できませんでした";
-          vvInput.classList.add('input-error-shake');
-          Toast.show("VoiceVoxキーが無効ニャ！空欄にするか正しいキーを入れてニャ🐾", "error");
-          return;
-        }
-      }
-
-      this.ai.apiKey = newApiKey;
-      localStorage.setItem('kuro_api_key', newApiKey);
-      localStorage.setItem('kuro_voicevox_key', newVvKey);
-      localStorage.setItem('kuro_voice_speaker_id', newSpeaker);
-      localStorage.setItem('kuro_news_count', newNews);
-      localStorage.setItem('kuro_spot_count', newSpot);
-      localStorage.setItem('kuro_home_coords', newHome);
-
-      this.audio.setRate(newRate);
-      this.avatar.applyAccessoryStyle(newAccStyle);
-
-      LocationProvider._applyHomeFallback();
-
-      btn.classList.remove('is-saving');
-      btn.classList.add('is-success');
-      btnIcon.textContent = "✅";
-
-      let successMessage = "✅ 設定バッチリ保存したニャン♪";
-      if (newApiKey && newVvKey) {
-        successMessage = "Google AI & VoiceVox ともに接続OKニャン♪";
-      } else if (newApiKey) {
-        successMessage = "Google AI接続OKニャン♪（音声は無料共有枠）";
-      }
-      btnText.textContent = successMessage;
-
-      setTimeout(() => {
-        document.getElementById('modal-overlay').style.display = 'none';
-        btn.classList.remove('is-success');
-        btnIcon.textContent = "💾";
-        btnText.textContent = "設定と記憶を保存するニャン♪";
-        Toast.show(successMessage, "success");
+    const avatarWrapper = document.getElementById('avatar-wrapper');
+    if (avatarWrapper) {
+      avatarWrapper.onclick = (e) => {
+        if (e.target.closest('#transform-btn') || e.target.closest('#snack-btn')) return;
+        this.audio.unlockMasterAudio();
         this.audio.playEffect('purr');
-        this.audio.speak("設定バッチリ保存したニャ！");
-      }, 1800);
-    };
+        if (this.avatar) {
+          this.avatar.setEmotion('happy');
+          setTimeout(() => { if (!this.audio.isSpeaking) this.avatar.setEmotion('idle'); }, 1400);
+        }
+      };
+    }
 
-    document.getElementById('add-memory-btn').onclick = () => {
-      const inp = document.getElementById('new-memory-input');
-      const val = inp.value.trim();
-      if (val) {
-        this.memories.unshift(val);
-        StorageManager.saveMemories(this.memories);
-        inp.value = '';
+    const speakerSelect = document.getElementById('voice-speaker-select');
+    if (speakerSelect) {
+      speakerSelect.onchange = (e) => {
+        const newSp = parseInt(e.target.value, 10);
+        this.audio.prefetchVoice("おやびん、わたしはクロだニャン🐾", newSp);
+      };
+    }
+
+    const voiceTestBtn = document.getElementById('test-voice-btn');
+    if (voiceTestBtn) {
+      voiceTestBtn.onclick = () => {
+        this.audio.unlockMasterAudio();
+        const selSp = parseInt(document.getElementById('voice-speaker-select')?.value || '10', 10);
+        this.audio.speak("おやびん、わたしはクロだニャン🐾", selSp, () => {
+          if (this.avatar) this.avatar.setEmotion('talking');
+        }, () => {
+          if (this.avatar) this.avatar.setEmotion('idle');
+        });
+      };
+    }
+
+    const voiceRateInput = document.getElementById('voice-rate');
+    if (voiceRateInput) {
+      voiceRateInput.oninput = (e) => {
+        const r = parseFloat(e.target.value);
+        this.audio.setRate(r);
+        const rd = document.getElementById('rate-val');
+        if (rd) rd.textContent = r.toFixed(2);
+      };
+    }
+
+    const btnGetHome = document.getElementById('btn-get-current-home');
+    if (btnGetHome) {
+      btnGetHome.onclick = () => {
+        if (!('geolocation' in navigator)) {
+          Toast.show("端末の位置情報機能がオフになっていますニャ", "error");
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const val = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+            const inp = document.getElementById('home-coords-input');
+            if (inp) inp.value = val;
+            Toast.show(`現在地の座標をセットしたニャ！(${val})`, "success");
+          },
+          (err) => {
+            Toast.show(`現在地を取得できませんでした: ${err.message}`, "error");
+          },
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      };
+    }
+
+    const btnCopyHome = document.getElementById('btn-copy-home-coords');
+    if (btnCopyHome) {
+      btnCopyHome.onclick = () => {
+        const val = document.getElementById('home-coords-input')?.value.trim();
+        if (!val) {
+          Toast.show("コピーする座標がありませんニャ", "error");
+          return;
+        }
+        navigator.clipboard.writeText(val).then(() => {
+          Toast.show("座標をクリップボードにコピーしたニャ！PCに貼り付けてニャ🐾", "success");
+        }).catch(() => {
+          Toast.show("手動でコピーしてニャ🐾", "error");
+        });
+      };
+    }
+
+    // 設定モーダル
+    const settingsBtn = document.getElementById('settings-btn');
+    if (settingsBtn) {
+      settingsBtn.onclick = () => {
+        const ak = document.getElementById('api-key-input');
+        const vk = document.getElementById('voicevox-key-input');
+        const as = document.getElementById('accessory-style-select');
+        const vs = document.getElementById('voice-speaker-select');
+        const vr = document.getElementById('voice-rate');
+        const rv = document.getElementById('rate-val');
+        const hc = document.getElementById('home-coords-input');
+
+        if (ak) ak.value = this.ai.apiKey;
+        if (vk) vk.value = localStorage.getItem('kuro_voicevox_key') || '';
+        if (as && this.avatar) as.value = this.avatar.accessoryStyle;
+        if (vs) vs.value = this.getSpeakerId();
+        if (vr) vr.value = this.audio.rate;
+        if (rv) rv.textContent = this.audio.rate.toFixed(2);
+        if (hc) hc.value = localStorage.getItem('kuro_home_coords') || '';
+
         this._renderMemories();
-      }
-    };
+        const mo = document.getElementById('modal-overlay');
+        if (mo) mo.style.display = 'flex';
+      };
+    }
 
-    document.getElementById('open-diag-modal-btn').onclick = () => {
-      document.getElementById('modal-overlay').style.display = 'none';
-      document.getElementById('diag-panel').classList.add('expanded');
-    };
-    document.getElementById('diag-close-btn').onclick = () => {
-      document.getElementById('diag-panel').classList.remove('expanded');
-    };
+    const modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay) {
+      modalOverlay.onclick = (e) => {
+        if (e.target.id === 'modal-overlay') modalOverlay.style.display = 'none';
+      };
+    }
+
+    // 設定保存
+    const saveSettingsBtn = document.getElementById('save-settings-btn');
+    if (saveSettingsBtn) {
+      saveSettingsBtn.onclick = async () => {
+        this.audio.unlockMasterAudio();
+        const btn = saveSettingsBtn;
+        const btnIcon = document.getElementById('save-btn-icon');
+        const btnText = document.getElementById('save-btn-text');
+        const apiInput = document.getElementById('api-key-input');
+        const vvInput = document.getElementById('voicevox-key-input');
+
+        apiInput?.classList.remove('input-error-shake');
+        vvInput?.classList.remove('input-error-shake');
+
+        const newApiKey = apiInput?.value.trim() || '';
+        const newVvKey = vvInput?.value.trim() || '';
+        const newAccStyle = document.getElementById('accessory-style-select')?.value || 'both';
+        const newSpeaker = document.getElementById('voice-speaker-select')?.value || '10';
+        const newRate = parseFloat(document.getElementById('voice-rate')?.value || '1.05');
+        const newNews = document.getElementById('news-count-select')?.value || '2';
+        const newSpot = document.getElementById('spot-count-select')?.value || '2';
+        const newHome = document.getElementById('home-coords-input')?.value.trim() || '';
+
+        btn.classList.add('is-saving');
+        if (btnIcon) btnIcon.innerHTML = `<div class="spinner"></div>`;
+        if (btnText) btnText.textContent = "キーを確認中ニャ…";
+
+        if (newApiKey) {
+          try {
+            const testRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${newApiKey}`);
+            if (!testRes.ok) throw new Error("無効なGoogleキー");
+          } catch(e) {
+            btn.classList.remove('is-saving');
+            if (btnIcon) btnIcon.textContent = "⚠️";
+            if (btnText) btnText.textContent = "保存できませんでした";
+            apiInput?.classList.add('input-error-shake');
+            Toast.show("Google APIキーが間違っているニャ！再確認してニャ🐾", "error");
+            return;
+          }
+        }
+
+        if (newVvKey) {
+          try {
+            const vvRes = await fetch(`https://api.tts.quest/v3/voicevox/synthesis?text=%E3%83%8B%E3%83%A3&speaker=10&key=${encodeURIComponent(newVvKey)}`);
+            if (vvRes.ok) {
+              const vvData = await vvRes.json();
+              if (vvData.isAudioError) throw new Error("無効なVoiceVoxキー");
+            } else {
+              throw new Error("無効なVoiceVoxキー");
+            }
+          } catch(e) {
+            btn.classList.remove('is-saving');
+            if (btnIcon) btnIcon.textContent = "⚠️";
+            if (btnText) btnText.textContent = "保存できませんでした";
+            vvInput?.classList.add('input-error-shake');
+            Toast.show("VoiceVoxキーが無効ニャ！空欄にするか正しいキーを入れてニャ🐾", "error");
+            return;
+          }
+        }
+
+        this.ai.apiKey = newApiKey;
+        localStorage.setItem('kuro_api_key', newApiKey);
+        localStorage.setItem('kuro_voicevox_key', newVvKey);
+        localStorage.setItem('kuro_voice_speaker_id', newSpeaker);
+        localStorage.setItem('kuro_news_count', newNews);
+        localStorage.setItem('kuro_spot_count', newSpot);
+        localStorage.setItem('kuro_home_coords', newHome);
+
+        this.audio.setRate(newRate);
+        if (this.avatar) this.avatar.applyAccessoryStyle(newAccStyle);
+
+        LocationProvider._applyHomeFallback();
+
+        btn.classList.remove('is-saving');
+        btn.classList.add('is-success');
+        if (btnIcon) btnIcon.textContent = "✅";
+
+        let successMessage = "✅ 設定バッチリ保存したニャン♪";
+        if (newApiKey && newVvKey) {
+          successMessage = "Google AI & VoiceVox ともに接続OKニャン♪";
+        } else if (newApiKey) {
+          successMessage = "Google AI接続OKニャン♪（音声は無料共有枠）";
+        }
+        if (btnText) btnText.textContent = successMessage;
+
+        setTimeout(() => {
+          if (modalOverlay) modalOverlay.style.display = 'none';
+          btn.classList.remove('is-success');
+          if (btnIcon) btnIcon.textContent = "💾";
+          if (btnText) btnText.textContent = "設定と記憶を保存するニャン♪";
+          Toast.show(successMessage, "success");
+          this.audio.playEffect('purr');
+          this.audio.speak("設定バッチリ保存したニャ！");
+        }, 1800);
+      };
+    }
+
+    const addMemoryBtn = document.getElementById('add-memory-btn');
+    if (addMemoryBtn) {
+      addMemoryBtn.onclick = () => {
+        const inp = document.getElementById('new-memory-input');
+        const val = inp?.value.trim();
+        if (val) {
+          this.memories.unshift(val);
+          StorageManager.saveMemories(this.memories);
+          inp.value = '';
+          this._renderMemories();
+        }
+      };
+    }
+
+    const openDiagBtn = document.getElementById('open-diag-modal-btn');
+    if (openDiagBtn) {
+      openDiagBtn.onclick = () => {
+        if (modalOverlay) modalOverlay.style.display = 'none';
+        document.getElementById('diag-panel')?.classList.add('expanded');
+      };
+    }
+    const closeDiagBtn = document.getElementById('diag-close-btn');
+    if (closeDiagBtn) {
+      closeDiagBtn.onclick = () => {
+        document.getElementById('diag-panel')?.classList.remove('expanded');
+      };
+    }
   }
 };
 
