@@ -151,13 +151,13 @@
       color: #db2777;
       border: 1.2px solid #f472b6;
       border-radius: 12px;
-      padding: 4px 8px;
+      padding: 4px 9px;
       font-size: 11px;
       font-weight: 900;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 3px;
+      gap: 4px;
       transition: all 0.15s;
     }
     .btn-top-diary:active { transform: scale(0.93); background: #fce7f3; }
@@ -606,18 +606,18 @@
       position: absolute;
       right: 12px;
       bottom: 24px;
-      background: #111827;
+      background: #1e293b;
       color: #ffffff;
-      border: 1.5px solid rgba(255, 255, 255, 0.25);
+      border: 1.5px solid rgba(255, 255, 255, 0.2);
       padding: 9px 14px;
       border-radius: 24px;
-      font-size: 12.5px;
-      font-weight: 900;
+      font-size: 12px;
+      font-weight: 800;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 5px;
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
       z-index: 35;
       pointer-events: auto;
       transition: transform 0.15s;
@@ -629,129 +629,161 @@
       left: 12px;
       bottom: 24px;
       background: #fdf2f8;
-      color: #db2777;
-      border: 1.5px solid #f472b6;
+      color: #be185d;
+      border: 1.5px solid #fbcfe8;
       padding: 9px 14px;
       border-radius: 24px;
-      font-size: 12.5px;
-      font-weight: 900;
+      font-size: 12px;
+      font-weight: 800;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 5px;
-      box-shadow: 0 6px 18px rgba(244, 114, 182, 0.3);
+      box-shadow: 0 4px 14px rgba(244, 114, 182, 0.2);
       z-index: 35;
       pointer-events: auto;
       transition: transform 0.15s;
     }
     .btn-snack-floating:active { transform: scale(0.92); }
 
-    /* 4. 最下部操作バー */
+    /* ==========================================================================
+       ★ 4. 最下部操作バー（新・ソフトニュアンスパレット：チカチカ完全解消）
+       ========================================================================== */
     .bottom-controls { width: 100%; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; z-index: 30; }
+    
     .action-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
       width: 100%;
-      background: #111827;
-      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
-      padding: 8px 10px;
-      border-radius: 38px;
-      gap: 5px;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+      padding: 7px 9px;
+      border-radius: 36px;
+      gap: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
+
+    /* モード切替：落ち着いたスモーキーピンク / 穏やかなスレートブルー */
     .btn-mode-toggle {
-      height: 48px;
-      padding: 0 11px;
+      height: 44px;
+      padding: 0 12px;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 4px;
-      border-radius: 28px;
-      border: 1.5px solid #f472b6;
-      background: #831843;
-      color: #fbcfe8;
-      font-size: 12.5px;
-      font-weight: 900;
+      border-radius: 24px;
+      border: 1px solid rgba(244, 114, 182, 0.35);
+      background: rgba(157, 23, 77, 0.4);
+      color: #fce7f3;
+      font-size: 12px;
+      font-weight: 800;
       cursor: pointer;
       white-space: nowrap;
       flex-shrink: 0;
+      transition: all 0.2s;
     }
-    .btn-mode-toggle.is-assistant { border-color: #38bdf8; background: #0c4a6e; color: #bae6fd; }
+    .btn-mode-toggle.is-assistant {
+      border-color: rgba(56, 189, 248, 0.4);
+      background: rgba(12, 74, 110, 0.45);
+      color: #e0f2fe;
+    }
+    .btn-mode-toggle:active { transform: scale(0.95); }
 
+    /* 写真ボタン：品のあるペールスカイブルー */
     .btn-photo {
-      height: 48px;
+      height: 44px;
       padding: 0 11px;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 4px;
-      border-radius: 28px;
-      border: 1.5px solid #38bdf8;
-      background: #0369a1;
+      border-radius: 24px;
+      border: 1px solid rgba(14, 165, 233, 0.35);
+      background: rgba(3, 105, 161, 0.35);
       color: #e0f2fe;
       font-size: 12px;
-      font-weight: 900;
+      font-weight: 800;
       cursor: pointer;
       white-space: nowrap;
       flex-shrink: 0;
+      transition: all 0.2s;
     }
-    .btn-photo:active { transform: scale(0.95); background: #0284c7; }
+    .btn-photo:active { transform: scale(0.95); background: rgba(3, 105, 161, 0.55); }
 
+    /* ストップボタン：やわらかなソフトコーラル（テラコッタ調） */
     .btn-stop {
-      height: 48px;
+      height: 44px;
       padding: 0 11px;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 4px;
-      border-radius: 28px;
-      border: 1.5px solid #ef4444;
-      background: #7f1d1d;
-      color: #fecaca;
+      border-radius: 24px;
+      border: 1px solid rgba(248, 113, 113, 0.35);
+      background: rgba(153, 27, 27, 0.35);
+      color: #fee2e2;
       font-size: 12px;
       font-weight: 800;
       cursor: pointer;
       white-space: nowrap;
       flex-shrink: 0;
+      transition: all 0.2s;
     }
+    .btn-stop:active { transform: scale(0.95); background: rgba(153, 27, 27, 0.55); }
+
+    /* 一時停止・会話ボタン：統一されたシックなスレートチャコール */
     .btn-action {
       flex: 1;
-      height: 48px;
+      height: 44px;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 5px;
-      border-radius: 28px;
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      font-size: 12.5px;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      font-size: 12px;
       font-weight: 800;
       cursor: pointer;
-      background: #1f2937;
-      color: #ffffff;
+      background: rgba(30, 41, 59, 0.65);
+      color: #f1f5f9;
       white-space: nowrap;
+      transition: all 0.2s;
     }
-    .btn-action.is-paused { background: #450a0a; color: #fca5a5; border-color: #7f1d1d; }
+    .btn-action.is-paused {
+      background: rgba(127, 29, 29, 0.45);
+      color: #fecaca;
+      border-color: rgba(239, 68, 68, 0.35);
+    }
+    .btn-action:active { transform: scale(0.96); }
+
+    /* 設定ボタン：ミニマルなスレートアイコンボタン */
     .btn-circle {
       width: 44px;
       height: 44px;
       flex-shrink: 0;
       border-radius: 50%;
-      border: 1px solid rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 17px;
-      background: #1f2937;
-      color: #ffffff;
+      font-size: 16px;
+      background: rgba(30, 41, 59, 0.65);
+      color: #cbd5e1;
+      transition: all 0.2s;
     }
+    .btn-circle:active { transform: scale(0.93); background: rgba(51, 65, 85, 0.8); }
 
-    /* 5. モーダル共通スタイル */
+    /* ==========================================================================
+       ★ 5. モーダル共通スタイル ＆ 設定モーダル（3段スッキリ整理）
+       ========================================================================== */
     .modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.45);
-      backdrop-filter: blur(4px);
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(6px);
       display: none;
       justify-content: center;
       align-items: center;
@@ -759,18 +791,281 @@
       padding: 14px;
     }
     .modal-card {
-      background: white;
+      background: #ffffff;
       width: 100%;
       max-width: 450px;
       max-height: 88vh;
       overflow-y: auto;
-      border-radius: 24px;
+      border-radius: 26px;
       padding: 20px;
-      box-shadow: var(--shadow);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
     }
-    .modal-card h3 { margin-top: 0; color: #1f2937; font-size: 17px; display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
+    .modal-card h3 {
+      margin-top: 0;
+      color: #0f172a;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 14px;
+      border-bottom: 1.5px solid #f1f5f9;
+      padding-bottom: 10px;
+    }
 
-    /* 6. フルスクリーン本型絵日記スタジオ */
+    /* 設定グループ・セクション見出し */
+    .setting-section-header {
+      font-size: 12.5px;
+      font-weight: 900;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 16px 0 8px 0;
+    }
+
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: flex; justify-content: space-between; font-size: 11.5px; font-weight: bold; color: #475569; margin-bottom: 5px; }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      font-size: 12.5px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      background: #f8fafc;
+    }
+    .form-group input:focus, .form-group select:focus {
+      border-color: #38bdf8;
+      background: #ffffff;
+    }
+
+    .input-error-shake {
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+      animation: shakeInput 0.35s ease-in-out;
+    }
+    @keyframes shakeInput { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+
+    /* トリセツ折りたたみ */
+    .manual-details {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      font-size: 11.5px;
+    }
+    .manual-summary {
+      padding: 10px 12px;
+      font-weight: 800;
+      color: #0369a1;
+      background: #f0f9ff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      outline: none;
+    }
+    .manual-content {
+      padding: 12px;
+      line-height: 1.6;
+      color: #334155;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .manual-sec-title { font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 4px; margin-top: 3px; }
+
+    /* ★ 安全保護アコーディオン（APIキー・システム保守用） */
+    .secure-details {
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 14px;
+      margin-top: 10px;
+      margin-bottom: 8px;
+      overflow: hidden;
+      font-size: 12px;
+    }
+    .secure-summary {
+      padding: 9px 12px;
+      font-weight: 800;
+      color: #475569;
+      background: #f1f5f9;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      outline: none;
+      font-size: 11.5px;
+    }
+    .secure-content {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: #ffffff;
+    }
+
+    /* データファイルバックアップカード */
+    .pc-sync-card {
+      background: #f0fdf4;
+      border: 1.2px solid #bbf7d0;
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .pc-sync-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #15803d;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 4px;
+    }
+    .pc-sync-desc {
+      font-size: 11px;
+      color: #166534;
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+    .pc-sync-btn-row { display: flex; gap: 6px; }
+    .btn-pc-sync {
+      flex: 1;
+      padding: 8px;
+      background: #ffffff;
+      border: 1.2px solid #22c55e;
+      color: #15803d;
+      border-radius: 10px;
+      font-size: 11.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: background 0.15s;
+    }
+    .btn-pc-sync:active { background: #dcfce7; }
+
+    .home-coord-row { display: flex; gap: 6px; margin-top: 5px; }
+    .btn-coord-action {
+      padding: 6px 10px;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #334155;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .voice-control-row { display: flex; gap: 8px; align-items: center; }
+    .voice-select-box { flex: 1; padding: 8px 10px; border: 1.5px solid #fbcfe8; background: #fff5f8; border-radius: 12px; color: #831843; font-weight: bold; font-size: 12px; }
+    .btn-voice-test { padding: 8px 12px; background: #fdf2f8; border: 1.5px solid #f472b6; color: #db2777; border-radius: 12px; font-weight: 800; font-size: 11.5px; cursor: pointer; flex-shrink: 0; }
+
+    .btn-adjust-open {
+      width: 100%;
+      padding: 9px;
+      background: #fdf2f8;
+      border: 1.2px solid #f472b6;
+      color: #be185d;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    /* 記憶帳リスト */
+    .memory-list {
+      background: #f8fafc;
+      border-radius: 14px;
+      padding: 8px;
+      max-height: 140px;
+      overflow-y: auto;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 11.5px;
+    }
+    .memory-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #ffffff;
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      gap: 6px;
+    }
+    .memory-text-view { flex: 1; word-break: break-all; color: #334155; line-height: 1.4; }
+    .memory-actions { display: flex; gap: 5px; flex-shrink: 0; }
+    .mem-btn { border: none; border-radius: 8px; padding: 4px 7px; font-size: 12px; cursor: pointer; }
+    .mem-btn-edit { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+    .mem-btn-del { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
+    .memory-edit-box { display: flex; flex: 1; gap: 6px; align-items: center; width: 100%; }
+    .memory-edit-input { flex: 1; padding: 5px 8px; border: 1.5px solid var(--secondary-color); border-radius: 8px; font-size: 11.5px; outline: none; }
+    .mem-btn-save { background: #0284c7; color: white; font-weight: bold; border: none; padding: 5px 8px; border-radius: 8px; font-size: 11px; cursor: pointer; }
+    .mem-btn-cancel { background: #e2e8f0; color: #475569; border: none; padding: 5px 8px; border-radius: 8px; font-size: 11px; cursor: pointer; }
+    .memory-add-box { display: flex; gap: 6px; margin-top: 8px; }
+    .memory-add-box input { flex: 1; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 12px; }
+    .memory-add-box button { background: var(--primary-color); color: white; border: none; border-radius: 10px; padding: 0 14px; font-weight: bold; font-size: 12px; cursor: pointer; }
+
+    .btn-save {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #f472b6, #ec4899);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-weight: bold;
+      font-size: 13.5px;
+      cursor: pointer;
+      margin-top: 12px;
+      box-shadow: 0 4px 12px rgba(236, 72, 153, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-save.is-saving { background: #475569; pointer-events: none; }
+    .btn-save.is-success { background: #16a34a; }
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2.5px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .btn-force-refresh {
+      width: 100%;
+      padding: 9px;
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      font-size: 11.5px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    /* ==========================================================================
+       ★ 6. 本型絵日記アルバム（純粋なアルバムビューア：記憶帳枠を完全排除）
+       ========================================================================== */
     #book-studio-modal {
       position: fixed;
       inset: 0;
@@ -786,26 +1081,26 @@
     .book-studio-window {
       background: #fffdfa;
       width: 100%;
-      max-width: 980px;
-      height: 92vh;
+      max-width: 680px;
+      height: 90vh;
       border-radius: 28px;
       display: flex;
       flex-direction: column;
       box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
-      border: 3px solid #fed7aa;
+      border: 2px solid #fed7aa;
       overflow: hidden;
     }
     .studio-top-bar {
       background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
       color: #f8fafc;
-      padding: 12px 20px;
+      padding: 12px 18px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 2px solid #334155;
     }
     .studio-top-title {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 900;
       color: #38bdf8;
       display: flex;
@@ -818,98 +1113,11 @@
       overflow: hidden;
       background: #fdfaf5;
     }
-    @media (max-width: 768px) {
-      .studio-main-body { flex-direction: column; }
-    }
-
-    .studio-memories-pane {
-      width: 38%;
-      min-width: 280px;
-      background: #ffffff;
-      border-right: 2px dashed #fed7aa;
-      display: flex;
-      flex-direction: column;
-      padding: 16px;
-    }
-    @media (max-width: 768px) {
-      .studio-memories-pane { width: 100%; border-right: none; border-bottom: 2px dashed #fed7aa; max-height: 35vh; }
-    }
-    .studio-pane-header {
-      font-size: 13.5px;
-      font-weight: 900;
-      color: #0f172a;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    .studio-memories-scroll {
-      flex: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      padding-right: 4px;
-    }
-    .studio-mem-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: #f8fafc;
-      padding: 6px 8px;
-      border-radius: 10px;
-      border: 1px solid #e2e8f0;
-    }
-    .studio-mem-tag { font-size: 12px; }
-    .studio-mem-input {
-      flex: 1;
-      padding: 6px 8px;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      font-size: 12px;
-      outline: none;
-      background: #ffffff;
-    }
-    .studio-mem-input:focus { border-color: var(--secondary-color); }
-    .studio-btn-del {
-      background: #fee2e2;
-      border: none;
-      color: #dc2626;
-      border-radius: 6px;
-      padding: 5px 8px;
-      font-size: 11px;
-      cursor: pointer;
-    }
-    .studio-mem-add-box {
-      display: flex;
-      gap: 6px;
-      margin-top: 10px;
-      padding-top: 8px;
-      border-top: 1px solid #f1f5f9;
-    }
-    .studio-mem-add-box input {
-      flex: 1;
-      padding: 8px 10px;
-      border: 1px solid #cbd5e1;
-      border-radius: 10px;
-      font-size: 12px;
-    }
-    .studio-mem-add-box button {
-      background: #0284c7;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      padding: 0 14px;
-      font-weight: bold;
-      font-size: 12px;
-      cursor: pointer;
-    }
-
     .studio-diary-book-pane {
       flex: 1;
       display: flex;
       flex-direction: column;
-      padding: 16px 20px;
+      padding: 14px 18px;
       background: #fffdfa;
       overflow-y: auto;
     }
@@ -917,7 +1125,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       background: #ffedd5;
       padding: 6px 12px;
       border-radius: 16px;
@@ -940,7 +1148,7 @@
       color: #94a3b8;
     }
     .pager-page-info {
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 900;
       color: #9a3412;
     }
@@ -950,25 +1158,24 @@
       background: #ffffff;
       border: 2px solid #fed7aa;
       border-radius: 20px;
-      padding: 16px 18px;
+      padding: 14px 16px;
       box-shadow: 0 4px 16px rgba(234, 88, 12, 0.08);
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
       position: relative;
     }
     .book-page-ribbon {
       position: absolute;
       top: -2px;
-      right: 20px;
+      right: 18px;
       background: #f472b6;
       color: #ffffff;
-      padding: 4px 12px;
+      padding: 3px 10px;
       border-bottom-left-radius: 8px;
       border-bottom-right-radius: 8px;
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 900;
-      box-shadow: 0 2px 6px rgba(244, 114, 182, 0.3);
     }
     .book-page-header {
       display: flex;
@@ -976,12 +1183,12 @@
       align-items: center;
       border-bottom: 1.5px dashed #fed7aa;
       padding-bottom: 8px;
-      margin-top: 4px;
+      margin-top: 2px;
       flex-wrap: wrap;
       gap: 6px;
     }
     .book-date-title {
-      font-size: 15px;
+      font-size: 14.5px;
       font-weight: 900;
       color: #9a3412;
     }
@@ -989,12 +1196,12 @@
       display: flex;
       gap: 8px;
       align-items: center;
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 800;
       color: #ea580c;
     }
 
-    /* ★ 新設：クロちゃん朗読ボタン */
+    /* ★ スラスラ朗読ボタン（ソフトグラデーション） */
     .btn-read-aloud {
       background: linear-gradient(135deg, #f472b6, #ec4899);
       color: #ffffff;
@@ -1007,13 +1214,13 @@
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
+      box-shadow: 0 2px 8px rgba(236, 72, 153, 0.25);
       transition: all 0.2s;
     }
     .btn-read-aloud:active { transform: scale(0.95); }
     .btn-read-aloud.is-reading {
-      background: linear-gradient(135deg, #ef4444, #b91c1c);
-      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+      background: linear-gradient(135deg, #f87171, #ef4444);
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35);
       animation: pulseReading 1.5s infinite;
     }
     @keyframes pulseReading {
@@ -1034,7 +1241,7 @@
 
     .book-photo-frame {
       width: 100%;
-      height: 140px;
+      height: 150px;
       border: 2px dashed #fed7aa;
       border-radius: 14px;
       background: #fffaf5;
@@ -1053,16 +1260,16 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
+      gap: 3px;
       color: #ea580c;
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 800;
     }
     .book-photo-remove-btn {
       position: absolute;
       top: 6px;
       right: 6px;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.65);
       color: white;
       border: none;
       border-radius: 6px;
@@ -1075,21 +1282,21 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
     }
     .book-textarea-label {
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 800;
       color: #4b5563;
     }
     .book-diary-textarea {
       flex: 1;
       width: 100%;
-      padding: 12px;
+      padding: 10px;
       border: 1.5px solid #fed7aa;
       border-radius: 12px;
-      font-size: 13.5px;
-      line-height: 1.65;
+      font-size: 13px;
+      line-height: 1.6;
       color: #334155;
       font-family: inherit;
       resize: none;
@@ -1100,34 +1307,22 @@
 
     .studio-footer-bar {
       background: #ffffff;
-      padding: 12px 20px;
-      border-top: 2px solid #fed7aa;
+      padding: 10px 18px;
+      border-top: 1.5px solid #fed7aa;
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-end;
       align-items: center;
-      gap: 12px;
-    }
-    .studio-footer-right { display: flex; gap: 8px; }
-    .btn-studio-export {
-      padding: 10px 16px;
-      background: #ffffff;
-      border: 1.5px solid #0284c7;
-      color: #0284c7;
-      border-radius: 12px;
-      font-size: 12.5px;
-      font-weight: 800;
-      cursor: pointer;
+      gap: 10px;
     }
     .btn-studio-save-exit {
-      padding: 10px 20px;
+      padding: 9px 18px;
       background: linear-gradient(135deg, #10b981, #059669);
       color: white;
       border: none;
       border-radius: 12px;
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 900;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
     }
     .btn-diary-close {
       background: #7c2d12;
@@ -1144,236 +1339,7 @@
       justify-content: center;
     }
 
-    /* 7. 設定モーダルフォーム */
-    .form-group { margin-bottom: 14px; }
-    .form-group label { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; color: #4b5563; margin-bottom: 5px; }
-    .form-group input, .form-group select {
-      width: 100%;
-      padding: 9px 12px;
-      border: 1px solid #d1d5db;
-      border-radius: 12px;
-      font-size: 13px;
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .input-error-shake {
-      border-color: #ef4444 !important;
-      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
-      animation: shakeInput 0.35s ease-in-out;
-    }
-    @keyframes shakeInput { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
-
-    .manual-details {
-      background: #f8fafc;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 14px;
-      margin-bottom: 14px;
-      overflow: hidden;
-      font-size: 12px;
-    }
-    .manual-summary {
-      padding: 10px 12px;
-      font-weight: 800;
-      color: #0369a1;
-      background: #f0f9ff;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      outline: none;
-    }
-    .manual-content {
-      padding: 12px;
-      line-height: 1.6;
-      color: #334155;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .manual-sec-title { font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 4px; margin-top: 4px; }
-
-    .pc-sync-card {
-      background: #f0fdf4;
-      border: 1.5px solid #86efac;
-      border-radius: 14px;
-      padding: 12px;
-      margin-bottom: 14px;
-    }
-    .pc-sync-title {
-      font-size: 12.5px;
-      font-weight: 800;
-      color: #15803d;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 6px;
-    }
-    .pc-sync-desc {
-      font-size: 11px;
-      color: #166534;
-      line-height: 1.45;
-      margin-bottom: 10px;
-    }
-    .pc-sync-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .pc-sync-btn-row { display: flex; gap: 6px; }
-    .btn-pc-sync {
-      flex: 1;
-      padding: 9px 8px;
-      background: #ffffff;
-      border: 1.2px solid #22c55e;
-      color: #15803d;
-      border-radius: 10px;
-      font-size: 11.5px;
-      font-weight: 800;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      transition: background 0.15s;
-    }
-    .btn-pc-sync:active { background: #dcfce7; }
-    .btn-open-studio-large {
-      width: 100%;
-      padding: 10px 8px;
-      background: linear-gradient(135deg, #15803d, #166534);
-      border: none;
-      color: #ffffff;
-      border-radius: 10px;
-      font-size: 12.5px;
-      font-weight: 900;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      box-shadow: 0 3px 8px rgba(22, 101, 52, 0.25);
-    }
-
-    .home-coord-row { display: flex; gap: 6px; margin-top: 5px; }
-    .btn-coord-action {
-      padding: 6px 10px;
-      background: #f1f5f9;
-      border: 1px solid #cbd5e1;
-      border-radius: 10px;
-      font-size: 11px;
-      font-weight: 800;
-      color: #334155;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.15s;
-    }
-    .btn-coord-action:active { background: #e2e8f0; }
-
-    .voice-control-row { display: flex; gap: 8px; align-items: center; }
-    .voice-select-box { flex: 1; padding: 9px 10px; border: 1.5px solid #fbcfe8; background: #fff5f8; border-radius: 12px; color: #831843; font-weight: bold; font-size: 12px; }
-    .btn-voice-test { padding: 9px 12px; background: #fdf2f8; border: 1.5px solid #f472b6; color: #db2777; border-radius: 12px; font-weight: 800; font-size: 11.5px; cursor: pointer; flex-shrink: 0; }
-
-    .btn-adjust-open {
-      width: 100%;
-      padding: 10px;
-      background: #fdf2f8;
-      border: 1.5px solid #f472b6;
-      color: #be185d;
-      border-radius: 12px;
-      font-size: 12.5px;
-      font-weight: 800;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
-
-    .memory-list {
-      background: #f8fafc;
-      border-radius: 14px;
-      padding: 8px;
-      max-height: 140px;
-      overflow-y: auto;
-      border: 1px solid #e2e8f0;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      font-size: 11.5px;
-    }
-    .memory-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: #ffffff;
-      padding: 6px 10px;
-      border-radius: 10px;
-      border: 1px solid #e2e8f0;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-      gap: 6px;
-    }
-    .memory-text-view { flex: 1; word-break: break-all; color: #334155; line-height: 1.4; }
-    .memory-actions { display: flex; gap: 5px; flex-shrink: 0; }
-    .mem-btn { border: none; border-radius: 8px; padding: 4px 7px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    .mem-btn-edit { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
-    .mem-btn-del { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
-    .memory-edit-box { display: flex; flex: 1; gap: 6px; align-items: center; width: 100%; }
-    .memory-edit-input { flex: 1; padding: 5px 8px; border: 1.5px solid var(--secondary-color); border-radius: 8px; font-size: 11.5px; outline: none; }
-    .mem-btn-save { background: #0284c7; color: white; font-weight: bold; border: none; padding: 5px 8px; border-radius: 8px; font-size: 11px; cursor: pointer; }
-    .mem-btn-cancel { background: #e2e8f0; color: #475569; border: none; padding: 5px 8px; border-radius: 8px; font-size: 11px; cursor: pointer; }
-    .memory-add-box { display: flex; gap: 6px; margin-top: 8px; }
-    .memory-add-box input { flex: 1; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 12px; }
-    .memory-add-box button { background: var(--primary-color); color: white; border: none; border-radius: 10px; padding: 0 14px; font-weight: bold; font-size: 12px; cursor: pointer; }
-
-    .btn-save {
-      width: 100%;
-      padding: 13px;
-      background: linear-gradient(135deg, #f472b6, #ec4899);
-      color: white;
-      border: none;
-      border-radius: 14px;
-      font-weight: bold;
-      font-size: 14px;
-      cursor: pointer;
-      margin-top: 10px;
-      box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: all 0.2s;
-    }
-    .btn-save.is-saving { background: #475569; pointer-events: none; }
-    .btn-save.is-success { background: #16a34a; }
-    .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2.5px solid rgba(255, 255, 255, 0.3);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .btn-force-refresh {
-      width: 100%;
-      padding: 10px;
-      background: #334155;
-      color: #f1f5f9;
-      border: 1px dashed #64748b;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: bold;
-      cursor: pointer;
-      margin-top: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
-    .btn-force-refresh:active { background: #1e293b; }
-
-    /* 8. システム診断モニタ */
+    /* 7. システム診断モニタ */
     #diag-panel {
       position: fixed;
       inset: 0;
@@ -1408,7 +1374,7 @@
     .log-error { color: #f87171; font-weight: bold; }
     .log-info { color: #94a3b8; }
 
-    /* 9. メガネ・帽子アジャスター */
+    /* 8. メガネ・帽子アジャスター */
     #glasses-adjust-modal {
       position: fixed;
       inset: 0;
@@ -1447,10 +1413,11 @@
   </div>
 
   <div id="pet-container">
+    <!-- 1. 最上部ステータスバー -->
     <div class="top-header">
       <div class="top-header-left">
         <span id="clock-display">00:00</span>
-        <!-- ★ 最上部の日記帳ボタン（直接本型アルバム絵日記がオープン） -->
+        <!-- ★ 本型絵日記アルバムを開くボタン -->
         <button type="button" class="btn-top-diary" id="top-diary-btn" title="これまでのクロ絵日記をアルバムで開くニャ！">📖 日記帳</button>
         <div id="timer-active-badge">⏱️ <span id="timer-count-disp">03:00</span></div>
       </div>
@@ -1464,8 +1431,10 @@
       </div>
     </div>
 
+    <!-- 2. 会話タイムライン -->
     <div id="chat-timeline"></div>
 
+    <!-- 3. クロちゃん本体ステージ -->
     <div class="pet-avatar-wrapper is-idling pose-idle-active" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
       <div class="cat-ground-shadow"></div>
       <div id="idea-bulb">💡</div>
@@ -1715,7 +1684,7 @@
       </button>
     </div>
 
-    <!-- 4. 最下部操作バー -->
+    <!-- 4. 最下部操作バー（新・ソフトニュアンスパレット） -->
     <div class="bottom-controls">
       <div class="action-bar" id="action-bar">
         <button class="btn-mode-toggle" id="mode-toggle-btn" title="なかよし雑談とおてつだいを切り替えるニャ！">
@@ -1733,7 +1702,7 @@
         </button>
 
         <button class="btn-action" id="pause-btn">
-          <span id="pause-icon" style="font-size:16px;">🟢</span>
+          <span id="pause-icon" style="font-size:15px;">🟢</span>
           <span id="pause-text">会話中</span>
         </button>
 
@@ -1742,34 +1711,18 @@
     </div>
   </div>
 
-  <!-- フルスクリーン本型絵日記スタジオ -->
+  <!-- ★ 本型絵日記アルバム（純粋なアルバムビューア：記憶帳枠は撤去） -->
   <div id="book-studio-modal">
     <div class="book-studio-window">
       <div class="studio-top-bar">
         <div class="studio-top-title">
           <span>📖</span>
-          <span>クロの思い出アルバム・絵日記スタジオ</span>
+          <span>クロの思い出絵日記アルバム</span>
         </div>
         <button type="button" class="btn-diary-close" id="btn-close-studio" title="閉じる">✕</button>
       </div>
 
       <div class="studio-main-body">
-        <!-- 左側：記憶帳エディター -->
-        <div class="studio-memories-pane">
-          <div class="studio-pane-header">
-            <span>📌 クロの記憶帳（基本設定）</span>
-          </div>
-          <div style="font-size:11px;color:#64748b;margin-bottom:8px;">
-            名前や好きな食べ物、家族などを自由に変更・修正できますニャ！
-          </div>
-          <div class="studio-memories-scroll" id="studio-memories-list"></div>
-          <div class="studio-mem-add-box">
-            <input type="text" id="studio-new-mem-input" placeholder="新しい記憶を入力…">
-            <button type="button" id="btn-studio-add-mem">＋追加</button>
-          </div>
-        </div>
-
-        <!-- 右側：1日1ページめくり 本型絵日記 -->
         <div class="studio-diary-book-pane">
           <div class="book-pager-bar">
             <button type="button" class="btn-pager" id="btn-studio-prev-page">◀ 前の日</button>
@@ -1781,12 +1734,8 @@
         </div>
       </div>
 
-      <!-- フッター操作バー -->
       <div class="studio-footer-bar">
-        <button type="button" class="btn-studio-export" id="btn-studio-export-file">📁 更新版ファイルを書き出す</button>
-        <div class="studio-footer-right">
-          <button type="button" class="btn-studio-save-exit" id="btn-studio-save-exit">💾 変更を保存して閉じる</button>
-        </div>
+        <button type="button" class="btn-studio-save-exit" id="btn-studio-save-exit">💾 保存して閉じる</button>
       </div>
     </div>
   </div>
@@ -1857,11 +1806,12 @@
     </div>
   </div>
 
-  <!-- 設定モーダル -->
+  <!-- ★ 設定モーダル（3段スッキリ整理） -->
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal-card">
       <h3>⚙️ 設定・記憶帳</h3>
 
+      <!-- 1. トリセツ（日常参照） -->
       <details class="manual-details">
         <summary class="manual-summary">
           <span>📖 クロちゃんの取り扱い説明書（トリセツ）</span>
@@ -1881,7 +1831,7 @@
           <div>「今日の日記書いて」と頼むと、今日のお話しや歩いた場所、写真をギュッと凝縮した可愛い絵日記を書き込みますニャ！昔話（「先週話したラーメン屋覚えてる？」など）を振られても過去の日記からバッチリ思い出して会話するニャン♪</div>
 
           <div class="manual-sec-title">🔊 シームレスな絵日記朗読</div>
-          <div>日記帳を開いて「🔊 クロちゃんが読むニャ♪」を押すと、途切れや長い通信待ちゼロで、クロちゃんが絵本のようにスラスラ滑らかに日記を朗読してくれるニャン！</div>
+          <div>日記帳を開いて「🔊 クロちゃんが読むニャ♪」を押すと、本文の中身だけをスラスラ滑らかに朗読してくれるニャン！</div>
 
           <div class="manual-sec-title">👓 なかよしモード と おてつだいモード</div>
           <div>左下のボタンで切り替えできるニャ！
@@ -1900,51 +1850,8 @@
         </div>
       </details>
 
-      <div class="pc-sync-card">
-        <div class="pc-sync-title">
-          <span>📖</span>
-          <span>思い出スタジオ ＆ データファイル管理</span>
-        </div>
-        <div class="pc-sync-desc">
-          1日1ページめくりで日記を確認・編集したり、安全にバックアップを保存・復元できますニャ！
-        </div>
-        <div class="pc-sync-actions">
-          <div class="pc-sync-btn-row">
-            <button type="button" class="btn-pc-sync" id="btn-download-backup">📁 ファイル保存</button>
-            <button type="button" class="btn-pc-sync" id="btn-trigger-restore">📁 ファイル読込</button>
-            <input type="file" id="file-input-restore" accept=".json" style="display:none;">
-          </div>
-          <button type="button" class="btn-open-studio-large" id="btn-open-book-studio">📖 本型思い出スタジオを開く</button>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>Google AI Studio API Key:</label>
-        <input type="password" id="api-key-input" placeholder="AIzaSy...">
-      </div>
-
-      <div class="form-group">
-        <label>VoiceVox API Key（任意）:</label>
-        <input type="password" id="voicevox-key-input" placeholder="空欄のままでも共有枠で自動動作します">
-      </div>
-
-      <div class="form-group">
-        <label>🏠 拠点・自宅のGPS座標 / 住所（PC用予備）:</label>
-        <input type="text" id="home-coords-input" placeholder="例: 35.7582, 139.4678 または 東京都東村山市本町1丁目">
-        <div class="home-coord-row">
-          <button type="button" class="btn-coord-action" id="btn-get-current-home">📍 現在地をセット</button>
-          <button type="button" class="btn-coord-action" id="btn-copy-home-coords">📋 座標をコピー</button>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>おてつだいモードの装備スタイル:</label>
-        <select id="accessory-style-select">
-          <option value="both" selected>🎓👓 博士帽 ＋ 丸メガネ（天才フル装備！）</option>
-          <option value="hat">🎓 博士帽のみ</option>
-          <option value="glasses">👓 白黒ストライプ丸メガネのみ</option>
-        </select>
-      </div>
+      <!-- ▼ 第1ブロック：クロちゃんの個性・声・見た目（日常的に楽しむ設定） -->
+      <div class="setting-section-header">🐾 クロちゃんの声と見た目</div>
 
       <div class="form-group">
         <label>クロの肉声ボイス（VOICEVOX）:</label>
@@ -1973,34 +1880,23 @@
       </div>
 
       <div class="form-group">
-        <label>写真モードのメガネ・帽子位置微調整:</label>
-        <button type="button" class="btn-adjust-open" id="open-glasses-adjust-btn">👓 写真ごとの位置を微調整する</button>
-      </div>
-
-      <div class="form-group">
-        <label>ニュースの紹介件数（追加枠数）:</label>
-        <select id="news-count-select">
-          <option value="1">1件</option>
-          <option value="2" selected>2件【標準】</option>
-          <option value="3">3件</option>
-          <option value="4">4件</option>
-          <option value="5">5件</option>
+        <label>おてつだいモードの装備スタイル:</label>
+        <select id="accessory-style-select">
+          <option value="both" selected>🎓👓 博士帽 ＋ 丸メガネ（天才フル装備！）</option>
+          <option value="hat">🎓 博士帽のみ</option>
+          <option value="glasses">👓 白黒ストライプ丸メガネのみ</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label>お店・スポットの候補件数:</label>
-        <select id="spot-count-select">
-          <option value="1">1件（イチオシ店のみ）</option>
-          <option value="2" selected>2件【標準】</option>
-          <option value="3">3件</option>
-          <option value="4">4件</option>
-          <option value="5">5件</option>
-        </select>
+        <button type="button" class="btn-adjust-open" id="open-glasses-adjust-btn">👓 写真ごとのメガネ位置を微調整する</button>
       </div>
 
+      <!-- ▼ 第2ブロック：クロちゃんの記憶 ＆ データの安全管理（メンテナンス） -->
+      <div class="setting-section-header">📔 記憶帳 ＆ バックアップ</div>
+
       <div class="form-group">
-        <label>📔 クロの記憶帳（一生忘れない基本設定）:</label>
+        <label>クロの基本記憶帳（一生忘れない設定）:</label>
         <div class="memory-list" id="memory-list-container"></div>
         <div class="memory-add-box">
           <input type="text" id="new-memory-input" placeholder="新しい記憶（例: 趣味はドライブ）">
@@ -2008,10 +1904,76 @@
         </div>
       </div>
 
-      <button type="button" class="btn-adjust-open" style="background:#0f172a;color:#38bdf8;border-color:#334155;margin-top:8px;" id="open-diag-modal-btn">🩺 システム診断モニタを開く</button>
+      <div class="pc-sync-card">
+        <div class="pc-sync-title">
+          <span>📁</span>
+          <span>データ安心バックアップ（ファイル管理）</span>
+        </div>
+        <div class="pc-sync-desc">
+          日記や記憶データをいつでもファイルに保存・復元できますニャ！
+        </div>
+        <div class="pc-sync-btn-row">
+          <button type="button" class="btn-pc-sync" id="btn-download-backup">📁 ファイル保存</button>
+          <button type="button" class="btn-pc-sync" id="btn-trigger-restore">📁 ファイル読込</button>
+          <input type="file" id="file-input-restore" accept=".json" style="display:none;">
+        </div>
+      </div>
 
-      <button type="button" class="btn-force-refresh" id="force-refresh-btn">🔄 キャッシュを全消去してアプリを強制更新</button>
+      <div class="form-group">
+        <label>🏠 拠点・自宅のGPS座標 / 住所（PC用予備）:</label>
+        <input type="text" id="home-coords-input" placeholder="例: 35.7582, 139.4678 または 東京都東村山市本町1丁目">
+        <div class="home-coord-row">
+          <button type="button" class="btn-coord-action" id="btn-get-current-home">📍 現在地をセット</button>
+          <button type="button" class="btn-coord-action" id="btn-copy-home-coords">📋 座標をコピー</button>
+        </div>
+      </div>
 
+      <div class="form-group">
+        <label>ニュース・お店の紹介件数:</label>
+        <div style="display:flex; gap:8px;">
+          <select id="news-count-select" style="flex:1;">
+            <option value="1">ニュース: 1件</option>
+            <option value="2" selected>ニュース: 2件【標準】</option>
+            <option value="3">ニュース: 3件</option>
+          </select>
+          <select id="spot-count-select" style="flex:1;">
+            <option value="1">お店: 1件</option>
+            <option value="2" selected>お店: 2件【標準】</option>
+            <option value="3">お店: 3件</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ▼ 第3ブロック：高度な接続・システム管理（折りたたんで保護！） -->
+      <details class="secure-details">
+        <summary class="secure-summary">
+          <span>🔒 外部連携APIキー設定（Google AI / VoiceVox）</span>
+          <span>▼</span>
+        </summary>
+        <div class="secure-content">
+          <div class="form-group" style="margin-bottom:6px;">
+            <label>Google AI Studio API Key:</label>
+            <input type="password" id="api-key-input" placeholder="AIzaSy...">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label>VoiceVox API Key（任意・共有枠あり）:</label>
+            <input type="password" id="voicevox-key-input" placeholder="空欄でも無料枠で動作します">
+          </div>
+        </div>
+      </details>
+
+      <details class="secure-details">
+        <summary class="secure-summary">
+          <span>🛠️ システム保守・トラブルシューティング</span>
+          <span>▼</span>
+        </summary>
+        <div class="secure-content">
+          <button type="button" class="btn-adjust-open" style="background:#0f172a;color:#38bdf8;border-color:#334155;" id="open-diag-modal-btn">🩺 システム診断モニタを開く</button>
+          <button type="button" class="btn-force-refresh" id="force-refresh-btn">🔄 アプリプログラムを強制更新（最新版取得）</button>
+        </div>
+      </details>
+
+      <!-- 保存ボタン -->
       <button class="btn-save" id="save-settings-btn">
         <span id="save-btn-icon">💾</span>
         <span id="save-btn-text">設定と記憶を保存するニャン♪</span>
@@ -2019,8 +1981,8 @@
     </div>
   </div>
 
-  <!-- ★ 最新版 app.js をキャッシュ対策付きで読み込み -->
-  <script src="app.js?v=20250524_diary_read_v7"></script>
+  <!-- 最新版 app.js -->
+  <script src="app.js?v=20250524_layout_clean_v8"></script>
 </body>
 </html>
 

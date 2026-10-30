@@ -1,9 +1,10 @@
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版）
-   - TimeProvider 日時提供エンジン（時計00:00停止バグ解消）
-   - 会話セリフのローカル永続復元（直近30件タイムライン表示）
-   - 1日1ページめくり本型アルバム絵日記帳＆写真フレーム
-   - シームレス先読み朗読エンジン（途切れ・沈黙ゼロのクロちゃん肉声朗読）
+   - TimeProvider 日時提供エンジン（時計のリアルタイム正確表示）
+   - 会話セリフのローカル永続復元（起動時に直近の会話をタイムラインへ完全復元）
+   - 純粋な1日1ページ絵日記アルバム（記憶帳枠を排除しアルバムに特化）
+   - 日記の「本文のみ」スラスラ滑らか朗読（カッコ・句読点のブレーキ解消）
+   - キャッシュ強制更新の安全確認ダイアログ（データ完全保護）
    - オンデマンド高精度GPS（起動時＋質問時のみ測位・町名丁目ピンポイント回答）
    - 至近距離スポット特定（川・公園・施設を1m単位で近い順ソート）
    - 散歩写真の超軽量圧縮＆Gemini 3.5 Flash Lite画像認識・写真付き絵日記連動
@@ -76,7 +77,6 @@ const TimeProvider = {
     const logKey = `${year}-${pad(month)}-${pad(date)}`;
     const fullDate = `${year}年${month}月${date}日 (${dayOfWeek})`;
 
-    // 日本語読み上げ用
     const spokenClock = `いまは、${hours}時${minutes === 0 ? 'ちょうど' : minutes + '分'}だニャン🐾`;
     const spokenDate = `きょうは、${year}年${month}月${date}日、${dayOfWeek}曜日だニャ！`;
 
@@ -103,7 +103,7 @@ const TimeProvider = {
 };
 
 /* ==========================================================================
-   ★ MODULE 1: 音声合成＆音声認識（VOICEVOX ＆ 声と文字の完全同期）
+   ★ MODULE 1: 音声合成＆音声認識（VOICEVOX ＆ スラスラ朗読エンジン）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -622,8 +622,8 @@ class AudioSpeechEngine {
     }
   }
 
-  /* ★ 新設：長文日記のシームレス先読み朗読パイプライン（沈黙ゼロ・自然な息継ぎ） */
-  async readDiarySeamless(diaryText, speakerIdOverride = null, onSentenceStart = null, onComplete = null) {
+  /* ★ 改良：日記本文のみのスラスラ滑らか朗読（カッコ・句読点ブレーキ解消版） */
+  async readDiarySeamless(diaryContentOnly, speakerIdOverride = null, onSentenceStart = null, onComplete = null) {
     this.stopSpeaking();
     this.unlockMasterAudio();
 
@@ -631,9 +631,17 @@ class AudioSpeechEngine {
     this.readingAbortController = new AbortController();
     const speakerId = (speakerIdOverride !== null) ? speakerIdOverride : AppCore.getSpeakerId();
 
-    // 文を句点・感嘆符・改行等で自然に分割
-    const sentences = diaryText
-      .split(/([。！？!?\n]+)/)
+    // 1. カッコ内のト書きや余計な記号をきれいに除去
+    let cleanFull = diaryContentOnly
+      .replace(/[（\(][^）\)]*?[）\)]/g, '')
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷]/gu, '')
+      .trim();
+
+    // 2. 読点（、）では分割せず、「句点（。）」または改行のみで自然な文にまとめる！
+    // これにより読点での不自然な二重停止が解消され、息の長い自然な朗読になります
+    const sentences = cleanFull
+      .split(/([。！？!\?\n]+)/)
       .reduce((acc, cur, i, arr) => {
         if (i % 2 === 0 && cur.trim()) {
           const punct = arr[i + 1] || '';
@@ -649,15 +657,12 @@ class AudioSpeechEngine {
       return;
     }
 
-    Logger.log(`[朗読開始] 全 ${sentences.length} 文の先読みパイプライン起動`, "info");
+    Logger.log(`[本文朗読開始] 全 ${sentences.length} 文をシームレス先読み再生`, "info");
     const audioUrlCache = new Map();
 
-    // 次の文の先読みプリフェッチ用ヘルパー
     const prefetchSentence = async (idx) => {
       if (idx >= sentences.length) return;
-      const targetText = this._convertAllNumbersToKana(sentences[idx])
-        .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷]/gu, '')
-        .trim();
+      const targetText = this._convertAllNumbersToKana(sentences[idx]).trim();
       if (!targetText || audioUrlCache.has(idx)) return;
       try {
         const url = await this._getVoicevoxDirectUrl(targetText, speakerId);
@@ -665,40 +670,34 @@ class AudioSpeechEngine {
       } catch(e) {}
     };
 
-    // 最初の2文をあらかじめプリフェッチ開始
+    // 最初の2文を事前先読み
     prefetchSentence(0);
     if (sentences.length > 1) prefetchSentence(1);
 
     for (let i = 0; i < sentences.length; i++) {
       if (!this.isReadingAloud) break;
 
-      // 次の文を先回りしてプリフェッチ
+      // 先回りプリフェッチ
       if (i + 1 < sentences.length) prefetchSentence(i + 1);
       if (i + 2 < sentences.length) prefetchSentence(i + 2);
 
       const sentenceRaw = sentences[i];
-      let clean = this._convertAllNumbersToKana(sentenceRaw)
-        .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷]/gu, '')
-        .trim();
-
+      let clean = this._convertAllNumbersToKana(sentenceRaw).trim();
       if (!clean) continue;
 
       if (onSentenceStart) onSentenceStart(i, sentenceRaw);
 
-      // キャッシュから取得、無ければその場で取得
       let audioUrl = audioUrlCache.get(i);
       if (!audioUrl) {
         try {
           audioUrl = await this._getVoicevoxDirectUrl(clean, speakerId);
         } catch(e) {
-          Logger.log(`[朗読文スキップ] ${e.message}`, "warn");
           continue;
         }
       }
 
       if (!this.isReadingAloud) break;
 
-      // 1文の再生と完了待機
       await new Promise((resolve) => {
         this.masterAudio.src = audioUrl;
         this.masterAudio.playbackRate = this.rate;
@@ -707,8 +706,8 @@ class AudioSpeechEngine {
 
         this.masterAudio.onended = () => {
           this.isSpeaking = false;
-          // 自然な息継ぎの間隔（約220ms）
-          setTimeout(resolve, 220);
+          // 文の切れ目の待ち時間を70msに極小化（息継ぎの自然なテンポ）
+          setTimeout(resolve, 70);
         };
         this.masterAudio.onerror = () => {
           this.isSpeaking = false;
@@ -1081,7 +1080,7 @@ const StorageManager = {
     try { localStorage.setItem('kuro_glasses_coords_v5', JSON.stringify(coords)); } catch(e) {}
   },
 
-  /* 🔒 直近の会話ログ読み込み（日付が変わっても確実に復元） */
+  /* 🔒 直近の会話ログ読み込み（起動時に確実に復元） */
   loadRecentTimelineLogs() {
     try {
       const raw = localStorage.getItem(DATA_KEYS.RECENT_LOGS);
@@ -1091,7 +1090,6 @@ const StorageManager = {
       }
     } catch(e) {}
 
-    // フォールバック：今日の日付キーから救出
     try {
       const todayKey = `kuro_daily_logs_${TimeProvider.getCurrentInfo().logKey}`;
       const rawToday = localStorage.getItem(todayKey);
@@ -1104,20 +1102,17 @@ const StorageManager = {
     return [];
   },
 
-  /* 会話ログを追加（永続キーと当日キーの両方に二重安全保存） */
   appendChatLog(role, text, photoUrl = null) {
     if (!text || typeof text !== 'string') return;
     const timeInfo = TimeProvider.getCurrentInfo();
     const entry = { role, text, time: timeInfo.clock, date: timeInfo.logKey, photoUrl: photoUrl || null };
 
-    // 1. 直近タイムライン永続ログ（最新30件を保持）
     try {
       const recent = this.loadRecentTimelineLogs();
       recent.push(entry);
       localStorage.setItem(DATA_KEYS.RECENT_LOGS, JSON.stringify(recent.slice(-30)));
     } catch(e) {}
 
-    // 2. 当日別ログ
     try {
       const todayKey = `kuro_daily_logs_${timeInfo.logKey}`;
       const raw = localStorage.getItem(todayKey);
@@ -1127,15 +1122,6 @@ const StorageManager = {
     } catch(e) {}
   },
 
-  // 互換性ラッパー
-  loadTodayLogs() {
-    return this.loadRecentTimelineLogs();
-  },
-  appendTodayLog(role, text) {
-    this.appendChatLog(role, text);
-  },
-
-  /* 🔒 記憶帳ロード */
   loadMemories(defaultMemories) {
     try {
       const raw = localStorage.getItem(DATA_KEYS.MEMORIES);
@@ -1794,10 +1780,9 @@ const AppCore = {
     timerId: null,
     timerSeconds: 0,
 
-    studioMemories: [],
     studioDiaries: [],
     studioDiaryPageIdx: 0,
-    isDiaryReading: false // 日記朗読中フラグ
+    isDiaryReading: false
   },
 
   audio: new AudioSpeechEngine(),
@@ -1837,17 +1822,15 @@ const AppCore = {
       this._restoreTimelineHistory();
       this._updateModelBadge();
 
-      // ★ 起動直後に即座に時計を更新（「00:00」バグ完全解消）
+      // 時計の即時反映＆毎秒更新
       const clk = document.getElementById('clock-display');
       if (clk) clk.textContent = TimeProvider.getCurrentInfo().clock;
 
-      // 毎秒時計更新
       setInterval(() => {
         const c = document.getElementById('clock-display');
         if (c) c.textContent = TimeProvider.getCurrentInfo().clock;
       }, 1000);
 
-      // 起動時にスタンバイ測位を実行
       LocationProvider.initWatcher();
 
       const savedSpeaker = localStorage.getItem('kuro_voice_speaker_id') || '10';
@@ -1885,13 +1868,17 @@ const AppCore = {
       }
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 800);
-      Logger.log("[AppCore] 全システム正常稼働！時計・会話履歴・シームレス絵日記朗読準備完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！安全設定・本文スラスラ朗読準備完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
   },
 
+  /* キャッシュ強制更新（安全確認ダイアログ付き） */
   async forceRefreshApp() {
+    const isOk = window.confirm("⚠️ 会話履歴や日記・記憶データは消えません。\nアプリの画面プログラムを最新版に更新（再読み込み）しますか？");
+    if (!isOk) return;
+
     Logger.log("[リフレッシュ] ブラウザキャッシュ破棄中…", "info");
     Toast.show("キャッシュを消去して再読み込みするニャ！🔄", "info");
     try {
@@ -1907,7 +1894,6 @@ const AppCore = {
     }, 400);
   },
 
-  /* 🔒 起動時にローカルストレージから直近のセリフを完全復元 */
   _restoreTimelineHistory() {
     const box = document.getElementById('chat-timeline');
     if (!box) return;
@@ -2037,11 +2023,9 @@ const AppCore = {
         Toast.show("写真をギュッと小さく圧縮中ニャ…📷", "info");
         const compressedBase64 = await this._compressPhotoFile(file, 650, 0.75);
 
-        // タイムラインに写真を表示し、ローカルに永続保存
         this.renderBubble('user', "クロちゃん、この写真見てニャ！", [], compressedBase64);
         StorageManager.appendChatLog('user', "クロちゃん、この写真見てニャ！", compressedBase64);
 
-        // 今日の日記帳の写真枠に自動ドッキング
         StorageManager.attachPhotoToTodayDiary(compressedBase64);
 
         this.audio.playImmediateFiller('search');
@@ -2159,7 +2143,6 @@ const AppCore = {
   },
 
   async handleUserInput(text) {
-    // 日記依頼
     const isDiaryRequest = /(?:今日|きょう|本日)?(?:の)?(?:日記|にっき).*(?:書いて|まとめて|記録して|おねがい)/.test(text);
     if (isDiaryRequest) {
       this.audio.playImmediateFiller('think');
@@ -2167,7 +2150,6 @@ const AppCore = {
       return;
     }
 
-    // キッチンタイマー
     const timerMatch = text.match(/(\d+)\s*分.*(?:測って|タイマー|計って|おしえて)/);
     if (timerMatch) {
       const mins = parseInt(timerMatch[1], 10);
@@ -2196,7 +2178,6 @@ const AppCore = {
       return;
     }
 
-    // 単発定型即答（時間・日付）
     const direct = this._checkDirectIntent(text);
     if (direct) {
       const box = document.getElementById('chat-timeline');
@@ -2448,30 +2429,19 @@ const AppCore = {
   },
 
   /* ==========================================================================
-     ★ MODULE 7: 本型アルバム絵日記 ＆ シームレス朗読 UI制御
+     ★ MODULE 7: 本型絵日記アルバム（純粋なアルバムビューア）
      ========================================================================== */
   _bindBookStudioUI() {
     const modal = document.getElementById('book-studio-modal');
-    const btnOpen = document.getElementById('btn-open-book-studio');
-    const topDiaryBtn = document.getElementById('top-diary-btn'); // ★ 最上部の「📖 日記帳」ボタン
+    const topDiaryBtn = document.getElementById('top-diary-btn');
     const btnClose = document.getElementById('btn-close-studio');
     const btnPrev = document.getElementById('btn-studio-prev-page');
     const btnNext = document.getElementById('btn-studio-next-page');
     const btnSaveExit = document.getElementById('btn-studio-save-exit');
-    const btnExport = document.getElementById('btn-studio-export-file');
-    const btnAddMem = document.getElementById('btn-studio-add-mem');
 
-    // 最上部の日記帳ボタンからも直接「本型アルバム絵日記」を開く
     if (topDiaryBtn) {
       topDiaryBtn.onclick = () => {
         this.audio.unlockMasterAudio();
-        this.openBookStudio();
-      };
-    }
-
-    if (btnOpen) {
-      btnOpen.onclick = () => {
-        document.getElementById('modal-overlay').style.display = 'none';
         this.openBookStudio();
       };
     }
@@ -2506,34 +2476,14 @@ const AppCore = {
       };
     }
 
-    if (btnAddMem) {
-      btnAddMem.onclick = () => {
-        const inp = document.getElementById('studio-new-mem-input');
-        const val = inp?.value.trim();
-        if (val) {
-          this.state.studioMemories.unshift(val);
-          inp.value = '';
-          this._renderStudioMemories();
-        }
-      };
-    }
-
     if (btnSaveExit) {
       btnSaveExit.onclick = () => {
         this.audio.stopReadingAloud();
         this.state.isDiaryReading = false;
-        this._commitStudioChangesToStorage();
-        Toast.show("記憶と絵日記の変更を保存したニャン！📖✨", "success");
+        StorageManager.saveAllDiaries(this.state.studioDiaries);
+        Toast.show("絵日記の変更を保存したニャン！📖✨", "success");
         this.audio.playEffect('purr');
         if (modal) modal.classList.remove('is-open');
-      };
-    }
-
-    if (btnExport) {
-      btnExport.onclick = () => {
-        this._commitStudioChangesToStorage();
-        StorageManager.downloadDataPackage("クロちゃんのデータ_更新版.json");
-        Toast.show("最新状態のファイルを保存したニャ！📁", "success");
       };
     }
   },
@@ -2542,43 +2492,12 @@ const AppCore = {
     const modal = document.getElementById('book-studio-modal');
     if (!modal) return;
 
-    this.state.studioMemories = [...StorageManager.loadMemories(CHARACTER_CONFIG.defaultMemories)];
     this.state.studioDiaries = JSON.parse(JSON.stringify(StorageManager.loadAllDiaries()));
     this.state.studioDiaryPageIdx = 0;
     this.state.isDiaryReading = false;
 
-    this._renderStudioMemories();
     this._renderStudioDiaryPage();
-
     modal.classList.add('is-open');
-  },
-
-  _renderStudioMemories() {
-    const container = document.getElementById('studio-memories-list');
-    if (!container) return;
-    container.innerHTML = '';
-
-    this.state.studioMemories.forEach((mem, idx) => {
-      const row = document.createElement('div');
-      row.className = 'studio-mem-row';
-      row.innerHTML = `
-        <span class="studio-mem-tag">📌</span>
-        <input type="text" class="studio-mem-input" value="${mem.replace(/"/g, '&quot;')}" data-idx="${idx}">
-        <button type="button" class="studio-btn-del" title="削除" data-del="${idx}">🗑️</button>
-      `;
-
-      row.querySelector('.studio-mem-input').onchange = (e) => {
-        const v = e.target.value.trim();
-        if (v) this.state.studioMemories[idx] = v;
-      };
-
-      row.querySelector('[data-del]').onclick = () => {
-        this.state.studioMemories.splice(idx, 1);
-        this._renderStudioMemories();
-      };
-
-      container.appendChild(row);
-    });
   },
 
   _renderStudioDiaryPage() {
@@ -2592,12 +2511,12 @@ const AppCore = {
 
     if (diaries.length === 0) {
       pageContainer.innerHTML = `
-        <div class="studio-diary-empty">
-          📖 日記データがまだありませんニャ🐾<br>
-          「今日の日記書いて」と話しかけると、ここに1日1ページの絵日記が綴られます！
+        <div style="text-align:center;color:#9a3412;padding:45px 15px;font-size:13.5px;font-weight:700;line-height:1.8;">
+          📖 まだ日記がありませんニャ🐾<br>
+          「今日の日記書いて」と話しかけると、ここに1日1ページの絵日記が残るニャン！
         </div>
       `;
-      if (pageIndicator) pageIndicator.textContent = "0 / 0 ページ";
+      if (pageIndicator) pageIndicator.textContent = "0 / 0 日目";
       if (btnPrev) btnPrev.disabled = true;
       if (btnNext) btnNext.disabled = true;
       return;
@@ -2620,7 +2539,7 @@ const AppCore = {
             <span class="book-meta-weather">🌤️ ${diary.weather || '快晴'}</span>
             <span class="book-meta-temp">🌡️ ${diary.temperature || '22'}℃</span>
 
-            <!-- ★ 新設：クロちゃん朗読ボタン -->
+            <!-- ★ 新設：本文のみスラスラ朗読ボタン -->
             <button type="button" class="btn-read-aloud" id="btn-read-diary-aloud" title="クロちゃんの可愛い声でこの日記を聴くニャ！">
               <span id="read-aloud-icon">🔊</span>
               <span id="read-aloud-text">クロちゃんが読むニャ♪</span>
@@ -2649,7 +2568,6 @@ const AppCore = {
       </div>
     `;
 
-    // テキスト編集同期
     const textInput = document.getElementById('studio-diary-content-input');
     if (textInput) {
       textInput.oninput = (e) => {
@@ -2657,7 +2575,6 @@ const AppCore = {
       };
     }
 
-    // 写真解除
     const btnRemovePhoto = document.getElementById('btn-remove-photo');
     if (btnRemovePhoto) {
       btnRemovePhoto.onclick = () => {
@@ -2666,7 +2583,6 @@ const AppCore = {
       };
     }
 
-    // 削除
     const btnDelDiary = document.getElementById('btn-del-cur-diary');
     if (btnDelDiary) {
       btnDelDiary.onclick = () => {
@@ -2681,30 +2597,26 @@ const AppCore = {
       };
     }
 
-    // ★ 朗読ボタンのイベントハンドリング
+    // ★ 朗読ボタンハンドラ（本文のみを最初からスラスラ朗読）
     const btnRead = document.getElementById('btn-read-diary-aloud');
     if (btnRead) {
       btnRead.onclick = () => {
         if (this.state.isDiaryReading) {
-          // すでに朗読中なら停止
           this.audio.stopReadingAloud();
           this.state.isDiaryReading = false;
           this._updateDiaryReadBtnUI(false);
         } else {
-          // 朗読開始
           this.state.isDiaryReading = true;
           this._updateDiaryReadBtnUI(true);
 
-          const intro = `${diary.fullDate}のクロの日記を読むニャン♪\n` + diary.content + "\n今日もすっごく楽しかったニャン🐾";
+          // ★ 日付や前置き・写真上テキストは読まず、「本文のみ」を朗読！
           this.audio.readDiarySeamless(
-            intro,
+            diary.content,
             null,
             (idx, sentence) => {
-              // 読んでいる文のログ
-              Logger.log(`[朗読中] (${idx + 1}) ${sentence}`, "info");
+              Logger.log(`[本文朗読中] (${idx + 1}) ${sentence}`, "info");
             },
             () => {
-              // 朗読完了
               this.state.isDiaryReading = false;
               this._updateDiaryReadBtnUI(false);
             }
@@ -2731,15 +2643,8 @@ const AppCore = {
     }
   },
 
-  _commitStudioChangesToStorage() {
-    StorageManager.saveMemories(this.state.studioMemories);
-    StorageManager.saveAllDiaries(this.state.studioDiaries);
-    this.memories = StorageManager.loadMemories(CHARACTER_CONFIG.defaultMemories);
-    this._renderMemories();
-  },
-
   /* ==========================================================================
-     ★ MODULE 8: 設定・その他UI制御
+     ★ MODULE 8: 設定・記憶帳・その他UI制御
      ========================================================================== */
   _bindGlassesAdjusterUI() {
     const modal = document.getElementById('glasses-adjust-modal');
@@ -2931,8 +2836,6 @@ const AppCore = {
             Toast.show("ファイルから全データを綺麗に最新更新したニャン！🎉", "success");
             this.audio.playEffect('purr');
             this.audio.speak("おやびん、データを受け取ったニャン！");
-
-            this.openBookStudio();
           } catch(err) {
             Toast.show("ファイルの読み込みに失敗しましたニャ: " + err.message, "error");
           }
@@ -3329,5 +3232,4 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
-
 
