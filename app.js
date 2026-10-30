@@ -38,7 +38,7 @@ const Logger = {
 };
 
 /* ==========================================================================
-   ★ MODULE 1: 音声合成＆音声認識（プリフェッチ・自声エコー遮断・漢数字変換・リアル喉鳴らし）
+   ★ MODULE 1: 音声合成＆音声認識（優先1位：あの可愛い声で必ず喋るダイレクト再生）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -54,14 +54,13 @@ class AudioSpeechEngine {
     this.isSpeaking = false;
     this.isListening = false;
     this.recognition = null;
-    this.restartTime = null;
     this.isSpeechCommitted = false;
     this.lastRecognizedText = '';
     this.silenceTimeout = null;
     this.watchdogInterval = null;
 
-    // 話者ID・テキストごとのURLスマートキャッシュ
-    this.audioUrlCache = new Map();
+    // 定型挨拶や相槌の超高速バッファ（ラグ0秒再生用）
+    this.fixedPhraseMap = new Map();
     this.recentSpokenTexts = [];
     this.lastSpeechEndTime = 0;
 
@@ -93,7 +92,7 @@ class AudioSpeechEngine {
     this.masterAudio.src = this.silentWav;
     this.masterAudio.play().then(() => {
       this.isMasterUnlocked = true;
-      Logger.log("[Audio] オーディオアンカー解放完了", "info");
+      Logger.log("[Audio] オーディオ再生アンカー解放完了", "info");
     }).catch(() => {});
   }
 
@@ -104,13 +103,54 @@ class AudioSpeechEngine {
     });
   }
 
-  /* ★ スマホスピーカー限界突破：可聴リアル喉鳴らし（85Hz〜120Hz ＋ 25Hz振幅変調 ＋ 触覚微振動） */
+  /* ★ 効果音シンセサイザー（変身音、ゴロゴロ、ちゅ〜る音など） */
   playEffect(type) {
     const ctx = this._getAudioContext();
     if (!ctx) return;
     const now = ctx.currentTime;
 
-    if (type === 'purr') {
+    if (type === 'poof') {
+      const bufferSize = ctx.sampleRate * 0.35;
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+      const whiteNoise = ctx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(800, now);
+      filter.frequency.exponentialRampToValueAtTime(160, now + 0.32);
+      filter.Q.setValueAtTime(2.5, now);
+
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.45, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.34);
+
+      whiteNoise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(ctx.destination);
+
+      const osc = ctx.createOscillator();
+      const toneGain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(420, now);
+      osc.frequency.exponentialRampToValueAtTime(140, now + 0.28);
+
+      toneGain.gain.setValueAtTime(0.38, now);
+      toneGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+      osc.connect(toneGain);
+      toneGain.connect(ctx.destination);
+
+      whiteNoise.start(now);
+      whiteNoise.stop(now + 0.35);
+      osc.start(now);
+      osc.stop(now + 0.28);
+
+    } else if (type === 'purr') {
       const oscBase = ctx.createOscillator();
       const oscSub = ctx.createOscillator();
       const lfo = ctx.createOscillator();
@@ -215,7 +255,6 @@ class AudioSpeechEngine {
     }
   }
 
-  /* ★ 漢数字・日時・単位（度・円・匹・歳など）の網羅的なひらがな読み上げ変換エンジン */
   _convertAllNumbersToKana(text) {
     if (!text) return "";
     let t = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
@@ -321,44 +360,42 @@ class AudioSpeechEngine {
     return t;
   }
 
-  /* ★ 音声の事前先読み（プリフェッチ）：キャラクター選択時に裏で即生成 */
   prefetchVoice(text, speakerId) {
-    this._fetchMetanMp3Url(text, speakerId).then(() => {
-      Logger.log(`[先読み完了⚡] 話者ID:${speakerId} の音声をキャッシュしました`, "info");
+    this._getVoicevoxDirectUrl(text, speakerId).then(audioUrl => {
+      this.fixedPhraseMap.set(`${speakerId}_${text}`, audioUrl);
+      Logger.log(`[定型肉声準備OK] ${text}`, "info");
     }).catch(() => {});
   }
 
-  /* ★ ポーリング最適化：早とちりフォールバックを防ぐ粘り強い生成待機 */
-  async _fetchMetanMp3Url(text, speakerId) {
-    const target = text.slice(0, 45);
-    const cacheKey = `${speakerId}_${target}`;
-    if (this.audioUrlCache.has(cacheKey)) {
-      Logger.log(`[キャッシュHit⚡] 話者:${speakerId}`, "success");
-      return this.audioUrlCache.get(cacheKey);
+  /* ★ VOICEVOX 直接オーディオURL取得 */
+  async _getVoicevoxDirectUrl(text, speakerId) {
+    const key = `${speakerId}_${text}`;
+    if (this.fixedPhraseMap.has(key)) {
+      return this.fixedPhraseMap.get(key);
     }
 
     const vvKey = localStorage.getItem('kuro_voicevox_key') || '';
-    let initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodeURIComponent(target)}&speaker=${speakerId}`;
+    let initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodeURIComponent(text)}&speaker=${speakerId}`;
     if (vvKey) initUrl += `&key=${encodeURIComponent(vvKey)}`;
 
     const initRes = await fetch(initUrl);
-    if (!initRes.ok) throw new Error(`HTTPエラー ${initRes.status}`);
+    if (!initRes.ok) throw new Error(`HTTP初期エラー ${initRes.status}`);
 
     const initData = await initRes.json();
-    if (initData.isAudioError) throw new Error("VoiceVox側エラー");
+    if (initData.isAudioError) throw new Error("VOICEVOX側エラー");
 
-    let downloadUrl = initData.mp3DownloadUrl || initData.mp3StreamingUrl;
-    if (!downloadUrl && initData.audioStatusUrl) {
+    let playUrl = initData.mp3StreamingUrl || initData.mp3DownloadUrl;
+
+    if (!playUrl && initData.audioStatusUrl) {
       const statusUrl = initData.audioStatusUrl;
-      // 最大36回（約16秒）ポーリングで生成完了を確実に待機
-      for (let i = 1; i <= 36; i++) {
-        await new Promise(r => setTimeout(r, 450));
+      for (let i = 1; i <= 24; i++) {
+        await new Promise(r => setTimeout(r, 500));
         try {
           const sRes = await fetch(statusUrl);
           if (sRes.ok) {
             const sData = await sRes.json();
             if (sData.isAudioReady) {
-              downloadUrl = sData.mp3DownloadUrl || downloadUrl;
+              playUrl = sData.mp3StreamingUrl || sData.mp3DownloadUrl;
               break;
             }
           }
@@ -366,26 +403,10 @@ class AudioSpeechEngine {
       }
     }
 
-    if (!downloadUrl) throw new Error("タイムアウト");
-    if (this.audioUrlCache.size >= 50) this.audioUrlCache.delete(this.audioUrlCache.keys().next().value);
-    this.audioUrlCache.set(cacheKey, downloadUrl);
-    return downloadUrl;
+    if (!playUrl) throw new Error("VOICEVOX生成タイムアウト");
+    return playUrl;
   }
 
-  _speakFallback(cleanText, onStart, onEnd) {
-    if (!window.speechSynthesis) { if (onStart) onStart(); if (onEnd) onEnd(); return; }
-    window.speechSynthesis.cancel();
-    const uttr = new SpeechSynthesisUtterance(cleanText);
-    uttr.lang = 'ja-JP';
-    uttr.rate = this.rate;
-    uttr.pitch = 1.45;
-    uttr.onstart = () => { this.isSpeaking = true; if (onStart) onStart(); };
-    uttr.onend = () => { this.isSpeaking = false; this.lastSpeechEndTime = Date.now(); if (onEnd) onEnd(); };
-    uttr.onerror = () => { this.isSpeaking = false; this.lastSpeechEndTime = Date.now(); if (onEnd) onEnd(); };
-    window.speechSynthesis.speak(uttr);
-  }
-
-  /* ★ 自声の跳ね返り（エコーバック）判定：クロ自身の発声を拾った場合は完全無視 */
   _isSelfEcho(text) {
     if (!text) return true;
     const normalized = text.replace(/[\s、。！？ニャンニャ]/g, '');
@@ -402,7 +423,7 @@ class AudioSpeechEngine {
     return false;
   }
 
-  /* ★ 全発話で選んだ声キャラクターIDを一元反映＆二重発火ガード */
+  /* ★ 音声再生：onStartが呼ばれた瞬間＝実際に音が鳴り始めた瞬間 */
   async speak(text, speakerIdOverride = null, onStart = null, onEnd = null) {
     this.stopSpeaking();
     this.unlockMasterAudio();
@@ -432,8 +453,8 @@ class AudioSpeechEngine {
     };
 
     try {
-      const mp3Url = await this._fetchMetanMp3Url(clean, speakerId);
-      this.masterAudio.src = mp3Url;
+      const directAudioUrl = await this._getVoicevoxDirectUrl(clean, speakerId);
+      this.masterAudio.src = directAudioUrl;
       this.masterAudio.playbackRate = this.rate;
 
       this.masterAudio.onplay = () => { triggerStartOnce(); };
@@ -442,11 +463,19 @@ class AudioSpeechEngine {
         this.lastSpeechEndTime = Date.now();
         if (onEnd) onEnd();
       };
-      this.masterAudio.onerror = () => { throw new Error("Audio再生エラー"); };
+      this.masterAudio.onerror = () => {
+        Logger.log("[Audio] VOICEVOX直接再生エラー", "error");
+        this.isSpeaking = false;
+        if (onStart) onStart();
+        if (onEnd) onEnd();
+      };
+
       await this.masterAudio.play();
     } catch (err) {
-      Logger.log(`[肉声フォールバック] 標準音声で再生`, "warn");
-      this._speakFallback(clean, triggerStartOnce, onEnd);
+      Logger.log(`[VOICEVOX通信失敗] ${err.message}`, "error");
+      this.isSpeaking = false;
+      if (onStart) onStart();
+      if (onEnd) onEnd();
     }
   }
 
@@ -454,7 +483,6 @@ class AudioSpeechEngine {
     this.isSpeaking = false;
     this.masterAudio.pause();
     this.masterAudio.currentTime = 0;
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
   }
 
   _setupRecognition() {
@@ -487,7 +515,6 @@ class AudioSpeechEngine {
 
       const live = (final || interim).trim();
 
-      // 声での割り込み停止（バージイン機能）
       if (this.isSpeaking && live && /(?:ストップ|待って|まって|やめて)/.test(live)) {
         this.stopSpeaking();
         if (this.onBargeIn) this.onBargeIn();
@@ -574,7 +601,7 @@ class AudioSpeechEngine {
 }
 
 /* ==========================================================================
-   ★ MODULE 2: 日時・位置情報・リアルタイムお天気 ＆ 自宅フォールバック
+   ★ MODULE 2: 日時・位置情報・リアルタイムお天気
    ========================================================================== */
 const TimeProvider = {
   getCurrentInfo() {
@@ -609,7 +636,6 @@ const LocationProvider = {
   weather: "晴れ",
   isGpsAvailable: false,
 
-  /* ★ GPS優先 ➔ 失敗時のみ「自宅座標・住所」にフォールバック */
   initWatcher() {
     if (!('geolocation' in navigator)) {
       this._applyHomeFallback();
@@ -623,17 +649,16 @@ const LocationProvider = {
         this.lon = pos.coords.longitude;
         this._reverseGeocode(this.lat, this.lon);
         this._fetchWeather(this.lat, this.lon);
-        Logger.log(`[GPS測位成功(スマホ等)] 座標: ${this.lat.toFixed(4)}, ${this.lon.toFixed(4)}`, "success");
+        Logger.log(`[GPS測位成功] 座標: ${this.lat.toFixed(4)}, ${this.lon.toFixed(4)}`, "success");
       },
       () => {
-        Logger.log(`[GPS不可(PC等)] 設定された自宅・拠点座標へ切り替えます`, "warn");
+        Logger.log(`[GPS不可] 設定された自宅・拠点座標へ切り替えます`, "warn");
         this._applyHomeFallback();
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
   },
 
-  /* 自宅座標または住所へのフォールバック処理 */
   async _applyHomeFallback() {
     const homeVal = localStorage.getItem('kuro_home_coords') || '';
     if (!homeVal) {
@@ -645,7 +670,6 @@ const LocationProvider = {
       return;
     }
 
-    // 1. 数字の座標（例: 35.7582, 139.4678）の場合
     const match = homeVal.match(/([-+]?\d+\.\d+)\s*,\s*([-+]?\d+\.\d+)/);
     if (match) {
       this.lat = parseFloat(match[1]);
@@ -656,7 +680,6 @@ const LocationProvider = {
       return;
     }
 
-    // 2. 住所文字列（例: 東京都東村山市本町1丁目）の場合 ➔ ジオコーディング変換
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(homeVal)}&limit=1&accept-language=ja`);
       if (res.ok) {
@@ -776,6 +799,7 @@ const StorageManager = {
 class CatAvatarRenderer {
   constructor() {
     this.wrapper = document.getElementById('avatar-wrapper');
+    this.smokeEl = document.getElementById('transform-smoke');
     this.frames = {
       idle: document.getElementById('frame-idle'),
       talking: document.getElementById('frame-talking'),
@@ -792,7 +816,6 @@ class CatAvatarRenderer {
     this.applyAllFramesTransform();
   }
 
-  /* ★ 4表情すべてのレイヤーに高精細な博士帽＆丸メガネを個別注入 */
   _renderAllAccessories() {
     const svgContent = `
       <svg viewBox="0 0 140 140" style="width:100%; height:100%;">
@@ -803,7 +826,6 @@ class CatAvatarRenderer {
           </pattern>
         </defs>
 
-        <!-- 昔の大学の博士帽（角帽） -->
         <g class="real-hat-group">
           <path d="M45 42 Q70 34 95 42 L92 49 Q70 41 48 49 Z" fill="#1e293b"/>
           <polygon points="70,18 116,32 70,46 24,32" fill="#0f172a" stroke="#334155" stroke-width="1.2"/>
@@ -814,7 +836,6 @@ class CatAvatarRenderer {
           </g>
         </g>
 
-        <!-- 白黒ストライプ丸メガネ -->
         <g class="real-glasses-group">
           <circle cx="42" cy="85" r="18" fill="rgba(255, 255, 255, 0.2)" stroke="#090d16" stroke-width="4.5"/>
           <circle cx="42" cy="85" r="18" fill="none" stroke="url(#stripe-bw-real)" stroke-width="3"/>
@@ -892,6 +913,16 @@ class CatAvatarRenderer {
     }
   }
 
+  triggerPoofSmoke() {
+    if (!this.smokeEl) return;
+    this.smokeEl.classList.remove('is-poofing');
+    void this.smokeEl.offsetWidth;
+    this.smokeEl.classList.add('is-poofing');
+    setTimeout(() => {
+      this.smokeEl.classList.remove('is-poofing');
+    }, 800);
+  }
+
   triggerIdeaBulb() {
     const bulb = document.getElementById('idea-bulb');
     if (!bulb) return;
@@ -905,14 +936,11 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   ★ MODULE 5: 思考・AI対話エンジン（Flash 3.5 Lite / 3.8 ＆ 多段自動リトライ）
+   ★ MODULE 5: 思考・AI対話エンジン（過去の実績構成へ完全復帰）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
     this.apiKey = localStorage.getItem('kuro_api_key') || '';
-    this.availableModels = [];
-    this.activeLiteModel = null;
-    this.activeProModel = null;
     this.proUsedToday = parseInt(localStorage.getItem('kuro_pro_usage_count') || '0', 10);
   }
 
@@ -920,26 +948,6 @@ class AIThoughtEngine {
   incrementProQuota() {
     this.proUsedToday++;
     localStorage.setItem('kuro_pro_usage_count', this.proUsedToday);
-  }
-
-  async scanModels() {
-    if (!this.apiKey) return false;
-    try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${this.apiKey}`);
-      if (!res.ok) return false;
-      const data = await res.json();
-      const valid = (data.models || []).map(m => m.name.replace(/^models\//, ''));
-      this.availableModels = valid;
-
-      const litePref = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
-      this.activeLiteModel = litePref.find(m => valid.includes(m)) || valid.find(m => m.includes('flash')) || valid[0];
-
-      const proPref = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-pro", "gemini-2.5-pro"];
-      this.activeProModel = proPref.find(m => valid.includes(m)) || valid.find(m => m.includes('pro')) || this.activeLiteModel;
-
-      Logger.log(`[モデル最新同期] 3.5枠: ${this.activeLiteModel} / 3.8枠: ${this.activeProModel}`, "success");
-      return true;
-    } catch(e) { return false; }
   }
 
   evaluateComplexity(text) {
@@ -952,12 +960,16 @@ class AIThoughtEngine {
     return false;
   }
 
-  /* ★ 多段自動リトライ：Google検索エラーや混雑時でも必ず返答を死守 */
+  /* ★ 過去に確実に成功していた実績モデル順序＆通信ロジック */
   async generateReply(promptText, isPro, character, memories, isAssistantMode) {
+    if (!this.apiKey) {
+      Logger.log("[Gemini] APIキーが未設定です", "error");
+      return { success: false, error: "NO_API_KEY" };
+    }
+
     const timeInfo = TimeProvider.getCurrentInfo();
     const weather = LocationProvider.weather;
     const address = LocationProvider.detailedAddress;
-
     const isDiary = /(?:今日|きょう)?(?:の)?(?:日記|にっき).*(?:書いて|教えて)/.test(promptText);
 
     const systemPrompt = `
@@ -973,28 +985,28 @@ ${memories.map(m => `・${m}`).join('\n')}
 ${isAssistantMode ? '- おてつだいモード発動中！話題の単語を末尾に <!--TOPIC:単語--> で添えてください。' : ''}
 `;
 
-    let primaryModel = isPro ? this.activeProModel : this.activeLiteModel;
-    if (!primaryModel && this.availableModels.length > 0) primaryModel = this.availableModels[0];
-    if (!primaryModel) primaryModel = "gemini-2.5-flash";
+    // 過去実績のある安定した正式モデル順
+    const candidateModels = isPro
+      ? ["gemini-1.5-pro", "gemini-1.5-pro-latest", "gemini-1.5-flash"]
+      : ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-pro"];
 
-    // 試行プラン：検索あり ➔（失敗時）検索なし ➔（失敗時）フォールバックモデル
-    const attempts = [{ model: primaryModel, useSearch: isAssistantMode }];
-    if (isAssistantMode) attempts.push({ model: primaryModel, useSearch: false });
-    if (this.availableModels.length > 1) {
-      const fb = this.availableModels.find(m => m !== primaryModel) || this.availableModels[0];
-      attempts.push({ model: fb, useSearch: false });
-    }
-
-    for (let i = 0; i < attempts.length; i++) {
-      const att = attempts[i];
+    for (const model of candidateModels) {
       try {
-        const bodyPayload = {
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: promptText }] }]
-        };
-        if (att.useSearch) bodyPayload.tools = [{ googleSearch: {} }];
+        Logger.log(`[Gemini] モデル「${model}」へ問い合わせ中…`, "info");
 
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${att.model}:generateContent?key=${this.apiKey}`, {
+        const bodyPayload = {
+          contents: [{
+            role: 'user',
+            parts: [{ text: `${systemPrompt}\n\n【おやびんからの言葉】\n${promptText}` }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 200
+          }
+        };
+
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(bodyPayload)
@@ -1011,19 +1023,19 @@ ${isAssistantMode ? '- おてつだいモード発動中！話題の単語を末
 
             const clean = raw.replace(/<!--[\s\S]*?-->/g, '').replace(/[（\(].*?[）\)]/g, '').trim();
 
-            const chunks = (cand.groundingMetadata?.groundingChunks || []).map(c => ({
-              uri: c.web?.uri || '',
-              title: c.web?.title || ''
-            })).filter(c => c.uri);
-
+            Logger.log(`[Gemini成功⚡] モデル「${model}」から正常にお返事取得ニャ！`, "success");
             if (isDiary) StorageManager.saveDiary(clean);
-            return { success: true, text: clean, topicTag, chunks };
+            return { success: true, text: clean, topicTag, modelUsed: model };
           }
+        } else {
+          Logger.log(`[Gemini] モデル「${model}」HTTP ${res.status}`, "warn");
         }
-      } catch(e) {}
+      } catch (err) {
+        Logger.log(`[Gemini通信エラー] ${err.message}`, "warn");
+      }
     }
 
-    return { success: false, error: "ALL_ATTEMPTS_FAILED" };
+    return { success: false, error: "ALL_MODELS_FAILED" };
   }
 }
 
@@ -1061,9 +1073,8 @@ const AppCore = {
   memories: [],
   history: [],
 
-  /* ★ 全体で一元化された声のキャラクターID取得 */
   getSpeakerId() {
-    return parseInt(localStorage.getItem('kuro_voice_speaker_id') || '0', 10);
+    return parseInt(localStorage.getItem('kuro_voice_speaker_id') || '10', 10);
   },
 
   async init() {
@@ -1082,13 +1093,9 @@ const AppCore = {
     this._restoreTimelineHistory();
     this._updateModelBadge();
 
-    // GPS優先 ＋ 自宅フォールバック判定
     LocationProvider.initWatcher();
 
-    if (this.ai.apiKey) await this.ai.scanModels();
-
-    // 保存済み設定の復元
-    const savedSpeaker = localStorage.getItem('kuro_voice_speaker_id') || '0';
+    const savedSpeaker = localStorage.getItem('kuro_voice_speaker_id') || '10';
     const savedRate = localStorage.getItem('kuro_rate') || '1.05';
     const savedNews = localStorage.getItem('kuro_news_count') || '2';
     const savedSpot = localStorage.getItem('kuro_spot_count') || '2';
@@ -1108,7 +1115,6 @@ const AppCore = {
     if (spotSelect) spotSelect.value = savedSpot;
     if (homeInput) homeInput.value = savedHome;
 
-    // 初回のテスト音声を裏で先読みキャッシュ
     this.audio.prefetchVoice("おやびん、わたしはクロだニャン🐾", parseInt(savedSpeaker, 10));
 
     setInterval(() => {
@@ -1134,14 +1140,12 @@ const AppCore = {
       this.avatar.setEmotion('idle');
       this.state.isThinking = false;
       this.state.isProcessingInput = false;
-      document.getElementById('status-text').textContent = "👂 聴いてるニャ…";
       this.audio.playEffect('aizuchi');
     };
 
     this.audio.onInterimUpdate = (text) => {
       if (!this.state.isRunning || this.state.isThinking || this.state.isProcessingInput) return;
       document.body.classList.add('is-hearing');
-      document.getElementById('status-text').textContent = "👂 聴いてるニャ…";
     };
 
     this.audio.onSpeechFinal = (finalText) => {
@@ -1153,7 +1157,10 @@ const AppCore = {
     };
 
     this.audio.onListeningStatus = (l) => {
-      document.getElementById('status-text').textContent = l ? (this.state.isAssistantMode ? "👓 お調べするニャ！" : "👂 聴いてるニャ♪") : "💭 待機中ニャ…";
+      const st = document.getElementById('status-text');
+      if (this.state.isRunning) {
+        st.textContent = l ? "👂 聴いてるニャ♪" : "💭 待機中ニャ…";
+      }
     };
   },
 
@@ -1181,9 +1188,9 @@ const AppCore = {
 
     box.appendChild(row);
     box.scrollTop = box.scrollHeight;
+    return b;
   },
 
-  /* ★ 即答ロジック（呼びかけ・時間・日付等の0秒即座返答） */
   _checkDirectIntent(text) {
     let clean = text.replace(/^(?:ねえ|あのね|おーい)?\s*(?:クロちゃん|クロ|くろ)[、,\s]*/i, '').trim();
 
@@ -1221,12 +1228,12 @@ const AppCore = {
     return null;
   },
 
-  _generateSmartCards(userText, topic, chunks) {
+  _generateSmartCards(userText, topic) {
     if (!this.state.isAssistantMode) return [];
     const cards = [];
     const area = LocationProvider.cityArea || "";
-    const desiredSpots = parseInt(localStorage.getItem('kuro_spot_count') || '2', 10);
-    const desiredNews = parseInt(localStorage.getItem('kuro_news_count') || '2', 10);
+    const spotLimit = parseInt(localStorage.getItem('kuro_spot_count') || '2', 10);
+    const newsLimit = parseInt(localStorage.getItem('kuro_news_count') || '2', 10);
 
     if (/(?:ラーメン|餃子|タイ料理|焼肉|ランチ|ご飯|居酒屋|お店|スポット|グルメ|寿司|カレー)/.test(userText)) {
       const shop = topic || "人気店";
@@ -1237,21 +1244,23 @@ const AppCore = {
         url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop + ' ' + area)}`
       });
 
-      let added = 1;
-      for (const ch of chunks) {
-        if (added >= desiredSpots) break;
-        if (ch.uri && ch.uri.startsWith('http')) {
-          cards.push({ type: 'map-sub', icon: '🏪', title: ch.title || '周辺店舗情報', url: ch.uri });
-          added++;
-        }
+      if (spotLimit >= 2) {
+        cards.push({
+          type: 'map-all',
+          icon: '🗺️',
+          title: `現在地近くのお店・スポット一覧`,
+          url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((topic || 'グルメ') + ' ' + area)}`
+        });
       }
 
-      cards.push({
-        type: 'map-all',
-        icon: '🗺️',
-        title: `現在地近くのお店一覧`,
-        url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((topic || 'グルメ') + ' ' + area)}`
-      });
+      if (spotLimit >= 3) {
+        cards.push({
+          type: 'map-sub',
+          icon: '⭐',
+          title: `高評価・人気ランキング順で探す`,
+          url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop + ' 高評価 ' + area)}`
+        });
+      }
     }
 
     if (/(?:ニュース|速報|話題|出来事)/.test(userText)) {
@@ -1263,13 +1272,22 @@ const AppCore = {
         url: `https://news.google.com/search?q=${encodeURIComponent(t)}&hl=ja&gl=JP&ceid=JP:ja`
       });
 
-      let nAdded = 1;
-      for (const ch of chunks) {
-        if (nAdded >= desiredNews) break;
-        if (ch.uri && ch.uri.startsWith('http')) {
-          cards.push({ type: 'news-sub', icon: '💡', title: ch.title || '関連記事', url: ch.uri });
-          nAdded++;
-        }
+      if (newsLimit >= 2) {
+        cards.push({
+          type: 'news-sub',
+          icon: '🌐',
+          title: `主要トップニュース一覧`,
+          url: `https://news.google.com/topstories?hl=ja&gl=JP&ceid=JP:ja`
+        });
+      }
+
+      if (newsLimit >= 3) {
+        cards.push({
+          type: 'news-sub',
+          icon: '💡',
+          title: `テクノロジー・科学ニュース`,
+          url: `https://news.google.com/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGRqTVhZU0FtdHZHZ0pMVWlnQVAB?hl=ja&gl=JP&ceid=JP:ja`
+        });
       }
     }
     return cards;
@@ -1284,23 +1302,32 @@ const AppCore = {
       const mins = parseInt(timerMatch[1], 10);
       this.startKitchenTimer(mins);
       const rep = `了解ニャ！${mins}分クロがしっかり見ておくニャン🐾`;
-      this.audio.speak(rep, null, () => this.renderBubble('model', rep));
+      this.audio.speak(rep, null, () => {
+        // 音が鳴り始めた瞬間にセリフ描画（完全同期）
+        this.renderBubble('model', rep);
+        this.avatar.setEmotion('talking');
+      }, () => {
+        this.avatar.setEmotion('idle');
+      });
       return;
     }
 
-    // 2. 即答ロジック判定（0秒即答）
+    // 2. 定型即答（時間・日付・挨拶など）：音声再生の開始と同時にフキダシを表示！
     const direct = this._checkDirectIntent(text);
     if (direct) {
       this.audio.speak(direct.spoken, null, () => {
+        // 音声開始コールバックでフキダシを出し、文字先行バグを完全解消
         this.renderBubble('model', direct.display, direct.cards || []);
+        this.avatar.setEmotion('talking');
       }, () => {
+        this.avatar.setEmotion('idle');
         this.state.isProcessingInput = false;
         if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 800);
       });
       return;
     }
 
-    // 3. ひらめき演出（珍発明や質問）
+    // 3. ひらめき演出
     if (/(?:どう|困った|疲れた|発明|ひらめき|教えて)/.test(text)) {
       this.audio.playEffect('idea');
       this.avatar.triggerIdeaBulb();
@@ -1322,6 +1349,7 @@ const AppCore = {
 
     const ask = `難しそうだニャ…！本気モードの『Flash 3.8』で考えてもいいかニャ？（今日あと${remaining}回ニャ🐾）`;
 
+    const box = document.getElementById('chat-timeline');
     const row = document.createElement('div');
     row.className = 'chat-row model';
     row.innerHTML = `
@@ -1333,29 +1361,46 @@ const AppCore = {
         </div>
       </div>
     `;
-    document.getElementById('chat-timeline').appendChild(row);
-    document.getElementById('chat-timeline').scrollTop = document.getElementById('chat-timeline').scrollHeight;
 
-    document.getElementById('btn-approve').onclick = () => {
-      this.renderBubble('user', "3.8でお願いニャ！");
-      const p = this.state.pending38Prompt;
-      this.state.pending38Prompt = null;
-      this.executeThought(p, true);
-    };
-    document.getElementById('btn-deny').onclick = () => {
-      this.renderBubble('user', "3.5 Liteでいいよ");
-      const p = this.state.pending38Prompt;
-      this.state.pending38Prompt = null;
-      this.executeThought(p, false);
-    };
+    this.audio.speak(ask, null, () => {
+      box.appendChild(row);
+      box.scrollTop = box.scrollHeight;
 
-    this.audio.speak(ask, null, null, () => { this.state.isProcessingInput = false; });
+      document.getElementById('btn-approve').onclick = () => {
+        this.renderBubble('user', "3.8でお願いニャ！");
+        const p = this.state.pending38Prompt;
+        this.state.pending38Prompt = null;
+        this.executeThought(p, true);
+      };
+      document.getElementById('btn-deny').onclick = () => {
+        this.renderBubble('user', "3.5 Liteでいいよ");
+        const p = this.state.pending38Prompt;
+        this.state.pending38Prompt = null;
+        this.executeThought(p, false);
+      };
+
+      this.avatar.setEmotion('talking');
+    }, () => {
+      this.avatar.setEmotion('idle');
+      this.state.isProcessingInput = false;
+    });
   },
 
+  /* ★ 思考・準備・発話を自然なフキダシと完全同期で行う */
   async executeThought(promptText, isPro) {
     this.state.isThinking = true;
     this.avatar.setEmotion('thinking');
-    document.getElementById('status-text').textContent = "💭 考え中ニャ…";
+
+    const box = document.getElementById('chat-timeline');
+    const row = document.createElement('div');
+    row.className = 'chat-row model';
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble thinking-bubble';
+    // 自然な表現（目立たない通常スタイル）
+    bubble.textContent = this.state.isAssistantMode ? "クロがお調べしてるニャ…🔍" : "クロが考えてるニャ…💭";
+    row.appendChild(bubble);
+    box.appendChild(row);
+    box.scrollTop = box.scrollHeight;
 
     if (isPro) {
       this.ai.incrementProQuota();
@@ -1364,31 +1409,64 @@ const AppCore = {
       this._updateModelBadge(false, false);
     }
 
+    // 1. Geminiからのテキスト生成
     const res = await this.ai.generateReply(promptText, isPro, CHARACTER_CONFIG, this.memories, this.state.isAssistantMode);
 
     if (res.success && res.text) {
+      // 思考終了 ➔ 音声準備フェーズ
+      bubble.textContent = "返事の準備をしてるニャ…🎙️";
+      box.scrollTop = box.scrollHeight;
+
       this.history.push({ role: 'user', text: promptText });
       this.history.push({ role: 'model', text: res.text });
       StorageManager.saveHistory(this.history);
 
-      const cards = this._generateSmartCards(promptText, res.topicTag, res.chunks);
+      const cards = this._generateSmartCards(promptText, res.topicTag);
+
+      // 2. 音声再生の開始コールバックで初めて実際の回答文を表示（完全同期）
       this.audio.speak(res.text, null, () => {
-        this.renderBubble('model', res.text, cards);
+        bubble.className = 'chat-bubble';
+        bubble.textContent = res.text; // 音が鳴った瞬間にセリフに切り替え！
+        document.getElementById('status-text').textContent = "🗣️ お話し中ニャ♪";
+
+        if (cards.length > 0) {
+          const cardBox = document.createElement('div');
+          cardBox.className = 'action-card-box';
+          cards.forEach(c => {
+            const a = document.createElement('a');
+            a.className = `link-action-card ${c.type}-card`;
+            a.href = c.url; a.target = '_blank';
+            a.innerHTML = `<span class="card-icon">${c.icon}</span><span class="card-title-text">${c.title}</span><span class="card-arrow">➔</span>`;
+            cardBox.appendChild(a);
+          });
+          row.appendChild(cardBox);
+        }
+
         this.avatar.setEmotion('talking');
+        box.scrollTop = box.scrollHeight;
       }, () => {
         this.avatar.setEmotion('idle');
         this.state.isThinking = false;
         this.state.isProcessingInput = false;
         this._updateModelBadge(false, false);
+        document.getElementById('status-text').textContent = "👂 聴いてるニャ♪";
         if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 800);
       });
+
     } else {
+      // 通信エラーフォールバック
+      const fb = "うまく聞き取れなかったニャ。もう一度お話ししてニャン🐾";
+      bubble.className = 'chat-bubble';
+      bubble.textContent = fb;
       this.avatar.setEmotion('idle');
       this.state.isThinking = false;
       this.state.isProcessingInput = false;
       this._updateModelBadge(false, false);
-      const fb = "うまく聞き取れなかったニャ。もう一度お話ししてニャン🐾";
-      this.audio.speak(fb, null, () => this.renderBubble('model', fb));
+      this.audio.speak(fb, null, () => {
+        this.avatar.setEmotion('talking');
+      }, () => {
+        this.avatar.setEmotion('idle');
+      });
     }
   },
 
@@ -1410,7 +1488,12 @@ const AppCore = {
         badge.style.display = 'none';
         this.audio.playEffect('bell');
         const alertMsg = `おやびん！${minutes}分経ったニャ！ラーメン伸びちゃうニャー！🍜🔔`;
-        this.audio.speak(alertMsg, null, () => this.renderBubble('model', alertMsg));
+        this.audio.speak(alertMsg, null, () => {
+          this.renderBubble('model', alertMsg);
+          this.avatar.setEmotion('talking');
+        }, () => {
+          this.avatar.setEmotion('idle');
+        });
       }
     }, 1000);
   },
@@ -1581,7 +1664,6 @@ const AppCore = {
   },
 
   _bindUI() {
-    // おやつ（ちゅ〜る）ボタン
     document.getElementById('snack-btn').onclick = () => {
       this.audio.unlockMasterAudio();
       this.state.snackCount++;
@@ -1592,30 +1674,40 @@ const AppCore = {
         this.state.snackCount = 0;
         this.audio.playEffect('purr');
         const msg = "ハフハフ…うまうまニャ！お腹いっぱい大満足ニャ〜極楽ニャン♡";
-        this.audio.speak(msg, null, () => this.renderBubble('model', msg));
+        this.audio.speak(msg, null, () => {
+          this.renderBubble('model', msg);
+          this.avatar.setEmotion('talking');
+        }, () => {
+          this.avatar.setEmotion('idle');
+        });
       } else {
         const reps = ["もぐもぐ…ちゅ〜る最高ニャ！🐟", "うまうまニャン！おかわり希望ニャ🐾"];
         const r = reps[Math.floor(Math.random() * reps.length)];
-        this.audio.speak(r, null, () => this.renderBubble('model', r));
+        this.audio.speak(r, null, () => {
+          this.renderBubble('model', r);
+          this.avatar.setEmotion('talking');
+        }, () => {
+          this.avatar.setEmotion('idle');
+        });
       }
     };
 
-    // 変身ボタン
     document.getElementById('transform-btn').onclick = () => {
       this.audio.unlockMasterAudio();
+      this.audio.playEffect('poof');
+      this.avatar.triggerPoofSmoke();
+
       const next = (this.avatar.mode === 'vector') ? 'real' : 'vector';
       this.avatar.applyMode(next);
       Toast.show(`姿を変身したニャ！✨（${next === 'real' ? 'リアル写真' : 'イラスト'}）`, 'info');
     };
 
-    // モード切替
     document.getElementById('mode-toggle-btn').onclick = () => {
       this.state.isAssistantMode = !this.state.isAssistantMode;
       localStorage.setItem('kuro_mode', this.state.isAssistantMode ? 'assistant' : 'pet');
       this._updateModeUI(true);
     };
 
-    // ストップ
     document.getElementById('stop-action-btn').onclick = () => {
       this.audio.stopSpeaking();
       this.state.isThinking = false;
@@ -1624,7 +1716,6 @@ const AppCore = {
       this.audio.speak("ストップしたニャ！ゆっくり話してニャン🐾");
     };
 
-    // 会話中 / お休み切替
     document.getElementById('pause-btn').onclick = () => {
       this.state.isRunning = !this.state.isRunning;
       const icon = document.getElementById('pause-icon');
@@ -1645,7 +1736,6 @@ const AppCore = {
       }
     };
 
-    // なでなで
     document.getElementById('avatar-wrapper').onclick = (e) => {
       if (e.target.closest('#transform-btn') || e.target.closest('#snack-btn')) return;
       this.audio.unlockMasterAudio();
@@ -1654,27 +1744,27 @@ const AppCore = {
       setTimeout(() => { if (!this.audio.isSpeaking) this.avatar.setEmotion('idle'); }, 900);
     };
 
-    // ★ 声キャラクター変更時に即座に先読みプリフェッチ
     document.getElementById('voice-speaker-select').onchange = (e) => {
       const newSp = parseInt(e.target.value, 10);
       this.audio.prefetchVoice("おやびん、わたしはクロだニャン🐾", newSp);
     };
 
-    // 音声テストボタン（選択中のボイスで即座にリアル肉声再生）
     document.getElementById('test-voice-btn').onclick = () => {
       this.audio.unlockMasterAudio();
       const selSp = parseInt(document.getElementById('voice-speaker-select').value, 10);
-      this.audio.speak("おやびん、わたしはクロだニャン🐾", selSp);
+      this.audio.speak("おやびん、わたしはクロだニャン🐾", selSp, () => {
+        this.avatar.setEmotion('talking');
+      }, () => {
+        this.avatar.setEmotion('idle');
+      });
     };
 
-    // 話すスピードスライダー
     document.getElementById('voice-rate').oninput = (e) => {
       const r = parseFloat(e.target.value);
       this.audio.setRate(r);
       document.getElementById('rate-val').textContent = r.toFixed(2);
     };
 
-    // ★ 自宅座標：スマホの現在地をセットボタン
     document.getElementById('btn-get-current-home').onclick = () => {
       if (!('geolocation' in navigator)) {
         Toast.show("端末の位置情報機能がオフになっていますニャ", "error");
@@ -1693,7 +1783,6 @@ const AppCore = {
       );
     };
 
-    // ★ 自宅座標：クリップボードへコピーボタン（PC移行用）
     document.getElementById('btn-copy-home-coords').onclick = () => {
       const val = document.getElementById('home-coords-input').value.trim();
       if (!val) {
@@ -1707,7 +1796,6 @@ const AppCore = {
       });
     };
 
-    // 設定モーダル開閉
     document.getElementById('settings-btn').onclick = () => {
       document.getElementById('api-key-input').value = this.ai.apiKey;
       document.getElementById('voicevox-key-input').value = localStorage.getItem('kuro_voicevox_key') || '';
@@ -1726,7 +1814,6 @@ const AppCore = {
       if (e.target.id === 'modal-overlay') document.getElementById('modal-overlay').style.display = 'none';
     };
 
-    // ★ 2つのAPI個別チェック＆完全連動保存ボタン
     document.getElementById('save-settings-btn').onclick = async () => {
       this.audio.unlockMasterAudio();
       const btn = document.getElementById('save-settings-btn');
@@ -1751,7 +1838,6 @@ const AppCore = {
       btnIcon.innerHTML = `<div class="spinner"></div>`;
       btnText.textContent = "キーを確認中ニャ…";
 
-      // 1. Google APIキーの検証
       if (newApiKey) {
         try {
           const testRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${newApiKey}`);
@@ -1766,10 +1852,9 @@ const AppCore = {
         }
       }
 
-      // 2. VoiceVox APIキーの検証（入力がある場合のみ）
       if (newVvKey) {
         try {
-          const vvRes = await fetch(`https://api.tts.quest/v3/voicevox/synthesis?text=%E3%83%8B%E3%83%A3&speaker=0&key=${encodeURIComponent(newVvKey)}`);
+          const vvRes = await fetch(`https://api.tts.quest/v3/voicevox/synthesis?text=%E3%83%8B%E3%83%A3&speaker=10&key=${encodeURIComponent(newVvKey)}`);
           if (vvRes.ok) {
             const vvData = await vvRes.json();
             if (vvData.isAudioError) throw new Error("無効なVoiceVoxキー");
@@ -1786,7 +1871,6 @@ const AppCore = {
         }
       }
 
-      // 値の保存確定
       this.ai.apiKey = newApiKey;
       localStorage.setItem('kuro_api_key', newApiKey);
       localStorage.setItem('kuro_voicevox_key', newVvKey);
@@ -1798,7 +1882,6 @@ const AppCore = {
       this.audio.setRate(newRate);
       this.avatar.applyAccessoryStyle(newAccStyle);
 
-      // 自宅座標の更新反映
       LocationProvider._applyHomeFallback();
 
       btn.classList.remove('is-saving');
@@ -1824,7 +1907,6 @@ const AppCore = {
       }, 1800);
     };
 
-    // 記憶帳の新規追加
     document.getElementById('add-memory-btn').onclick = () => {
       const inp = document.getElementById('new-memory-input');
       const val = inp.value.trim();
@@ -1836,7 +1918,6 @@ const AppCore = {
       }
     };
 
-    // 診断モニタ
     document.getElementById('open-diag-modal-btn').onclick = () => {
       document.getElementById('modal-overlay').style.display = 'none';
       document.getElementById('diag-panel').classList.add('expanded');
@@ -1848,5 +1929,4 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
-
 
