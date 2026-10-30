@@ -213,6 +213,22 @@
     .chat-row.user { align-items: flex-end; }
     .chat-row.model { align-items: flex-start; }
 
+    /* ★ タイムラインの写真プレビュー枠 */
+    .timeline-photo-wrap {
+      max-width: 75%;
+      margin-bottom: 6px;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 2px solid #bae6fd;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.15);
+    }
+    .timeline-shared-img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: cover;
+    }
+
     .chat-bubble {
       max-width: 86%;
       padding: 9px 14px;
@@ -263,6 +279,14 @@
       color: #ea580c;
       display: flex;
       gap: 8px;
+    }
+    .timeline-diary-photo img {
+      width: 100%;
+      max-height: 180px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid #fed7aa;
+      margin-top: 4px;
     }
     .timeline-diary-body {
       font-size: 12.5px;
@@ -634,29 +658,50 @@
       box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
       padding: 8px 10px;
       border-radius: 38px;
-      gap: 6px;
+      gap: 5px;
     }
     .btn-mode-toggle {
       height: 48px;
-      padding: 0 12px;
+      padding: 0 11px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 5px;
+      gap: 4px;
       border-radius: 28px;
       border: 1.5px solid #f472b6;
       background: #831843;
       color: #fbcfe8;
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 900;
       cursor: pointer;
       white-space: nowrap;
       flex-shrink: 0;
     }
     .btn-mode-toggle.is-assistant { border-color: #38bdf8; background: #0c4a6e; color: #bae6fd; }
+
+    /* ★ 散歩写真ボタン */
+    .btn-photo {
+      height: 48px;
+      padding: 0 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      border-radius: 28px;
+      border: 1.5px solid #38bdf8;
+      background: #0369a1;
+      color: #e0f2fe;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-photo:active { transform: scale(0.95); background: #0284c7; }
+
     .btn-stop {
       height: 48px;
-      padding: 0 13px;
+      padding: 0 11px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -665,7 +710,7 @@
       border: 1.5px solid #ef4444;
       background: #7f1d1d;
       color: #fecaca;
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 800;
       cursor: pointer;
       white-space: nowrap;
@@ -677,10 +722,10 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 5px;
       border-radius: 28px;
       border: 1px solid rgba(255, 255, 255, 0.16);
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 800;
       cursor: pointer;
       background: #1f2937;
@@ -855,9 +900,7 @@
       line-height: 1.8;
     }
 
-    /* ========================================================================
-       ★ 7. 【選択肢1】フルスクリーン本型絵日記スタジオ（レスポンシブ見開き）
-       ======================================================================== */
+    /* 7. フルスクリーン本型絵日記スタジオ */
     #book-studio-modal {
       position: fixed;
       inset: 0;
@@ -909,7 +952,6 @@
       .studio-main-body { flex-direction: column; }
     }
 
-    /* 左側：記憶帳エディター */
     .studio-memories-pane {
       width: 38%;
       min-width: 280px;
@@ -993,7 +1035,6 @@
       cursor: pointer;
     }
 
-    /* 右側：1日1ページめくり 本型絵日記 */
     .studio-diary-book-pane {
       flex: 1;
       display: flex;
@@ -1091,7 +1132,6 @@
       font-weight: 800;
     }
 
-    /* 写真レイアウト枠 */
     .book-photo-frame {
       width: 100%;
       height: 140px;
@@ -1158,7 +1198,6 @@
     }
     .book-diary-textarea:focus { border-color: #f97316; }
 
-    /* フッターアクションバー */
     .studio-footer-bar {
       background: #ffffff;
       padding: 12px 20px;
@@ -1474,7 +1513,7 @@
     .adjust-tabs { display: flex; width: 100%; max-width: 420px; background: #1e293b; border-radius: 16px; padding: 4px; gap: 4px; }
     .adjust-tab-btn { flex: 1; border: none; background: transparent; color: #94a3b8; padding: 8px 4px; font-size: 11.5px; font-weight: 800; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
     .adjust-tab-btn.active { background: #f472b6; color: white; box-shadow: 0 2px 8px rgba(244, 114, 182, 0.4); }
-    .adjust-preview-stage { position: relative; width: 100%; max-width: 380px; height: 300px; display: flex; justify-content: center; align-items: flex-end; }
+    .adjust-preview-stage { position: relative; width: 100%; max-width: 380px; height: 300px; display: center; justify-content: center; align-items: flex-end; }
     .adjust-cat-img { position: absolute; bottom: 0; height: 100%; max-height: 300px; object-fit: contain; object-position: bottom center; pointer-events: none; }
     .adjust-controls-box { width: 100%; max-width: 420px; background: #1e293b; border-radius: 20px; padding: 12px 16px; color: #e2e8f0; display: flex; flex-direction: column; gap: 8px; }
     .adjust-row { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: bold; }
@@ -1762,12 +1801,19 @@
       </button>
     </div>
 
+    <!-- 4. 最下部操作バー -->
     <div class="bottom-controls">
       <div class="action-bar" id="action-bar">
         <button class="btn-mode-toggle" id="mode-toggle-btn" title="なかよし雑談とおてつだいを切り替えるニャ！">
           <span id="mode-icon">🐾</span>
           <span id="mode-text">なかよし</span>
         </button>
+
+        <!-- ★ 散歩写真ボタン ＆ 隠しファイルインプット -->
+        <button class="btn-photo" id="photo-action-btn" title="写真を撮ってクロちゃんに見せるニャ！">
+          <span>📷</span><span>写真</span>
+        </button>
+        <input type="file" id="camera-photo-input" accept="image/*" capture="environment" style="display:none;">
 
         <button class="btn-stop" id="stop-action-btn" title="考え中・お話しを途中で取り消すニャ！">
           <span>🛑</span><span>ストップ</span>
@@ -1800,7 +1846,7 @@
     </div>
   </div>
 
-  <!-- ★【選択肢1】フルスクリーン本型絵日記スタジオ（レスポンシブ見開き） -->
+  <!-- フルスクリーン本型絵日記スタジオ -->
   <div id="book-studio-modal">
     <div class="book-studio-window">
       <div class="studio-top-bar">
@@ -1929,8 +1975,14 @@
           <div class="manual-sec-title">🐾 基本のお話し方</div>
           <div>マイクに向かって「おはよう」「今何時？」「今日何日？」と気軽に話しかけてニャ！名前を呼ぶだけでも喜んでお返事するニャン♪</div>
 
+          <div class="manual-sec-title">📍 散歩中の場所 ＆ 周辺スポット特定</div>
+          <div>「いまどこ？」と聞くと、市ではなく「〇〇市〇〇町〇丁目付近」までピンポイントで答えるニャ！さらに「近くの川何？」「公園ある？」と聞くと、目と鼻の先にある川や公園を近い順に教えてくれるニャン🐾</div>
+
+          <div class="manual-sec-title">📷 散歩写真 ＆ 写真付き絵日記</div>
+          <div>下の「📷 写真」ボタンを押すと、スマホのカメラで撮った写真やアルバムの写真をクロちゃんに見せられるニャ！写真について楽しくおしゃべりできて、その日の絵日記に自動で写真が飾られるニャン♪</div>
+
           <div class="manual-sec-title">📖 500文字の思い出日記＆昔話</div>
-          <div>「今日の日記書いて」と頼むと、今日のお話しをギュッと凝縮した可愛い絵日記を書き込みますニャ！昔話（「先週話したラーメン屋覚えてる？」など）を振られても過去の日記からバッチリ思い出して会話するニャン♪</div>
+          <div>「今日の日記書いて」と頼むと、今日のお話しや歩いた場所、写真をギュッと凝縮した可愛い絵日記を書き込みますニャ！昔話（「先週話したラーメン屋覚えてる？」など）を振られても過去の日記からバッチリ思い出して会話するニャン♪</div>
 
           <div class="manual-sec-title">👓 なかよしモード と おてつだいモード</div>
           <div>左下のボタンで切り替えできるニャ！
@@ -1949,7 +2001,7 @@
         </div>
       </details>
 
-      <!-- ★【安心設計】ファイル保存・読込＆本型スタジオ起動ボックス -->
+      <!-- ★ 安心ファイルバックアップ＆本型スタジオ起動ボックス -->
       <div class="pc-sync-card">
         <div class="pc-sync-title">
           <span>📖</span>
@@ -2070,7 +2122,7 @@
   </div>
 
   <!-- ★ 最新版 app.js をキャッシュ対策付きで読み込み -->
-  <script src="app.js?v=20250524_book_studio_v5"></script>
+  <script src="app.js?v=20250524_gps_photo_v6"></script>
 </body>
 </html>
 

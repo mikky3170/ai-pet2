@@ -1,8 +1,10 @@
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版）
+   - オンデマンド高精度GPS（起動時＋質問時のみ測位・町名丁目ピンポイント回答）
+   - 至近距離スポット特定（川・公園・施設を1m単位で近い順ソート）
+   - 散歩写真の超軽量圧縮＆Gemini 3.5 Flash Lite画像認識・写真付き絵日記連動
    - コードとデータの完全分離（永続データ金庫・プログラム更新完全保護）
    - フルスクリーン「1日1ページめくり」本型絵日記スタジオ
-   - 写真レイアウト対応 ＆ インポート完全上書き更新（正常化）
    - 即時肉声相槌エンジン（沈黙ゼロ・間延び防止改善B）
    - Gemini 3.5 Flash Lite 専用（gemini-3.8-flash 完全除外・禁止）
    - VOICEVOX 音声・文字完全同期
@@ -389,7 +391,8 @@ class AudioSpeechEngine {
     const fillers = [
       "そうニャね♪",
       "えーっとニャ…",
-      "ニャン！なるほどニャ！",
+      "確認するニャ！",
+      "ちょっと待ってニャ♪",
       "クロが調べるニャ！",
       "うんうん、聞いてるニャ♪"
     ];
@@ -401,12 +404,14 @@ class AudioSpeechEngine {
     const speakerId = AppCore.getSpeakerId();
     let phrase = "そうニャね♪";
 
-    if (type === 'search') {
+    if (type === 'location') {
+      phrase = Math.random() > 0.5 ? "確認するニャ！" : "ちょっと待ってニャ♪";
+    } else if (type === 'search') {
       phrase = "クロが調べるニャ！";
     } else if (type === 'think') {
-      phrase = Math.random() > 0.5 ? "えーっとニャ…" : "ニャン！なるほどニャ！";
+      phrase = "えーっとニャ…";
     } else {
-      const candidates = ["そうニャね♪", "うんうん、聞いてるニャ♪", "ニャン！"];
+      const candidates = ["そうニャね♪", "うんうん、聞いてるニャ♪"];
       phrase = candidates[Math.floor(Math.random() * candidates.length)];
     }
 
@@ -519,7 +524,7 @@ class AudioSpeechEngine {
       .replace(/[（\(][^）\)]*?[）\)]/g, '')
       .replace(/```[\s\S]*?```/g, '')
       .replace(/<[^>]*>/g, '')
-      .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟]/gu, '')
+      .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷]/gu, '')
       .replace(/^[、。,\.\s]+/, '')
       .trim();
 
@@ -693,69 +698,138 @@ class AudioSpeechEngine {
 }
 
 /* ==========================================================================
-   ★ MODULE 2: 日時・位置情報・リアルタイムお天気＆気温
+   ★ MODULE 2: オンデマンド高精度GPS ＆ 至近距離スポット距離ソート
    ========================================================================== */
-const TimeProvider = {
-  getCurrentInfo() {
-    const now = new Date();
-    const days = ['日', '月', '火', '水', '木', '金', '土'];
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    const date = now.getDate();
-    const dayStr = days[now.getDay()];
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-
-    return {
-      hours,
-      minutes,
-      clockDisplay: `${hours}時${minutes}分だニャン🐾`,
-      spokenClock: `今の時間は、${hours}時${minutes}分だニャン！`,
-      dateDisplay: `今日は${month}月${date}日(${dayStr}曜日)だニャ🐾`,
-      spokenDate: `今日の日付は、${month}月${date}日、${dayStr}曜日だニャ！`,
-      clock: `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`,
-      logKey: `${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`,
-      fullDate: `${year}年${month}月${date}日(${dayStr}曜日)`
-    };
-  }
-};
-
 const LocationProvider = {
   lat: null,
   lon: null,
   cityArea: "",
-  detailedAddress: "東京都東村山市付近",
+  detailedAddress: "東京都東村山市本町付近",
+  townLevelArea: "東京都東村山市本町付近", // ★ 〇〇市〇〇町〇丁目付近
+  nearbySpots: [], // ★ 直線距離でソートされた至近スポット一覧
   weather: "快晴",
   temperature: "22",
   isGpsAvailable: false,
 
+  /* 2点間の直線距離をメートル単位で計算（球面三角法） */
+  calcDistanceMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // 地球半径(m)
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(R * c);
+  },
+
+  /* 1. 起動時のウォーミングアップ測位（スタンバイ） */
   initWatcher() {
+    this.fetchLocationOnDemand(false);
+  },
+
+  /* 2. ★ オンデマンド高精度測位（場所を聞かれた瞬間に呼ぶ） */
+  async fetchLocationOnDemand(fetchSpots = true) {
     if (!('geolocation' in navigator)) {
-      this._applyHomeFallback();
+      await this._applyHomeFallback();
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        this.isGpsAvailable = true;
-        this.lat = pos.coords.latitude;
-        this.lon = pos.coords.longitude;
-        this._reverseGeocode(this.lat, this.lon);
-        this._fetchWeather(this.lat, this.lon);
-        Logger.log(`[GPS測位成功] 座標: ${this.lat.toFixed(4)}, ${this.lon.toFixed(4)}`, "success");
-      },
-      () => {
-        Logger.log(`[GPS不可] 設定された自宅・拠点座標へ切り替えます`, "warn");
-        this._applyHomeFallback();
-      },
-      { enableHighAccuracy: true, timeout: 8000 }
-    );
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          this.isGpsAvailable = true;
+          this.lat = pos.coords.latitude;
+          this.lon = pos.coords.longitude;
+          Logger.log(`[GPS測位成功⚡] 座標: ${this.lat.toFixed(5)}, ${this.lon.toFixed(5)} (精度: ±${Math.round(pos.coords.accuracy)}m)`, "success");
+
+          await this._reverseGeocode(this.lat, this.lon);
+          this._fetchWeather(this.lat, this.lon);
+
+          if (fetchSpots) {
+            await this._scanNearbyFeatures(this.lat, this.lon);
+          }
+          resolve(true);
+        },
+        async (err) => {
+          Logger.log(`[GPS不可: ${err.message}] 拠点座標へ切り替えます`, "warn");
+          await this._applyHomeFallback();
+          resolve(false);
+        },
+        { enableHighAccuracy: true, timeout: 6000, maximumAge: 10000 }
+      );
+    });
+  },
+
+  /* 3. 周辺250m以内の地物（川・公園・施設）をスキャンしてメートル順にソート */
+  async _scanNearbyFeatures(lat, lon) {
+    try {
+      const radius = 250;
+      const query = `[out:json][timeout:5];(
+        way["waterway"](around:${radius},${lat},${lon});
+        relation["waterway"](around:${radius},${lat},${lon});
+        node["leisure"="park"](around:${radius},${lat},${lon});
+        way["leisure"="park"](around:${radius},${lat},${lon});
+        node["amenity"](around:${radius},${lat},${lon});
+        way["amenity"](around:${radius},${lat},${lon});
+        node["leisure"](around:${radius},${lat},${lon});
+      );out center;`;
+
+      const res = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'data=' + encodeURIComponent(query)
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const elements = data.elements || [];
+        const spots = [];
+
+        elements.forEach(el => {
+          const tags = el.tags || {};
+          const name = tags.name || tags["name:ja"];
+          if (!name) return;
+
+          const sLat = el.lat || el.center?.lat;
+          const sLon = el.lon || el.center?.lon;
+          if (!sLat || !sLon) return;
+
+          const dist = this.calcDistanceMeters(lat, lon, sLat, sLon);
+          let type = "施設";
+          if (tags.waterway) type = "川（河川）";
+          else if (tags.leisure === "park") type = "公園";
+          else if (tags.leisure === "sports_centre" || tags.leisure === "bowling_alley") type = "スポーツ・娯楽";
+
+          spots.push({ name, type, dist });
+        });
+
+        // ★ 最も近い順（昇順）に並べ替え
+        spots.sort((a, b) => a.dist - b.dist);
+        // 重複を除去して上位5件を格納
+        const uniqueSpots = [];
+        const seen = new Set();
+        for (const sp of spots) {
+          if (!seen.has(sp.name)) {
+            seen.add(sp.name);
+            uniqueSpots.push(sp);
+            if (uniqueSpots.length >= 5) break;
+          }
+        }
+
+        this.nearbySpots = uniqueSpots;
+        Logger.log(`[周辺スポットスキャン完了] 最も近い: ${uniqueSpots[0]?.name || 'なし'} (${uniqueSpots[0]?.dist || 0}m)`, "info");
+      }
+    } catch(e) {
+      Logger.log(`[周辺スポットスキャン例外] ${e.message}`, "warn");
+    }
   },
 
   async _applyHomeFallback() {
     const homeVal = (localStorage.getItem('kuro_home_coords') || '').trim();
     if (!homeVal) {
-      this.detailedAddress = "東京都東村山市本町付近";
+      this.detailedAddress = "東京都東村山市本町1丁目付近";
+      this.townLevelArea = "東京都東村山市本町1丁目付近";
       this.cityArea = "東京都東村山市";
       this.lat = 35.7582;
       this.lon = 139.4678;
@@ -767,30 +841,14 @@ const LocationProvider = {
     if (match) {
       this.lat = parseFloat(match[1]);
       this.lon = parseFloat(match[2]);
-      this._reverseGeocode(this.lat, this.lon);
+      await this._reverseGeocode(this.lat, this.lon);
       this._fetchWeather(this.lat, this.lon);
-      Logger.log(`[自宅座標適用] 座標: ${this.lat}, ${this.lon}`, "info");
       return;
     }
 
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(homeVal)}&limit=1&accept-language=ja`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.length > 0) {
-          this.lat = parseFloat(data[0].lat);
-          this.lon = parseFloat(data[0].lon);
-          this.cityArea = homeVal;
-          this.detailedAddress = homeVal;
-          this._fetchWeather(this.lat, this.lon);
-          Logger.log(`[住所➔座標変換成功] ${homeVal} (${this.lat}, ${this.lon})`, "success");
-          return;
-        }
-      }
-    } catch(e) {}
-
     this.cityArea = homeVal;
     this.detailedAddress = homeVal;
+    this.townLevelArea = homeVal;
   },
 
   async _fetchWeather(lat, lon) {
@@ -812,6 +870,7 @@ const LocationProvider = {
     } catch(e) {}
   },
 
+  /* 町名・丁目レベルまで正確に抽出 */
   async _reverseGeocode(lat, lon) {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=ja`);
@@ -820,21 +879,26 @@ const LocationProvider = {
         const a = data.address || {};
         const pref = a.province || a.state || "";
         const city = a.city || a.ward || a.town || "";
+        const sub = a.suburb || a.quarter || a.neighbourhood || "";
+        const road = a.road || "";
+
         this.cityArea = `${pref}${city}`.trim() || "東京都東村山市";
-        this.detailedAddress = [pref, city, a.suburb, a.road].filter(Boolean).join("") || "東京都東村山市本町";
+        // ★ 〇〇市〇〇町〇丁目付近
+        this.townLevelArea = `${city}${sub}${road ? ' ' + road : ''}付近`.trim() || "東京都東村山市本町付近";
+        this.detailedAddress = [pref, city, sub, road].filter(Boolean).join("") || "東京都東村山市本町";
       }
     } catch(e) {}
   }
 };
 
 /* ==========================================================================
-   ★ MODULE 3: 鉄壁ストレージ管理（コードとデータの完全分離＆固定金庫）
+   ★ MODULE 3: 鉄壁ストレージ管理（コードとデータの完全分離＆永続固定金庫）
    ========================================================================== */
 const DATA_KEYS = {
-  MEMORIES: 'kuro_data_memories',   // 記憶帳（配列）
-  DIARIES:  'kuro_data_diaries',    // 日記帳（配列）
+  MEMORIES: 'kuro_data_memories',   // 記憶帳
+  DIARIES:  'kuro_data_diaries',    // 日記帳（写真枠つき）
   SETTINGS: 'kuro_data_settings',   // ユーザー設定
-  SNAPSHOT: 'kuro_data_snapshot'    // 万が一のための直前自動復元ガード
+  SNAPSHOT: 'kuro_data_snapshot'    // 万が一の直前復元スナップショット
 };
 
 const StorageManager = {
@@ -889,7 +953,7 @@ const StorageManager = {
     });
   },
 
-  /* 🔒 1. 記憶帳：プログラム更新で絶対に消えない永続ロード */
+  /* 🔒 記憶帳ロード：初回のみ初期値を設定し、以降は上書きされない永続保存 */
   loadMemories(defaultMemories) {
     try {
       const raw = localStorage.getItem(DATA_KEYS.MEMORIES);
@@ -899,7 +963,6 @@ const StorageManager = {
       }
     } catch(e) {}
 
-    // 初回起動時のみデフォルトを流し込む
     const initial = Array.isArray(defaultMemories) ? [...defaultMemories] : [];
     this.saveMemories(initial);
     return initial;
@@ -911,7 +974,6 @@ const StorageManager = {
     } catch(e) {}
   },
 
-  /* 🔒 2. 日記帳：永続ロード＆保存 */
   loadAllDiaries() {
     try {
       const raw = localStorage.getItem(DATA_KEYS.DIARIES);
@@ -930,10 +992,7 @@ const StorageManager = {
   },
 
   saveDiary(entryText, customDateKey = null, customFullDate = null, photoData = null) {
-    if (!entryText || entryText.length < 25) {
-      Logger.log("[DiaryGuard] 日記テキストが短すぎるため保存をブロックしました", "warn");
-      return false;
-    }
+    if (!entryText || entryText.length < 20) return false;
 
     const dateKey = customDateKey || TimeProvider.getCurrentInfo().logKey;
     const fullDate = customFullDate || TimeProvider.getCurrentInfo().fullDate;
@@ -946,7 +1005,7 @@ const StorageManager = {
       weather,
       temperature: temp,
       content: entryText,
-      photo: photoData || null, // ★将来の写真枠（Base64等）
+      photo: photoData || null, // ★ 散歩写真（Base64圧縮）
       timestamp: Date.now()
     };
 
@@ -963,6 +1022,20 @@ const StorageManager = {
 
     this.saveAllDiaries(list);
     return true;
+  },
+
+  /* 今日の日記に散歩写真を貼り付ける */
+  attachPhotoToTodayDiary(photoBase64) {
+    const dateKey = TimeProvider.getCurrentInfo().logKey;
+    let list = this.loadAllDiaries();
+    const existingIdx = list.findIndex(d => d.dateKey === dateKey);
+    if (existingIdx >= 0) {
+      list[existingIdx].photo = photoBase64;
+      this.saveAllDiaries(list);
+    } else {
+      // 日記がまだない場合は写真枠付きの下書きを作成
+      this.saveDiary("今日はおやびんと一緒にお散歩して写真を撮ったニャン♪", null, null, photoBase64);
+    }
   },
 
   getTodayDiary() {
@@ -1003,7 +1076,6 @@ const StorageManager = {
     return null;
   },
 
-  /* 🔒 3. 万が一のための自動スナップショット作成（直前復元用） */
   createAutoSnapshot() {
     try {
       const snap = {
@@ -1015,22 +1087,10 @@ const StorageManager = {
     } catch(e) {}
   },
 
-  restoreAutoSnapshot() {
-    try {
-      const raw = localStorage.getItem(DATA_KEYS.SNAPSHOT);
-      if (!raw) return false;
-      const snap = JSON.parse(raw);
-      if (Array.isArray(snap.memories)) this.saveMemories(snap.memories);
-      if (Array.isArray(snap.diaries)) this.saveAllDiaries(snap.diaries);
-      return true;
-    } catch(e) { return false; }
-  },
-
-  /* 🔒 4. 純粋データのみをファイル書き出し（エクスポート） */
   downloadDataPackage(filename = "クロちゃんのデータ.json") {
     const pkg = {
       format: "kuro_pure_data_package",
-      version: "3.0",
+      version: "3.5",
       exportedAt: new Date().toLocaleString('ja-JP'),
       memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
@@ -1057,24 +1117,17 @@ const StorageManager = {
     Logger.log(`[データ書き出し完了] ${filename}`, "success");
   },
 
-  /* 🔒 5. 完全上書き更新（インポートの正常化：消したものは消え、直したものは置き換わる） */
   importAndReplaceDataPackage(data) {
     if (!data || typeof data !== 'object') throw new Error("無効なデータファイルです");
 
-    // 直前の状態を退避
     this.createAutoSnapshot();
 
-    // 記憶帳の完全上書き
     if (Array.isArray(data.memories)) {
       this.saveMemories(data.memories);
     }
-
-    // 日記帳の完全上書き
     if (Array.isArray(data.diaries)) {
       this.saveAllDiaries(data.diaries);
     }
-
-    // 設定・メガネ位置の反映
     if (data.settings && typeof data.settings === 'object') {
       const s = data.settings;
       if (s.speakerId) localStorage.setItem('kuro_voice_speaker_id', s.speakerId);
@@ -1318,7 +1371,7 @@ class AIThoughtEngine {
     return [];
   }
 
-  _buildContentsPayload(rawLogs, currentPrompt) {
+  _buildContentsPayload(rawLogs, currentPrompt, photoBase64 = null) {
     const contents = [];
     let lastRole = null;
     const recentLogs = rawLogs.slice(-10);
@@ -1335,10 +1388,22 @@ class AIThoughtEngine {
       }
     }
 
-    if (lastRole === 'user') {
+    // 写真がある場合はマルチモーダル用パーツを構築
+    const userParts = [{ text: currentPrompt }];
+    if (photoBase64) {
+      const base64Data = photoBase64.replace(/^data:image\/\w+;base64,/, '');
+      userParts.unshift({
+        inline_data: {
+          mime_type: "image/jpeg",
+          data: base64Data
+        }
+      });
+    }
+
+    if (lastRole === 'user' && !photoBase64) {
       contents[contents.length - 1].parts[0].text += `\n${currentPrompt}`;
     } else {
-      contents.push({ role: 'user', parts: [{ text: currentPrompt }] });
+      contents.push({ role: 'user', parts: userParts });
     }
 
     if (contents.length > 0 && contents[0].role === 'model') {
@@ -1348,7 +1413,8 @@ class AIThoughtEngine {
     return contents;
   }
 
-  async generateReply(promptText, rawLogs, character, memories) {
+  /* 1. 通常会話および写真認識会話の生成 */
+  async generateReply(promptText, rawLogs, character, memories, photoBase64 = null) {
     if (!this.apiKey) {
       Logger.log("[Gemini] APIキーが未設定です", "error");
       return { success: false, error: "NO_API_KEY" };
@@ -1357,17 +1423,26 @@ class AIThoughtEngine {
     const timeInfo = TimeProvider.getCurrentInfo();
     const weather = LocationProvider.weather;
     const temp = LocationProvider.temperature;
-    const address = LocationProvider.detailedAddress;
+    const townArea = LocationProvider.townLevelArea; // 〇〇市〇〇町〇丁目付近
     
     const recentDiaries = StorageManager.getRecentDiariesSummary(3);
     const pastMemoryDiary = StorageManager.findRelevantPastDiary(promptText);
+
+    // ★ 現在地からの至近距離スポット一覧（近い順）
+    let spotsContext = "";
+    if (LocationProvider.nearbySpots && LocationProvider.nearbySpots.length > 0) {
+      spotsContext = "【現在地から近い順の周辺スポット（至近距離ソート）】\n" +
+        LocationProvider.nearbySpots.map((s, idx) => `・${idx + 1}. 【${s.dist}m先】${s.name}（${s.type}）`).join('\n') +
+        "\n※ルール: おやびんが周囲の場所や川・公園について聞いてきたら、一番距離が近いもの（20m前後）から順に「すぐ目の前にあるのは〇〇だニャ！」と教えてください。";
+    }
 
     const systemPrompt = `
 あなたは世界一可愛いノルウェージャンフォレストキャットの1歳の子猫の女の子「${character.name}」です。
 【現在状況】
 ・日時: ${timeInfo.fullDate} ${timeInfo.clock}
-・現在地: ${address}
+・現在地（町名詳細）: ${townArea}
 ・天気: ${weather} / 現在の気温: ${temp}度
+${spotsContext ? spotsContext + '\n' : ''}
 【記憶帳（絶対忘れちゃダメなこと）】
 ${memories.map(m => `・${m}`).join('\n')}
 ${recentDiaries ? `【直近3日間の日記・思い出】\n${recentDiaries}\n` : ''}
@@ -1379,19 +1454,19 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 - 【重要】動作描写・ト書き（例: （笑う）、*しっぽを振る*、〜な様子など）の出力は一切禁止です。純粋なセリフ（発話テキスト）のみを出力してください。
 - 文を途中で絶対に切らないでください。必ず文章の最後まで話し終えて完結させてください。
 - 長さはテンポよく【40〜80文字程度（1〜2文）】で、愛らしく表情豊かに話してください。
-- 気温を聞かれたら「今の東村山は${temp}度だニャ！」のように【現在の気温: ${temp}度】を元に可愛く答えてください。
-- もしおやびんが昔話や「覚えてる？」と聞いてきたら、上記の【昔の思い出】を元に「覚えてるニャ！〇月〇日に話した〇〇だニャン！」と嬉しそうに答えてください。
+- 現在地を聞かれたら、市の名前だけでなく「いまは${townArea}を歩いてるニャン🐾」と詳細な場所を答えてください。
+- 川や公園、近くのものについて聞かれたら、上記の【周辺スポット】の中で一番距離が近いものから「すぐ〇m先にあるのは〇〇だニャ！」と教えてください。
+- 写真が送られてきたら、写っているもの（お花、川、食べ物、景色など）を褒めて嬉しそうにコメントしてください。
 - 前世は大天才発明家なので、テクノロジーや相談事では「前世の余の大発明」を自慢げに提案してください。
-- おやびんが話題にした主要キーワード（例: ラーメン、地名、ニュース等）があれば末尾に <!--TOPIC:単語--> を添えてください。
+- おやびんが話題にした主要キーワードがあれば末尾に <!--TOPIC:単語--> を添えてください。
 `;
 
-    const contents = this._buildContentsPayload(rawLogs, promptText);
+    const contents = this._buildContentsPayload(rawLogs, promptText, photoBase64);
 
     let targetModels = [
       "gemini-3.5-flash-lite",
       "gemini-2.0-flash-lite",
       "gemini-2.5-flash-lite",
-      "gemini-2.0-flash-lite-preview-02-05",
       "gemini-1.5-flash-8b"
     ];
 
@@ -1418,7 +1493,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
           body: JSON.stringify(bodyPayload)
         });
 
-        if (!res.ok && res.status === 400) {
+        if (!res.ok && res.status === 400 && !photoBase64) {
           const fallbackPayload = {
             contents: [{
               role: 'user',
@@ -1464,13 +1539,14 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
     return { success: false, error: "ALL_LITE_MODELS_FAILED" };
   }
 
+  /* 2. 500文字要約絵日記の執筆 */
   async generateDailyDiarySummary(todayAllLogs) {
     if (!this.apiKey) return { success: false };
 
     const timeInfo = TimeProvider.getCurrentInfo();
     const weather = LocationProvider.weather;
     const temp = LocationProvider.temperature;
-    const address = LocationProvider.detailedAddress;
+    const townArea = LocationProvider.townLevelArea;
 
     const conversationHistoryText = todayAllLogs
       .filter(l => l.text && !/(?:今日|きょう)?(?:の)?(?:日記|にっき).*(?:書いて|まとめて)/.test(l.text))
@@ -1483,7 +1559,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 
 【本日の情報】
 ・日付: ${timeInfo.fullDate}
-・場所: ${address}
+・場所: ${townArea}
 ・天気: ${weather} / 気温: ${temp}度
 
 【今日おやびんと話した会話ログ】
@@ -1492,7 +1568,7 @@ ${conversationHistoryText || '今日はおやびんとまったりお家で過�
 【執筆ルール】
 - 文字数上限は【500文字以内（250〜450文字程度）】で、起承転結のある心温まる文章にしてください。
 - 語尾は「〜ニャ」「〜ニャン♪」「〜だニャ🐾」を使ってください。
-- 今日話した具体的な内容（食べ物の名前、行った場所や調べたこと、タイマーを使ったこと、雑談など）を具体的に散りばめてください。
+- 今日歩いた場所（${townArea}）や話した内容、写真を撮ったこと、タイマーを使ったことなどを具体的に散りばめてください。
 - 出力は日記の本文のみを出力してください（タイトルやト書き、挨拶文は不要です）。
 `;
 
@@ -1511,7 +1587,7 @@ ${conversationHistoryText || '今日はおやびんとまったりお家で過�
       if (res.ok) {
         const data = await res.json();
         const diaryText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (diaryText && diaryText.length >= 30) {
+        if (diaryText && diaryText.length >= 25) {
           const clean = diaryText.replace(/[*#_~`]/g, '').trim();
           Logger.log(`[Diary成功⚡] 500文字要約日記が完成したニャ！（文字数: ${clean.length}字）`, "success");
           return { success: true, diaryText: clean };
@@ -1525,7 +1601,7 @@ ${conversationHistoryText || '今日はおやびんとまったりお家で過�
 }
 
 /* ==========================================================================
-   ★ MODULE 6: 中央司令塔（AppCore ＆ 本型絵日記スタジオ完全制御）
+   ★ MODULE 6: 中央司令塔（AppCore）
    ========================================================================== */
 const CHARACTER_CONFIG = {
   name: "クロ",
@@ -1551,10 +1627,9 @@ const AppCore = {
     timerId: null,
     timerSeconds: 0,
 
-    // ★ 本型絵日記スタジオの制御ステート
     studioMemories: [],
     studioDiaries: [],
-    studioDiaryPageIdx: 0 // 現在開いている日記のページ番号
+    studioDiaryPageIdx: 0
   },
 
   audio: new AudioSpeechEngine(),
@@ -1575,7 +1650,6 @@ const AppCore = {
     }
 
     try {
-      // 🔒 コードとデータの完全分離：端末内の独立データ金庫からロード
       this.memories = StorageManager.loadMemories(CHARACTER_CONFIG.defaultMemories);
       this.todayLogs = StorageManager.loadTodayLogs();
       this.state.isAssistantMode = localStorage.getItem('kuro_mode') === 'assistant';
@@ -1587,7 +1661,8 @@ const AppCore = {
 
     this._bindUI();
     this._bindGlassesAdjusterUI();
-    this._bindBookStudioUI(); // ★ 本型思い出スタジオ初期化
+    this._bindBookStudioUI();
+    this._bindPhotoUploadUI(); // ★ 写真共有機能初期化
 
     try {
       this._renderMemories();
@@ -1595,6 +1670,7 @@ const AppCore = {
       this._restoreTimelineHistory();
       this._updateModelBadge();
 
+      // ★ タイミング①：起動時に最初のスタンバイ測位を実行
       LocationProvider.initWatcher();
 
       const savedSpeaker = localStorage.getItem('kuro_voice_speaker_id') || '10';
@@ -1637,7 +1713,7 @@ const AppCore = {
       }, 1000);
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 800);
-      Logger.log("[AppCore] 全システム正常稼働！コードとデータの完全分離＆思い出スタジオ連動完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！オンデマンドGPS＆写真絵日記スタジオ準備完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
@@ -1700,11 +1776,19 @@ const AppCore = {
     };
   },
 
-  renderBubble(role, text, cards = []) {
+  renderBubble(role, text, cards = [], photoUrl = null) {
     const box = document.getElementById('chat-timeline');
     if (!box) return null;
     const row = document.createElement('div');
     row.className = `chat-row ${role}`;
+
+    if (photoUrl) {
+      const imgWrap = document.createElement('div');
+      imgWrap.className = 'timeline-photo-wrap';
+      imgWrap.innerHTML = `<img src="${photoUrl}" alt="写真" class="timeline-shared-img">`;
+      row.appendChild(imgWrap);
+    }
+
     const b = document.createElement('div');
     b.className = 'chat-bubble';
     b.textContent = text;
@@ -1746,12 +1830,76 @@ const AppCore = {
         <span>🌤️ 天気: ${diaryData.weather}</span>
         <span>🌡️ 気温: ${diaryData.temperature}℃</span>
       </div>
+      ${diaryData.photo ? `<div class="timeline-diary-photo"><img src="${diaryData.photo}" alt="散歩写真"></div>` : ''}
       <div class="timeline-diary-body">${diaryData.content}</div>
     `;
 
     row.appendChild(card);
     box.appendChild(row);
     box.scrollTop = box.scrollHeight;
+  },
+
+  /* 散歩写真の超軽量圧縮＆Gemini送信処理 */
+  _bindPhotoUploadUI() {
+    const photoInput = document.getElementById('camera-photo-input');
+    const photoBtn = document.getElementById('photo-action-btn');
+
+    if (photoBtn && photoInput) {
+      photoBtn.onclick = () => {
+        this.audio.unlockMasterAudio();
+        photoInput.click();
+      };
+
+      photoInput.onchange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        Toast.show("写真をギュッと小さく圧縮中ニャ…📷", "info");
+        const compressedBase64 = await this._compressPhotoFile(file, 650, 0.75);
+
+        // タイムラインにおやびんの写真を表示
+        this.renderBubble('user', "クロちゃん、この写真見てニャ！", [], compressedBase64);
+
+        // 今日の日記帳の写真枠に自動ドッキング
+        StorageManager.attachPhotoToTodayDiary(compressedBase64);
+
+        // 相槌を打ってから写真について思考
+        this.audio.playImmediateFiller('search');
+        this.executeThought("この写真を見て感想やお話しを聞かせてニャ！", compressedBase64);
+
+        photoInput.value = '';
+      };
+    }
+  },
+
+  /* 画像を幅650px・容量60〜80KBに圧縮する超軽量フィルター */
+  async _compressPhotoFile(file, maxWidth = 650, quality = 0.75) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const base64 = canvas.toDataURL('image/jpeg', quality);
+          resolve(base64);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
   },
 
   _checkDirectIntent(text) {
@@ -1771,17 +1919,6 @@ const AppCore = {
     if (/(?:今日|きょう).*(?:何日|なんにち|いつ|何曜日|なんようび)|日付/.test(clean)) {
       const info = TimeProvider.getCurrentInfo();
       return { display: info.dateDisplay, spoken: info.spokenDate, waiting: "カレンダーを見てるニャ…📅" };
-    }
-
-    if (/(?:現在地|いまどこ|今どこ|ここどこ)/.test(clean)) {
-      const disp = LocationProvider.cityArea || "現在地付近";
-      const cards = [{
-        type: 'map-primary',
-        icon: '📍',
-        title: `Googleマップで現在地を見る`,
-        url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(LocationProvider.detailedAddress)}`
-      }];
-      return { display: `いまは${disp}にいるニャン🐾`, spoken: `今の場所は、${disp}にいるニャン！`, cards, waiting: "地図を見てるニャ…🗺️" };
     }
 
     return null;
@@ -1843,6 +1980,7 @@ const AppCore = {
   },
 
   async handleUserInput(text) {
+    // 🔒 日記依頼
     const isDiaryRequest = /(?:今日|きょう|本日)?(?:の)?(?:日記|にっき).*(?:書いて|まとめて|記録して|おねがい)/.test(text);
     if (isDiaryRequest) {
       this.audio.playImmediateFiller('think');
@@ -1850,6 +1988,7 @@ const AppCore = {
       return;
     }
 
+    // 1. キッチンタイマー
     const timerMatch = text.match(/(\d+)\s*分.*(?:測って|タイマー|計って|おしえて)/);
     if (timerMatch) {
       const mins = parseInt(timerMatch[1], 10);
@@ -1875,6 +2014,7 @@ const AppCore = {
       return;
     }
 
+    // 2. 単発定型即答（時間・日付）
     const direct = this._checkDirectIntent(text);
     if (direct) {
       const box = document.getElementById('chat-timeline');
@@ -1893,18 +2033,6 @@ const AppCore = {
 
       this.audio.speak(direct.spoken, null, () => {
         bubble.textContent = direct.display;
-        if (direct.cards && direct.cards.length > 0) {
-          const cardBox = document.createElement('div');
-          cardBox.className = 'action-card-box';
-          direct.cards.forEach(c => {
-            const a = document.createElement('a');
-            a.className = `link-action-card ${c.type}-card`;
-            a.href = c.url; a.target = '_blank';
-            a.innerHTML = `<span class="card-icon">${c.icon}</span><span class="card-title-text">${c.title}</span><span class="card-arrow">➔</span>`;
-            cardBox.appendChild(a);
-          });
-          row.appendChild(cardBox);
-        }
         if (this.avatar) this.avatar.setEmotion('talking');
         box.scrollTop = box.scrollHeight;
       }, () => {
@@ -1915,13 +2043,22 @@ const AppCore = {
       return;
     }
 
+    // ★ タイミング②：場所・周辺・川・公園に関する質問が出た瞬間
+    const isLocationQuery = /(?:いまどこ|今どこ|現在地|どこ歩いて|ここどこ|川|公園|近く|周辺|なにがある|何がある)/.test(text);
+    if (isLocationQuery) {
+      // 即座に肉声相槌を再生（待たされ感ゼロ）
+      this.audio.playImmediateFiller('location');
+      // その裏でオンデマンド高精度測位を実行
+      await LocationProvider.fetchLocationOnDemand(true);
+    } else {
+      const isSearchIntent = /(?:ラーメン|お店|ニュース|天気|気温|スポット)/.test(text);
+      this.audio.playImmediateFiller(isSearchIntent ? 'search' : 'think');
+    }
+
     if (/(?:どう|困った|疲れた|発明|ひらめき|教えて)/.test(text)) {
       this.audio.playEffect('idea');
       if (this.avatar) this.avatar.triggerIdeaBulb();
     }
-
-    const isSearchIntent = /(?:ラーメン|お店|ニュース|天気|気温|スポット|どこ)/.test(text);
-    this.audio.playImmediateFiller(isSearchIntent ? 'search' : 'think');
 
     this.executeThought(text);
   },
@@ -1987,7 +2124,7 @@ const AppCore = {
     }
   },
 
-  async executeThought(promptText) {
+  async executeThought(promptText, photoBase64 = null) {
     this.state.isThinking = true;
     if (this.avatar) this.avatar.setEmotion('thinking');
 
@@ -1996,13 +2133,13 @@ const AppCore = {
     row.className = 'chat-row model';
     const bubble = document.createElement('div');
     bubble.className = 'chat-bubble thinking-bubble';
-    bubble.textContent = /(?:ニュース|ラーメン|お店|天気|気温)/.test(promptText) ? "クロがお調べしてるニャ…🔍" : "クロが考えてるニャ…💭";
+    bubble.textContent = photoBase64 ? "写真を見てるニャ…📷✨" : (/(?:ニュース|ラーメン|お店|天気|気温)/.test(promptText) ? "クロがお調べしてるニャ…🔍" : "クロが考えてるニャ…💭");
     row.appendChild(bubble);
     box.appendChild(row);
     box.scrollTop = box.scrollHeight;
 
     const rawLogs = StorageManager.loadTodayLogs();
-    const res = await this.ai.generateReply(promptText, rawLogs, CHARACTER_CONFIG, this.memories);
+    const res = await this.ai.generateReply(promptText, rawLogs, CHARACTER_CONFIG, this.memories, photoBase64);
 
     if (res.success && res.text) {
       bubble.textContent = "返事の準備をしてるニャ…🎙️";
@@ -2013,6 +2150,16 @@ const AppCore = {
       this.todayLogs = StorageManager.loadTodayLogs();
 
       const cards = this._generateSmartCards(promptText, res.topicTag);
+
+      // 場所を聞かれた時はGoogleマップカードも添える
+      if (/(?:いまどこ|今どこ|現在地|どこ歩いて|ここどこ)/.test(promptText)) {
+        cards.unshift({
+          type: 'map-primary',
+          icon: '📍',
+          title: `Googleマップで現在地を見る`,
+          url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(LocationProvider.detailedAddress)}`
+        });
+      }
 
       this.audio.speak(res.text, null, () => {
         bubble.className = 'chat-bubble';
@@ -2314,9 +2461,6 @@ const AppCore = {
     }
   },
 
-  /* ========================================================================
-     ★ MODULE 7: 本型絵日記スタジオ（1日1ページめくり・写真枠・完全置換保存）
-     ======================================================================== */
   _bindBookStudioUI() {
     const modal = document.getElementById('book-studio-modal');
     const btnOpen = document.getElementById('btn-open-book-studio');
@@ -2370,7 +2514,6 @@ const AppCore = {
       };
     }
 
-    // ★ 変更を完全保存して閉じる
     if (btnSaveExit) {
       btnSaveExit.onclick = () => {
         this._commitStudioChangesToStorage();
@@ -2380,7 +2523,6 @@ const AppCore = {
       };
     }
 
-    // ★ 更新版ファイルをダウンロード
     if (btnExport) {
       btnExport.onclick = () => {
         this._commitStudioChangesToStorage();
@@ -2396,7 +2538,7 @@ const AppCore = {
 
     this.state.studioMemories = [...StorageManager.loadMemories(CHARACTER_CONFIG.defaultMemories)];
     this.state.studioDiaries = JSON.parse(JSON.stringify(StorageManager.loadAllDiaries()));
-    this.state.studioDiaryPageIdx = 0; // 最新の日記から表示
+    this.state.studioDiaryPageIdx = 0;
 
     this._renderStudioMemories();
     this._renderStudioDiaryPage();
@@ -2470,18 +2612,17 @@ const AppCore = {
           <div class="book-meta-tags">
             <span class="book-meta-weather">🌤️ ${diary.weather || '快晴'}</span>
             <span class="book-meta-temp">🌡️ ${diary.temperature || '22'}℃</span>
-            <button type="button" class="book-btn-del-entry" id="btn-del-cur-diary">🗑️ この日の日記を消す</button>
+            <button type="button" class="book-btn-del-entry" id="btn-del-cur-diary">🗑️ 日記削除</button>
           </div>
         </div>
 
-        <!-- ★ 写真レイアウト枠（将来の散歩写真枠） -->
         <div class="book-photo-frame" id="book-photo-box">
           ${diary.photo 
             ? `<img src="${diary.photo}" alt="散歩写真" class="book-photo-img">
                <button type="button" class="book-photo-remove-btn" id="btn-remove-photo">✕ 写真解除</button>`
             : `<div class="book-photo-placeholder">
-                 <span>📷 写真レイアウト枠</span>
-                 <span style="font-size:11px;color:#94a3b8;">（ここに散歩で撮った写真を飾れるニャ！）</span>
+                 <span>📷 散歩写真レイアウト枠</span>
+                 <span style="font-size:11px;color:#94a3b8;">（散歩で撮った写真がここに飾られますニャ！）</span>
                </div>`
           }
         </div>
@@ -2493,7 +2634,6 @@ const AppCore = {
       </div>
     `;
 
-    // 本文の編集をバッファに即時反映
     const textInput = document.getElementById('studio-diary-content-input');
     if (textInput) {
       textInput.oninput = (e) => {
@@ -2501,7 +2641,6 @@ const AppCore = {
       };
     }
 
-    // 写真解除
     const btnRemovePhoto = document.getElementById('btn-remove-photo');
     if (btnRemovePhoto) {
       btnRemovePhoto.onclick = () => {
@@ -2510,11 +2649,10 @@ const AppCore = {
       };
     }
 
-    // この日の日記を削除
     const btnDelDiary = document.getElementById('btn-del-cur-diary');
     if (btnDelDiary) {
       btnDelDiary.onclick = () => {
-        if (window.confirm(`${diary.fullDate} の日記を日記帳から削除してよろしいですかニャ？`)) {
+        if (window.confirm(`${diary.fullDate} の日記を削除してよろしいですかニャ？`)) {
           diaries.splice(curIdx, 1);
           if (this.state.studioDiaryPageIdx >= diaries.length) {
             this.state.studioDiaryPageIdx = Math.max(0, diaries.length - 1);
@@ -2574,7 +2712,6 @@ const AppCore = {
       };
     }
 
-    // ★【安心ファイル保存】
     const btnDownloadBackup = document.getElementById('btn-download-backup');
     if (btnDownloadBackup) {
       btnDownloadBackup.onclick = () => {
@@ -2583,7 +2720,6 @@ const AppCore = {
       };
     }
 
-    // ★【完全上書きファイル読込（インポート正常化）】
     const fileInputRestore = document.getElementById('file-input-restore');
     const btnTriggerRestore = document.getElementById('btn-trigger-restore');
 
@@ -2608,7 +2744,6 @@ const AppCore = {
             this.audio.playEffect('purr');
             this.audio.speak("おやびん、データを受け取ったニャン！");
 
-            // 読み込み後は本型スタジオを開いて確認できるようにする
             this.openBookStudio();
           } catch(err) {
             Toast.show("ファイルの読み込みに失敗しましたニャ: " + err.message, "error");
@@ -2761,7 +2896,7 @@ const AppCore = {
     const avatarWrapper = document.getElementById('avatar-wrapper');
     if (avatarWrapper) {
       avatarWrapper.onclick = (e) => {
-        if (e.target.closest('#transform-btn') || e.target.closest('#snack-btn')) return;
+        if (e.target.closest('#transform-btn') || e.target.closest('#snack-btn') || e.target.closest('#photo-action-btn')) return;
         this.audio.unlockMasterAudio();
         this.audio.playEffect('purr');
         if (this.avatar) {
@@ -3000,5 +3135,4 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
-
 
