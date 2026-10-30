@@ -3,7 +3,7 @@
    ========================================================================== */
 
 /* ==========================================================================
-   ★ MODULE 0: 診断ロガー ＆ トースト通知システム ＆ エビデンス収集
+   ★ MODULE 0: 診断ロガー ＆ トースト通知システム
    ========================================================================== */
 const Toast = {
   timer: null,
@@ -47,7 +47,7 @@ const Logger = {
 };
 
 /* ==========================================================================
-   ★ MODULE 1: 音声合成＆音声認識（優先1位：429完全防止＆声とセリフの完全同期）
+   ★ MODULE 1: 音声合成＆音声認識（VOICEVOX ＆ 声と文字の完全同期）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -68,7 +68,6 @@ class AudioSpeechEngine {
     this.silenceTimeout = null;
     this.watchdogInterval = null;
 
-    // ★ 429防止用：通信制御とキャッシュ
     this.fixedPhraseMap = new Map();
     this.recentSpokenTexts = [];
     this.lastSpeechEndTime = 0;
@@ -114,7 +113,6 @@ class AudioSpeechEngine {
     });
   }
 
-  /* 効果音シンセサイザー */
   playEffect(type) {
     const ctx = this._getAudioContext();
     if (!ctx) return;
@@ -375,25 +373,22 @@ class AudioSpeechEngine {
     }).catch(() => {});
   }
 
-  /* ★ 429防止策：並列リクエストの完全破棄 ＆ APIキー確実付与 ＆ キャッシュ優先 */
   async _getVoicevoxDirectUrl(text, speakerId) {
     const key = `${speakerId}_${text}`;
     if (this.fixedPhraseMap.has(key)) {
       return this.fixedPhraseMap.get(key);
     }
 
-    // 前のリクエストが残っている場合は確実に切断（同時実行数1のルール遵守）
     if (this.currentAbortController) {
       this.currentAbortController.abort();
     }
     this.currentAbortController = new AbortController();
     const signal = this.currentAbortController.signal;
 
-    // クールダウン制御（直前リクエストから2.5秒未満なら安全待機）
     const now = Date.now();
     const elapsed = now - this.lastVoicevoxRequestTime;
-    if (elapsed < 2500) {
-      await new Promise(r => setTimeout(r, 2500 - elapsed));
+    if (elapsed < 1600) {
+      await new Promise(r => setTimeout(r, 1600 - elapsed));
     }
     this.lastVoicevoxRequestTime = Date.now();
 
@@ -403,16 +398,10 @@ class AudioSpeechEngine {
     let initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodeURIComponent(text)}&speaker=${speakerId}`;
     if (vvKey) {
       initUrl += `&key=${encodeURIComponent(vvKey)}`;
-      Logger.log(`[VOICEVOX] APIキー認証枠で生成リクエスト中…`, "info");
-    } else {
-      Logger.log(`[VOICEVOX] 無料共有枠で生成リクエスト中…`, "info");
     }
 
     const initRes = await fetch(initUrl, { signal });
     if (!initRes.ok) {
-      if (initRes.status === 429) {
-        Logger.log(`[VOICEVOX 429] サーバーが混雑しています。安全待機します。`, "warn");
-      }
       throw new Error(`HTTP初期エラー ${initRes.status}`);
     }
 
@@ -424,7 +413,7 @@ class AudioSpeechEngine {
     if (!playUrl && initData.audioStatusUrl) {
       const statusUrl = initData.audioStatusUrl;
       for (let i = 1; i <= 24; i++) {
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise(r => setTimeout(r, 450));
         if (signal.aborted) throw new Error("リクエスト中断");
         try {
           const sRes = await fetch(statusUrl, { signal });
@@ -443,7 +432,6 @@ class AudioSpeechEngine {
 
     if (!playUrl) throw new Error("VOICEVOX生成タイムアウト");
 
-    // 取得できたURLをメモリキャッシュに保存（次回は通信0回で即再生）
     this.fixedPhraseMap.set(key, playUrl);
     return playUrl;
   }
@@ -464,7 +452,7 @@ class AudioSpeechEngine {
     return false;
   }
 
-  /* ★ 音声再生：音が鳴り始めた瞬間（onplay）にonStartを同期呼び出し */
+  /* ★ 音声再生と文字表示の完全同期 */
   async speak(text, speakerIdOverride = null, onStart = null, onEnd = null) {
     this.stopSpeaking();
     this.unlockMasterAudio();
@@ -473,16 +461,17 @@ class AudioSpeechEngine {
 
     let clean = this._convertAllNumbersToKana(text)
       .replace(/<!--[\s\S]*?-->/g, '')
-      .replace(/[（\(]\s*約?\d+\s*文字\s*[）\)]/g, '')
+      .replace(/[（\(][^）\)]*?[）\)]/g, '')
       .replace(/```[\s\S]*?```/g, '')
       .replace(/<[^>]*>/g, '')
       .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟]/gu, '')
+      .replace(/^[、。,\.\s]+/, '')
       .trim();
 
     if (!clean) { if (onStart) onStart(); if (onEnd) onEnd(); return; }
 
     this.recentSpokenTexts.unshift(clean);
-    if (this.recentSpokenTexts.length > 4) this.recentSpokenTexts.pop();
+    if (this.recentSpokenTexts.length > 5) this.recentSpokenTexts.pop();
 
     let hasTriggeredStart = false;
     const triggerStartOnce = () => {
@@ -498,7 +487,8 @@ class AudioSpeechEngine {
       this.masterAudio.src = directAudioUrl;
       this.masterAudio.playbackRate = this.rate;
 
-      this.masterAudio.onplay = () => { triggerStartOnce(); };
+      this.masterAudio.onplaying = () => { triggerStartOnce(); };
+
       this.masterAudio.onended = () => {
         this.isSpeaking = false;
         this.lastSpeechEndTime = Date.now();
@@ -513,7 +503,7 @@ class AudioSpeechEngine {
 
       await this.masterAudio.play();
     } catch (err) {
-      Logger.log(`[VOICEVOX通信待機] ${err.message}`, "warn");
+      Logger.log(`[VOICEVOX待機] ${err.message}`, "warn");
       this.isSpeaking = false;
       if (onStart) onStart();
       if (onEnd) onEnd();
@@ -646,7 +636,7 @@ class AudioSpeechEngine {
 }
 
 /* ==========================================================================
-   ★ MODULE 2: 日時・位置情報・リアルタイムお天気
+   ★ MODULE 2: 日時・位置情報・リアルタイムお天気＆気温
    ========================================================================== */
 const TimeProvider = {
   getCurrentInfo() {
@@ -677,8 +667,9 @@ const LocationProvider = {
   lat: null,
   lon: null,
   cityArea: "",
-  detailedAddress: "現在地を取得中…",
-  weather: "晴れ",
+  detailedAddress: "東京都東村山市付近",
+  weather: "快晴",
+  temperature: "22",
   isGpsAvailable: false,
 
   initWatcher() {
@@ -707,7 +698,7 @@ const LocationProvider = {
   async _applyHomeFallback() {
     const homeVal = (localStorage.getItem('kuro_home_coords') || '').trim();
     if (!homeVal) {
-      this.detailedAddress = "東京都東村山市付近（初期設定）";
+      this.detailedAddress = "東京都東村山市本町付近";
       this.cityArea = "東京都東村山市";
       this.lat = 35.7582;
       this.lon = 139.4678;
@@ -750,12 +741,16 @@ const LocationProvider = {
       const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
       if (res.ok) {
         const data = await res.json();
-        const code = data.current_weather?.weathercode || 0;
-        if (code <= 1) this.weather = "快晴";
-        else if (code <= 3) this.weather = "くもり";
-        else if (code >= 51 && code <= 67) this.weather = "雨";
-        else if (code >= 71) this.weather = "雪";
-        Logger.log(`[お天気取得] 現在の天気: ${this.weather}`, "info");
+        const cur = data.current_weather;
+        if (cur) {
+          this.temperature = Math.round(cur.temperature);
+          const code = cur.weathercode || 0;
+          if (code <= 1) this.weather = "快晴";
+          else if (code <= 3) this.weather = "くもり";
+          else if (code >= 51 && code <= 67) this.weather = "雨";
+          else if (code >= 71) this.weather = "雪";
+          Logger.log(`[気象情報取得] 天気: ${this.weather} / 気温: ${this.temperature}℃`, "info");
+        }
       }
     } catch(e) {}
   },
@@ -768,15 +763,15 @@ const LocationProvider = {
         const a = data.address || {};
         const pref = a.province || a.state || "";
         const city = a.city || a.ward || a.town || "";
-        this.cityArea = `${pref}${city}`.trim();
-        this.detailedAddress = [pref, city, a.suburb, a.road].filter(Boolean).join("");
+        this.cityArea = `${pref}${city}`.trim() || "東京都東村山市";
+        this.detailedAddress = [pref, city, a.suburb, a.road].filter(Boolean).join("") || "東京都東村山市本町";
       }
     } catch(e) {}
   }
 };
 
 /* ==========================================================================
-   ★ MODULE 3: 履歴・記憶・日記・メガネ座標ストレージ
+   ★ MODULE 3: 長期記憶・当日ログ・日記ストレージ
    ========================================================================== */
 const StorageManager = {
   defaultGlassesCoords: {
@@ -800,28 +795,70 @@ const StorageManager = {
     try { localStorage.setItem('kuro_glasses_coords_v5', JSON.stringify(coords)); } catch(e) {}
   },
 
-  saveDiary(entryText) {
-    const dateKey = TimeProvider.getCurrentInfo().logKey;
-    const diaryData = { date: TimeProvider.getCurrentInfo().fullDate, content: entryText };
-    localStorage.setItem(`kuro_diary_${dateKey}`, JSON.stringify(diaryData));
-  },
-
-  getDiary() {
-    const dateKey = TimeProvider.getCurrentInfo().logKey;
-    const raw = localStorage.getItem(`kuro_diary_${dateKey}`);
-    if (!raw) return null;
-    try { return JSON.parse(raw); } catch(e) { return null; }
-  },
-
-  saveHistory(history) {
-    try { localStorage.setItem('kuro_chat_history', JSON.stringify(history.slice(-40))); } catch(e) {}
-  },
-
-  loadHistory() {
+  /* 当日全会話ログの読み込み */
+  loadTodayLogs() {
+    const todayKey = `kuro_daily_logs_${TimeProvider.getCurrentInfo().logKey}`;
     try {
-      const raw = localStorage.getItem('kuro_chat_history');
+      const raw = localStorage.getItem(todayKey);
       return raw ? JSON.parse(raw) : [];
     } catch(e) { return []; }
+  },
+
+  /* 当日全会話ログの追加保存 */
+  appendTodayLog(role, text) {
+    const todayKey = `kuro_daily_logs_${TimeProvider.getCurrentInfo().logKey}`;
+    const logs = this.loadTodayLogs();
+    logs.push({ role, text, time: TimeProvider.getCurrentInfo().clock });
+    try {
+      localStorage.setItem(todayKey, JSON.stringify(logs.slice(-200)));
+    } catch(e) {}
+    this._cleanupOldLogs();
+  },
+
+  /* 容量節約のため7日以上前の生ログはクリア（日記は永続保持） */
+  _cleanupOldLogs() {
+    const curKey = TimeProvider.getCurrentInfo().logKey;
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith('kuro_daily_logs_') && !k.endsWith(curKey)) {
+        const dateStr = k.replace('kuro_daily_logs_', '');
+        const diffDays = (new Date() - new Date(dateStr)) / (1000 * 60 * 60 * 24);
+        if (diffDays > 7) localStorage.removeItem(k);
+      }
+    });
+  },
+
+  /* 日記（思い出要約）の保存 */
+  saveDiary(entryText) {
+    const dateKey = TimeProvider.getCurrentInfo().logKey;
+    const diaryData = { date: TimeProvider.getCurrentInfo().fullDate, content: entryText, timestamp: Date.now() };
+    localStorage.setItem(`kuro_diary_${dateKey}`, JSON.stringify(diaryData));
+
+    // 日記一覧リストへ追加
+    let list = this.loadAllDiaries();
+    list = list.filter(d => d.date !== diaryData.date);
+    list.unshift(diaryData);
+    localStorage.setItem('kuro_all_diaries_list', JSON.stringify(list.slice(0, 30)));
+  },
+
+  /* 最新の日記取得 */
+  getLatestDiary() {
+    const list = this.loadAllDiaries();
+    return list.length > 0 ? list[0] : null;
+  },
+
+  /* 全日記リスト取得 */
+  loadAllDiaries() {
+    try {
+      const raw = localStorage.getItem('kuro_all_diaries_list');
+      return raw ? JSON.parse(raw) : [];
+    } catch(e) { return []; }
+  },
+
+  /* 直近の日記要約テキスト（Geminiに渡す過去の思い出） */
+  getRecentDiariesSummary(count = 3) {
+    const list = this.loadAllDiaries().slice(0, count);
+    if (list.length === 0) return "";
+    return list.map(d => `・【${d.date}の思い出】: ${d.content}`).join("\n");
   },
 
   saveMemories(memories) {
@@ -839,7 +876,7 @@ const StorageManager = {
 };
 
 /* ==========================================================================
-   ★ MODULE 4: キャラクター描画 ＆ 各フレーム一体化アクセサリ
+   ★ MODULE 4: キャラクター描画 ＆ 感情シチュエーション完全同期
    ========================================================================== */
 class CatAvatarRenderer {
   constructor() {
@@ -930,15 +967,17 @@ class CatAvatarRenderer {
 
   setEmotion(emotion) {
     this.currentEmotion = emotion;
+
     Object.keys(this.frames).forEach(k => {
       if (k === emotion) this.frames[k].classList.add('active');
       else this.frames[k].classList.remove('active');
     });
 
-    this.wrapper.classList.remove('is-idling', 'is-talking', 'is-thinking');
+    this.wrapper.classList.remove('is-idling', 'is-talking', 'is-thinking', 'is-happy');
     if (emotion === 'idle') this.wrapper.classList.add('is-idling');
     else if (emotion === 'talking') this.wrapper.classList.add('is-talking');
     else if (emotion === 'thinking') this.wrapper.classList.add('is-thinking');
+    else if (emotion === 'happy') this.wrapper.classList.add('is-happy');
   }
 
   applyMode(mode) {
@@ -954,8 +993,8 @@ class CatAvatarRenderer {
       this.wrapper.classList.add('is-real-mode');
       if (vec) vec.classList.remove('active-mode');
       Object.values(this.frames).forEach(f => f.style.display = 'flex');
-      this.setEmotion(this.currentEmotion || 'idle');
     }
+    this.setEmotion(this.currentEmotion || 'idle');
   }
 
   triggerPoofSmoke() {
@@ -981,111 +1020,49 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   ★ MODULE 5: 思考・AI対話エンジン（Gemini全モデル導通検証＆詳細エビデンス記録）
+   ★ MODULE 5: 思考・AI対話エンジン（当日全ログ文脈 ＆ ト書き完全根絶）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
     this.apiKey = (localStorage.getItem('kuro_api_key') || '').trim();
-    this.proUsedToday = parseInt(localStorage.getItem('kuro_pro_usage_count') || '0', 10);
-    this.verifiedModels = [];
   }
 
-  getRemainingProQuota() { return Math.max(0, 20 - this.proUsedToday); }
-  incrementProQuota() {
-    this.proUsedToday++;
-    localStorage.setItem('kuro_pro_usage_count', this.proUsedToday);
-  }
+  /* 当日全ログをGeminiの形式（role交互・末尾user）に安全サニタイズ */
+  _buildContentsPayload(historyLogs, currentPrompt) {
+    const contents = [];
+    let lastRole = null;
 
-  evaluateComplexity(text) {
-    if (!text) return false;
-    const t = text.trim();
-    if (t.includes('3.8') || t.includes('本気で考えて') || t.includes('プログラミング') || t.includes('コード書いて')) return true;
-    const hardWords = ['論文', '論理的', 'アルゴリズム', '数理', '英文翻訳して詳しく', '詳しく比較', 'メリットとデメリット', '徹底解説', '詳細な計画'];
-    if (hardWords.some(k => t.includes(k))) return true;
-    if (t.length >= 70 && (t.includes('そして') || t.includes('さらに') || t.includes('まとめて'))) return true;
-    return false;
-  }
+    // 当日ログを展開
+    for (const item of historyLogs) {
+      if (!item.text) continue;
+      const role = item.role === 'model' ? 'model' : 'user';
 
-  /* ★ 全候補モデルの導通テスト＆エビデンス採取機能 */
-  async verifyAllModelsEvidence() {
-    if (!this.apiKey) {
-      Logger.log("[エビデンス] APIキーが未入力です。", "error");
-      return;
-    }
-
-    Logger.log("==========================================", "info");
-    Logger.log("[Gemini検証] Google API 導通テスト開始ニャ！", "info");
-
-    // 1. Googleがこのキーに許可しているモデル一覧を照会
-    let availableFromGoogle = [];
-    try {
-      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${this.apiKey}`);
-      if (listRes.ok) {
-        const listData = await listRes.json();
-        if (listData.models && Array.isArray(listData.models)) {
-          availableFromGoogle = listData.models
-            .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
-            .map(m => m.name.replace(/^models\//, ''));
-          Logger.log(`[Google公式一覧取得成功] 許可モデル数: ${availableFromGoogle.length}件`, "success");
-        }
+      if (role === lastRole) {
+        // 同じroleが連続した場合はテキストを結合（Geminiの400エラー防止）
+        contents[contents.length - 1].parts[0].text += `\n${item.text}`;
       } else {
-        const errJson = await listRes.json().catch(() => ({}));
-        const errMsg = errJson.error?.message || `HTTP ${listRes.status}`;
-        Logger.log(`[Google一覧照会失敗] 理由: ${errMsg}`, "error");
-      }
-    } catch(e) {
-      Logger.log(`[Google一覧照会例外] ${e.message}`, "error");
-    }
-
-    // 2. テスト対象の候補リスト（実績順）
-    const candidates = [
-      "gemini-1.5-flash",
-      "gemini-1.5-pro",
-      "gemini-pro",
-      "gemini-1.5-flash-latest",
-      ...availableFromGoogle
-    ];
-
-    // 重複を排除
-    const uniqueCandidates = [...new Set(candidates)];
-    this.verifiedModels = [];
-
-    for (const model of uniqueCandidates) {
-      const cleanModel = model.replace(/^models\//, '');
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${this.apiKey}`;
-      const payload = {
-        contents: [{ role: 'user', parts: [{ text: "テストだニャ。元気かニャ？" }] }],
-        generationConfig: { maxOutputTokens: 10 }
-      };
-
-      try {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "OK";
-          Logger.log(`[エビデンス: 有効判定✅] モデル「${cleanModel}」➔ 通信成功 (HTTP 200) 応答:「${reply.trim()}」`, "success");
-          this.verifiedModels.push(cleanModel);
-        } else {
-          const errData = await res.json().catch(() => ({}));
-          const detail = errData.error?.message || `HTTP ${res.status}`;
-          Logger.log(`[エビデンス: 無効判定❌] モデル「${cleanModel}」➔ 失敗 (HTTP ${res.status}) [詳細理由: ${detail}]`, "error");
-        }
-      } catch(err) {
-        Logger.log(`[エビデンス: 無効判定❌] モデル「${cleanModel}」➔ 通信例外: ${err.message}`, "error");
+        contents.push({ role, parts: [{ text: item.text }] });
+        lastRole = role;
       }
     }
 
-    Logger.log(`[検証完了] 有効と確認されたモデル: ${this.verifiedModels.join(', ') || 'なし'}`, "info");
-    Logger.log("==========================================", "info");
+    // 最新の発言を追加
+    if (lastRole === 'user') {
+      contents[contents.length - 1].parts[0].text += `\n${currentPrompt}`;
+    } else {
+      contents.push({ role: 'user', parts: [{ text: currentPrompt }] });
+    }
+
+    // 先頭がmodelなら除去
+    if (contents.length > 0 && contents[0].role === 'model') {
+      contents.shift();
+    }
+
+    return contents;
   }
 
-  /* ★ 対話返答生成（エビデンスで成功確認済みのモデルを最優先で使用） */
-  async generateReply(promptText, isPro, character, memories, isAssistantMode) {
+  /* 対話返答生成 */
+  async generateReply(promptText, historyLogs, character, memories, isAssistantMode) {
     if (!this.apiKey) {
       Logger.log("[Gemini] APIキーが未設定です", "error");
       return { success: false, error: "NO_API_KEY" };
@@ -1093,61 +1070,76 @@ class AIThoughtEngine {
 
     const timeInfo = TimeProvider.getCurrentInfo();
     const weather = LocationProvider.weather;
+    const temp = LocationProvider.temperature;
     const address = LocationProvider.detailedAddress;
-    const isDiary = /(?:今日|きょう)?(?:の)?(?:日記|にっき).*(?:書いて|教えて)/.test(promptText);
+    const recentDiaries = StorageManager.getRecentDiariesSummary(3);
+    const isDiaryRequest = /(?:今日|きょう)?(?:の)?(?:日記|にっき).*(?:書いて|教えて|おねがい)/.test(promptText);
 
+    // ★ ト書き・ブツ切れを根絶し、自然で賢い対話を生む強化システムプロンプト
     const systemPrompt = `
-あなたはノルウェージャンフォレストキャットの1歳の子猫の女の子「${character.name}」です。
-【現在状況】日時：${timeInfo.fullDate} ${timeInfo.clock} / 現在地：${address} / 天気：${weather}
+あなたは世界一可愛いノルウェージャンフォレストキャットの1歳の子猫の女の子「${character.name}」です。
+【現在状況】
+・日時: ${timeInfo.fullDate} ${timeInfo.clock}
+・現在地: ${address}
+・天気: ${weather} / 現在の気温: ${temp}度
 【記憶帳】
 ${memories.map(m => `・${m}`).join('\n')}
-【性格・ルール】
-- 飼い主さんのことは「おやびん」と呼びます。語尾は「〜ニャ」「〜ニャン♪」「〜だニャ！」。
-- 前世は大発明家。テクノロジーやお悩みの話題では「前世の余の大発明」を自慢げに提案します。
-- 夜更かししがちなおやびんを心配するお姉さん気取りです。
-- ★セリフは必ず【40〜50文字以内（1〜2文）】で完結させてください。
-${isAssistantMode ? '- おてつだいモード発動中！話題の単語を末尾に <!--TOPIC:単語--> で添えてください。' : ''}
+${recentDiaries ? `【過去数日間の日記・思い出】\n${recentDiaries}\n` : ''}
+
+【★絶対厳守の話し方ルール】
+- 飼い主さんのことは必ず親しみを込めて「おやびん」と呼んでください。
+- 語尾は必ず「〜ニャ」「〜ニャン♪」「〜だニャ！」「〜ニャ🐾」をつけてください。
+- 【重要】動作描写・ト書き（例: （笑う）、*しっぽを振る*、〜な様子など）の出力は一切禁止です。純粋なセリフ（発話テキスト）のみを出力してください。
+- 文を途中で絶対に切らないでください。必ず文章の最後まで話し終えて完結させてください。
+- 長さは【60〜100文字程度（1〜3文）】で、愛らしく表情豊かにテンポよく話してください。
+- 気温を聞かれたら「今の東村山は${temp}度だニャ！」のように【現在の気温: ${temp}度】を元に可愛く答えてください。
+- 今日のこれまでの会話の流れをしっかり踏まえて、自然で楽しい受け答えをしてください。
+- 前世は大天才発明家なので、テクノロジーや相談事では「前世の余の大発明」を自慢げに提案してください。
+- おやびんが話題にした主要キーワード（例: ラーメン、地名、ニュース等）があれば末尾に <!--TOPIC:単語--> を添えてください。
+${isDiaryRequest ? '★今回は「今日の日記」を頼まれました。今日交わした会話を振り返り、可愛くて心温まるクロちゃん目線の日記（150文字程度）を書いてください。' : ''}
 `;
 
-    // 候補モデルの決定
-    let targetModels = [];
-    if (this.verifiedModels.length > 0) {
-      if (isPro) {
-        targetModels = this.verifiedModels.filter(m => m.includes('pro')).concat(this.verifiedModels);
-      } else {
-        targetModels = this.verifiedModels.filter(m => m.includes('flash')).concat(this.verifiedModels);
-      }
-    } else {
-      targetModels = isPro
-        ? ["gemini-1.5-pro", "gemini-1.5-pro-latest", "gemini-1.5-flash"]
-        : ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-pro"];
-    }
-
-    // 重複を排除
-    targetModels = [...new Set(targetModels)];
+    const contents = this._buildContentsPayload(historyLogs, promptText);
+    const targetModels = ["gemini-3.5-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b"];
 
     for (const model of targetModels) {
       const cleanModel = model.replace(/^models\//, '');
       try {
-        Logger.log(`[Gemini] モデル「${cleanModel}」へリクエスト中…`, "info");
+        Logger.log(`[Gemini] モデル「${cleanModel}」へ文脈付きリクエスト中…`, "info");
 
         const bodyPayload = {
-          contents: [{
-            role: 'user',
-            parts: [{ text: `${systemPrompt}\n\n【おやびんからの言葉】\n${promptText}` }]
-          }],
+          system_instruction: {
+            parts: [{ text: systemPrompt }]
+          },
+          contents: contents,
           generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 200
+            temperature: 0.75,
+            maxOutputTokens: 350
           }
         };
 
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${this.apiKey}`;
-        const res = await fetch(endpoint, {
+        let res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(bodyPayload)
         });
+
+        if (!res.ok && res.status === 400) {
+          // フォールバック（contentsにシステム指示を直接統合）
+          const fallbackPayload = {
+            contents: [{
+              role: 'user',
+              parts: [{ text: `${systemPrompt}\n\n【おやびんの発言】\n${promptText}` }]
+            }],
+            generationConfig: { temperature: 0.75, maxOutputTokens: 350 }
+          };
+          res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fallbackPayload)
+          });
+        }
 
         if (res.ok) {
           const data = await res.json();
@@ -1158,16 +1150,25 @@ ${isAssistantMode ? '- おてつだいモード発動中！話題の単語を末
             const tm = raw.match(/<!--TOPIC:(.*?)-->/i);
             if (tm) topicTag = tm[1].trim();
 
-            const clean = raw.replace(/<!--[\s\S]*?-->/g, '').replace(/[（\(].*?[）\)]/g, '').trim();
+            // ト書きの安全クリーンアップ
+            let clean = raw
+              .replace(/<!--[\s\S]*?-->/g, '')
+              .replace(/[（\(][^）\)]*?[）\)]/g, '')
+              .replace(/[*#_~`]/g, '')
+              .replace(/^[、。,\.\s]+/, '')
+              .trim();
+
+            if (isDiaryRequest) {
+              StorageManager.saveDiary(clean);
+            }
 
             Logger.log(`[Gemini成功⚡] モデル「${cleanModel}」から正常にお返事取得ニャ！`, "success");
-            if (isDiary) StorageManager.saveDiary(clean);
-            return { success: true, text: clean, topicTag, modelUsed: cleanModel };
+            return { success: true, text: clean, topicTag, modelUsed: cleanModel, isDiary: isDiaryRequest };
           }
         } else {
           const errJson = await res.json().catch(() => ({}));
           const errMsg = errJson.error?.message || `HTTP ${res.status}`;
-          Logger.log(`[Gemini失敗] モデル「${cleanModel}」HTTP ${res.status} [詳細: ${errMsg}]`, "error");
+          Logger.log(`[Gemini待機] モデル「${cleanModel}」HTTP ${res.status} [理由: ${errMsg}]`, "warn");
         }
       } catch (err) {
         Logger.log(`[Gemini通信例外] ${err.message}`, "warn");
@@ -1184,10 +1185,10 @@ ${isAssistantMode ? '- おてつだいモード発動中！話題の単語を末
 const CHARACTER_CONFIG = {
   name: "クロ",
   defaultMemories: [
-    "名前：クロ（ノルウェージャンフォレストキャット、1歳女の子）",
-    "飼い主：おやびん（ミッキーさん。世界一好き！）",
+    "名前：クロ（ノルウェージャンフォレストキャット、1歳の元気な女の子）",
+    "飼い主：おやびん（ミッキーさん。世界で一番大好き！）",
     "大好物：ちゅ〜る、かつおぶし、ラーメン、餃子",
-    "前世：世界的に有名な大天才発明家（自慢好き）",
+    "前世：世界的に有名な大天才発明家（自慢好きで余と呼ぶことも）",
     "家族：ママのかよちゃん、お兄ちゃんのりゅうせいくん、弟分のたいせいくん、大親友のかまぶーくん"
   ]
 };
@@ -1198,7 +1199,6 @@ const AppCore = {
     isThinking: false,
     isProcessingInput: false,
     isAssistantMode: false,
-    pending38Prompt: null,
     editingMemoryIdx: null,
     activeAdjustTab: 'idle',
     snackCount: 0,
@@ -1210,7 +1210,7 @@ const AppCore = {
   ai: new AIThoughtEngine(),
   avatar: null,
   memories: [],
-  history: [],
+  todayLogs: [],
 
   getSpeakerId() {
     return parseInt(localStorage.getItem('kuro_voice_speaker_id') || '10', 10);
@@ -1219,7 +1219,7 @@ const AppCore = {
   async init() {
     this.avatar = new CatAvatarRenderer();
     this.memories = StorageManager.loadMemories(CHARACTER_CONFIG.defaultMemories);
-    this.history = StorageManager.loadHistory();
+    this.todayLogs = StorageManager.loadTodayLogs();
 
     this.state.isAssistantMode = localStorage.getItem('kuro_mode') === 'assistant';
     this._updateModeUI(false);
@@ -1254,31 +1254,43 @@ const AppCore = {
     if (spotSelect) spotSelect.value = savedSpot;
     if (homeInput) homeInput.value = savedHome;
 
-    // ★ 定型挨拶・エラーセリフを即キャッシュ（通信0回再生用）
-    this.audio.prefetchVoice("おやびん、わたしはクロだニャン🐾", parseInt(savedSpeaker, 10));
-    this.audio.prefetchVoice("うまく聞き取れなかったニャ。もう一度お話ししてニャン🐾", parseInt(savedSpeaker, 10));
+    const spk = parseInt(savedSpeaker, 10);
+    this.audio.prefetchVoice("おやびん、わたしはクロだニャン🐾", spk);
 
     setInterval(() => {
       document.getElementById('clock-display').textContent = TimeProvider.getCurrentInfo().clock;
     }, 1000);
 
-    // ★ 起動時にAPIキーがあれば、Geminiモデル一覧の導通テスト（エビデンス取得）を1回実行
-    if (this.ai.apiKey) {
-      setTimeout(() => { this.ai.verifyAllModelsEvidence(); }, 1200);
-    }
-
     setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 800);
-    Logger.log("[AppCore] 準備完了ニャ！いつでも話しかけてニャ🐾", "success");
+    Logger.log("[AppCore] 準備完了ニャ！今日の文脈を完璧に覚えて会話するニャ🐾", "success");
+  },
+
+  async forceRefreshApp() {
+    Logger.log("[リフレッシュ] ブラウザキャッシュ破棄中…", "info");
+    Toast.show("キャッシュを消去して再読み込みするニャ！🔄", "info");
+
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+    } catch(e) {}
+
+    setTimeout(() => {
+      const cleanUrl = window.location.origin + window.location.pathname;
+      window.location.href = cleanUrl + '?refresh=' + Date.now();
+    }, 400);
   },
 
   _restoreTimelineHistory() {
     const box = document.getElementById('chat-timeline');
     box.innerHTML = '';
-    if (this.history.length === 0) {
-      this.renderBubble('model', "おやびん、わたしはクロだニャ🐾 何でも話しかけてニャン♪");
+    if (this.todayLogs.length === 0) {
+      this.renderBubble('model', "おやびん、わたしはクロだニャ🐾 今日もいっぱいお話しするニャン♪");
       return;
     }
-    this.history.forEach(h => this.renderBubble(h.role, h.text));
+    // 当日の最新15件をタイムラインに復元
+    this.todayLogs.slice(-15).forEach(h => this.renderBubble(h.role, h.text));
   },
 
   _setupAudioCallbacks() {
@@ -1337,51 +1349,47 @@ const AppCore = {
     return b;
   },
 
+  /* 即答判定（時間・日付などの単発クエリ） */
   _checkDirectIntent(text) {
     let clean = text.replace(/^(?:ねえ|あのね|おーい)?\s*(?:クロちゃん|クロ|くろ)[、,\s]*/i, '').trim();
 
     if (!clean || /^(?:呼んだだけ|なんでもない|いる|お返事)$/.test(clean)) {
       const reps = ["ニャン！呼んだかニャ？おやびん♪", "起きてるニャン！何でも話しかけてニャ🐾", "ニャー♪ クロはここにいるニャン！"];
       const rep = reps[Math.floor(Math.random() * reps.length)];
-      return { display: rep, spoken: rep };
+      return { display: rep, spoken: rep, waiting: "お返事するニャ…🐾" };
     }
 
-    if (/^(?:おはよう|おはよー)/.test(clean)) return { display: "おやびん、おはようニャン🐾 今日もいい日にするニャ！", spoken: "おやびん、おはようニャン！" };
-    if (/^(?:こんにちは|こんにちわ)/.test(clean)) return { display: "おやびん、こんにちはニャ♪ 元気いっぱいニャン！", spoken: "おやびん、こんにちはニャ！" };
-    if (/^(?:おやすみ|寝るね)/.test(clean)) return { display: "おやすみニャン…いい夢見てニャ、おやびん💤", spoken: "おやすみニャン、いい夢見てニャ！" };
-
-    if (/(?:いま|今)?(?:何時|なんじ|時間)/.test(clean) && !/(?:何日|いつ|日記)/.test(clean)) {
+    if (/(?:いま|今)?(?:何時|なんじ|時間)/.test(clean) && !/(?:何日|いつ|日記|何時間|何分)/.test(clean)) {
       const info = TimeProvider.getCurrentInfo();
-      return { display: info.clockDisplay, spoken: info.spokenClock };
+      return { display: info.clockDisplay, spoken: info.spokenClock, waiting: "時計を確認してるニャ…⏱️" };
     }
 
     if (/(?:今日|きょう).*(?:何日|なんにち|いつ|何曜日|なんようび)|日付/.test(clean)) {
       const info = TimeProvider.getCurrentInfo();
-      return { display: info.dateDisplay, spoken: info.spokenDate };
+      return { display: info.dateDisplay, spoken: info.spokenDate, waiting: "カレンダーを見てるニャ…📅" };
     }
 
     if (/(?:現在地|いまどこ|今どこ|ここどこ)/.test(clean)) {
       const disp = LocationProvider.cityArea || "現在地付近";
-      const cards = this.state.isAssistantMode ? [{
+      const cards = [{
         type: 'map-primary',
         icon: '📍',
         title: `Googleマップで現在地を見る`,
         url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(LocationProvider.detailedAddress)}`
-      }] : [];
-      return { display: `いまは${disp}にいるニャン🐾`, spoken: `今の場所は、${disp}にいるニャン！`, cards };
+      }];
+      return { display: `いまは${disp}にいるニャン🐾`, spoken: `今の場所は、${disp}にいるニャン！`, cards, waiting: "地図を見てるニャ…🗺️" };
     }
 
     return null;
   },
 
   _generateSmartCards(userText, topic) {
-    if (!this.state.isAssistantMode) return [];
     const cards = [];
     const area = LocationProvider.cityArea || "";
     const spotLimit = parseInt(localStorage.getItem('kuro_spot_count') || '2', 10);
     const newsLimit = parseInt(localStorage.getItem('kuro_news_count') || '2', 10);
 
-    if (/(?:ラーメン|餃子|タイ料理|焼肉|ランチ|ご飯|居酒屋|お店|スポット|グルメ|寿司|カレー)/.test(userText)) {
+    if (/(?:ラーメン|餃子|タイ料理|焼肉|ランチ|ご飯|居酒屋|お店|スポット|グルメ|寿司|カレー|カフェ|レストラン)/.test(userText)) {
       const shop = topic || "人気店";
       cards.push({
         type: 'map-primary',
@@ -1409,12 +1417,12 @@ const AppCore = {
       }
     }
 
-    if (/(?:ニュース|速報|話題|出来事)/.test(userText)) {
+    if (/(?:ニュース|速報|話題|出来事|トレンド)/.test(userText)) {
       const t = topic || "最新ニュース";
       cards.push({
         type: 'news-primary',
         icon: '📰',
-        title: `「${t}」の詳細ニュース`,
+        title: `「${t}」の詳細ニュース（Googleニュース）`,
         url: `https://news.google.com/search?q=${encodeURIComponent(t)}&hl=ja&gl=JP&ceid=JP:ja`
       });
 
@@ -1426,15 +1434,6 @@ const AppCore = {
           url: `https://news.google.com/topstories?hl=ja&gl=JP&ceid=JP:ja`
         });
       }
-
-      if (newsLimit >= 3) {
-        cards.push({
-          type: 'news-sub',
-          icon: '💡',
-          title: `テクノロジー・科学ニュース`,
-          url: `https://news.google.com/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGRqTVhZU0FtdHZHZ0pMVWlnQVAB?hl=ja&gl=JP&ceid=JP:ja`
-        });
-      }
     }
     return cards;
   },
@@ -1442,14 +1441,25 @@ const AppCore = {
   async handleUserInput(text) {
     this.audio.playEffect('aizuchi');
 
-    // 1. タイマー判定
+    // 1. キッチンタイマー
     const timerMatch = text.match(/(\d+)\s*分.*(?:測って|タイマー|計って|おしえて)/);
     if (timerMatch) {
       const mins = parseInt(timerMatch[1], 10);
       this.startKitchenTimer(mins);
       const rep = `了解ニャ！${mins}分クロがしっかり見ておくニャン🐾`;
+      
+      const box = document.getElementById('chat-timeline');
+      const row = document.createElement('div');
+      row.className = 'chat-row model';
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-bubble';
+      bubble.textContent = "タイマーをセット中ニャ…⏱️";
+      row.appendChild(bubble);
+      box.appendChild(row);
+      box.scrollTop = box.scrollHeight;
+
       this.audio.speak(rep, null, () => {
-        this.renderBubble('model', rep);
+        bubble.textContent = rep;
         this.avatar.setEmotion('talking');
       }, () => {
         this.avatar.setEmotion('idle');
@@ -1457,12 +1467,40 @@ const AppCore = {
       return;
     }
 
-    // 2. 定型即答（時間・日付・挨拶）：音声再生開始の瞬間にセリフを描画（完全同期）
+    // 2. 単発定型即答
     const direct = this._checkDirectIntent(text);
     if (direct) {
+      const box = document.getElementById('chat-timeline');
+      const row = document.createElement('div');
+      row.className = 'chat-row model';
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-bubble';
+      bubble.textContent = direct.waiting || "確認中ニャ…🐾";
+      row.appendChild(bubble);
+      box.appendChild(row);
+      box.scrollTop = box.scrollHeight;
+
+      // 当日ログにも記録
+      StorageManager.appendTodayLog('user', text);
+      StorageManager.appendTodayLog('model', direct.display);
+      this.todayLogs = StorageManager.loadTodayLogs();
+
       this.audio.speak(direct.spoken, null, () => {
-        this.renderBubble('model', direct.display, direct.cards || []);
+        bubble.textContent = direct.display;
+        if (direct.cards && direct.cards.length > 0) {
+          const cardBox = document.createElement('div');
+          cardBox.className = 'action-card-box';
+          direct.cards.forEach(c => {
+            const a = document.createElement('a');
+            a.className = `link-action-card ${c.type}-card`;
+            a.href = c.url; a.target = '_blank';
+            a.innerHTML = `<span class="card-icon">${c.icon}</span><span class="card-title-text">${c.title}</span><span class="card-arrow">➔</span>`;
+            cardBox.appendChild(a);
+          });
+          row.appendChild(cardBox);
+        }
         this.avatar.setEmotion('talking');
+        box.scrollTop = box.scrollHeight;
       }, () => {
         this.avatar.setEmotion('idle');
         this.state.isProcessingInput = false;
@@ -1477,61 +1515,11 @@ const AppCore = {
       this.avatar.triggerIdeaBulb();
     }
 
-    // 4. Flash 3.8提案判定
-    if (this.ai.evaluateComplexity(text) && this.ai.getRemainingProQuota() > 0) {
-      this.askProApproval(text);
-      return;
-    }
-
-    this.executeThought(text, false);
+    // 4. 自然で賢い会話（当日全ログ文脈を渡して実行）
+    this.executeThought(text);
   },
 
-  askProApproval(promptText) {
-    this.state.pending38Prompt = promptText;
-    const remaining = this.ai.getRemainingProQuota();
-    this._updateModelBadge(true);
-
-    const ask = `難しそうだニャ…！本気モードの『Flash 3.8』で考えてもいいかニャ？（今日あと${remaining}回ニャ🐾）`;
-
-    const box = document.getElementById('chat-timeline');
-    const row = document.createElement('div');
-    row.className = 'chat-row model';
-    row.innerHTML = `
-      <div class="chat-bubble">
-        <div>${ask}</div>
-        <div class="confirm-actions">
-          <button class="confirm-btn yes" id="btn-approve">✨ 3.8でお願い</button>
-          <button class="confirm-btn no" id="btn-deny">🐾 3.5 Liteでいいよ</button>
-        </div>
-      </div>
-    `;
-
-    this.audio.speak(ask, null, () => {
-      box.appendChild(row);
-      box.scrollTop = box.scrollHeight;
-
-      document.getElementById('btn-approve').onclick = () => {
-        this.renderBubble('user', "3.8でお願いニャ！");
-        const p = this.state.pending38Prompt;
-        this.state.pending38Prompt = null;
-        this.executeThought(p, true);
-      };
-      document.getElementById('btn-deny').onclick = () => {
-        this.renderBubble('user', "3.5 Liteでいいよ");
-        const p = this.state.pending38Prompt;
-        this.state.pending38Prompt = null;
-        this.executeThought(p, false);
-      };
-
-      this.avatar.setEmotion('talking');
-    }, () => {
-      this.avatar.setEmotion('idle');
-      this.state.isProcessingInput = false;
-    });
-  },
-
-  /* ★ 思考・準備・発話を自然なフキダシと完全同期で行う */
-  async executeThought(promptText, isPro) {
+  async executeThought(promptText) {
     this.state.isThinking = true;
     this.avatar.setEmotion('thinking');
 
@@ -1540,32 +1528,31 @@ const AppCore = {
     row.className = 'chat-row model';
     const bubble = document.createElement('div');
     bubble.className = 'chat-bubble thinking-bubble';
-    bubble.textContent = this.state.isAssistantMode ? "クロがお調べしてるニャ…🔍" : "クロが考えてるニャ…💭";
+    bubble.textContent = /(?:ニュース|ラーメン|お店|天気|気温)/.test(promptText) ? "クロがお調べしてるニャ…🔍" : "クロが考えてるニャ…💭";
     row.appendChild(bubble);
     box.appendChild(row);
     box.scrollTop = box.scrollHeight;
 
-    if (isPro) {
-      this.ai.incrementProQuota();
-      this._updateModelBadge(false, true);
-    } else {
-      this._updateModelBadge(false, false);
-    }
-
-    // 1. Geminiからのテキスト生成
-    const res = await this.ai.generateReply(promptText, isPro, CHARACTER_CONFIG, this.memories, this.state.isAssistantMode);
+    // 当日の全会話履歴を取得してGeminiに送信
+    const historyLogs = StorageManager.loadTodayLogs();
+    const res = await this.ai.generateReply(promptText, historyLogs, CHARACTER_CONFIG, this.memories, this.state.isAssistantMode);
 
     if (res.success && res.text) {
       bubble.textContent = "返事の準備をしてるニャ…🎙️";
       box.scrollTop = box.scrollHeight;
 
-      this.history.push({ role: 'user', text: promptText });
-      this.history.push({ role: 'model', text: res.text });
-      StorageManager.saveHistory(this.history);
+      // 当日ログに蓄積
+      StorageManager.appendTodayLog('user', promptText);
+      StorageManager.appendTodayLog('model', res.text);
+      this.todayLogs = StorageManager.loadTodayLogs();
+
+      if (res.isDiary) {
+        this._renderDiaryPreview();
+      }
 
       const cards = this._generateSmartCards(promptText, res.topicTag);
 
-      // 2. 音声再生の開始コールバックで初めて実際の回答文を表示（完全同期）
+      // 音波が出た瞬間（onplaying）に文字表示・完全同期
       this.audio.speak(res.text, null, () => {
         bubble.className = 'chat-bubble';
         bubble.textContent = res.text;
@@ -1590,20 +1577,17 @@ const AppCore = {
         this.avatar.setEmotion('idle');
         this.state.isThinking = false;
         this.state.isProcessingInput = false;
-        this._updateModelBadge(false, false);
         document.getElementById('status-text').textContent = "👂 聴いてるニャ♪";
         if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 800);
       });
 
     } else {
-      // 通信エラー時：キャッシュされたセリフで即座に返答（通信0回）
-      const fb = "うまく聞き取れなかったニャ。もう一度お話ししてニャン🐾";
+      const fb = "おやびん、もう一度ゆっくり話してニャン🐾";
       bubble.className = 'chat-bubble';
       bubble.textContent = fb;
       this.avatar.setEmotion('idle');
       this.state.isThinking = false;
       this.state.isProcessingInput = false;
-      this._updateModelBadge(false, false);
       this.audio.speak(fb, null, () => {
         this.avatar.setEmotion('talking');
       }, () => {
@@ -1640,20 +1624,11 @@ const AppCore = {
     }, 1000);
   },
 
-  _updateModelBadge(isProProposing = false, isProExecuting = false) {
+  _updateModelBadge() {
     const badge = document.getElementById('model-badge');
-    const remaining = this.ai.getRemainingProQuota();
-
-    if (isProProposing) {
-      badge.className = "model-badge pro";
-      badge.textContent = `✨ 3.8提案中(残:${remaining})`;
-    } else if (isProExecuting) {
-      badge.className = "model-badge pro";
-      badge.textContent = `🧠 3.8 Flash`;
-    } else {
-      badge.className = "model-badge lite";
-      badge.textContent = `🐾 3.5 Lite`;
-    }
+    if (!badge) return;
+    badge.className = "model-badge lite";
+    badge.textContent = `🐾 3.5 Flash`;
   },
 
   _renderMemories() {
@@ -1711,7 +1686,7 @@ const AppCore = {
 
   _renderDiaryPreview() {
     const c = document.getElementById('diary-preview-container');
-    const diary = StorageManager.getDiary();
+    const diary = StorageManager.getLatestDiary();
     if (diary) {
       c.innerHTML = `<div class="diary-preview-title">🐾 ${diary.date} のクロ日記</div><div>${diary.content}</div>`;
     }
@@ -1728,10 +1703,22 @@ const AppCore = {
 
     if (this.state.isAssistantMode) {
       icon.textContent = "👓"; txt.textContent = "おてつだい";
-      if (speak) this.audio.speak("前世の天才頭脳でバッチリ調べるニャ！");
+      if (speak) {
+        this.audio.speak("前世の天才頭脳でバッチリ調べるニャ！", null, () => {
+          this.avatar.setEmotion('talking');
+        }, () => {
+          this.avatar.setEmotion('idle');
+        });
+      }
     } else {
       icon.textContent = "🐾"; txt.textContent = "なかよし";
-      if (speak) this.audio.speak("ニャン♪ のんびり遊ぶニャ！");
+      if (speak) {
+        this.audio.speak("ニャン♪ のんびり遊ぶニャ！", null, () => {
+          this.avatar.setEmotion('talking');
+        }, () => {
+          this.avatar.setEmotion('idle');
+        });
+      }
     }
   },
 
@@ -1806,6 +1793,58 @@ const AppCore = {
   },
 
   _bindUI() {
+    const forceReload = () => this.forceRefreshApp();
+    const btnForce = document.getElementById('force-refresh-btn');
+    const btnDiagForce = document.getElementById('diag-force-reload-btn');
+    if (btnForce) btnForce.onclick = forceReload;
+    if (btnDiagForce) btnDiagForce.onclick = forceReload;
+
+    const btnTestModels = document.getElementById('diag-test-models-btn');
+    if (btnTestModels) {
+      btnTestModels.onclick = async () => {
+        Toast.show("モデル接続テスト中ニャ…", "info");
+        const key = this.ai.apiKey;
+        if (!key) {
+          Toast.show("APIキーが設定されていませんニャ", "error");
+          return;
+        }
+        for (const m of ["gemini-3.5-flash", "gemini-1.5-flash"]) {
+          try {
+            const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ contents: [{ parts: [{ text: "ニャ" }] }] })
+            });
+            if (r.ok) {
+              Logger.log(`[導通確認OK] モデル「${m}」は正常に会話可能ニャ！⚡`, "success");
+            } else {
+              Logger.log(`[導通確認] モデル「${m}」HTTP ${r.status}`, "warn");
+            }
+          } catch(e) {
+            Logger.log(`[導通確認例外] ${m}: ${e.message}`, "error");
+          }
+        }
+        Toast.show("検証完了！ログを確認してニャ🐾", "success");
+      };
+    }
+
+    const btnCopyEvidence = document.getElementById('diag-copy-evidence-btn');
+    if (btnCopyEvidence) {
+      btnCopyEvidence.onclick = () => {
+        const text = Logger.getEvidenceText();
+        if (!text) {
+          Toast.show("コピーするログがありませんニャ", "error");
+          return;
+        }
+        navigator.clipboard.writeText(text).then(() => {
+          Toast.show("ログ全文をコピーしたニャ！📋✨", "success");
+        }).catch(() => {
+          Toast.show("コピーに失敗しました。手動でコピーしてニャ🐾", "error");
+        });
+      };
+    }
+
+    // おやつ
     document.getElementById('snack-btn').onclick = () => {
       this.audio.unlockMasterAudio();
       this.state.snackCount++;
@@ -1834,6 +1873,7 @@ const AppCore = {
       }
     };
 
+    // 変身
     document.getElementById('transform-btn').onclick = () => {
       this.audio.unlockMasterAudio();
       this.audio.playEffect('poof');
@@ -1878,12 +1918,13 @@ const AppCore = {
       }
     };
 
+    // なでなで
     document.getElementById('avatar-wrapper').onclick = (e) => {
       if (e.target.closest('#transform-btn') || e.target.closest('#snack-btn')) return;
       this.audio.unlockMasterAudio();
       this.audio.playEffect('purr');
       this.avatar.setEmotion('happy');
-      setTimeout(() => { if (!this.audio.isSpeaking) this.avatar.setEmotion('idle'); }, 900);
+      setTimeout(() => { if (!this.audio.isSpeaking) this.avatar.setEmotion('idle'); }, 1200);
     };
 
     document.getElementById('voice-speaker-select').onchange = (e) => {
@@ -2038,11 +2079,6 @@ const AppCore = {
       }
       btnText.textContent = successMessage;
 
-      // 保存直後にモデル検証（エビデンス採取）を自動実行
-      if (newApiKey) {
-        this.ai.verifyAllModelsEvidence();
-      }
-
       setTimeout(() => {
         document.getElementById('modal-overlay').style.display = 'none';
         btn.classList.remove('is-success');
@@ -2076,5 +2112,4 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
-
 
