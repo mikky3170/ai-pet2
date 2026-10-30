@@ -647,7 +647,7 @@
     .btn-snack-floating:active { transform: scale(0.92); }
 
     /* ==========================================================================
-       ★ 4. 最下部操作バー（新・ソフトニュアンスパレット：チカチカ完全解消）
+       ★ 4. 最下部操作バー
        ========================================================================== */
     .bottom-controls { width: 100%; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; z-index: 30; }
     
@@ -665,7 +665,6 @@
       border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    /* モード切替：落ち着いたスモーキーピンク / 穏やかなスレートブルー */
     .btn-mode-toggle {
       height: 44px;
       padding: 0 12px;
@@ -691,7 +690,6 @@
     }
     .btn-mode-toggle:active { transform: scale(0.95); }
 
-    /* 写真ボタン：品のあるペールスカイブルー */
     .btn-photo {
       height: 44px;
       padding: 0 11px;
@@ -712,7 +710,6 @@
     }
     .btn-photo:active { transform: scale(0.95); background: rgba(3, 105, 161, 0.55); }
 
-    /* ストップボタン：やわらかなソフトコーラル（テラコッタ調） */
     .btn-stop {
       height: 44px;
       padding: 0 11px;
@@ -733,7 +730,6 @@
     }
     .btn-stop:active { transform: scale(0.95); background: rgba(153, 27, 27, 0.55); }
 
-    /* 一時停止・会話ボタン：統一されたシックなスレートチャコール */
     .btn-action {
       flex: 1;
       height: 44px;
@@ -758,7 +754,6 @@
     }
     .btn-action:active { transform: scale(0.96); }
 
-    /* 設定ボタン：ミニマルなスレートアイコンボタン */
     .btn-circle {
       width: 44px;
       height: 44px;
@@ -777,7 +772,7 @@
     .btn-circle:active { transform: scale(0.93); background: rgba(51, 65, 85, 0.8); }
 
     /* ==========================================================================
-       ★ 5. モーダル共通スタイル ＆ 設定モーダル（3段スッキリ整理）
+       ★ 5. モーダル共通スタイル ＆ 設定モーダル
        ========================================================================== */
     .modal-overlay {
       position: fixed;
@@ -812,7 +807,6 @@
       padding-bottom: 10px;
     }
 
-    /* 設定グループ・セクション見出し */
     .setting-section-header {
       font-size: 12.5px;
       font-weight: 900;
@@ -877,7 +871,7 @@
     }
     .manual-sec-title { font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 4px; margin-top: 3px; }
 
-    /* ★ 安全保護アコーディオン（APIキー・システム保守用） */
+    /* 安全保護アコーディオン */
     .secure-details {
       background: #f8fafc;
       border: 1px dashed #cbd5e1;
@@ -982,6 +976,25 @@
       gap: 5px;
     }
 
+    .btn-clear-timeline {
+      width: 100%;
+      padding: 8px;
+      background: #f8fafc;
+      border: 1px dashed #94a3b8;
+      color: #475569;
+      border-radius: 10px;
+      font-size: 11.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      margin-top: 6px;
+      transition: background 0.15s;
+    }
+    .btn-clear-timeline:active { background: #e2e8f0; }
+
     /* 記憶帳リスト */
     .memory-list {
       background: #f8fafc;
@@ -1064,7 +1077,7 @@
     }
 
     /* ==========================================================================
-       ★ 6. 本型絵日記アルバム（純粋なアルバムビューア：記憶帳枠を完全排除）
+       ★ 6. 本型絵日記アルバム
        ========================================================================== */
     #book-studio-modal {
       position: fixed;
@@ -1201,7 +1214,6 @@
       color: #ea580c;
     }
 
-    /* ★ スラスラ朗読ボタン（ソフトグラデーション） */
     .btn-read-aloud {
       background: linear-gradient(135deg, #f472b6, #ec4899);
       color: #ffffff;
@@ -1417,7 +1429,7 @@
     <div class="top-header">
       <div class="top-header-left">
         <span id="clock-display">00:00</span>
-        <!-- ★ 本型絵日記アルバムを開くボタン -->
+        <!-- 本型絵日記アルバムを開くボタン -->
         <button type="button" class="btn-top-diary" id="top-diary-btn" title="これまでのクロ絵日記をアルバムで開くニャ！">📖 日記帳</button>
         <div id="timer-active-badge">⏱️ <span id="timer-count-disp">03:00</span></div>
       </div>
@@ -1684,7 +1696,7 @@
       </button>
     </div>
 
-    <!-- 4. 最下部操作バー（新・ソフトニュアンスパレット） -->
+    <!-- 4. 最下部操作バー -->
     <div class="bottom-controls">
       <div class="action-bar" id="action-bar">
         <button class="btn-mode-toggle" id="mode-toggle-btn" title="なかよし雑談とおてつだいを切り替えるニャ！">
@@ -1711,7 +1723,7 @@
     </div>
   </div>
 
-  <!-- ★ 本型絵日記アルバム（純粋なアルバムビューア：記憶帳枠は撤去） -->
+  <!-- 本型絵日記アルバム -->
   <div id="book-studio-modal">
     <div class="book-studio-window">
       <div class="studio-top-bar">
@@ -1806,7 +1818,7 @@
     </div>
   </div>
 
-  <!-- ★ 設定モーダル（3段スッキリ整理） -->
+  <!-- ★ 設定モーダル -->
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal-card">
       <h3>⚙️ 設定・記憶帳</h3>
@@ -1821,28 +1833,51 @@
           <div class="manual-sec-title">🐾 基本のお話し方</div>
           <div>マイクに向かって「おはよう」「今何時？」「今日何日？」と気軽に話しかけてニャ！名前を呼ぶだけでも喜んでお返事するニャン♪</div>
 
+          <div class="manual-sec-title">📖 絵日記の仕様と生活リズム（午前4時切り替え）</div>
+          <div>
+            ・<b>夕方作成後の夜の自動追記</b>：18時頃に「今日の日記書いて」と日記を作った後、夜や深夜にお話しした内容もその日の日記にしっかり追加・反映されますニャ！<br>
+            ・<b>生活日の境界線（午前4:00）</b>：<br>
+            　- <b>深夜1:00〜3:59（朝3時など）</b>：まだ「昨日の夜の延長」と判定され、会話内容は昨日の絵日記に追記されます。クロちゃんも夜更かしに寄り添った静かなトーンでお返事するニャ💤<br>
+            　- <b>朝4:00以降（朝6時など）</b>：「新しい今日の始まり」と判定され、「おはようニャ！」とお出迎えします。昨日の日記が夕方のまま未完成だった場合、朝起動時に昨日の夜の会話まで含めた「完全版の昨日の日記」へと自動で確定保存されますニャン♪<br>
+            ・<b>おやすみの挨拶連動</b>：夜寝る前に「おやすみ」と言うと、夜の分をまとめて日記を自動更新してくれるニャ！
+          </div>
+
+          <div class="manual-sec-title">📁 バックアップの仕様とファイルの削除方法</div>
+          <div>
+            ・<b>日常の会話と日記</b>：アプリ内部で常に自動保存（上書き更新）されているため、普段はファイル保存を押さなくても安心ですニャ！<br>
+            ・<b>手動ファイル保存（日時付き）</b>：「📁 ファイル保存」を押すと、<code>クロちゃんデータ_YYYYMMDD_HHmm.json</code> という日時付きの名前で端末に保存されます。<br>
+            ・<b>手動ファイルの削除手順</b>：端末の空き容量を整理したい時は、スマホやPCのファイル管理アプリから直接削除できますニャ。<br>
+            　- <b>iPhone / iPad</b>：「ファイル」アプリ ➔「ダウンロード」➔ 不要なファイルを長押しして「削除」<br>
+            　- <b>Android</b>：「Files」アプリ ➔「ダウンロード」➔ 不要なファイルを「ゴミ箱（削除）」<br>
+            　- <b>PC</b>：「エクスプローラー」の「ダウンロード」フォルダから削除
+          </div>
+
+          <div class="manual-sec-title">🗑️ 日記・写真・会話の削除と安全仕様</div>
+          <div>
+            ・<b>日記の削除</b>：「🗑️ 削除」を押すと、必ず「〇〇日の日記を削除してよろしいですかニャ？」と確認警告が出ます。「OK」を押した後、右下の「💾 保存して閉じる」を押して初めて確定します（キャンセルすれば消えません）。<br>
+            ・<b>写真の解除</b>：写真枠右上の「✕」を押すと、誤操作防止の確認ダイアログが出ますニャ！<br>
+            ・<b>画面の会話クリア</b>：下の「🧹 画面の会話表示をクリア」を押すと、画面上の吹き出しだけをお掃除してスッキリ初期化できます（内部の記憶や日記用データは消えずに安全キープされます）。
+          </div>
+
           <div class="manual-sec-title">📍 散歩中の場所 ＆ 周辺スポット特定</div>
-          <div>「いまどこ？」と聞くと、市ではなく「〇〇市〇〇町〇丁目付近」までピンポイントで答えるニャ！さらに「近くの川何？」「公園ある？」と聞くと、目と鼻の先にある川や公園を近い順に教えてくれるニャン🐾</div>
+          <div>「いまどこ？」と聞くと、市だけでなく「〇〇市〇〇町〇丁目付近」までピンポイントで答えるニャ！さらに「近くの川何？」「公園ある？」と聞くと、目と鼻の先にある川や公園を近い順に教えてくれるニャン🐾</div>
 
           <div class="manual-sec-title">📷 散歩写真 ＆ 写真付き絵日記</div>
           <div>下の「📷 写真」ボタンを押すと、スマホのカメラで撮った写真やアルバムの写真をクロちゃんに見せられるニャ！写真について楽しくおしゃべりできて、その日の絵日記に自動で写真が飾られるニャン♪</div>
-
-          <div class="manual-sec-title">📖 500文字の思い出日記＆昔話</div>
-          <div>「今日の日記書いて」と頼むと、今日のお話しや歩いた場所、写真をギュッと凝縮した可愛い絵日記を書き込みますニャ！昔話（「先週話したラーメン屋覚えてる？」など）を振られても過去の日記からバッチリ思い出して会話するニャン♪</div>
 
           <div class="manual-sec-title">🔊 シームレスな絵日記朗読</div>
           <div>日記帳を開いて「🔊 クロちゃんが読むニャ♪」を押すと、本文の中身だけをスラスラ滑らかに朗読してくれるニャン！</div>
 
           <div class="manual-sec-title">👓 なかよしモード と おてつだいモード</div>
-          <div>左下のボタンで切り替えできるニャ！
-          ・<b>🐾 なかよし</b>：のんびり雑談やお遊びをする通常モードニャ。
+          <div>左下のボタンで切り替えできるニャ！<br>
+          ・<b>🐾 なかよし</b>：のんびり雑談やお遊びをする通常モードニャ。<br>
           ・<b>👓 おてつだい</b>：博士帽とメガネを装着！ネット検索して「近くのラーメン屋」や「最新ニュース」をGoogleマップ付きで案内するニャ！</div>
 
           <div class="manual-sec-title">🧠 賢くサクサク動く頭脳（Flash Lite）</div>
           <div>クロの頭脳は制限が緩く1日に何度でもおしゃべりできる「Flash Lite」と連動！何日経っても初日と同じ爆速スピードでお話しできるニャン！</div>
 
           <div class="manual-sec-title">🐟 おやつ と なでなで</div>
-          <div>・左下の「おやつ」を押すとちゅ〜るを食べるニャ！3回連続であげると極楽ゴロゴロ鳴くニャ〜♡
+          <div>・左下の「おやつ」を押すとちゅ〜るを食べるニャ！3回連続であげると極楽ゴロゴロ鳴くニャ〜♡<br>
           ・画面のクロをタップすると「なでなで」されて喉を鳴らして喜ぶニャ！</div>
 
           <div class="manual-sec-title">⏱️ キッチンタイマー</div>
@@ -1850,7 +1885,7 @@
         </div>
       </details>
 
-      <!-- ▼ 第1ブロック：クロちゃんの個性・声・見た目（日常的に楽しむ設定） -->
+      <!-- ▼ 第1ブロック：クロちゃんの個性・声・見た目 -->
       <div class="setting-section-header">🐾 クロちゃんの声と見た目</div>
 
       <div class="form-group">
@@ -1892,7 +1927,7 @@
         <button type="button" class="btn-adjust-open" id="open-glasses-adjust-btn">👓 写真ごとのメガネ位置を微調整する</button>
       </div>
 
-      <!-- ▼ 第2ブロック：クロちゃんの記憶 ＆ データの安全管理（メンテナンス） -->
+      <!-- ▼ 第2ブロック：クロちゃんの記憶 ＆ データの安全管理 -->
       <div class="setting-section-header">📔 記憶帳 ＆ バックアップ</div>
 
       <div class="form-group">
@@ -1944,7 +1979,13 @@
         </div>
       </div>
 
-      <!-- ▼ 第3ブロック：高度な接続・システム管理（折りたたんで保護！） -->
+      <div class="form-group">
+        <label>画面表示の整理:</label>
+        <!-- 会話タイムライン表示クリアボタン（内部データは安全キープ） -->
+        <button type="button" class="btn-clear-timeline" id="btn-clear-chat-display">🧹 画面の会話表示をクリア（お掃除）</button>
+      </div>
+
+      <!-- ▼ 第3ブロック：高度な接続・システム管理 -->
       <details class="secure-details">
         <summary class="secure-summary">
           <span>🔒 外部連携APIキー設定（Google AI / VoiceVox）</span>
@@ -1982,7 +2023,8 @@
   </div>
 
   <!-- 最新版 app.js -->
-  <script src="app.js?v=20250524_layout_clean_v8"></script>
+  <script src="app.js?v=20250524_diary_life_v9"></script>
 </body>
 </html>
+
 
