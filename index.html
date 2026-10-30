@@ -213,7 +213,6 @@
     .chat-row.user { align-items: flex-end; }
     .chat-row.model { align-items: flex-start; }
 
-    /* ★ タイムラインの写真プレビュー枠 */
     .timeline-photo-wrap {
       max-width: 75%;
       margin-bottom: 6px;
@@ -679,7 +678,6 @@
     }
     .btn-mode-toggle.is-assistant { border-color: #38bdf8; background: #0c4a6e; color: #bae6fd; }
 
-    /* ★ 散歩写真ボタン */
     .btn-photo {
       height: 48px;
       padding: 0 11px;
@@ -772,135 +770,7 @@
     }
     .modal-card h3 { margin-top: 0; color: #1f2937; font-size: 17px; display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
 
-    /* 6. 「クロの思い出日記帳」モーダル */
-    #diary-book-modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.7);
-      backdrop-filter: blur(6px);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 220;
-      padding: 14px;
-    }
-    #diary-book-modal.is-open { display: flex; }
-    .diary-book-card {
-      background: #fffdfa;
-      width: 100%;
-      max-width: 460px;
-      height: 85vh;
-      border-radius: 24px;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
-      border: 2px solid #fed7aa;
-      overflow: hidden;
-    }
-    .diary-book-header {
-      background: linear-gradient(135deg, #ffedd5 0%, #fee2e2 100%);
-      padding: 14px 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 2px solid #fed7aa;
-    }
-    .diary-book-title {
-      font-size: 16px;
-      font-weight: 900;
-      color: #9a3412;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .diary-book-actions { display: flex; gap: 8px; align-items: center; }
-    .btn-diary-action {
-      background: #ffffff;
-      border: 1px solid #fdba74;
-      color: #c2410c;
-      padding: 5px 9px;
-      border-radius: 10px;
-      font-size: 11.5px;
-      font-weight: 800;
-      cursor: pointer;
-    }
-    .btn-diary-action:active { background: #ffedd5; }
-    .btn-diary-close {
-      background: #7c2d12;
-      border: none;
-      color: #ffffff;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      font-size: 14px;
-      font-weight: 900;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .diary-book-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      background: #fffdfa;
-    }
-    .diary-entry-card {
-      background: #ffffff;
-      border: 1.5px solid #fed7aa;
-      border-radius: 16px;
-      padding: 12px 14px;
-      box-shadow: 0 2px 8px rgba(234, 88, 12, 0.06);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      transition: all 0.2s;
-    }
-    .diary-entry-card:hover { border-color: #f97316; }
-    .diary-entry-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 12.5px;
-      font-weight: 900;
-      color: #c2410c;
-      border-bottom: 1px dashed #fed7aa;
-      padding-bottom: 5px;
-    }
-    .diary-entry-meta {
-      font-size: 11px;
-      color: #ea580c;
-      font-weight: 700;
-      display: flex;
-      gap: 8px;
-    }
-    .diary-entry-photo img {
-      width: 100%;
-      max-height: 180px;
-      object-fit: cover;
-      border-radius: 12px;
-      border: 1px solid #fed7aa;
-    }
-    .diary-entry-content {
-      font-size: 13px;
-      line-height: 1.65;
-      color: #334155;
-      word-break: break-word;
-      white-space: pre-wrap;
-    }
-    .diary-empty-state {
-      text-align: center;
-      color: #9a3412;
-      padding: 40px 10px;
-      font-size: 13.5px;
-      font-weight: 700;
-      line-height: 1.8;
-    }
-
-    /* 7. フルスクリーン本型絵日記スタジオ */
+    /* 6. フルスクリーン本型絵日記スタジオ */
     #book-studio-modal {
       position: fixed;
       inset: 0;
@@ -1107,6 +977,8 @@
       border-bottom: 1.5px dashed #fed7aa;
       padding-bottom: 8px;
       margin-top: 4px;
+      flex-wrap: wrap;
+      gap: 6px;
     }
     .book-date-title {
       font-size: 15px;
@@ -1121,6 +993,34 @@
       font-weight: 800;
       color: #ea580c;
     }
+
+    /* ★ 新設：クロちゃん朗読ボタン */
+    .btn-read-aloud {
+      background: linear-gradient(135deg, #f472b6, #ec4899);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 5px 12px;
+      font-size: 11.5px;
+      font-weight: 900;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
+      transition: all 0.2s;
+    }
+    .btn-read-aloud:active { transform: scale(0.95); }
+    .btn-read-aloud.is-reading {
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+      animation: pulseReading 1.5s infinite;
+    }
+    @keyframes pulseReading {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.88; transform: scale(0.98); }
+    }
+
     .book-btn-del-entry {
       background: #fee2e2;
       border: 1px solid #fca5a5;
@@ -1229,8 +1129,22 @@
       cursor: pointer;
       box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
     }
+    .btn-diary-close {
+      background: #7c2d12;
+      border: none;
+      color: #ffffff;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-    /* 8. 設定モーダルフォーム */
+    /* 7. 設定モーダルフォーム */
     .form-group { margin-bottom: 14px; }
     .form-group label { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; color: #4b5563; margin-bottom: 5px; }
     .form-group input, .form-group select {
@@ -1278,7 +1192,6 @@
     }
     .manual-sec-title { font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 4px; margin-top: 4px; }
 
-    /* ★ 安全ファイルバックアップ＆本型スタジオ起動ボックス */
     .pc-sync-card {
       background: #f0fdf4;
       border: 1.5px solid #86efac;
@@ -1460,7 +1373,7 @@
     }
     .btn-force-refresh:active { background: #1e293b; }
 
-    /* 9. システム診断モニタ */
+    /* 8. システム診断モニタ */
     #diag-panel {
       position: fixed;
       inset: 0;
@@ -1495,7 +1408,7 @@
     .log-error { color: #f87171; font-weight: bold; }
     .log-info { color: #94a3b8; }
 
-    /* 10. メガネ・帽子アジャスター */
+    /* 9. メガネ・帽子アジャスター */
     #glasses-adjust-modal {
       position: fixed;
       inset: 0;
@@ -1537,7 +1450,8 @@
     <div class="top-header">
       <div class="top-header-left">
         <span id="clock-display">00:00</span>
-        <button type="button" class="btn-top-diary" id="top-diary-btn" title="これまでのクロ日記帳を開くニャ！">📖 日記帳</button>
+        <!-- ★ 最上部の日記帳ボタン（直接本型アルバム絵日記がオープン） -->
+        <button type="button" class="btn-top-diary" id="top-diary-btn" title="これまでのクロ絵日記をアルバムで開くニャ！">📖 日記帳</button>
         <div id="timer-active-badge">⏱️ <span id="timer-count-disp">03:00</span></div>
       </div>
 
@@ -1593,7 +1507,7 @@
           <div class="accessory-layer" id="acc-happy"></div>
         </div>
 
-        <!-- ★ 新・ノルウェージャン「クロちゃん」ベクターアニメーション -->
+        <!-- ノルウェージャン「クロちゃん」ベクターアニメーション -->
         <svg viewBox="0 0 200 240" id="cat-vector-avatar" class="active-mode">
           <defs>
             <radialGradient id="grad-fur-black" cx="50%" cy="40%" r="60%">
@@ -1809,7 +1723,6 @@
           <span id="mode-text">なかよし</span>
         </button>
 
-        <!-- ★ 散歩写真ボタン ＆ 隠しファイルインプット -->
         <button class="btn-photo" id="photo-action-btn" title="写真を撮ってクロちゃんに見せるニャ！">
           <span>📷</span><span>写真</span>
         </button>
@@ -1829,30 +1742,13 @@
     </div>
   </div>
 
-  <!-- 通常の日記帳モーダル -->
-  <div id="diary-book-modal">
-    <div class="diary-book-card">
-      <div class="diary-book-header">
-        <div class="diary-book-title">
-          <span>📖</span>
-          <span>クロの思い出日記帳</span>
-        </div>
-        <div class="diary-book-actions">
-          <button type="button" class="btn-diary-action" id="btn-copy-all-diaries" title="全日記をクリップボードにコピー">📋 全文コピー</button>
-          <button type="button" class="btn-diary-close" id="btn-close-diary-book">✕</button>
-        </div>
-      </div>
-      <div class="diary-book-list" id="diary-book-list"></div>
-    </div>
-  </div>
-
   <!-- フルスクリーン本型絵日記スタジオ -->
   <div id="book-studio-modal">
     <div class="book-studio-window">
       <div class="studio-top-bar">
         <div class="studio-top-title">
           <span>📖</span>
-          <span>クロの思い出スタジオ（大画面本型エディター）</span>
+          <span>クロの思い出アルバム・絵日記スタジオ</span>
         </div>
         <button type="button" class="btn-diary-close" id="btn-close-studio" title="閉じる">✕</button>
       </div>
@@ -1984,6 +1880,9 @@
           <div class="manual-sec-title">📖 500文字の思い出日記＆昔話</div>
           <div>「今日の日記書いて」と頼むと、今日のお話しや歩いた場所、写真をギュッと凝縮した可愛い絵日記を書き込みますニャ！昔話（「先週話したラーメン屋覚えてる？」など）を振られても過去の日記からバッチリ思い出して会話するニャン♪</div>
 
+          <div class="manual-sec-title">🔊 シームレスな絵日記朗読</div>
+          <div>日記帳を開いて「🔊 クロちゃんが読むニャ♪」を押すと、途切れや長い通信待ちゼロで、クロちゃんが絵本のようにスラスラ滑らかに日記を朗読してくれるニャン！</div>
+
           <div class="manual-sec-title">👓 なかよしモード と おてつだいモード</div>
           <div>左下のボタンで切り替えできるニャ！
           ・<b>🐾 なかよし</b>：のんびり雑談やお遊びをする通常モードニャ。
@@ -2001,7 +1900,6 @@
         </div>
       </details>
 
-      <!-- ★ 安心ファイルバックアップ＆本型スタジオ起動ボックス -->
       <div class="pc-sync-card">
         <div class="pc-sync-title">
           <span>📖</span>
@@ -2122,8 +2020,7 @@
   </div>
 
   <!-- ★ 最新版 app.js をキャッシュ対策付きで読み込み -->
-  <script src="app.js?v=20250524_gps_photo_v6"></script>
+  <script src="app.js?v=20250524_diary_read_v7"></script>
 </body>
 </html>
-
 
