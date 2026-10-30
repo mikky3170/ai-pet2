@@ -1,11 +1,9 @@
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版）
-   - PC・大画面専用 記憶＆日記エディター搭載
-   - 安全ファイル書き出し＆読み込み（JSONファイル連携）
+   - コードとデータの完全分離（永続データ金庫・プログラム更新完全保護）
+   - フルスクリーン「1日1ページめくり」本型絵日記スタジオ
+   - 写真レイアウト対応 ＆ インポート完全上書き更新（正常化）
    - 即時肉声相槌エンジン（沈黙ゼロ・間延び防止改善B）
-   - 記憶帳の完全安全マージ＆救済復旧
-   - 4重安全ガード搭載（生ログ不変保護・独立日記金庫）
-   - 500文字要約日記＆オンデマンド昔話引き出しロジック
    - Gemini 3.5 Flash Lite 専用（gemini-3.8-flash 完全除外・禁止）
    - VOICEVOX 音声・文字完全同期
    ========================================================================== */
@@ -830,8 +828,15 @@ const LocationProvider = {
 };
 
 /* ==========================================================================
-   ★ MODULE 3: 鉄壁ストレージ管理（安全ファイル保存＆読み込み・永続日記帳）
+   ★ MODULE 3: 鉄壁ストレージ管理（コードとデータの完全分離＆固定金庫）
    ========================================================================== */
+const DATA_KEYS = {
+  MEMORIES: 'kuro_data_memories',   // 記憶帳（配列）
+  DIARIES:  'kuro_data_diaries',    // 日記帳（配列）
+  SETTINGS: 'kuro_data_settings',   // ユーザー設定
+  SNAPSHOT: 'kuro_data_snapshot'    // 万が一のための直前自動復元ガード
+};
+
 const StorageManager = {
   defaultGlassesCoords: {
     idle: { x: 0, y: 120, scale: 1.0, rotate: 0 },
@@ -884,8 +889,48 @@ const StorageManager = {
     });
   },
 
-  saveDiary(entryText, customDateKey = null, customFullDate = null) {
-    if (!entryText || entryText.length < 30) {
+  /* 🔒 1. 記憶帳：プログラム更新で絶対に消えない永続ロード */
+  loadMemories(defaultMemories) {
+    try {
+      const raw = localStorage.getItem(DATA_KEYS.MEMORIES);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch(e) {}
+
+    // 初回起動時のみデフォルトを流し込む
+    const initial = Array.isArray(defaultMemories) ? [...defaultMemories] : [];
+    this.saveMemories(initial);
+    return initial;
+  },
+
+  saveMemories(memories) {
+    try {
+      localStorage.setItem(DATA_KEYS.MEMORIES, JSON.stringify(memories));
+    } catch(e) {}
+  },
+
+  /* 🔒 2. 日記帳：永続ロード＆保存 */
+  loadAllDiaries() {
+    try {
+      const raw = localStorage.getItem(DATA_KEYS.DIARIES);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch(e) {}
+    return [];
+  },
+
+  saveAllDiaries(list) {
+    try {
+      localStorage.setItem(DATA_KEYS.DIARIES, JSON.stringify(list));
+    } catch(e) {}
+  },
+
+  saveDiary(entryText, customDateKey = null, customFullDate = null, photoData = null) {
+    if (!entryText || entryText.length < 25) {
       Logger.log("[DiaryGuard] 日記テキストが短すぎるため保存をブロックしました", "warn");
       return false;
     }
@@ -901,14 +946,14 @@ const StorageManager = {
       weather,
       temperature: temp,
       content: entryText,
+      photo: photoData || null, // ★将来の写真枠（Base64等）
       timestamp: Date.now()
     };
-
-    localStorage.setItem(`kuro_diary_${dateKey}`, JSON.stringify(diaryData));
 
     let list = this.loadAllDiaries();
     const existingIdx = list.findIndex(d => d.dateKey === dateKey);
     if (existingIdx >= 0) {
+      if (!photoData && list[existingIdx].photo) diaryData.photo = list[existingIdx].photo;
       list[existingIdx] = diaryData;
       Logger.log(`[Diary] ${dateKey} の日記を更新完了`, "info");
     } else {
@@ -916,36 +961,14 @@ const StorageManager = {
       Logger.log(`[Diary] ${dateKey} の新規日記を安全保存完了`, "info");
     }
 
-    try {
-      localStorage.setItem('kuro_all_diaries_master', JSON.stringify(list));
-    } catch(e) {
-      Logger.log(`[Diary] ストレージ保存例外: ${e.message}`, "error");
-    }
+    this.saveAllDiaries(list);
     return true;
   },
 
   getTodayDiary() {
     const dateKey = TimeProvider.getCurrentInfo().logKey;
-    try {
-      const raw = localStorage.getItem(`kuro_diary_${dateKey}`);
-      return raw ? JSON.parse(raw) : null;
-    } catch(e) { return null; }
-  },
-
-  loadAllDiaries() {
-    try {
-      const raw = localStorage.getItem('kuro_all_diaries_master');
-      return raw ? JSON.parse(raw) : [];
-    } catch(e) { return []; }
-  },
-
-  saveAllDiaries(list) {
-    try {
-      localStorage.setItem('kuro_all_diaries_master', JSON.stringify(list));
-      list.forEach(d => {
-        if (d.dateKey) localStorage.setItem(`kuro_diary_${d.dateKey}`, JSON.stringify(d));
-      });
-    } catch(e) {}
+    const list = this.loadAllDiaries();
+    return list.find(d => d.dateKey === dateKey) || null;
   },
 
   getRecentDiariesSummary(count = 3) {
@@ -980,62 +1003,45 @@ const StorageManager = {
     return null;
   },
 
-  saveMemories(memories) {
+  /* 🔒 3. 万が一のための自動スナップショット作成（直前復元用） */
+  createAutoSnapshot() {
     try {
-      localStorage.setItem('kuro_memories_v7_safe', JSON.stringify(memories));
+      const snap = {
+        timestamp: Date.now(),
+        memories: this.loadMemories([]),
+        diaries: this.loadAllDiaries()
+      };
+      localStorage.setItem(DATA_KEYS.SNAPSHOT, JSON.stringify(snap));
     } catch(e) {}
   },
 
-  loadMemoriesSafe(defaultList) {
-    let combined = [];
-    if (Array.isArray(defaultList)) {
-      combined = [...defaultList];
-    }
-
-    const pastKeys = [
-      'kuro_memories_v7_safe',
-      'kuro_memories_v6',
-      'kuro_memories_v5',
-      'kuro_memories_v4',
-      'kuro_memories'
-    ];
-
-    for (const key of pastKeys) {
-      try {
-        const raw = localStorage.getItem(key);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            parsed.forEach(item => {
-              if (item && typeof item === 'string' && !combined.includes(item.trim())) {
-                combined.push(item.trim());
-              }
-            });
-          }
-        }
-      } catch(e) {}
-    }
-
-    this.saveMemories(combined);
-    return combined;
+  restoreAutoSnapshot() {
+    try {
+      const raw = localStorage.getItem(DATA_KEYS.SNAPSHOT);
+      if (!raw) return false;
+      const snap = JSON.parse(raw);
+      if (Array.isArray(snap.memories)) this.saveMemories(snap.memories);
+      if (Array.isArray(snap.diaries)) this.saveAllDiaries(snap.diaries);
+      return true;
+    } catch(e) { return false; }
   },
 
-  /* ★【安心のファイル書き出し】JSONファイルとしてダウンロード保存 */
-  downloadBackupFile(filename = "クロちゃんのデータ.json") {
+  /* 🔒 4. 純粋データのみをファイル書き出し（エクスポート） */
+  downloadDataPackage(filename = "クロちゃんのデータ.json") {
     const pkg = {
-      appName: "AI_Pet_Kuro",
-      version: "2.0",
+      format: "kuro_pure_data_package",
+      version: "3.0",
       exportedAt: new Date().toLocaleString('ja-JP'),
-      memories: this.loadMemoriesSafe([]),
+      memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
-      glassesCoords: this.loadGlassesCoords(),
       settings: {
         speakerId: localStorage.getItem('kuro_voice_speaker_id') || '10',
         voiceRate: localStorage.getItem('kuro_rate') || '1.05',
         newsCount: localStorage.getItem('kuro_news_count') || '2',
         spotCount: localStorage.getItem('kuro_spot_count') || '2',
         homeCoords: localStorage.getItem('kuro_home_coords') || '',
-        accessoryStyle: localStorage.getItem('kuro_acc_style') || 'both'
+        accessoryStyle: localStorage.getItem('kuro_acc_style') || 'both',
+        glassesCoords: this.loadGlassesCoords()
       }
     };
 
@@ -1048,23 +1054,28 @@ const StorageManager = {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    Logger.log(`[ファイル保存完了] ${filename}`, "success");
+    Logger.log(`[データ書き出し完了] ${filename}`, "success");
   },
 
-  /* ★【安心のファイル読み込み】JSONファイルを読み取って全データを安全復元 */
-  restoreFromDataPackage(data) {
-    if (!data || typeof data !== 'object') throw new Error("データが正しくありません");
+  /* 🔒 5. 完全上書き更新（インポートの正常化：消したものは消え、直したものは置き換わる） */
+  importAndReplaceDataPackage(data) {
+    if (!data || typeof data !== 'object') throw new Error("無効なデータファイルです");
 
-    if (Array.isArray(data.memories) && data.memories.length > 0) {
+    // 直前の状態を退避
+    this.createAutoSnapshot();
+
+    // 記憶帳の完全上書き
+    if (Array.isArray(data.memories)) {
       this.saveMemories(data.memories);
     }
+
+    // 日記帳の完全上書き
     if (Array.isArray(data.diaries)) {
       this.saveAllDiaries(data.diaries);
     }
-    if (data.glassesCoords) {
-      this.saveGlassesCoords(data.glassesCoords);
-    }
-    if (data.settings) {
+
+    // 設定・メガネ位置の反映
+    if (data.settings && typeof data.settings === 'object') {
       const s = data.settings;
       if (s.speakerId) localStorage.setItem('kuro_voice_speaker_id', s.speakerId);
       if (s.voiceRate) localStorage.setItem('kuro_rate', s.voiceRate);
@@ -1072,8 +1083,10 @@ const StorageManager = {
       if (s.spotCount) localStorage.setItem('kuro_spot_count', s.spotCount);
       if (s.homeCoords) localStorage.setItem('kuro_home_coords', s.homeCoords);
       if (s.accessoryStyle) localStorage.setItem('kuro_acc_style', s.accessoryStyle);
+      if (s.glassesCoords) this.saveGlassesCoords(s.glassesCoords);
     }
-    Logger.log("[データ復元完了] ファイルから記憶と日記を復元しました", "success");
+
+    Logger.log("[データ更新完了] ファイルから最新状態に完全上書きしました", "success");
     return true;
   }
 };
@@ -1291,7 +1304,7 @@ class AIThoughtEngine {
             const methods = m.supportedGenerationMethods || [];
             return methods.includes('generateContent') && 
                    name.includes('lite') && 
-                   !name.includes('3.8');
+                   !name.includes('3.8'); // 3.8は完全禁止
           })
           .map(m => m.name.replace(/^models\//, ''));
 
@@ -1498,7 +1511,7 @@ ${conversationHistoryText || '今日はおやびんとまったりお家で過�
       if (res.ok) {
         const data = await res.json();
         const diaryText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (diaryText && diaryText.length >= 40) {
+        if (diaryText && diaryText.length >= 30) {
           const clean = diaryText.replace(/[*#_~`]/g, '').trim();
           Logger.log(`[Diary成功⚡] 500文字要約日記が完成したニャ！（文字数: ${clean.length}字）`, "success");
           return { success: true, diaryText: clean };
@@ -1512,7 +1525,7 @@ ${conversationHistoryText || '今日はおやびんとまったりお家で過�
 }
 
 /* ==========================================================================
-   ★ MODULE 6: 中央司令塔（AppCore ＆ PC専用エディター制御）
+   ★ MODULE 6: 中央司令塔（AppCore ＆ 本型絵日記スタジオ完全制御）
    ========================================================================== */
 const CHARACTER_CONFIG = {
   name: "クロ",
@@ -1537,9 +1550,11 @@ const AppCore = {
     snackCount: 0,
     timerId: null,
     timerSeconds: 0,
-    // PCエディター用の編集バッファ
-    editorMemoriesBuffer: [],
-    editorDiariesBuffer: []
+
+    // ★ 本型絵日記スタジオの制御ステート
+    studioMemories: [],
+    studioDiaries: [],
+    studioDiaryPageIdx: 0 // 現在開いている日記のページ番号
   },
 
   audio: new AudioSpeechEngine(),
@@ -1560,7 +1575,8 @@ const AppCore = {
     }
 
     try {
-      this.memories = StorageManager.loadMemoriesSafe(CHARACTER_CONFIG.defaultMemories);
+      // 🔒 コードとデータの完全分離：端末内の独立データ金庫からロード
+      this.memories = StorageManager.loadMemories(CHARACTER_CONFIG.defaultMemories);
       this.todayLogs = StorageManager.loadTodayLogs();
       this.state.isAssistantMode = localStorage.getItem('kuro_mode') === 'assistant';
       this._updateModeUI(false);
@@ -1571,7 +1587,7 @@ const AppCore = {
 
     this._bindUI();
     this._bindGlassesAdjusterUI();
-    this._bindPCEditorUI(); // ★ PC大画面エディター初期化
+    this._bindBookStudioUI(); // ★ 本型思い出スタジオ初期化
 
     try {
       this._renderMemories();
@@ -1621,7 +1637,7 @@ const AppCore = {
       }, 1000);
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 800);
-      Logger.log("[AppCore] 全システム正常稼働！大画面エディター＆ファイル連携準備完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！コードとデータの完全分離＆思い出スタジオ連動完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
@@ -2107,6 +2123,7 @@ const AppCore = {
             <span>🌡️ ${diary.temperature || '22'}℃</span>
           </div>
         </div>
+        ${diary.photo ? `<div class="diary-entry-photo"><img src="${diary.photo}" alt="散歩写真"></div>` : ''}
         <div class="diary-entry-content">${diary.content}</div>
       `;
       container.appendChild(card);
@@ -2297,139 +2314,223 @@ const AppCore = {
     }
   },
 
-  /* ★【安心の専用UI】PC大画面エディターのバインディング＆操作ロジック */
-  _bindPCEditorUI() {
-    const editorModal = document.getElementById('pc-editor-modal');
-    const btnOpenEditor = document.getElementById('btn-open-pc-editor');
-    const btnCloseEditor = document.getElementById('btn-close-pc-editor');
-    const btnSaveExportEditor = document.getElementById('btn-editor-save-export');
-    const btnAddEditorMem = document.getElementById('btn-editor-add-mem');
+  /* ========================================================================
+     ★ MODULE 7: 本型絵日記スタジオ（1日1ページめくり・写真枠・完全置換保存）
+     ======================================================================== */
+  _bindBookStudioUI() {
+    const modal = document.getElementById('book-studio-modal');
+    const btnOpen = document.getElementById('btn-open-book-studio');
+    const btnClose = document.getElementById('btn-close-studio');
+    const btnPrev = document.getElementById('btn-studio-prev-page');
+    const btnNext = document.getElementById('btn-studio-next-page');
+    const btnSaveExit = document.getElementById('btn-studio-save-exit');
+    const btnExport = document.getElementById('btn-studio-export-file');
+    const btnAddMem = document.getElementById('btn-studio-add-mem');
 
-    if (btnOpenEditor) {
-      btnOpenEditor.onclick = () => {
+    if (btnOpen) {
+      btnOpen.onclick = () => {
         document.getElementById('modal-overlay').style.display = 'none';
-        this.openPCEditor();
+        this.openBookStudio();
       };
     }
 
-    if (btnCloseEditor && editorModal) {
-      btnCloseEditor.onclick = () => {
-        editorModal.classList.remove('is-open');
+    if (btnClose && modal) {
+      btnClose.onclick = () => {
+        modal.classList.remove('is-open');
       };
     }
 
-    if (btnAddEditorMem) {
-      btnAddEditorMem.onclick = () => {
-        const input = document.getElementById('editor-new-mem-input');
-        const val = input?.value.trim();
-        if (val) {
-          this.state.editorMemoriesBuffer.unshift(val);
-          input.value = '';
-          this._renderEditorMemoriesList();
+    if (btnPrev) {
+      btnPrev.onclick = () => {
+        if (this.state.studioDiaryPageIdx < this.state.studioDiaries.length - 1) {
+          this.state.studioDiaryPageIdx++;
+          this._renderStudioDiaryPage();
         }
       };
     }
 
-    if (btnSaveExportEditor) {
-      btnSaveExportEditor.onclick = () => {
-        // バッファの内容を正式ストレージに保存
-        StorageManager.saveMemories(this.state.editorMemoriesBuffer);
-        StorageManager.saveAllDiaries(this.state.editorDiariesBuffer);
+    if (btnNext) {
+      btnNext.onclick = () => {
+        if (this.state.studioDiaryPageIdx > 0) {
+          this.state.studioDiaryPageIdx--;
+          this._renderStudioDiaryPage();
+        }
+      };
+    }
 
-        this.memories = StorageManager.loadMemoriesSafe(CHARACTER_CONFIG.defaultMemories);
-        this._renderMemories();
-        this._renderDiaryBookList();
+    if (btnAddMem) {
+      btnAddMem.onclick = () => {
+        const inp = document.getElementById('studio-new-mem-input');
+        const val = inp?.value.trim();
+        if (val) {
+          this.state.studioMemories.unshift(val);
+          inp.value = '';
+          this._renderStudioMemories();
+        }
+      };
+    }
 
-        // 更新版ファイルを自動ダウンロード
-        StorageManager.downloadBackupFile("クロちゃんのデータ_更新版.json");
-
-        Toast.show("編集内容を反映して、更新版ファイルを保存したニャ！🎉", "success");
+    // ★ 変更を完全保存して閉じる
+    if (btnSaveExit) {
+      btnSaveExit.onclick = () => {
+        this._commitStudioChangesToStorage();
+        Toast.show("記憶と絵日記の変更を保存したニャン！📖✨", "success");
         this.audio.playEffect('purr');
+        if (modal) modal.classList.remove('is-open');
+      };
+    }
 
-        setTimeout(() => {
-          if (editorModal) editorModal.classList.remove('is-open');
-        }, 1200);
+    // ★ 更新版ファイルをダウンロード
+    if (btnExport) {
+      btnExport.onclick = () => {
+        this._commitStudioChangesToStorage();
+        StorageManager.downloadDataPackage("クロちゃんのデータ_更新版.json");
+        Toast.show("最新状態のファイルを保存したニャ！📁", "success");
       };
     }
   },
 
-  /* PC専用エディターを開いて画面を描画 */
-  openPCEditor() {
-    const editorModal = document.getElementById('pc-editor-modal');
-    if (!editorModal) return;
+  openBookStudio() {
+    const modal = document.getElementById('book-studio-modal');
+    if (!modal) return;
 
-    this.state.editorMemoriesBuffer = [...StorageManager.loadMemoriesSafe(CHARACTER_CONFIG.defaultMemories)];
-    this.state.editorDiariesBuffer = JSON.parse(JSON.stringify(StorageManager.loadAllDiaries()));
+    this.state.studioMemories = [...StorageManager.loadMemories(CHARACTER_CONFIG.defaultMemories)];
+    this.state.studioDiaries = JSON.parse(JSON.stringify(StorageManager.loadAllDiaries()));
+    this.state.studioDiaryPageIdx = 0; // 最新の日記から表示
 
-    this._renderEditorMemoriesList();
-    this._renderEditorDiariesList();
+    this._renderStudioMemories();
+    this._renderStudioDiaryPage();
 
-    editorModal.classList.add('is-open');
+    modal.classList.add('is-open');
   },
 
-  _renderEditorMemoriesList() {
-    const container = document.getElementById('editor-memories-container');
+  _renderStudioMemories() {
+    const container = document.getElementById('studio-memories-list');
     if (!container) return;
     container.innerHTML = '';
 
-    this.state.editorMemoriesBuffer.forEach((mem, idx) => {
+    this.state.studioMemories.forEach((mem, idx) => {
       const row = document.createElement('div');
-      row.className = 'editor-item-row';
+      row.className = 'studio-mem-row';
       row.innerHTML = `
-        <span class="editor-row-num">#${idx + 1}</span>
-        <input type="text" class="editor-input-text" value="${mem.replace(/"/g, '&quot;')}" data-idx="${idx}">
-        <button type="button" class="editor-btn-del" data-del="${idx}" title="削除">🗑️</button>
+        <span class="studio-mem-tag">📌</span>
+        <input type="text" class="studio-mem-input" value="${mem.replace(/"/g, '&quot;')}" data-idx="${idx}">
+        <button type="button" class="studio-btn-del" title="削除" data-del="${idx}">🗑️</button>
       `;
 
-      row.querySelector('.editor-input-text').onchange = (e) => {
-        const val = e.target.value.trim();
-        if (val) this.state.editorMemoriesBuffer[idx] = val;
+      row.querySelector('.studio-mem-input').onchange = (e) => {
+        const v = e.target.value.trim();
+        if (v) this.state.studioMemories[idx] = v;
       };
 
-      row.querySelector('.editor-btn-del').onclick = () => {
-        this.state.editorMemoriesBuffer.splice(idx, 1);
-        this._renderEditorMemoriesList();
+      row.querySelector('[data-del]').onclick = () => {
+        this.state.studioMemories.splice(idx, 1);
+        this._renderStudioMemories();
       };
 
       container.appendChild(row);
     });
   },
 
-  _renderEditorDiariesList() {
-    const container = document.getElementById('editor-diaries-container');
-    if (!container) return;
-    container.innerHTML = '';
+  _renderStudioDiaryPage() {
+    const pageContainer = document.getElementById('studio-diary-single-page');
+    const pageIndicator = document.getElementById('studio-page-indicator');
+    const btnPrev = document.getElementById('btn-studio-prev-page');
+    const btnNext = document.getElementById('btn-studio-next-page');
 
-    if (this.state.editorDiariesBuffer.length === 0) {
-      container.innerHTML = `<div style="padding:20px;text-align:center;color:#94a3b8;">まだ日記データがありませんニャ🐾</div>`;
+    if (!pageContainer) return;
+    const diaries = this.state.studioDiaries;
+
+    if (diaries.length === 0) {
+      pageContainer.innerHTML = `
+        <div class="studio-diary-empty">
+          📖 日記データがまだありませんニャ🐾<br>
+          「今日の日記書いて」と話しかけると、ここに1日1ページの絵日記が綴られます！
+        </div>
+      `;
+      if (pageIndicator) pageIndicator.textContent = "0 / 0 ページ";
+      if (btnPrev) btnPrev.disabled = true;
+      if (btnNext) btnNext.disabled = true;
       return;
     }
 
-    this.state.editorDiariesBuffer.forEach((diary, idx) => {
-      const card = document.createElement('div');
-      card.className = 'editor-diary-card';
-      card.innerHTML = `
-        <div class="editor-diary-header">
-          <span style="font-weight:bold;color:#c2410c;">📅 ${diary.fullDate} (${diary.dateKey})</span>
-          <button type="button" class="editor-btn-del" data-del-diary="${idx}" title="この日記を削除">🗑️ 日記削除</button>
+    const curIdx = this.state.studioDiaryPageIdx;
+    const diary = diaries[curIdx];
+
+    if (pageIndicator) pageIndicator.textContent = `${curIdx + 1} / ${diaries.length} 日目`;
+    if (btnPrev) btnPrev.disabled = (curIdx >= diaries.length - 1);
+    if (btnNext) btnNext.disabled = (curIdx <= 0);
+
+    pageContainer.innerHTML = `
+      <div class="book-page-sheet">
+        <div class="book-page-ribbon">🐾 ${curIdx === 0 ? '最新の日記' : diary.fullDate}</div>
+        
+        <div class="book-page-header">
+          <span class="book-date-title">📅 ${diary.fullDate}</span>
+          <div class="book-meta-tags">
+            <span class="book-meta-weather">🌤️ ${diary.weather || '快晴'}</span>
+            <span class="book-meta-temp">🌡️ ${diary.temperature || '22'}℃</span>
+            <button type="button" class="book-btn-del-entry" id="btn-del-cur-diary">🗑️ この日の日記を消す</button>
+          </div>
         </div>
-        <div style="font-size:11px;color:#ea580c;margin-bottom:6px;">🌤️ 天気: ${diary.weather || '快晴'} / 🌡️ 気温: ${diary.temperature || '22'}℃</div>
-        <textarea class="editor-diary-textarea" rows="4">${diary.content}</textarea>
-      `;
 
-      card.querySelector('.editor-diary-textarea').onchange = (e) => {
-        this.state.editorDiariesBuffer[idx].content = e.target.value.trim();
+        <!-- ★ 写真レイアウト枠（将来の散歩写真枠） -->
+        <div class="book-photo-frame" id="book-photo-box">
+          ${diary.photo 
+            ? `<img src="${diary.photo}" alt="散歩写真" class="book-photo-img">
+               <button type="button" class="book-photo-remove-btn" id="btn-remove-photo">✕ 写真解除</button>`
+            : `<div class="book-photo-placeholder">
+                 <span>📷 写真レイアウト枠</span>
+                 <span style="font-size:11px;color:#94a3b8;">（ここに散歩で撮った写真を飾れるニャ！）</span>
+               </div>`
+          }
+        </div>
+
+        <div class="book-content-box">
+          <label class="book-textarea-label">✍️ クロの日記本文（文字をキーボードで直接編集できます）:</label>
+          <textarea class="book-diary-textarea" id="studio-diary-content-input" rows="7">${diary.content}</textarea>
+        </div>
+      </div>
+    `;
+
+    // 本文の編集をバッファに即時反映
+    const textInput = document.getElementById('studio-diary-content-input');
+    if (textInput) {
+      textInput.oninput = (e) => {
+        diaries[curIdx].content = e.target.value.trim();
       };
+    }
 
-      card.querySelector('[data-del-diary]').onclick = () => {
-        if (window.confirm(`${diary.fullDate} の日記を削除してよろしいですかニャ？`)) {
-          this.state.editorDiariesBuffer.splice(idx, 1);
-          this._renderEditorDiariesList();
+    // 写真解除
+    const btnRemovePhoto = document.getElementById('btn-remove-photo');
+    if (btnRemovePhoto) {
+      btnRemovePhoto.onclick = () => {
+        diaries[curIdx].photo = null;
+        this._renderStudioDiaryPage();
+      };
+    }
+
+    // この日の日記を削除
+    const btnDelDiary = document.getElementById('btn-del-cur-diary');
+    if (btnDelDiary) {
+      btnDelDiary.onclick = () => {
+        if (window.confirm(`${diary.fullDate} の日記を日記帳から削除してよろしいですかニャ？`)) {
+          diaries.splice(curIdx, 1);
+          if (this.state.studioDiaryPageIdx >= diaries.length) {
+            this.state.studioDiaryPageIdx = Math.max(0, diaries.length - 1);
+          }
+          this._renderStudioDiaryPage();
         }
       };
+    }
+  },
 
-      container.appendChild(card);
-    });
+  _commitStudioChangesToStorage() {
+    StorageManager.saveMemories(this.state.studioMemories);
+    StorageManager.saveAllDiaries(this.state.studioDiaries);
+    this.memories = StorageManager.loadMemories(CHARACTER_CONFIG.defaultMemories);
+    this._renderMemories();
+    this._renderDiaryBookList();
   },
 
   _bindUI() {
@@ -2473,16 +2574,16 @@ const AppCore = {
       };
     }
 
-    // ★【安心ファイル書き出しボタン】
+    // ★【安心ファイル保存】
     const btnDownloadBackup = document.getElementById('btn-download-backup');
     if (btnDownloadBackup) {
       btnDownloadBackup.onclick = () => {
-        StorageManager.downloadBackupFile("クロちゃんのデータ.json");
+        StorageManager.downloadDataPackage("クロちゃんのデータ.json");
         Toast.show("バックアップファイルをダウンロード保存したニャ！📁✨", "success");
       };
     }
 
-    // ★【安心ファイル読み込みボタン】
+    // ★【完全上書きファイル読込（インポート正常化）】
     const fileInputRestore = document.getElementById('file-input-restore');
     const btnTriggerRestore = document.getElementById('btn-trigger-restore');
 
@@ -2497,18 +2598,18 @@ const AppCore = {
         reader.onload = (event) => {
           try {
             const data = JSON.parse(event.target.result);
-            StorageManager.restoreFromDataPackage(data);
+            StorageManager.importAndReplaceDataPackage(data);
 
-            this.memories = StorageManager.loadMemoriesSafe(CHARACTER_CONFIG.defaultMemories);
+            this.memories = StorageManager.loadMemories(CHARACTER_CONFIG.defaultMemories);
             this._renderMemories();
             this._renderDiaryBookList();
 
-            Toast.show("ファイルから全データを安全復元したニャン！🎉", "success");
+            Toast.show("ファイルから全データを綺麗に最新更新したニャン！🎉", "success");
             this.audio.playEffect('purr');
             this.audio.speak("おやびん、データを受け取ったニャン！");
 
-            // ファイル読み込み後は自動でエディターを開いて確認できるようにする
-            this.openPCEditor();
+            // 読み込み後は本型スタジオを開いて確認できるようにする
+            this.openBookStudio();
           } catch(err) {
             Toast.show("ファイルの読み込みに失敗しましたニャ: " + err.message, "error");
           }
@@ -2899,3 +3000,5 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
+
+
