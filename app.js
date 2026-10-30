@@ -3,7 +3,7 @@
    ========================================================================== */
 
 /* ==========================================================================
-   ★ MODULE 0: 診断ロガー ＆ トースト通知システム
+   ★ MODULE 0: 診断ロガー ＆ トースト通知システム ＆ エビデンス収集
    ========================================================================== */
 const Toast = {
   timer: null,
@@ -24,21 +24,30 @@ const Toast = {
 };
 
 const Logger = {
+  allLogs: [],
   log(message, type = 'info') {
     const panel = document.getElementById('diag-logs');
-    if (!panel) return;
     const now = new Date();
     const timeStr = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
-    const row = document.createElement('div');
-    row.className = `log-row log-${type}`;
-    row.textContent = `[${timeStr}] ${message}`;
-    panel.appendChild(row);
-    panel.scrollTop = panel.scrollHeight;
+    const formatted = `[${timeStr}] ${message}`;
+    this.allLogs.push(formatted);
+
+    if (panel) {
+      const row = document.createElement('div');
+      row.className = `log-row log-${type}`;
+      row.textContent = formatted;
+      panel.appendChild(row);
+      panel.scrollTop = panel.scrollHeight;
+    }
+    console.log(formatted);
+  },
+  getEvidenceText() {
+    return this.allLogs.join('\n');
   }
 };
 
 /* ==========================================================================
-   ★ MODULE 1: 音声合成＆音声認識（優先1位：あの可愛い声で必ず喋るダイレクト再生）
+   ★ MODULE 1: 音声合成＆音声認識（優先1位：429完全防止＆声とセリフの完全同期）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -59,10 +68,12 @@ class AudioSpeechEngine {
     this.silenceTimeout = null;
     this.watchdogInterval = null;
 
-    // 定型挨拶や相槌の超高速バッファ（ラグ0秒再生用）
+    // ★ 429防止用：通信制御とキャッシュ
     this.fixedPhraseMap = new Map();
     this.recentSpokenTexts = [];
     this.lastSpeechEndTime = 0;
+    this.lastVoicevoxRequestTime = 0;
+    this.currentAbortController = null;
 
     this.onInterimUpdate = null;
     this.onSpeechFinal = null;
@@ -103,7 +114,7 @@ class AudioSpeechEngine {
     });
   }
 
-  /* ★ 効果音シンセサイザー（変身音、ゴロゴロ、ちゅ〜る音など） */
+  /* 効果音シンセサイザー */
   playEffect(type) {
     const ctx = this._getAudioContext();
     if (!ctx) return;
@@ -113,9 +124,7 @@ class AudioSpeechEngine {
       const bufferSize = ctx.sampleRate * 0.35;
       const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const output = noiseBuffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        output[i] = Math.random() * 2 - 1;
-      }
+      for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
       const whiteNoise = ctx.createBufferSource();
       whiteNoise.buffer = noiseBuffer;
 
@@ -138,7 +147,6 @@ class AudioSpeechEngine {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(420, now);
       osc.frequency.exponentialRampToValueAtTime(140, now + 0.28);
-
       toneGain.gain.setValueAtTime(0.38, now);
       toneGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
 
@@ -363,23 +371,50 @@ class AudioSpeechEngine {
   prefetchVoice(text, speakerId) {
     this._getVoicevoxDirectUrl(text, speakerId).then(audioUrl => {
       this.fixedPhraseMap.set(`${speakerId}_${text}`, audioUrl);
-      Logger.log(`[定型肉声準備OK] ${text}`, "info");
+      Logger.log(`[定型肉声キャッシュ完了] ${text}`, "info");
     }).catch(() => {});
   }
 
-  /* ★ VOICEVOX 直接オーディオURL取得 */
+  /* ★ 429防止策：並列リクエストの完全破棄 ＆ APIキー確実付与 ＆ キャッシュ優先 */
   async _getVoicevoxDirectUrl(text, speakerId) {
     const key = `${speakerId}_${text}`;
     if (this.fixedPhraseMap.has(key)) {
       return this.fixedPhraseMap.get(key);
     }
 
-    const vvKey = localStorage.getItem('kuro_voicevox_key') || '';
-    let initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodeURIComponent(text)}&speaker=${speakerId}`;
-    if (vvKey) initUrl += `&key=${encodeURIComponent(vvKey)}`;
+    // 前のリクエストが残っている場合は確実に切断（同時実行数1のルール遵守）
+    if (this.currentAbortController) {
+      this.currentAbortController.abort();
+    }
+    this.currentAbortController = new AbortController();
+    const signal = this.currentAbortController.signal;
 
-    const initRes = await fetch(initUrl);
-    if (!initRes.ok) throw new Error(`HTTP初期エラー ${initRes.status}`);
+    // クールダウン制御（直前リクエストから2.5秒未満なら安全待機）
+    const now = Date.now();
+    const elapsed = now - this.lastVoicevoxRequestTime;
+    if (elapsed < 2500) {
+      await new Promise(r => setTimeout(r, 2500 - elapsed));
+    }
+    this.lastVoicevoxRequestTime = Date.now();
+
+    const rawVvKey = localStorage.getItem('kuro_voicevox_key') || '';
+    const vvKey = rawVvKey.trim();
+
+    let initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodeURIComponent(text)}&speaker=${speakerId}`;
+    if (vvKey) {
+      initUrl += `&key=${encodeURIComponent(vvKey)}`;
+      Logger.log(`[VOICEVOX] APIキー認証枠で生成リクエスト中…`, "info");
+    } else {
+      Logger.log(`[VOICEVOX] 無料共有枠で生成リクエスト中…`, "info");
+    }
+
+    const initRes = await fetch(initUrl, { signal });
+    if (!initRes.ok) {
+      if (initRes.status === 429) {
+        Logger.log(`[VOICEVOX 429] サーバーが混雑しています。安全待機します。`, "warn");
+      }
+      throw new Error(`HTTP初期エラー ${initRes.status}`);
+    }
 
     const initData = await initRes.json();
     if (initData.isAudioError) throw new Error("VOICEVOX側エラー");
@@ -390,8 +425,9 @@ class AudioSpeechEngine {
       const statusUrl = initData.audioStatusUrl;
       for (let i = 1; i <= 24; i++) {
         await new Promise(r => setTimeout(r, 500));
+        if (signal.aborted) throw new Error("リクエスト中断");
         try {
-          const sRes = await fetch(statusUrl);
+          const sRes = await fetch(statusUrl, { signal });
           if (sRes.ok) {
             const sData = await sRes.json();
             if (sData.isAudioReady) {
@@ -399,11 +435,16 @@ class AudioSpeechEngine {
               break;
             }
           }
-        } catch(e) {}
+        } catch(e) {
+          if (signal.aborted) throw e;
+        }
       }
     }
 
     if (!playUrl) throw new Error("VOICEVOX生成タイムアウト");
+
+    // 取得できたURLをメモリキャッシュに保存（次回は通信0回で即再生）
+    this.fixedPhraseMap.set(key, playUrl);
     return playUrl;
   }
 
@@ -423,7 +464,7 @@ class AudioSpeechEngine {
     return false;
   }
 
-  /* ★ 音声再生：onStartが呼ばれた瞬間＝実際に音が鳴り始めた瞬間 */
+  /* ★ 音声再生：音が鳴り始めた瞬間（onplay）にonStartを同期呼び出し */
   async speak(text, speakerIdOverride = null, onStart = null, onEnd = null) {
     this.stopSpeaking();
     this.unlockMasterAudio();
@@ -472,7 +513,7 @@ class AudioSpeechEngine {
 
       await this.masterAudio.play();
     } catch (err) {
-      Logger.log(`[VOICEVOX通信失敗] ${err.message}`, "error");
+      Logger.log(`[VOICEVOX通信待機] ${err.message}`, "warn");
       this.isSpeaking = false;
       if (onStart) onStart();
       if (onEnd) onEnd();
@@ -481,6 +522,10 @@ class AudioSpeechEngine {
 
   stopSpeaking() {
     this.isSpeaking = false;
+    if (this.currentAbortController) {
+      this.currentAbortController.abort();
+      this.currentAbortController = null;
+    }
     this.masterAudio.pause();
     this.masterAudio.currentTime = 0;
   }
@@ -573,7 +618,7 @@ class AudioSpeechEngine {
   _startWatchdog() {
     this.watchdogInterval = setInterval(() => {
       if (AppCore.state.isRunning && !this.isSpeaking && !AppCore.state.isThinking && !AppCore.state.isProcessingInput && !this.isListening) {
-        if (Date.now() - this.lastSpeechEndTime > 1200) {
+        if (Date.now() - this.lastSpeechEndTime > 1500) {
           this.startListening();
         }
       }
@@ -660,7 +705,7 @@ const LocationProvider = {
   },
 
   async _applyHomeFallback() {
-    const homeVal = localStorage.getItem('kuro_home_coords') || '';
+    const homeVal = (localStorage.getItem('kuro_home_coords') || '').trim();
     if (!homeVal) {
       this.detailedAddress = "東京都東村山市付近（初期設定）";
       this.cityArea = "東京都東村山市";
@@ -936,12 +981,13 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   ★ MODULE 5: 思考・AI対話エンジン（過去の実績構成へ完全復帰）
+   ★ MODULE 5: 思考・AI対話エンジン（Gemini全モデル導通検証＆詳細エビデンス記録）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
-    this.apiKey = localStorage.getItem('kuro_api_key') || '';
+    this.apiKey = (localStorage.getItem('kuro_api_key') || '').trim();
     this.proUsedToday = parseInt(localStorage.getItem('kuro_pro_usage_count') || '0', 10);
+    this.verifiedModels = [];
   }
 
   getRemainingProQuota() { return Math.max(0, 20 - this.proUsedToday); }
@@ -960,7 +1006,85 @@ class AIThoughtEngine {
     return false;
   }
 
-  /* ★ 過去に確実に成功していた実績モデル順序＆通信ロジック */
+  /* ★ 全候補モデルの導通テスト＆エビデンス採取機能 */
+  async verifyAllModelsEvidence() {
+    if (!this.apiKey) {
+      Logger.log("[エビデンス] APIキーが未入力です。", "error");
+      return;
+    }
+
+    Logger.log("==========================================", "info");
+    Logger.log("[Gemini検証] Google API 導通テスト開始ニャ！", "info");
+
+    // 1. Googleがこのキーに許可しているモデル一覧を照会
+    let availableFromGoogle = [];
+    try {
+      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${this.apiKey}`);
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        if (listData.models && Array.isArray(listData.models)) {
+          availableFromGoogle = listData.models
+            .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
+            .map(m => m.name.replace(/^models\//, ''));
+          Logger.log(`[Google公式一覧取得成功] 許可モデル数: ${availableFromGoogle.length}件`, "success");
+        }
+      } else {
+        const errJson = await listRes.json().catch(() => ({}));
+        const errMsg = errJson.error?.message || `HTTP ${listRes.status}`;
+        Logger.log(`[Google一覧照会失敗] 理由: ${errMsg}`, "error");
+      }
+    } catch(e) {
+      Logger.log(`[Google一覧照会例外] ${e.message}`, "error");
+    }
+
+    // 2. テスト対象の候補リスト（実績順）
+    const candidates = [
+      "gemini-1.5-flash",
+      "gemini-1.5-pro",
+      "gemini-pro",
+      "gemini-1.5-flash-latest",
+      ...availableFromGoogle
+    ];
+
+    // 重複を排除
+    const uniqueCandidates = [...new Set(candidates)];
+    this.verifiedModels = [];
+
+    for (const model of uniqueCandidates) {
+      const cleanModel = model.replace(/^models\//, '');
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${this.apiKey}`;
+      const payload = {
+        contents: [{ role: 'user', parts: [{ text: "テストだニャ。元気かニャ？" }] }],
+        generationConfig: { maxOutputTokens: 10 }
+      };
+
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "OK";
+          Logger.log(`[エビデンス: 有効判定✅] モデル「${cleanModel}」➔ 通信成功 (HTTP 200) 応答:「${reply.trim()}」`, "success");
+          this.verifiedModels.push(cleanModel);
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          const detail = errData.error?.message || `HTTP ${res.status}`;
+          Logger.log(`[エビデンス: 無効判定❌] モデル「${cleanModel}」➔ 失敗 (HTTP ${res.status}) [詳細理由: ${detail}]`, "error");
+        }
+      } catch(err) {
+        Logger.log(`[エビデンス: 無効判定❌] モデル「${cleanModel}」➔ 通信例外: ${err.message}`, "error");
+      }
+    }
+
+    Logger.log(`[検証完了] 有効と確認されたモデル: ${this.verifiedModels.join(', ') || 'なし'}`, "info");
+    Logger.log("==========================================", "info");
+  }
+
+  /* ★ 対話返答生成（エビデンスで成功確認済みのモデルを最優先で使用） */
   async generateReply(promptText, isPro, character, memories, isAssistantMode) {
     if (!this.apiKey) {
       Logger.log("[Gemini] APIキーが未設定です", "error");
@@ -985,14 +1109,27 @@ ${memories.map(m => `・${m}`).join('\n')}
 ${isAssistantMode ? '- おてつだいモード発動中！話題の単語を末尾に <!--TOPIC:単語--> で添えてください。' : ''}
 `;
 
-    // 過去実績のある安定した正式モデル順
-    const candidateModels = isPro
-      ? ["gemini-1.5-pro", "gemini-1.5-pro-latest", "gemini-1.5-flash"]
-      : ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-pro"];
+    // 候補モデルの決定
+    let targetModels = [];
+    if (this.verifiedModels.length > 0) {
+      if (isPro) {
+        targetModels = this.verifiedModels.filter(m => m.includes('pro')).concat(this.verifiedModels);
+      } else {
+        targetModels = this.verifiedModels.filter(m => m.includes('flash')).concat(this.verifiedModels);
+      }
+    } else {
+      targetModels = isPro
+        ? ["gemini-1.5-pro", "gemini-1.5-pro-latest", "gemini-1.5-flash"]
+        : ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-pro"];
+    }
 
-    for (const model of candidateModels) {
+    // 重複を排除
+    targetModels = [...new Set(targetModels)];
+
+    for (const model of targetModels) {
+      const cleanModel = model.replace(/^models\//, '');
       try {
-        Logger.log(`[Gemini] モデル「${model}」へ問い合わせ中…`, "info");
+        Logger.log(`[Gemini] モデル「${cleanModel}」へリクエスト中…`, "info");
 
         const bodyPayload = {
           contents: [{
@@ -1005,7 +1142,7 @@ ${isAssistantMode ? '- おてつだいモード発動中！話題の単語を末
           }
         };
 
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${this.apiKey}`;
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1023,15 +1160,17 @@ ${isAssistantMode ? '- おてつだいモード発動中！話題の単語を末
 
             const clean = raw.replace(/<!--[\s\S]*?-->/g, '').replace(/[（\(].*?[）\)]/g, '').trim();
 
-            Logger.log(`[Gemini成功⚡] モデル「${model}」から正常にお返事取得ニャ！`, "success");
+            Logger.log(`[Gemini成功⚡] モデル「${cleanModel}」から正常にお返事取得ニャ！`, "success");
             if (isDiary) StorageManager.saveDiary(clean);
-            return { success: true, text: clean, topicTag, modelUsed: model };
+            return { success: true, text: clean, topicTag, modelUsed: cleanModel };
           }
         } else {
-          Logger.log(`[Gemini] モデル「${model}」HTTP ${res.status}`, "warn");
+          const errJson = await res.json().catch(() => ({}));
+          const errMsg = errJson.error?.message || `HTTP ${res.status}`;
+          Logger.log(`[Gemini失敗] モデル「${cleanModel}」HTTP ${res.status} [詳細: ${errMsg}]`, "error");
         }
       } catch (err) {
-        Logger.log(`[Gemini通信エラー] ${err.message}`, "warn");
+        Logger.log(`[Gemini通信例外] ${err.message}`, "warn");
       }
     }
 
@@ -1115,13 +1254,20 @@ const AppCore = {
     if (spotSelect) spotSelect.value = savedSpot;
     if (homeInput) homeInput.value = savedHome;
 
+    // ★ 定型挨拶・エラーセリフを即キャッシュ（通信0回再生用）
     this.audio.prefetchVoice("おやびん、わたしはクロだニャン🐾", parseInt(savedSpeaker, 10));
+    this.audio.prefetchVoice("うまく聞き取れなかったニャ。もう一度お話ししてニャン🐾", parseInt(savedSpeaker, 10));
 
     setInterval(() => {
       document.getElementById('clock-display').textContent = TimeProvider.getCurrentInfo().clock;
     }, 1000);
 
-    setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 600);
+    // ★ 起動時にAPIキーがあれば、Geminiモデル一覧の導通テスト（エビデンス取得）を1回実行
+    if (this.ai.apiKey) {
+      setTimeout(() => { this.ai.verifyAllModelsEvidence(); }, 1200);
+    }
+
+    setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 800);
     Logger.log("[AppCore] 準備完了ニャ！いつでも話しかけてニャ🐾", "success");
   },
 
@@ -1303,7 +1449,6 @@ const AppCore = {
       this.startKitchenTimer(mins);
       const rep = `了解ニャ！${mins}分クロがしっかり見ておくニャン🐾`;
       this.audio.speak(rep, null, () => {
-        // 音が鳴り始めた瞬間にセリフ描画（完全同期）
         this.renderBubble('model', rep);
         this.avatar.setEmotion('talking');
       }, () => {
@@ -1312,11 +1457,10 @@ const AppCore = {
       return;
     }
 
-    // 2. 定型即答（時間・日付・挨拶など）：音声再生の開始と同時にフキダシを表示！
+    // 2. 定型即答（時間・日付・挨拶）：音声再生開始の瞬間にセリフを描画（完全同期）
     const direct = this._checkDirectIntent(text);
     if (direct) {
       this.audio.speak(direct.spoken, null, () => {
-        // 音声開始コールバックでフキダシを出し、文字先行バグを完全解消
         this.renderBubble('model', direct.display, direct.cards || []);
         this.avatar.setEmotion('talking');
       }, () => {
@@ -1396,7 +1540,6 @@ const AppCore = {
     row.className = 'chat-row model';
     const bubble = document.createElement('div');
     bubble.className = 'chat-bubble thinking-bubble';
-    // 自然な表現（目立たない通常スタイル）
     bubble.textContent = this.state.isAssistantMode ? "クロがお調べしてるニャ…🔍" : "クロが考えてるニャ…💭";
     row.appendChild(bubble);
     box.appendChild(row);
@@ -1413,7 +1556,6 @@ const AppCore = {
     const res = await this.ai.generateReply(promptText, isPro, CHARACTER_CONFIG, this.memories, this.state.isAssistantMode);
 
     if (res.success && res.text) {
-      // 思考終了 ➔ 音声準備フェーズ
       bubble.textContent = "返事の準備をしてるニャ…🎙️";
       box.scrollTop = box.scrollHeight;
 
@@ -1426,7 +1568,7 @@ const AppCore = {
       // 2. 音声再生の開始コールバックで初めて実際の回答文を表示（完全同期）
       this.audio.speak(res.text, null, () => {
         bubble.className = 'chat-bubble';
-        bubble.textContent = res.text; // 音が鳴った瞬間にセリフに切り替え！
+        bubble.textContent = res.text;
         document.getElementById('status-text').textContent = "🗣️ お話し中ニャ♪";
 
         if (cards.length > 0) {
@@ -1454,7 +1596,7 @@ const AppCore = {
       });
 
     } else {
-      // 通信エラーフォールバック
+      // 通信エラー時：キャッシュされたセリフで即座に返答（通信0回）
       const fb = "うまく聞き取れなかったニャ。もう一度お話ししてニャン🐾";
       bubble.className = 'chat-bubble';
       bubble.textContent = fb;
@@ -1896,6 +2038,11 @@ const AppCore = {
       }
       btnText.textContent = successMessage;
 
+      // 保存直後にモデル検証（エビデンス採取）を自動実行
+      if (newApiKey) {
+        this.ai.verifyAllModelsEvidence();
+      }
+
       setTimeout(() => {
         document.getElementById('modal-overlay').style.display = 'none';
         btn.classList.remove('is-success');
@@ -1929,4 +2076,5 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
+
 
