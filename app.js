@@ -1,8 +1,9 @@
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版 v1.0.0）
    - バージョン 1.0.0 正式安定版
-   - 音声完全Blob化（メモリ一括取得再生）：短文・長文問わず途切れ・抜け・息継ぎ間を100%根絶
-   - 発話中のマイク完全ロック ＆ 自声・環境ノイズによるストップ誤作動鉄壁ガード
+   - マイク常時キープ方式（ソフトミュート）：右上のマイク点滅解消 ＆ 話し始めの頭欠け0.00秒解消
+   - 一人称「クロ」「わたし」完全統一 ＆ 「余（あまり）」読み間違い根絶
+   - 音声完全Blob化（メモリ一括取得再生）：短文・長文問わず途切れ・抜けを100%根絶
    - TimeProvider 日時提供エンジン（午前4時境界の生活リズム＆時計リアルタイム表示）
    - セリフの長さ（40〜80文字）を完全キープ ＆ VOICEVOX 音声・文字完全同期
    - 操作ボタンの軽快な「ひとこと肉声（0.5秒）」化（タイムライン・日記完全保護）
@@ -125,7 +126,7 @@ const TimeProvider = {
 };
 
 /* ==========================================================================
-   ★ MODULE 1: 音声合成＆音声認識（Blob完全メモリキャッシュ ＆ 途切れゼロ）
+   ★ MODULE 1: 音声合成＆音声認識（マイク常時キープ方式 ＆ 頭欠け0秒解消）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -142,6 +143,7 @@ class AudioSpeechEngine {
     this.rate = parseFloat(localStorage.getItem('kuro_rate') || '1.05');
     this.isSpeaking = false;
     this.isListening = false;
+    this.isMutedSoftly = false; // ★ ソフトウェアミュート（マイクはONのまま耳をふさぐ）
     this.recognition = null;
     this.isSpeechCommitted = false;
     this.lastRecognizedText = '';
@@ -349,9 +351,14 @@ class AudioSpeechEngine {
     }
   }
 
+  /* ★ 数字のカナ変換 ＆ 「余（あまり）」の誤読防止ガード */
   _convertAllNumbersToKana(text) {
     if (!text) return "";
     let t = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+
+    // ★ 万が一の「余」を「よ」へ強制読み替えガード
+    t = t.replace(/余([はがものにもと])/g, 'よ$1').replace(/余/g, 'よ');
+
     t = t.replace(/(\d{4})\s*年/g, (m, yStr) => `${numToKana(parseInt(yStr, 10))}ねん`);
 
     const monthMap = {
@@ -510,7 +517,6 @@ class AudioSpeechEngine {
     }
   }
 
-  /* ★ 音声完全Blob化：メモリ上に全データを落としてから再生（途切れ・抜け・ノイズ・間を完全根絶） */
   async _getVoicevoxBlobUrl(text, speakerId) {
     const key = `${speakerId}_${text}`;
     if (this.blobUrlCache.has(key)) {
@@ -571,7 +577,6 @@ class AudioSpeechEngine {
 
     if (!directUrl) throw new Error("VOICEVOX生成タイムアウト");
 
-    // ★ ここで音声バイナリ（Blob）を一括ダウンロードしてローカルメモリに確保
     const audioRes = await fetch(directUrl, { signal });
     if (!audioRes.ok) throw new Error("音声データのダウンロードに失敗しました");
     const audioBlob = await audioRes.blob();
@@ -586,15 +591,13 @@ class AudioSpeechEngine {
     const normalized = text.replace(/[\s、。！？ニャンニャ]/g, '');
     if (normalized.length < 2) return true;
 
-    // 操作用ひとことボイスのピンポイント破棄（自声エコー完全遮断）
     const actionWords = ["おまかせニャ", "おまかせ", "あそぶニャ", "あそぶ", "バッチリニャ", "バッチリ", "はーい"];
     if (actionWords.some(w => normalized.includes(w.replace(/[\s、。！？ニャンニャ]/g, '')))) {
       return true;
     }
 
     const now = Date.now();
-    // 0.35秒の自然なクールダウン判定（おやびんの聞き漏らしはゼロ）
-    const isRecent = (now - this.lastSpeechEndTime) < 350;
+    const isRecent = (now - this.lastSpeechEndTime) < 300;
 
     for (const spoken of this.recentSpokenTexts) {
       const normSpoken = spoken.replace(/[\s、。！？ニャンニャ]/g, '');
@@ -604,10 +607,11 @@ class AudioSpeechEngine {
     return false;
   }
 
-  /* ★ 発話処理（Blob完全バッファ再生 ＆ 発話中の鉄壁マイク遮断） */
+  /* ★ 発話処理（マイクを切断せず「ソフトミュート」で耳をふさぐ ➔ 頭欠け0秒解消） */
   async speak(text, speakerIdOverride = null, onStart = null, onEnd = null) {
     this.stopSpeaking();
-    this.stopListening(); // 発話直前にマイクを安全に完全停止
+    // マイクは切断せず、プログラム側でお耳をふさぐ（ソフトミュートON）
+    this.isMutedSoftly = true;
     this.unlockMasterAudio();
 
     try {
@@ -626,7 +630,12 @@ class AudioSpeechEngine {
       .replace(/^[、。,\.\s]+/, '')
       .trim();
 
-    if (!clean) { if (onStart) onStart(); if (onEnd) onEnd(); return; }
+    if (!clean) {
+      this.isMutedSoftly = false;
+      if (onStart) onStart();
+      if (onEnd) onEnd();
+      return;
+    }
 
     this.recentSpokenTexts.unshift(clean);
     if (this.recentSpokenTexts.length > 5) this.recentSpokenTexts.pop();
@@ -641,12 +650,10 @@ class AudioSpeechEngine {
     };
 
     try {
-      // 完全メモリBlob URLを取得
       const blobAudioUrl = await this._getVoicevoxBlobUrl(clean, speakerId);
       this.masterAudio.src = blobAudioUrl;
       this.masterAudio.playbackRate = this.rate;
 
-      // Blobなので即座にバッファ完了（canplaythroughを安全待機）
       await new Promise((resolve) => {
         let isResolved = false;
         const completeHandler = () => {
@@ -659,7 +666,7 @@ class AudioSpeechEngine {
         };
         this.masterAudio.addEventListener('canplaythrough', completeHandler);
         this.masterAudio.addEventListener('loadeddata', completeHandler);
-        setTimeout(completeHandler, 600); // Blobのため極めて高速
+        setTimeout(completeHandler, 500);
       });
 
       this.masterAudio.onplaying = () => { triggerStartOnce(); };
@@ -668,35 +675,38 @@ class AudioSpeechEngine {
         this.isSpeaking = false;
         this.lastSpeechEndTime = Date.now();
         if (onEnd) onEnd();
-        // ★ わずか0.35秒の自然な間で即座にマイク再開（聞き漏らしゼロ）
+
+        // ★ 音声終了の瞬間（わずか30msの残響消滅後）に即座にお耳を開く（頭欠け0.00秒！）
         setTimeout(() => {
-          if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !AppCore.state.isThinking) {
-            this.startListening();
+          this.isMutedSoftly = false;
+          const st = document.getElementById('status-text');
+          if (st && AppCore.state.isRunning && !AppCore.state.isThinking) {
+            st.textContent = "👂 聴いてるニャ♪";
           }
-        }, 350);
+        }, 30);
       };
 
       this.masterAudio.onerror = () => {
         Logger.log("[Audio] VOICEVOX直接再生エラー", "error");
         this.isSpeaking = false;
+        this.isMutedSoftly = false;
         if (onStart) onStart();
         if (onEnd) onEnd();
-        setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, 350);
       };
 
       await this.masterAudio.play();
     } catch (err) {
       Logger.log(`[VOICEVOX待機] ${err.message}`, "warn");
       this.isSpeaking = false;
+      this.isMutedSoftly = false;
       if (onStart) onStart();
       if (onEnd) onEnd();
-      setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, 350);
     }
   }
 
   async readDiarySeamless(diaryContentOnly, speakerIdOverride = null, onSentenceStart = null, onComplete = null) {
     this.stopSpeaking();
-    this.stopListening();
+    this.isMutedSoftly = true;
     this.unlockMasterAudio();
 
     this.isReadingAloud = true;
@@ -722,6 +732,7 @@ class AudioSpeechEngine {
 
     if (sentences.length === 0) {
       this.isReadingAloud = false;
+      this.isMutedSoftly = false;
       if (onComplete) onComplete();
       return;
     }
@@ -773,7 +784,7 @@ class AudioSpeechEngine {
 
         this.masterAudio.onended = () => {
           this.isSpeaking = false;
-          setTimeout(resolve, 60);
+          setTimeout(resolve, 50);
         };
         this.masterAudio.onerror = () => {
           this.isSpeaking = false;
@@ -786,13 +797,14 @@ class AudioSpeechEngine {
 
     this.isReadingAloud = false;
     this.isSpeaking = false;
+    this.isMutedSoftly = false;
     if (AppCore.avatar) AppCore.avatar.setEmotion('idle');
     if (onComplete) onComplete();
-    setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, 350);
   }
 
   stopReadingAloud() {
     this.isReadingAloud = false;
+    this.isMutedSoftly = false;
     if (this.readingAbortController) {
       this.readingAbortController.abort();
       this.readingAbortController = null;
@@ -802,6 +814,7 @@ class AudioSpeechEngine {
 
   stopSpeaking() {
     this.isSpeaking = false;
+    this.isMutedSoftly = false;
     if (this.currentAbortController) {
       this.currentAbortController.abort();
       this.currentAbortController = null;
@@ -821,7 +834,7 @@ class AudioSpeechEngine {
 
     this.recognition = new SpeechRec();
     this.recognition.lang = 'ja-JP';
-    this.recognition.continuous = true;
+    this.recognition.continuous = true; // ★ 常時接続キープ
     this.recognition.interimResults = true;
 
     this.recognition.onstart = () => {
@@ -842,9 +855,9 @@ class AudioSpeechEngine {
 
       const live = (final || interim).trim();
 
-      // 発話中・朗読中は音声入力を完全遮断（自声による誤ストップ防止）
-      if (this.isSpeaking || this.isReadingAloud) {
-        // おやびんの明示的な割り込み「ストップ」のみ許可（自声エコー判定を徹底通過）
+      // ★ ソフトミュート中（クロちゃん発話中）は認識を無視
+      if (this.isMutedSoftly || this.isSpeaking || this.isReadingAloud) {
+        // おやびんの明示的な割り込み「ストップ」のみ特別に受け付ける
         if (live && !this._isSelfEcho(live) && /(?:ストップ|やめて|とまって|止めて)/.test(live)) {
           this.stopReadingAloud();
           this.stopSpeaking();
@@ -862,7 +875,7 @@ class AudioSpeechEngine {
 
       if (this.silenceTimeout) clearTimeout(this.silenceTimeout);
       this.silenceTimeout = setTimeout(() => {
-        if (this.lastRecognizedText && !this.isSpeechCommitted && !AppCore.state.isProcessingInput && !this.isSpeaking && !this.isReadingAloud) {
+        if (this.lastRecognizedText && !this.isSpeechCommitted && !AppCore.state.isProcessingInput && !this.isSpeaking && !this.isReadingAloud && !this.isMutedSoftly) {
           this._commitFinalSpeech(this.lastRecognizedText);
         }
       }, 950);
@@ -873,47 +886,41 @@ class AudioSpeechEngine {
       if (this.onListeningStatus) this.onListeningStatus(false);
       if (!AppCore.state.isRunning) return;
 
-      if (!this.isSpeechCommitted && this.lastRecognizedText && !AppCore.state.isProcessingInput && !this.isSpeaking && !this.isReadingAloud) {
-        this._commitFinalSpeech(this.lastRecognizedText);
-      } else {
-        setTimeout(() => {
-          if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !AppCore.state.isThinking && !AppCore.state.isProcessingInput) {
-            this.startListening();
-          }
-        }, 500);
-      }
+      // ★ OS側の無音タイムアウト等で切れてしまった場合のみ、即座にシームレス再接続
+      setTimeout(() => {
+        if (AppCore.state.isRunning && !this.isListening) {
+          this.startListening();
+        }
+      }, 100);
     };
   }
 
   _commitFinalSpeech(text) {
-    if (!text || this.isSpeechCommitted || AppCore.state.isProcessingInput || !AppCore.state.isRunning) return;
+    if (!text || this.isSpeechCommitted || AppCore.state.isProcessingInput || !AppCore.state.isRunning || this.isMutedSoftly) return;
 
     if (this._isSelfEcho(text)) {
       Logger.log(`[エコー破棄] 自声の跳ね返り: ${text}`, "warn");
       this.lastRecognizedText = '';
-      this.stopListening();
-      setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, 350);
       return;
     }
 
     this.isSpeechCommitted = true;
     this.lastRecognizedText = '';
-    this.stopListening();
+    this.isMutedSoftly = true; // 認識完了した瞬間にお耳をふさぐ（AI思考中へ）
     if (this.onSpeechFinal) this.onSpeechFinal(text);
   }
 
   _startWatchdog() {
     this.watchdogInterval = setInterval(() => {
-      if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !AppCore.state.isThinking && !AppCore.state.isProcessingInput && !this.isListening) {
-        if (Date.now() - this.lastSpeechEndTime > 1200) {
-          this.startListening();
-        }
+      // マイクが切れていたら常に接続し直して常時ONを維持
+      if (AppCore.state.isRunning && !this.isListening) {
+        this.startListening();
       }
-    }, 2500);
+    }, 2000);
   }
 
   startListening() {
-    if (!this.recognition || !AppCore.state.isRunning || this.isSpeaking || this.isReadingAloud || this.isListening || AppCore.state.isProcessingInput) return;
+    if (!this.recognition || !AppCore.state.isRunning || this.isListening) return;
     try {
       this.lastRecognizedText = '';
       this.isSpeechCommitted = false;
@@ -923,6 +930,7 @@ class AudioSpeechEngine {
 
   stopListening() {
     this.isListening = false;
+    this.isMutedSoftly = true;
     if (this.silenceTimeout) clearTimeout(this.silenceTimeout);
     this.lastRecognizedText = '';
     if (this.recognition) {
@@ -1355,7 +1363,7 @@ const StorageManager = {
 
     const pkg = {
       format: "kuro_pure_data_package",
-      version: "1.0.0", // ★ 正式バージョン刻印
+      version: "1.0.0",
       exportedAt: now.toLocaleString('ja-JP'),
       memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
@@ -1606,7 +1614,7 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   ★ MODULE 5: 思考・AI対話エンジン（Flash Lite 特化 ＆ 日記ログ厳選）
+   ★ MODULE 5: 思考・AI対話エンジン（一人称「クロ」「わたし」完全統一）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
@@ -1626,7 +1634,7 @@ class AIThoughtEngine {
             const methods = m.supportedGenerationMethods || [];
             return methods.includes('generateContent') && 
                    name.includes('lite') && 
-                   !name.includes('3.8'); // 3.8は完全禁止・除外
+                   !name.includes('3.8');
           })
           .map(m => m.name.replace(/^models\//, ''));
 
@@ -1708,7 +1716,7 @@ class AIThoughtEngine {
 ・おやびんが夜中に目が覚めて話しかけてくれたので、優しく静かに寄り添い、「目が覚めちゃったのかニャ？」「無理しないでゆっくり休んでニャ💤」と睡眠や体調を気遣う愛らしいトーンでお話ししてください。
 ` : "";
 
-    // ★ セリフの長さは削らず【40〜80文字程度（1〜2文）】の愛らしい長さを100%キープ！
+    // ★ 一人称は「クロ」または「わたし」に厳格限定！「余」は完全禁止！
     const systemPrompt = `
 あなたは世界一可愛いノルウェージャンフォレストキャットの1歳の子猫の女の子「${character.name}」です。
 【現在状況】
@@ -1724,6 +1732,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 
 【★絶対厳守の話し方ルール】
 - 飼い主さんのことは必ず親しみを込めて「おやびん」と呼んでください。
+- 【重要・一人称】クロちゃん自身の一人称は、必ず女の子らしく「クロ」または「わたし」を使ってください。「余（よ）」という言葉や一人称は絶対に使わないでください。
 - 語尾は必ず「〜ニャ」「〜ニャン♪」「〜だニャ！」「〜ニャ🐾」をつけてください。
 - 【重要】動作描写・ト書き（例: （笑う）、*しっぽを振る*、〜な様子など）の出力は一切禁止です。純粋なセリフ（発話テキスト）のみを出力してください。
 - 文を途中で絶対に切らないでください。必ず文章の最後まで話し終えて完結させてください。
@@ -1731,7 +1740,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 - 現在地を聞かれたら、市の名前だけでなく「いまは${townArea}を歩いてるニャン🐾」と詳細な場所を答えてください。
 - 川や公園、近くのものについて聞かれたら、上記の【周辺スポット】の中で一番距離が近いものから「すぐ〇m先にあるのは〇〇だニャ！」と教えてください。
 - 写真が送られてきたら、写っているもの（お花、川、食べ物、景色など）を褒めて嬉しそうにコメントしてください。
-- 前世は大天才発明家なので、テクノロジーや相談事では「前世の余の大発明」を自慢げに提案してください。
+- 前世は大天才発明家なので、テクノロジーや相談事では「クロの前世の大発明ニャ！」と自慢げに提案してください。
 - おやびんが話題にした主要キーワードがあれば末尾に <!--TOPIC:単語--> を添えてください。
 `;
 
@@ -1798,6 +1807,9 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
               .replace(/^[、。,\.\s]+/, '')
               .trim();
 
+            // 万が一の「余」を「クロ」へ自動補正
+            clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
+
             Logger.log(`[Gemini成功⚡] Liteモデル「${cleanModel}」から応答取得！`, "success");
             
             const badge = document.getElementById('model-badge');
@@ -1813,7 +1825,6 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
     return { success: false, error: "ALL_LITE_MODELS_FAILED" };
   }
 
-  /* ★ 日記リソースの厳選：機械的なニュースや店舗検索リストを除外し、生活・情緒の思い出に昇華 */
   async generateDailyDiarySummary(dailyAllLogs, targetLifeDateKey = null, targetLifeFullDate = null) {
     if (!this.apiKey) return { success: false };
 
@@ -1824,15 +1835,11 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 
     const fullDate = targetLifeFullDate || timeInfo.lifeFullDate;
 
-    // 日記用リソースの選別・フィルタリング
     const filteredLogs = dailyAllLogs.filter(l => {
       if (!l.text) return false;
-      // 日記作成コマンドの除外
       if (/(?:今日|きょう)?(?:の)?(?:日記|にっき).*(?:書いて|まとめて)/.test(l.text)) return false;
-      // 単なるURLやリンク案内だけの除外
       if (l.text.startsWith('http') || l.text.includes('Googleマップで見る')) return false;
 
-      // おてつだいモード中かつ純粋な検索応答（ニュース一覧読み上げや住所特定だけ）のノイズを低減
       if (l.mode === 'assistant') {
         const isMechanicalSearch = /(?:最新ニュース|トップニュース|Googleマップ|検索結果|付近のスポット一覧)/.test(l.text);
         if (isMechanicalSearch) return false;
@@ -1846,6 +1853,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 
     const diaryPrompt = `
 あなたはノルウェージャンフォレストキャットの1歳の子猫の女の子「クロ」です。
+一人称は必ず「クロ」または「わたし」を使ってください（「余」は禁止です）。
 おやびん（飼い主さん）と過ごした大切な1日を振り返り、クロちゃん目線の心温まる愛らしい絵日記を書いてください。
 夕方だけでなく、夜や深夜にお話しした内容がある場合は、その夜のまったりした出来事もしっかり盛り込んで1日全体の絵日記にまとめてください。
 
@@ -1882,7 +1890,8 @@ ${conversationHistoryText || '今日はおやびんとまったりお家で過�
         const data = await res.json();
         const diaryText = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (diaryText && diaryText.length >= 25) {
-          const clean = diaryText.replace(/[*#_~`]/g, '').trim();
+          let clean = diaryText.replace(/[*#_~`]/g, '').trim();
+          clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
           Logger.log(`[Diary成功⚡] 絵日記が完成したニャ！（文字数: ${clean.length}字）`, "success");
           return { success: true, diaryText: clean };
         }
@@ -1903,7 +1912,7 @@ const CHARACTER_CONFIG = {
     "名前：クロ（ノルウェージャンフォレストキャット、1歳の元気な女の子）",
     "飼い主：おやびん（ミッキーさん。世界で一番大好き！）",
     "大好物：ちゅ〜る、かつおぶし、ラーメン、餃子",
-    "前世：世界的に有名な大天才発明家（自慢好きで余と呼ぶことも）",
+    "前世：世界的に有名な大天才発明家（自慢好きで発明の話が得意）",
     "家族：ママのかよちゃん、お兄ちゃんのりゅうせいくん、弟分のたいせいくん、大親友のかまぶーくん"
   ]
 };
@@ -2010,17 +2019,16 @@ const AppCore = {
         });
       }
 
-      // ★ 翌朝起動時チェック：会話数差分検知による自動補完確定システム
       this.checkAndFinalizeYesterdayDiary();
 
-      setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 600);
-      Logger.log("[AppCore] 全システム正常稼働！v1.0.0 正式版が準備完了ニャ🐾", "success");
+      // マイク常時接続スタート
+      setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
+      Logger.log("[AppCore] 全システム正常稼働！マイク常時接続＆v1.0.0 正式版が準備完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
   },
 
-  /* ★ 翌朝起動時チェック：昨日の日記が未作成、または差分会話がある場合に自動更新 */
   async checkAndFinalizeYesterdayDiary() {
     const timeInfo = TimeProvider.getCurrentInfo();
     if (timeInfo.isLateNight) return;
@@ -2105,17 +2113,18 @@ const AppCore = {
       this.state.isProcessingInput = false;
       this.state.isDiaryProcessing = false;
       this.state.isDiaryReading = false;
+      this.audio.isMutedSoftly = false;
       this._updateDiaryReadBtnUI(false);
       this.audio.playEffect('aizuchi');
     };
 
     this.audio.onInterimUpdate = (text) => {
-      if (!this.state.isRunning || this.state.isThinking || this.state.isProcessingInput || this.state.isDiaryReading) return;
+      if (!this.state.isRunning || this.state.isThinking || this.state.isProcessingInput || this.state.isDiaryReading || this.audio.isMutedSoftly) return;
       document.body.classList.add('is-hearing');
     };
 
     this.audio.onSpeechFinal = (finalText) => {
-      if (this.state.isProcessingInput || this.state.isDiaryReading) return;
+      if (this.state.isProcessingInput || this.state.isDiaryReading || this.audio.isMutedSoftly) return;
       this.state.isProcessingInput = true;
       document.body.classList.remove('is-hearing');
       this.renderBubble('user', finalText);
@@ -2124,7 +2133,7 @@ const AppCore = {
 
     this.audio.onListeningStatus = (l) => {
       const st = document.getElementById('status-text');
-      if (st && this.state.isRunning && !this.audio.isSpeaking) {
+      if (st && this.state.isRunning && !this.audio.isSpeaking && !this.state.isThinking) {
         st.textContent = l ? "👂 聴いてるニャ♪" : "💭 待機中ニャ…";
       }
     };
@@ -2367,6 +2376,7 @@ const AppCore = {
         if (this.avatar) this.avatar.setEmotion('talking');
       }, () => {
         if (this.avatar) this.avatar.setEmotion('idle');
+        this.state.isProcessingInput = false;
       });
       return;
     }
@@ -2393,7 +2403,6 @@ const AppCore = {
       }, () => {
         if (this.avatar) this.avatar.setEmotion('idle');
         this.state.isProcessingInput = false;
-        if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 350);
       });
       return;
     }
@@ -2438,7 +2447,6 @@ const AppCore = {
     }, () => {
       if (this.avatar) this.avatar.setEmotion('idle');
       this.state.isProcessingInput = false;
-      if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 350);
     });
 
     const lifeKey = timeInfo.lifeLogKey;
@@ -2494,7 +2502,6 @@ const AppCore = {
         this.state.isThinking = false;
         this.state.isProcessingInput = false;
         this.state.isDiaryProcessing = false;
-        if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 350);
       });
 
     } else {
@@ -2508,7 +2515,6 @@ const AppCore = {
         this.state.isThinking = false;
         this.state.isProcessingInput = false;
         this.state.isDiaryProcessing = false;
-        if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 350);
       });
     }
   },
@@ -2573,9 +2579,6 @@ const AppCore = {
         if (this.avatar) this.avatar.setEmotion('idle');
         this.state.isThinking = false;
         this.state.isProcessingInput = false;
-        const st = document.getElementById('status-text');
-        if (st) st.textContent = "👂 聴いてるニャ♪";
-        if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 350);
       });
 
     } else {
@@ -2589,7 +2592,6 @@ const AppCore = {
         if (this.avatar) this.avatar.setEmotion('talking');
       }, () => {
         if (this.avatar) this.avatar.setEmotion('idle');
-        if (this.state.isRunning) setTimeout(() => this.audio.startListening(), 350);
       });
     }
   },
@@ -2629,7 +2631,6 @@ const AppCore = {
     badge.textContent = `🐾 Flash Lite`;
   },
 
-  /* ★ 操作ボタンの軽快な「ひとこと肉声（0.5秒）」化（タイムライン汚さずステータス文字同期、日記影響ゼロ） */
   triggerActionVoice(shortPhrase, statusDisplay) {
     const feedbackPref = localStorage.getItem('kuro_button_feedback') || 'voice';
     const st = document.getElementById('status-text');
@@ -3209,7 +3210,6 @@ const AppCore = {
       };
     }
 
-    // ★ ストップボタン：軽快なひとこと（「はーい！」）化
     const stopBtn = document.getElementById('stop-action-btn');
     if (stopBtn) {
       stopBtn.onclick = () => {
@@ -3219,6 +3219,7 @@ const AppCore = {
         this.state.isProcessingInput = false;
         this.state.isDiaryProcessing = false;
         this.state.isDiaryReading = false;
+        this.audio.isMutedSoftly = false;
         this._updateDiaryReadBtnUI(false);
         if (this.avatar) this.avatar.setEmotion('idle');
         this.triggerActionVoice("はーい！", "🛑 はーい！");
@@ -3236,7 +3237,7 @@ const AppCore = {
           pauseBtn.classList.add('is-paused');
           if (icon) icon.textContent = "🛑";
           if (txt) txt.textContent = "お休み中";
-          this.audio.stopListening();
+          this.audio.stopListening(); // お休み中のみOSにマイク返却
           this.audio.stopReadingAloud();
           this.audio.stopSpeaking();
           this.renderBubble('model', "お昼寝するニャ…💤");
@@ -3245,6 +3246,7 @@ const AppCore = {
           if (icon) icon.textContent = "🟢";
           if (txt) txt.textContent = "会話中";
           this.renderBubble('model', "起きたニャ！呼んでニャ🐾");
+          this.audio.isMutedSoftly = false;
           this.audio.startListening();
         }
       };
@@ -3367,7 +3369,6 @@ const AppCore = {
       };
     }
 
-    // ★ 設定保存：軽快なひとこと（「バッチリニャ！」）化
     const saveSettingsBtn = document.getElementById('save-settings-btn');
     if (saveSettingsBtn) {
       saveSettingsBtn.onclick = async () => {
