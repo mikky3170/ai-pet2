@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>AIペット クロちゃん🐾</title>
+  <title>AIペット クロちゃん🐾 v1.0.0</title>
 
   <!-- キャッシュ完全無効化設定 -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -85,7 +85,7 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: env(safe-area-inset-top, 8px) 14px env(safe-area-inset-bottom, 14px) 14px;
+      padding: env(safe-area-inset-top, 8px) 14px env(safe-area-inset-bottom, 10px) 14px;
       z-index: 50;
       box-sizing: border-box;
       background: #ffffff;
@@ -647,7 +647,7 @@
     .btn-snack-floating:active { transform: scale(0.92); }
 
     /* ==========================================================================
-       ★ 4. 最下部操作バー
+       ★ 4. 最下部操作バー ＆ バージョン刻印
        ========================================================================== */
     .bottom-controls { width: 100%; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; z-index: 30; }
     
@@ -770,6 +770,18 @@
       transition: all 0.2s;
     }
     .btn-circle:active { transform: scale(0.93); background: rgba(51, 65, 85, 0.8); }
+
+    /* ★ 画面最下部の控えめな極小バージョン表示 */
+    .app-version-tag {
+      font-size: 9.5px;
+      color: #94a3b8;
+      opacity: 0.65;
+      margin-top: 4px;
+      text-align: center;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      pointer-events: none;
+    }
 
     /* ==========================================================================
        ★ 5. モーダル共通スタイル ＆ 設定モーダル
@@ -1696,7 +1708,7 @@
       </button>
     </div>
 
-    <!-- 4. 最下部操作バー -->
+    <!-- 4. 最下部操作バー ＆ バージョン刻印 -->
     <div class="bottom-controls">
       <div class="action-bar" id="action-bar">
         <button class="btn-mode-toggle" id="mode-toggle-btn" title="なかよし雑談とおてつだいを切り替えるニャ！">
@@ -1720,6 +1732,9 @@
 
         <button class="btn-circle" id="settings-btn" title="設定・記憶・トリセツ">⚙️</button>
       </div>
+
+      <!-- ★ 画面最下部の控えめな極小バージョン表示 -->
+      <div class="app-version-tag">🐾 クロちゃん v1.0.0</div>
     </div>
   </div>
 
@@ -1756,7 +1771,7 @@
   <div id="diag-panel">
     <div class="diag-modal-content">
       <div class="diag-header">
-        <span>🩺 システム診断モニタ</span>
+        <span>🩺 システム診断モニタ (v1.0.0)</span>
         <div class="diag-header-actions">
           <button type="button" class="diag-act-btn" id="diag-test-models-btn" title="全モデルの導通を今すぐテスト">⚡ モデル検証</button>
           <button type="button" class="diag-act-btn" id="diag-copy-evidence-btn" title="ログをクリップボードにコピー">📋 ログコピー</button>
@@ -1765,7 +1780,7 @@
         </div>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[System] AIペット クロちゃん対話エンジン稼働中</div>
+        <div class="log-row log-info">[System] AIペット クロちゃん対話エンジン v1.0.0 稼働中</div>
       </div>
     </div>
   </div>
@@ -1821,7 +1836,10 @@
   <!-- ★ 設定モーダル -->
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal-card">
-      <h3>⚙️ 設定・記憶帳</h3>
+      <h3>
+        <span>⚙️ 設定・記憶帳</span>
+        <span style="font-size:11px;font-weight:normal;color:#94a3b8;margin-left:auto;">v1.0.0</span>
+      </h3>
 
       <!-- 1. トリセツ（楽しい機能 ➔ 絵日記 ➔ 保守・安全仕様の順に綺麗に整理） -->
       <details class="manual-details">
@@ -1957,7 +1975,7 @@
         </div>
         <div class="pc-sync-btn-row">
           <button type="button" class="btn-pc-sync" id="btn-download-backup">📁 ファイル保存</button>
-          <button type="button" class="btn-pc-sync" id="btn-trigger-restore">📁 ファイル読込</button>
+          <button type="button" class="btn-trigger-restore" id="btn-trigger-restore">📁 ファイル読込</button>
           <input type="file" id="file-input-restore" accept=".json" style="display:none;">
         </div>
       </div>
@@ -2029,9 +2047,8 @@
     </div>
   </div>
 
-  <!-- 最新版 app.js -->
-  <script src="app.js?v=20250524_diary_perfect_sync"></script>
+  <!-- 最新版 app.js (v1.0.0) -->
+  <script src="app.js?v=1.0.0"></script>
 </body>
 </html>
-
 

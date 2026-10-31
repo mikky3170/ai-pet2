@@ -1,9 +1,11 @@
 /* ==========================================================================
-   AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版）
+   AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版 v1.0.0）
+   - バージョン 1.0.0 正式安定版
+   - 音声完全Blob化（メモリ一括取得再生）：短文・長文問わず途切れ・抜け・息継ぎ間を100%根絶
+   - 発話中のマイク完全ロック ＆ 自声・環境ノイズによるストップ誤作動鉄壁ガード
    - TimeProvider 日時提供エンジン（午前4時境界の生活リズム＆時計リアルタイム表示）
-   - セリフの長さ（40〜80文字）を完全キープ ＆ 音声完全バッファ再生（途切れ・抜け解消）
-   - 自然な会話の間（0.35秒）による聞き漏らしゼロ ＆ 鉄壁エコーガード
-   - 操作ボタンの軽快な「ひとこと肉声（0.5秒）」化（日記・タイムライン完全保護）
+   - セリフの長さ（40〜80文字）を完全キープ ＆ VOICEVOX 音声・文字完全同期
+   - 操作ボタンの軽快な「ひとこと肉声（0.5秒）」化（タイムライン・日記完全保護）
    - 18時以降の夜の会話の自動取り込み ＆ 翌朝起動時の会話件数差分検知による自動補完システム
    - 日記リソースの選定（おてつだい検索の機械的データ除外＆情緒的思い出への昇華）
    - 会話セリフのローカル永続復元 ＆ 画面表示クリア（内部データ安全保護）
@@ -13,7 +15,6 @@
    - オンデマンド高精度GPS（町名丁目ピンポイント回答＆至近距離スポット特定）
    - 散歩写真の超軽量圧縮＆Gemini 3.5 Flash Lite画像認識・写真付き絵日記連動
    - Gemini 3.5 Flash Lite 専用（gemini-3.8-flash 完全除外・禁止）
-   - VOICEVOX 音声・文字完全同期
    ========================================================================== */
 
 /* ==========================================================================
@@ -124,7 +125,7 @@ const TimeProvider = {
 };
 
 /* ==========================================================================
-   ★ MODULE 1: 音声合成＆音声認識（完全バッファ再生 ＆ 聞き漏らしゼロ間隔）
+   ★ MODULE 1: 音声合成＆音声認識（Blob完全メモリキャッシュ ＆ 途切れゼロ）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -148,6 +149,7 @@ class AudioSpeechEngine {
     this.watchdogInterval = null;
 
     this.fixedPhraseMap = new Map();
+    this.blobUrlCache = new Map();
     this.recentSpokenTexts = [];
     this.lastSpeechEndTime = 0;
     this.lastVoicevoxRequestTime = 0;
@@ -453,9 +455,9 @@ class AudioSpeechEngine {
   }
 
   prefetchVoice(text, speakerId) {
-    this._getVoicevoxDirectUrl(text, speakerId).then(audioUrl => {
-      this.fixedPhraseMap.set(`${speakerId}_${text}`, audioUrl);
-      Logger.log(`[定型肉声キャッシュ完了] ${text}`, "info");
+    this._getVoicevoxBlobUrl(text, speakerId).then(blobUrl => {
+      this.fixedPhraseMap.set(`${speakerId}_${text}`, blobUrl);
+      Logger.log(`[定型肉声Blobキャッシュ完了] ${text}`, "info");
     }).catch(() => {});
   }
 
@@ -467,7 +469,7 @@ class AudioSpeechEngine {
       "ちょっと待ってニャ♪",
       "クロが調べるニャ！",
       "うんうん、聞いてるニャ♪",
-      // 操作用ひとことボイスも先読みキャッシュ
+      // 操作用ひとことボイスも完全事前キャッシュ
       "おまかせニャ！",
       "あそぶニャ♪",
       "バッチリニャ！",
@@ -508,8 +510,12 @@ class AudioSpeechEngine {
     }
   }
 
-  async _getVoicevoxDirectUrl(text, speakerId) {
+  /* ★ 音声完全Blob化：メモリ上に全データを落としてから再生（途切れ・抜け・ノイズ・間を完全根絶） */
+  async _getVoicevoxBlobUrl(text, speakerId) {
     const key = `${speakerId}_${text}`;
+    if (this.blobUrlCache.has(key)) {
+      return this.blobUrlCache.get(key);
+    }
     if (this.fixedPhraseMap.has(key)) {
       return this.fixedPhraseMap.get(key);
     }
@@ -522,8 +528,8 @@ class AudioSpeechEngine {
 
     const now = Date.now();
     const elapsed = now - this.lastVoicevoxRequestTime;
-    if (elapsed < 1600) {
-      await new Promise(r => setTimeout(r, 1600 - elapsed));
+    if (elapsed < 1500) {
+      await new Promise(r => setTimeout(r, 1500 - elapsed));
     }
     this.lastVoicevoxRequestTime = Date.now();
 
@@ -541,9 +547,9 @@ class AudioSpeechEngine {
     const initData = await initRes.json();
     if (initData.isAudioError) throw new Error("VOICEVOX側エラー");
 
-    let playUrl = initData.mp3StreamingUrl || initData.mp3DownloadUrl;
+    let directUrl = initData.mp3StreamingUrl || initData.mp3DownloadUrl;
 
-    if (!playUrl && initData.audioStatusUrl) {
+    if (!directUrl && initData.audioStatusUrl) {
       const statusUrl = initData.audioStatusUrl;
       for (let i = 1; i <= 24; i++) {
         await new Promise(r => setTimeout(r, 450));
@@ -553,7 +559,7 @@ class AudioSpeechEngine {
           if (sRes.ok) {
             const sData = await sRes.json();
             if (sData.isAudioReady) {
-              playUrl = sData.mp3StreamingUrl || sData.mp3DownloadUrl;
+              directUrl = sData.mp3StreamingUrl || sData.mp3DownloadUrl;
               break;
             }
           }
@@ -563,10 +569,16 @@ class AudioSpeechEngine {
       }
     }
 
-    if (!playUrl) throw new Error("VOICEVOX生成タイムアウト");
+    if (!directUrl) throw new Error("VOICEVOX生成タイムアウト");
 
-    this.fixedPhraseMap.set(key, playUrl);
-    return playUrl;
+    // ★ ここで音声バイナリ（Blob）を一括ダウンロードしてローカルメモリに確保
+    const audioRes = await fetch(directUrl, { signal });
+    if (!audioRes.ok) throw new Error("音声データのダウンロードに失敗しました");
+    const audioBlob = await audioRes.blob();
+    const blobUrl = URL.createObjectURL(audioBlob);
+
+    this.blobUrlCache.set(key, blobUrl);
+    return blobUrl;
   }
 
   _isSelfEcho(text) {
@@ -592,10 +604,10 @@ class AudioSpeechEngine {
     return false;
   }
 
-  /* ★ 音声の途切れ・抜け防止：完全バッファ取得待機再生 */
+  /* ★ 発話処理（Blob完全バッファ再生 ＆ 発話中の鉄壁マイク遮断） */
   async speak(text, speakerIdOverride = null, onStart = null, onEnd = null) {
     this.stopSpeaking();
-    this.stopListening(); // 発話直前にマイクを安全に一時停止
+    this.stopListening(); // 発話直前にマイクを安全に完全停止
     this.unlockMasterAudio();
 
     try {
@@ -629,11 +641,12 @@ class AudioSpeechEngine {
     };
 
     try {
-      const directAudioUrl = await this._getVoicevoxDirectUrl(clean, speakerId);
-      this.masterAudio.src = directAudioUrl;
+      // 完全メモリBlob URLを取得
+      const blobAudioUrl = await this._getVoicevoxBlobUrl(clean, speakerId);
+      this.masterAudio.src = blobAudioUrl;
       this.masterAudio.playbackRate = this.rate;
 
-      // ★ 音声データの完全受信（canplaythrough）を待機して途切れ・抜けを防止
+      // Blobなので即座にバッファ完了（canplaythroughを安全待機）
       await new Promise((resolve) => {
         let isResolved = false;
         const completeHandler = () => {
@@ -646,8 +659,7 @@ class AudioSpeechEngine {
         };
         this.masterAudio.addEventListener('canplaythrough', completeHandler);
         this.masterAudio.addEventListener('loadeddata', completeHandler);
-        // 万が一のタイムアウト保証（1.2秒）
-        setTimeout(completeHandler, 1200);
+        setTimeout(completeHandler, 600); // Blobのため極めて高速
       });
 
       this.masterAudio.onplaying = () => { triggerStartOnce(); };
@@ -714,16 +726,16 @@ class AudioSpeechEngine {
       return;
     }
 
-    Logger.log(`[本文朗読開始] 全 ${sentences.length} 文をシームレス先読み再生`, "info");
-    const audioUrlCache = new Map();
+    Logger.log(`[本文朗読開始] 全 ${sentences.length} 文をBlobシームレス先読み再生`, "info");
+    const audioBlobCache = new Map();
 
     const prefetchSentence = async (idx) => {
       if (idx >= sentences.length) return;
       const targetText = this._convertAllNumbersToKana(sentences[idx]).trim();
-      if (!targetText || audioUrlCache.has(idx)) return;
+      if (!targetText || audioBlobCache.has(idx)) return;
       try {
-        const url = await this._getVoicevoxDirectUrl(targetText, speakerId);
-        audioUrlCache.set(idx, url);
+        const url = await this._getVoicevoxBlobUrl(targetText, speakerId);
+        audioBlobCache.set(idx, url);
       } catch(e) {}
     };
 
@@ -742,10 +754,10 @@ class AudioSpeechEngine {
 
       if (onSentenceStart) onSentenceStart(i, sentenceRaw);
 
-      let audioUrl = audioUrlCache.get(i);
-      if (!audioUrl) {
+      let blobUrl = audioBlobCache.get(i);
+      if (!blobUrl) {
         try {
-          audioUrl = await this._getVoicevoxDirectUrl(clean, speakerId);
+          blobUrl = await this._getVoicevoxBlobUrl(clean, speakerId);
         } catch(e) {
           continue;
         }
@@ -754,14 +766,14 @@ class AudioSpeechEngine {
       if (!this.isReadingAloud) break;
 
       await new Promise((resolve) => {
-        this.masterAudio.src = audioUrl;
+        this.masterAudio.src = blobUrl;
         this.masterAudio.playbackRate = this.rate;
         this.isSpeaking = true;
         if (AppCore.avatar) AppCore.avatar.setEmotion('talking');
 
         this.masterAudio.onended = () => {
           this.isSpeaking = false;
-          setTimeout(resolve, 70);
+          setTimeout(resolve, 60);
         };
         this.masterAudio.onerror = () => {
           this.isSpeaking = false;
@@ -830,15 +842,18 @@ class AudioSpeechEngine {
 
       const live = (final || interim).trim();
 
-      // バージイン（割り込み停止）
-      if ((this.isSpeaking || this.isReadingAloud) && live && /(?:ストップ|待って|まって|やめて|とまって|止めて)/.test(live)) {
-        this.stopReadingAloud();
-        this.stopSpeaking();
-        if (this.onBargeIn) this.onBargeIn();
+      // 発話中・朗読中は音声入力を完全遮断（自声による誤ストップ防止）
+      if (this.isSpeaking || this.isReadingAloud) {
+        // おやびんの明示的な割り込み「ストップ」のみ許可（自声エコー判定を徹底通過）
+        if (live && !this._isSelfEcho(live) && /(?:ストップ|やめて|とまって|止めて)/.test(live)) {
+          this.stopReadingAloud();
+          this.stopSpeaking();
+          if (this.onBargeIn) this.onBargeIn();
+        }
         return;
       }
 
-      if (this.isSpeaking || this.isReadingAloud || AppCore.state.isProcessingInput) return;
+      if (AppCore.state.isProcessingInput) return;
 
       if (live && !this._isSelfEcho(live)) {
         this.lastRecognizedText = live;
@@ -1173,9 +1188,9 @@ const StorageManager = {
     const entry = {
       role,
       text,
-      mode, // モード属性（pet: なかよし, assistant: おてつだい）
+      mode,
       time: timeInfo.clock,
-      date: timeInfo.lifeLogKey, // 午前4時生活日キー
+      date: timeInfo.lifeLogKey,
       photoUrl: photoUrl || null,
       timestamp: Date.now()
     };
@@ -1246,12 +1261,11 @@ const StorageManager = {
     if (!entryText || entryText.length < 20) return false;
 
     const timeInfo = TimeProvider.getCurrentInfo();
-    const dateKey = customDateKey || timeInfo.lifeLogKey; // 午前4時生活日キー
+    const dateKey = customDateKey || timeInfo.lifeLogKey;
     const fullDate = customFullDate || timeInfo.lifeFullDate;
     const weather = LocationProvider.weather;
     const temp = LocationProvider.temperature;
 
-    // 現在のログ件数を取得して記録（差分検知用）
     const totalLogsNow = (currentLogCount !== null) ? currentLogCount : this.getDailyLogs(dateKey).length;
 
     const diaryData = {
@@ -1262,7 +1276,7 @@ const StorageManager = {
       content: entryText,
       photo: photoData || null,
       timestamp: Date.now(),
-      logCountAtSave: totalLogsNow // ★ 日記作成時の会話ログ件数を保存
+      logCountAtSave: totalLogsNow
     };
 
     let list = this.loadAllDiaries();
@@ -1341,7 +1355,7 @@ const StorageManager = {
 
     const pkg = {
       format: "kuro_pure_data_package",
-      version: "3.5",
+      version: "1.0.0", // ★ 正式バージョン刻印
       exportedAt: now.toLocaleString('ja-JP'),
       memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
@@ -2000,7 +2014,7 @@ const AppCore = {
       this.checkAndFinalizeYesterdayDiary();
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 600);
-      Logger.log("[AppCore] 全システム正常稼働！聞き漏らしゼロ・午前4時生活リズム準備完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！v1.0.0 正式版が準備完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
@@ -2009,7 +2023,6 @@ const AppCore = {
   /* ★ 翌朝起動時チェック：昨日の日記が未作成、または差分会話がある場合に自動更新 */
   async checkAndFinalizeYesterdayDiary() {
     const timeInfo = TimeProvider.getCurrentInfo();
-    // 深夜（0:00〜3:59）は「昨日の夜の延長中」なので補完判定は行わない
     if (timeInfo.isLateNight) return;
 
     const now = new Date();
@@ -2020,7 +2033,6 @@ const AppCore = {
     const yFull = `${yesterdayObj.getFullYear()}年${yesterdayObj.getMonth() + 1}月${yesterdayObj.getDate()}日 (${dayNames[yesterdayObj.getDay()]})`;
 
     const yLogs = StorageManager.getDailyLogs(yKey);
-    // 昨日の会話ログがそもそも2件未満（挨拶程度以下）ならスキップ
     if (!yLogs || yLogs.length < 2) return;
 
     const allDiaries = StorageManager.loadAllDiaries();
@@ -2030,11 +2042,9 @@ const AppCore = {
     let reason = "";
 
     if (!yDiary) {
-      // 1. 昨日の日記が1度も書かれていなかった場合
       needsUpdate = true;
       reason = "未作成のため新規自動生成";
     } else {
-      // 2. 昨日の日記が存在するが、会話ログ件数に差分がある場合
       const savedCount = yDiary.logCountAtSave || 0;
       if (yLogs.length > savedCount) {
         needsUpdate = true;
@@ -2619,7 +2629,7 @@ const AppCore = {
     badge.textContent = `🐾 Flash Lite`;
   },
 
-  /* ★ 操作ボタンの軽快な「ひとこと肉声（0.5秒）」化（タイムラインを汚さずステータス文字同期、日記影響ゼロ） */
+  /* ★ 操作ボタンの軽快な「ひとこと肉声（0.5秒）」化（タイムライン汚さずステータス文字同期、日記影響ゼロ） */
   triggerActionVoice(shortPhrase, statusDisplay) {
     const feedbackPref = localStorage.getItem('kuro_button_feedback') || 'voice';
     const st = document.getElementById('status-text');
