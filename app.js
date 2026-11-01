@@ -1,9 +1,9 @@
 /* ==========================================================================
-   AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版 v1.0.1）
-   - バージョン 1.0.1 正式安定版
-   - 【新実装】声を出した瞬間に即座に出現するリアルタイム波形吹き出し（onsoundstart連動）
-   - 【新実装】スマホOSのマイク点滅（パタパタON/OFF）を根絶する排他ロック＆ソフトミュート構造
-   - 【新実装】話した言葉が1文字目からパラパラ増えるリアルタイム文字起こしパイプライン
+   AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版 v1.0.2）
+   - バージョン 1.0.2 正式安定版
+   - 【改善】声と連動しない偽の音波アニメーションを完全撤廃
+   - 【改善】話す前のノイズによる勝手な吹き出し出現を完全排除（話した言葉のみリアルタイム出現）
+   - 【改善】クロちゃん発話終了後のスマホOSスピーカー/マイク切替待機によるマイク点滅解消
    - 一人称「クロ」「わたし」完全統一 ＆ 「余（よ）」読み間違い根絶
    - 音声完全Blob化（メモリ一括取得再生）：短文・長文問わず途切れ・抜けを100%根絶
    - TimeProvider 日時提供エンジン（午前4時境界の生活リズム＆時計リアルタイム表示）
@@ -126,7 +126,7 @@ const TimeProvider = {
 };
 
 /* ==========================================================================
-   ★ MODULE 1: 音声合成＆音声認識（マイク常時維持 ＆ 声の即時検知パイプライン）
+   ★ MODULE 1: 音声合成＆音声認識（マイク常時維持 ＆ リアルタイム文字起こし）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -143,7 +143,7 @@ class AudioSpeechEngine {
     this.rate = parseFloat(localStorage.getItem('kuro_rate') || '1.05');
     this.isSpeaking = false;
     this.isListening = false;
-    this.isStarting = false; // 二重起動防止ロック
+    this.isStarting = false;
     this.recognition = null;
     this.isSpeechCommitted = false;
     this.lastRecognizedText = '';
@@ -160,7 +160,6 @@ class AudioSpeechEngine {
     this.isReadingAloud = false;
     this.readingAbortController = null;
 
-    this.onVoiceDetected = null; // 声を発した瞬間のコールバック
     this.onInterimUpdate = null; // リアルタイム文字更新
     this.onSpeechFinal = null;   // 確定時
     this.onListeningStatus = null;
@@ -356,7 +355,7 @@ class AudioSpeechEngine {
     if (!text) return "";
     let t = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
 
-    // ★ 万が一の「余」を「よ」へ強制読み替えガード
+    // 万が一の「余」を「よ」へ強制読み替えガード
     t = t.replace(/余([はがものにもと])/g, 'よ$1').replace(/余/g, 'よ');
 
     t = t.replace(/(\d{4})\s*年/g, (m, yStr) => `${numToKana(parseInt(yStr, 10))}ねん`);
@@ -610,7 +609,7 @@ class AudioSpeechEngine {
     return false;
   }
 
-  /* ★ 発話処理（マイクは物理切断せずソフトウェアミュートで待機） */
+  /* ★ 発話処理（スマホOSのスピーカー切替時間を静かに待って再開） */
   async speak(text, speakerIdOverride = null, onStart = null, onEnd = null, cooldownOverride = null) {
     this.stopSpeaking();
     this.unlockMasterAudio();
@@ -621,7 +620,8 @@ class AudioSpeechEngine {
     } catch(e) {}
 
     const speakerId = (speakerIdOverride !== null) ? speakerIdOverride : AppCore.getSpeakerId();
-    const cooldownMs = (cooldownOverride !== null) ? cooldownOverride : 80;
+    // スマホOSの切替時間を考慮した安全マージン（通常220ms）
+    const cooldownMs = (cooldownOverride !== null) ? cooldownOverride : 220;
 
     let clean = this._convertAllNumbersToKana(text)
       .replace(/<!--[\s\S]*?-->/g, '')
@@ -677,7 +677,7 @@ class AudioSpeechEngine {
         this.lastSpeechEndTime = Date.now();
         if (onEnd) onEnd();
 
-        // 喋り終わったら確実にマイク待機状態へ（物理マイクは温まったまま）
+        // ★ 音声終了後、OSがマイクへ戻る時間を220ms静かに待ってから綺麗に再開（点滅根絶）
         setTimeout(() => {
           if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !AppCore.state.isThinking) {
             this.startListening();
@@ -834,17 +834,10 @@ class AudioSpeechEngine {
       this.isStarting = false;
       this.isSpeechCommitted = false;
       if (this.onListeningStatus) this.onListeningStatus(true);
-      Logger.log("[マイク] 音声認識セッション開始（常時リスニング中）", "info");
+      Logger.log("[マイク] リスニング待機中…", "info");
     };
 
-    // ★ 声を出したコンマ0秒で検知するトリガー（スマホでテキスト化を待たずに即時発火！）
-    const handleVoiceStart = () => {
-      if (this.isSpeaking || this.isReadingAloud || AppCore.state.isProcessingInput) return;
-      if (this.onVoiceDetected) this.onVoiceDetected();
-    };
-    this.recognition.onspeechstart = handleVoiceStart;
-    this.recognition.onsoundstart = handleVoiceStart;
-
+    // ★ 偽の音波・ノイズ検知は完全排除！言葉が届いた時だけ処理
     this.recognition.onresult = (event) => {
       let interim = '';
       let final = '';
@@ -866,12 +859,12 @@ class AudioSpeechEngine {
         return;
       }
 
-      // ソフトウェアミュート（クロちゃん発話中や処理中は外部音声を捨てる）
+      // ソフトウェアミュート（クロちゃん発話中は音を拾わない）
       if (this.isSpeaking || this.isReadingAloud || AppCore.state.isProcessingInput) return;
 
+      // 飼い主さんが実際に言葉を発した時だけ、リアルタイムに文字を上書き反映
       if (live) {
         this.lastRecognizedText = live;
-        // ★ 1文字目から制限なく即座に画面へ上書き反映！
         if (this.onInterimUpdate) this.onInterimUpdate(live);
       }
 
@@ -886,10 +879,9 @@ class AudioSpeechEngine {
     this.recognition.onerror = (e) => {
       this.isStarting = false;
       if (e.error === 'no-speech') return;
-      Logger.log(`[マイク警告] ${e.error}`, "warn");
+      Logger.log(`[マイク情報] ${e.error}`, "info");
     };
 
-    // ★ OSの自然切断時のみスムーズに再起動（パタパタ点滅を防止）
     this.recognition.onend = () => {
       this.isListening = false;
       this.isStarting = false;
@@ -899,12 +891,12 @@ class AudioSpeechEngine {
       if (!this.isSpeechCommitted && this.lastRecognizedText && !AppCore.state.isProcessingInput && !this.isSpeaking && !this.isReadingAloud) {
         this._commitFinalSpeech(this.lastRecognizedText);
       } else {
-        // OSが切断した直後に1度だけクリーンに再起動
+        // OSが切断した直後に落ち着いて再起動
         setTimeout(() => {
           if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !AppCore.state.isThinking && !AppCore.state.isProcessingInput) {
             this.startListening();
           }
-        }, 120);
+        }, 150);
       }
     };
   }
@@ -927,7 +919,7 @@ class AudioSpeechEngine {
   _startWatchdog() {
     this.watchdogInterval = setInterval(() => {
       if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !AppCore.state.isThinking && !AppCore.state.isProcessingInput && !this.isListening && !this.isStarting) {
-        if (Date.now() - this.lastSpeechEndTime > 500) {
+        if (Date.now() - this.lastSpeechEndTime > 600) {
           this.startListening();
         }
       }
@@ -1381,7 +1373,7 @@ const StorageManager = {
 
     const pkg = {
       format: "kuro_pure_data_package",
-      version: "1.0.1",
+      version: "1.0.2",
       exportedAt: now.toLocaleString('ja-JP'),
       memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
@@ -2038,7 +2030,7 @@ const AppCore = {
       this.checkAndFinalizeYesterdayDiary();
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 600);
-      Logger.log("[AppCore] 全システム正常稼働！ハイブリッド待機＆リアルタイム音波吹き出し準備完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！クリアで素直な対話待機完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
@@ -2121,10 +2113,10 @@ const AppCore = {
     box.scrollTop = box.scrollHeight;
   },
 
-  /* ★ おやびん発話中のリアルタイム仮吹き出し ＆ 音波アニメーション制御 */
-  showInterimBubble(initialText = "聴いてるニャ…") {
+  /* ★ 話した言葉がそのままリアルタイムに出現する仮吹き出し */
+  updateInterimBubble(liveText) {
     const box = document.getElementById('chat-timeline');
-    if (!box) return;
+    if (!box || !liveText) return;
 
     let row = document.getElementById('user-interim-row');
     if (!row) {
@@ -2135,32 +2127,18 @@ const AppCore = {
       const bubble = document.createElement('div');
       bubble.className = 'chat-bubble interim-bubble';
       bubble.id = 'user-interim-bubble';
-      bubble.innerHTML = `
-        <span class="voice-wave-anim"><span></span><span></span><span></span><span></span></span>
-        <span class="interim-text-slot">${initialText}</span>
-      `;
+      bubble.textContent = liveText;
       row.appendChild(bubble);
       box.appendChild(row);
-      box.scrollTop = box.scrollHeight;
-    }
-  },
-
-  updateInterimBubble(liveText) {
-    const box = document.getElementById('chat-timeline');
-    if (!box || !liveText) return;
-
-    let row = document.getElementById('user-interim-row');
-    if (!row) {
-      this.showInterimBubble(liveText);
-      return;
+    } else {
+      const bubble = row.querySelector('.chat-bubble');
+      if (bubble) bubble.textContent = liveText;
     }
 
-    const slot = row.querySelector('.interim-text-slot');
-    if (slot) slot.textContent = liveText;
     box.scrollTop = box.scrollHeight;
   },
 
-  /* ★ 仮吹き出しから確定吹き出しへのスムーズな昇華（モーフィング） */
+  /* ★ 仮吹き出しから青色確定吹き出しへのスムーズな昇華（ガタつきゼロ） */
   morphInterimToFinal(finalText) {
     const row = document.getElementById('user-interim-row');
     if (row) {
@@ -2173,7 +2151,6 @@ const AppCore = {
         return;
       }
     }
-    // 見つからなければ通常の吹き出し追加
     this.renderBubble('user', finalText);
   },
 
@@ -2196,14 +2173,7 @@ const AppCore = {
       this.audio.playEffect('aizuchi');
     };
 
-    // ★ 声を出したコンマ0秒で、画面に即座に仮吹き出しと音波を出現！
-    this.audio.onVoiceDetected = () => {
-      if (!this.state.isRunning || this.state.isThinking || this.state.isProcessingInput || this.state.isDiaryReading) return;
-      document.body.classList.add('is-hearing');
-      this.showInterimBubble("聴いてるニャ…");
-    };
-
-    // ★ 1文字目からリアルタイムに文字起こしを吹き出しへ流し込み
+    // ★ 話した言葉が届いた時だけ、その言葉をリアルタイムに画面へ表示
     this.audio.onInterimUpdate = (text) => {
       if (!this.state.isRunning || this.state.isThinking || this.state.isProcessingInput || this.state.isDiaryReading) return;
       document.body.classList.add('is-hearing');
@@ -2214,7 +2184,7 @@ const AppCore = {
       if (this.state.isProcessingInput || this.state.isDiaryReading) return;
       this.state.isProcessingInput = true;
       document.body.classList.remove('is-hearing');
-      // 仮吹き出しを青い確定吹き出しに昇華
+      // 仮吹き出しを青い確定吹き出しにスムーズに昇華
       this.morphInterimToFinal(finalText);
       this.handleUserInput(finalText);
     };

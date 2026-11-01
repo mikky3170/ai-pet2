@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>AIペット クロちゃん🐾 v1.0.1</title>
+  <title>AIペット クロちゃん🐾 v1.0.2</title>
 
   <!-- キャッシュ完全無効化設定 -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -248,40 +248,14 @@
       font-weight: 500;
     }
 
-    /* ★ お話し中のリアルタイム仮吹き出し ＆ 音波アニメーション */
+    /* ★ 飼い主さんがお話し中のリアルタイム吹き出し（音波アニメ全廃・クリアなテキストのみ） */
     .chat-bubble.interim-bubble {
       background: #f0f9ff !important;
       color: #0369a1 !important;
       border: 1.5px dashed #38bdf8 !important;
       border-bottom-right-radius: 4px;
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
       font-weight: 700;
-      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.25);
-    }
-    .voice-wave-anim {
-      display: inline-flex;
-      align-items: center;
-      gap: 2.5px;
-      height: 14px;
-      flex-shrink: 0;
-    }
-    .voice-wave-anim span {
-      display: inline-block;
-      width: 2.5px;
-      height: 6px;
-      background: #0284c7;
-      border-radius: 2px;
-      animation: voiceWavePulse 0.75s ease-in-out infinite alternate;
-    }
-    .voice-wave-anim span:nth-child(1) { animation-delay: 0.1s; }
-    .voice-wave-anim span:nth-child(2) { animation-delay: 0.3s; }
-    .voice-wave-anim span:nth-child(3) { animation-delay: 0.5s; }
-    .voice-wave-anim span:nth-child(4) { animation-delay: 0.2s; }
-    @keyframes voiceWavePulse {
-      0% { height: 4px; transform: scaleY(0.7); }
-      100% { height: 14px; transform: scaleY(1.3); }
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.2);
     }
 
     .timeline-diary-card {
@@ -1770,7 +1744,7 @@
       </div>
 
       <!-- ★ 画面最下部の控えめな極小バージョン表示 -->
-      <div class="app-version-tag">🐾 クロちゃん v1.0.1</div>
+      <div class="app-version-tag">🐾 クロちゃん v1.0.2</div>
     </div>
   </div>
 
@@ -1807,7 +1781,7 @@
   <div id="diag-panel">
     <div class="diag-modal-content">
       <div class="diag-header">
-        <span>🩺 システム診断モニタ (v1.0.1)</span>
+        <span>🩺 システム診断モニタ (v1.0.2)</span>
         <div class="diag-header-actions">
           <button type="button" class="diag-act-btn" id="diag-test-models-btn" title="全モデルの導通を今すぐテスト">⚡ モデル検証</button>
           <button type="button" class="diag-act-btn" id="diag-copy-evidence-btn" title="ログをクリップボードにコピー">📋 ログコピー</button>
@@ -1816,7 +1790,7 @@
         </div>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[System] AIペット クロちゃん対話エンジン v1.0.1 稼働中</div>
+        <div class="log-row log-info">[System] AIペット クロちゃん対話エンジン v1.0.2 稼働中</div>
       </div>
     </div>
   </div>
@@ -1874,7 +1848,7 @@
     <div class="modal-card">
       <h3>
         <span>⚙️ 設定・記憶帳</span>
-        <span style="font-size:11px;font-weight:normal;color:#94a3b8;margin-left:auto;">v1.0.1</span>
+        <span style="font-size:11px;font-weight:normal;color:#94a3b8;margin-left:auto;">v1.0.2</span>
       </h3>
 
       <!-- 1. トリセツ -->
@@ -2083,8 +2057,8 @@
     </div>
   </div>
 
-  <!-- 最新版 app.js (v1.0.1) -->
-  <script src="app.js?v=1.0.1"></script>
+  <!-- 最新版 app.js (v1.0.2) -->
+  <script src="app.js?v=1.0.2"></script>
 </body>
 </html>
 
