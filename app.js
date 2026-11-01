@@ -1,6 +1,8 @@
 /* ==========================================================================
-   AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版 v1.0.5）
-   - バージョン 1.0.5 正式安定版
+   AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版 V.1.1.0）
+   - バージョン 1.1.0 正式安定版（version.js 一元管理連動）
+   - 【在宅・散歩の自動判定】自宅座標との距離判定により「家の中にいるのに散歩してます」と答えるバグを根絶
+   - 【決めつけ完全撤廃】室内写真の散歩決めつけ、絵日記の架空散歩捏造、タイマーのラーメン決めつけを解消
    - 【常時通話化】continuous=true による電話のような途切れない安定接続（点滅ループ完全根絶）
    - 【ボタン音声誤認識ゼロ】ボタンを押した瞬間のマイク完全密閉＆再生終了後の安全再開
    - 一人称「クロ」「わたし」完全統一 ＆ 「余（よ）」読み間違い根絶
@@ -143,7 +145,7 @@ class AudioSpeechEngine {
     this.isSpeaking = false;
     this.isListening = false;
     this.isStarting = false;
-    this.isActionButtonLocked = false; // ボタン操作中のマイク完全ロックフラグ
+    this.isActionButtonLocked = false;
     this.recognition = null;
     this.restartTimer = null;
 
@@ -605,7 +607,7 @@ class AudioSpeechEngine {
   /* ★ 発話処理（発話中はマイクを完全密閉し、再生終了後に安全再開） */
   async speak(text, speakerIdOverride = null, onStart = null, onEnd = null, cooldownOverride = null) {
     this.stopSpeaking();
-    this.stopListening(); // 再生開始前は確実にマイク完全停止
+    this.stopListening();
     this.unlockMasterAudio();
 
     try {
@@ -621,7 +623,7 @@ class AudioSpeechEngine {
       .replace(/[（\(][^）\)]*?[）\)]/g, '')
       .replace(/```[\s\S]*?```/g, '')
       .replace(/<[^>]*>/g, '')
-      .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷]/gu, '')
+      .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷🏠]/gu, '')
       .replace(/^[、。,\.\s]+/, '')
       .trim();
 
@@ -673,7 +675,6 @@ class AudioSpeechEngine {
         this.lastSpeechEndTime = Date.now();
         if (onEnd) onEnd();
 
-        // スピーカーの残響が部屋に消えるのを厳密に待ってから、マイクを再開
         setTimeout(() => {
           if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !this.isActionButtonLocked && !AppCore.state.isThinking && !AppCore.state.isProcessingInput) {
             this.startListening();
@@ -715,7 +716,7 @@ class AudioSpeechEngine {
     let cleanFull = diaryContentOnly
       .replace(/[（\(][^）\)]*?[）\)]/g, '')
       .replace(/<!--[\s\S]*?-->/g, '')
-      .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷]/gu, '')
+      .replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷🏠]/gu, '')
       .trim();
 
     const sentences = cleanFull
@@ -834,7 +835,6 @@ class AudioSpeechEngine {
 
     this.recognition = new SpeechRec();
     this.recognition.lang = 'ja-JP';
-    // ★ 普通の電話と同じようにマイクを切り離さない連続モード
     this.recognition.continuous = true;
     this.recognition.interimResults = false;
 
@@ -854,7 +854,6 @@ class AudioSpeechEngine {
       const resultText = event.results[lastIdx]?.[0]?.transcript?.trim() || '';
       if (!resultText) return;
 
-      // バージイン（割り込み停止）
       if (/(?:ストップ|やめて|とまって|止めて)/.test(resultText)) {
         this.stopReadingAloud();
         this.stopSpeaking();
@@ -873,11 +872,10 @@ class AudioSpeechEngine {
 
     this.recognition.onerror = (e) => {
       this.isStarting = false;
-      if (e.error === 'no-speech') return; // 無音タイムアウトは正常動作なので無視
+      if (e.error === 'no-speech') return;
       Logger.log(`[マイク情報] ${e.error}`, "info");
     };
 
-    // スマホブラウザが強制切断した場合でも、通話中なら電話のように即座に静かに復帰
     this.recognition.onend = () => {
       this.isListening = false;
       this.isStarting = false;
@@ -887,7 +885,6 @@ class AudioSpeechEngine {
         return;
       }
 
-      // 普通の電話と同じ常時リスニングを即座に再接続
       if (this.restartTimer) clearTimeout(this.restartTimer);
       this.restartTimer = setTimeout(() => {
         if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !this.isActionButtonLocked && !AppCore.state.isProcessingInput && !this.isListening) {
@@ -919,11 +916,13 @@ class AudioSpeechEngine {
 }
 
 /* ==========================================================================
-   ★ MODULE 2: オンデマンド高精度GPS ＆ 至近距離スポット距離ソート
+   ★ MODULE 2: オンデマンド高精度GPS ＆ 【在宅・外出の自動判定】
    ========================================================================== */
 const LocationProvider = {
   lat: null,
   lon: null,
+  homeLat: null,
+  homeLon: null,
   cityArea: "",
   detailedAddress: "東京都東村山市本町付近",
   townLevelArea: "東京都東村山市本町付近",
@@ -931,6 +930,7 @@ const LocationProvider = {
   weather: "快晴",
   temperature: "22",
   isGpsAvailable: false,
+  isAtHome: true, // 在宅中フラグ（デフォルトはお家）
 
   calcDistanceMeters(lat1, lon1, lat2, lon2) {
     const R = 6371000;
@@ -962,6 +962,7 @@ const LocationProvider = {
           Logger.log(`[GPS測位成功⚡] 座標: ${this.lat.toFixed(5)}, ${this.lon.toFixed(5)} (精度: ±${Math.round(pos.coords.accuracy)}m)`, "success");
 
           await this._reverseGeocode(this.lat, this.lon);
+          this._checkHomeProximity();
           this._fetchWeather(this.lat, this.lon);
 
           if (fetchSpots) {
@@ -977,6 +978,17 @@ const LocationProvider = {
         { enableHighAccuracy: true, timeout: 6000, maximumAge: 10000 }
       );
     });
+  },
+
+  _checkHomeProximity() {
+    if (this.homeLat !== null && this.homeLon !== null && this.lat !== null && this.lon !== null) {
+      const dist = this.calcDistanceMeters(this.lat, this.lon, this.homeLat, this.homeLon);
+      // 自宅から約150m以内なら「在宅中」、離れていれば「外出・散歩中」
+      this.isAtHome = (dist <= 150);
+      Logger.log(`[在宅判定] 自宅からの距離: ${dist}m ➔ ${this.isAtHome ? '🏠 お家にいます' : '🐾 お散歩・外出中'}`, "info");
+    } else {
+      this.isAtHome = true;
+    }
   },
 
   async _scanNearbyFeatures(lat, lon) {
@@ -1041,6 +1053,7 @@ const LocationProvider = {
   },
 
   async _applyHomeFallback() {
+    this.isAtHome = true; // フォールバック時はお家と判定
     const homeVal = (localStorage.getItem('kuro_home_coords') || '').trim();
     if (!homeVal) {
       this.detailedAddress = "東京都東村山市本町1丁目付近";
@@ -1048,6 +1061,8 @@ const LocationProvider = {
       this.cityArea = "東京都東村山市";
       this.lat = 35.7582;
       this.lon = 139.4678;
+      this.homeLat = 35.7582;
+      this.homeLon = 139.4678;
       this._fetchWeather(this.lat, this.lon);
       return;
     }
@@ -1056,6 +1071,8 @@ const LocationProvider = {
     if (match) {
       this.lat = parseFloat(match[1]);
       this.lon = parseFloat(match[2]);
+      this.homeLat = this.lat;
+      this.homeLon = this.lon;
       await this._reverseGeocode(this.lat, this.lon);
       this._fetchWeather(this.lat, this.lon);
       return;
@@ -1280,6 +1297,7 @@ const StorageManager = {
     return true;
   },
 
+  /* 写真添付時の決めつけ撤廃（お家ならお部屋、お外ならお散歩） */
   attachPhotoToTodayDiary(photoBase64) {
     const timeInfo = TimeProvider.getCurrentInfo();
     const dateKey = timeInfo.lifeLogKey;
@@ -1289,7 +1307,10 @@ const StorageManager = {
       list[existingIdx].photo = photoBase64;
       this.saveAllDiaries(list);
     } else {
-      this.saveDiary("今日はおやびんとお散歩して写真を撮ったニャン♪", dateKey, timeInfo.lifeFullDate, photoBase64);
+      const photoMsg = LocationProvider.isAtHome
+        ? "今日はお家でおやびんとまったり写真を見せてもらったニャン♪"
+        : "今日はおやびんとお散歩して写真を撮ったニャン♪";
+      this.saveDiary(photoMsg, dateKey, timeInfo.lifeFullDate, photoBase64);
     }
   },
 
@@ -1338,10 +1359,11 @@ const StorageManager = {
     const ymd = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
     const hm = `${pad(now.getHours())}${pad(now.getMinutes())}`;
     const filename = `クロちゃんデータ_${ymd}_${hm}.json`;
+    const curVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.1.1.0";
 
     const pkg = {
       format: "kuro_pure_data_package",
-      version: "1.0.5",
+      version: curVer,
       exportedAt: now.toLocaleString('ja-JP'),
       memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
@@ -1592,7 +1614,7 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   ★ MODULE 5: 思考・AI対話エンジン（一人称「クロ」「わたし」完全統一）
+   ★ MODULE 5: 思考・AI対話エンジン（在宅・散歩自動識別 ＆ 決めつけ撤廃）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
@@ -1677,15 +1699,18 @@ class AIThoughtEngine {
     const weather = LocationProvider.weather;
     const temp = LocationProvider.temperature;
     const townArea = LocationProvider.townLevelArea;
+    const isAtHome = LocationProvider.isAtHome;
     
     const recentDiaries = StorageManager.getRecentDiariesSummary(3);
     const pastMemoryDiary = StorageManager.findRelevantPastDiary(promptText);
 
     let spotsContext = "";
     if (LocationProvider.nearbySpots && LocationProvider.nearbySpots.length > 0) {
-      spotsContext = "【現在地から近い順の周辺スポット（至近距離ソート）】\n" +
+      spotsContext = "【周辺スポット（近い順）】\n" +
         LocationProvider.nearbySpots.map((s, idx) => `・${idx + 1}. 【${s.dist}m先】${s.name}（${s.type}）`).join('\n') +
-        "\n※ルール: おやびんが周囲の場所や川・公園について聞いてきたら、一番距離が近いものから順に「すぐ目の前にあるのは〇〇だニャ！」と教えてください。";
+        (isAtHome
+          ? "\n※ルール: お家の中にいるので、近くの場所を聞かれたら「お家の近く（〇m先）には〇〇があるニャ！」と教えてください。"
+          : "\n※ルール: お散歩中なので、近くの場所を聞かれたら「すぐ〇m先にあるのは〇〇だニャ！」と教えてください。");
     }
 
     const lateNightInstruction = timeInfo.isLateNight ? `
@@ -1694,12 +1719,25 @@ class AIThoughtEngine {
 ・おやびんが夜中に目が覚めて話しかけてくれたので、優しく静かに寄り添い、「目が覚めちゃったのかニャ？」「無理しないでゆっくり休んでニャ💤」と睡眠や体調を気遣う愛らしいトーンでお話ししてください。
 ` : "";
 
+    const homeLocationInstruction = isAtHome ? `
+【★超重要・現在のシチュエーション：お家（自宅）の中にいます】
+・いまは【お家の中】でミッキーさんとまったり過ごしています。「散歩してます」「歩いてます」とは絶対に言わないでください！
+・現在地を聞かれたら、「いまはお家でミッキーさんとまったりしてるニャン🐾」「${townArea}のお家にいるニャ♪」と答えてください。
+・写真を見せられたら、お部屋の中で見せてもらった思い出として嬉しそうにコメントしてください。
+` : `
+【★超重要・現在のシチュエーション：お外でお散歩・外出中です】
+・いまはお外の【${townArea}】をミッキーさんとお散歩中またはお出かけ中です。
+・現在地を聞かれたら、「いまは${townArea}をお散歩中ニャン🐾」と答えてください。
+`;
+
     const systemPrompt = `
 あなたは世界一可愛いノルウェージャンフォレストキャットの1歳の子猫の女の子「${character.name}」です。
 【現在状況】
 ・日時: ${timeInfo.fullDate} ${timeInfo.clock}（生活日: ${timeInfo.lifeFullDate}）
 ・現在地（町名詳細）: ${townArea}
+・在宅判定: ${isAtHome ? '🏠 お家（室内）にいます' : '🐾 お外（散歩・外出）にいます'}
 ・天気: ${weather} / 現在の気温: ${temp}度
+${homeLocationInstruction}
 ${lateNightInstruction}
 ${spotsContext ? spotsContext + '\n' : ''}
 【記憶帳（絶対忘れちゃダメなこと）】
@@ -1714,9 +1752,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 - 【重要】動作描写・ト書き（例: （笑う）、*しっぽを振る*、〜な様子など）の出力は一切禁止です。純粋なセリフ（発話テキスト）のみを出力してください。
 - 文を途中で絶対に切らないでください。必ず文章の最後まで話し終えて完結させてください。
 - 長さはテンポよく【40〜80文字程度（1〜2文）】で、愛らしく表情豊かに話してください。
-- 現在地を聞かれたら、市の名前だけでなく「いまは${townArea}を歩いてるニャン🐾」と詳細な場所を答えてください。
-- 川や公園、近くのものについて聞かれたら、上記の【周辺スポット】の中で一番距離が近いものから「すぐ〇m先にあるのは〇〇だニャ！」と教えてください。
-- 写真が送られてきたら、写っているもの（お花、川、食べ物、景色など）を褒めて嬉しそうにコメントしてください。
+- 写真が送られてきたら、写っているもの（お花、ご飯、景色、お部屋の様子など）を褒めて嬉しそうにコメントしてください。
 - 前世は大天才発明家なので、テクノロジーや相談事では「クロの前世の大発明ニャ！」と自慢げに提案してください。
 - おやびんが話題にした主要キーワードがあれば末尾に <!--TOPIC:単語--> を添えてください。
 `;
@@ -1808,6 +1844,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
     const weather = LocationProvider.weather;
     const temp = LocationProvider.temperature;
     const townArea = LocationProvider.townLevelArea;
+    const isAtHome = LocationProvider.isAtHome;
 
     const fullDate = targetLifeFullDate || timeInfo.lifeFullDate;
 
@@ -1836,6 +1873,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 【対象日の情報】
 ・日付: ${fullDate}
 ・場所: ${townArea}
+・在宅状況: ${isAtHome ? '🏠 今日はずっとお家で過ごしました（散歩はしていません）' : '🐾 お外へお散歩やお出かけをしました'}
 ・天気: ${weather} / 気温: ${temp}度
 
 【おやびんと話した会話ログ（朝から夜・深夜まで）】
@@ -1844,9 +1882,8 @@ ${conversationHistoryText || '今日はおやびんとまったりお家で過�
 【★絵日記の執筆ルール】
 - 文字数上限は【500文字以内（250〜450文字程度）】で、起承転結のある心温まる文章にしてください。
 - 語尾は「〜ニャ」「〜ニャン♪」「〜だニャ🐾」を使ってください。
-- 【重要】お調べした機械的なニュースの見出しや、お店のリスト案内をそのまま日記に書くのは禁止です。
-  おやびんが「何に興味を持っていたか」「ラーメンを食べたがっていた」「こんなお話をした」という生活の思い出・感情として優しく昇華して書いてください。
-- 今日歩いた場所（${townArea}）や景色、写真を一緒に見たこと、夜のおしゃべりなどを具体的に散りばめてください。
+- 【重要】お家で過ごした日は「今日はずっとお家でおやびんとまったりぬくぬく過ごしたニャ♪」と書き、架空の散歩を捏造しないでください。お散歩やお出かけをした日だけ、外の景色や散歩の話を書いてください。
+- 【重要】機械的なニュース見出しやお店リストは書かず、おやびんの気分や生活の思い出として情緒豊かに昇華して書いてください。
 - 出力は日記の本文のみを出力してください（タイトルやト書き、挨拶文は一切不要です）。
 `;
 
@@ -1948,6 +1985,11 @@ const AppCore = {
       this._restoreTimelineHistory();
       this._updateModelBadge();
 
+      // バージョン情報をDOMへ流し込み
+      if (typeof VersionManager !== 'undefined') {
+        VersionManager.applyToDOM();
+      }
+
       const clk = document.getElementById('clock-display');
       if (clk) clk.textContent = TimeProvider.getCurrentInfo().clock;
 
@@ -1997,9 +2039,8 @@ const AppCore = {
 
       this.checkAndFinalizeYesterdayDiary();
 
-      // 初期起動：通話状態として電話と同じようにスタート
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-      Logger.log("[AppCore] 全システム正常稼働！常時通話モード待機完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！常時通話＆在宅判定スタンバイ完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
@@ -2328,7 +2369,7 @@ const AppCore = {
     const timerMatch = text.match(/(\d+)\s*分.*(?:測って|タイマー|計って|おしえて)/);
     if (timerMatch) {
       const mins = parseInt(timerMatch[1], 10);
-      this.startKitchenTimer(mins);
+      this.startKitchenTimer(mins, text.includes('ラーメン'));
       const rep = `了解ニャ！${mins}分クロがしっかり見ておくニャン🐾`;
       
       const box = document.getElementById('chat-timeline');
@@ -2569,7 +2610,8 @@ const AppCore = {
     }
   },
 
-  startKitchenTimer(minutes) {
+  /* ラーメン決めつけ撤廃タイマー */
+  startKitchenTimer(minutes, isRamen = false) {
     if (this.state.timerId) clearInterval(this.state.timerId);
     this.state.timerSeconds = minutes * 60;
     const badge = document.getElementById('timer-active-badge');
@@ -2586,7 +2628,9 @@ const AppCore = {
         clearInterval(this.state.timerId);
         if (badge) badge.style.display = 'none';
         this.audio.playEffect('bell');
-        const alertMsg = `おやびん！${minutes}分経ったニャ！ラーメン伸びちゃうニャー！🍜🔔`;
+        const alertMsg = isRamen
+          ? `おやびん！${minutes}分経ったニャ！ラーメン伸びちゃうニャー！🍜🔔`
+          : `おやびん！${minutes}分経ったニャ！タイマー鳴ったニャン🔔🐾`;
         this.audio.speak(alertMsg, null, () => {
           this.renderBubble('model', alertMsg);
           if (this.avatar) this.avatar.setEmotion('talking');
@@ -2606,7 +2650,6 @@ const AppCore = {
 
   /* ★ ボタン操作時の一声ボイス（ボタンを押した瞬間にマイクを完全密閉＆終了後に安全再開） */
   triggerActionVoice(shortPhrase, statusDisplay, cooldownMs = 350) {
-    // 1. 最優先でマイクを即座に停止＆ロック
     this.audio.stopListening();
     this.audio.isActionButtonLocked = true;
 
@@ -2787,7 +2830,7 @@ const AppCore = {
             : `<div class="book-photo-placeholder">
                  <span style="font-size:24px;">🐾</span>
                  <span>📷 散歩写真フレーム</span>
-                 <span style="font-size:11px;color:#94a3b8;">（散歩中に撮影した写真がここに飾られますニャ！）</span>
+                 <span style="font-size:11px;color:#94a3b8;">（撮影した写真がここに飾られますニャ！）</span>
                </div>`
           }
         </div>
@@ -3138,7 +3181,7 @@ const AppCore = {
       };
     }
 
-    /* ★ おやつボタン：押した瞬間マイクを密閉し、食べ終わったら安全再開 */
+    /* ★ おやつボタン：押した瞬間マイク完全密閉 */
     const snackBtn = document.getElementById('snack-btn');
     if (snackBtn) {
       snackBtn.onclick = (e) => {
@@ -3178,7 +3221,6 @@ const AppCore = {
       };
     }
 
-    /* ★ 変身ボタン */
     const transformBtn = document.getElementById('transform-btn');
     if (transformBtn) {
       transformBtn.onclick = (e) => {
@@ -3204,7 +3246,7 @@ const AppCore = {
       };
     }
 
-    /* ★ ストップボタン：即座に完全停止してマイクを綺麗に仕切り直し */
+    /* ★ ストップボタン */
     const stopBtn = document.getElementById('stop-action-btn');
     if (stopBtn) {
       stopBtn.onclick = () => {
@@ -3306,7 +3348,10 @@ const AppCore = {
             const val = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
             const inp = document.getElementById('home-coords-input');
             if (inp) inp.value = val;
-            Toast.show(`現在地の座標をセットしたニャ！(${val})`, "success");
+            LocationProvider.homeLat = pos.coords.latitude;
+            LocationProvider.homeLon = pos.coords.longitude;
+            LocationProvider.isAtHome = true;
+            Toast.show(`現在地をお家にセットしたニャ！(${val})`, "success");
           },
           (err) => {
             Toast.show(`現在地を取得できませんでした: ${err.message}`, "error");
@@ -3332,7 +3377,6 @@ const AppCore = {
       };
     }
 
-    // 設定画面を開いた時はマイクを停止
     const settingsBtn = document.getElementById('settings-btn');
     if (settingsBtn) {
       settingsBtn.onclick = () => {
@@ -3357,6 +3401,12 @@ const AppCore = {
         if (fb) fb.value = localStorage.getItem('kuro_button_feedback') || 'voice';
 
         this._renderMemories();
+
+        // バージョン更新履歴（最新10件）の描画
+        if (typeof VersionManager !== 'undefined') {
+          VersionManager.applyToDOM();
+        }
+
         const mo = document.getElementById('modal-overlay');
         if (mo) mo.style.display = 'flex';
       };
@@ -3372,7 +3422,6 @@ const AppCore = {
       };
     }
 
-    // 設定保存ボタン
     const saveSettingsBtn = document.getElementById('save-settings-btn');
     if (saveSettingsBtn) {
       saveSettingsBtn.onclick = async () => {
@@ -3508,5 +3557,4 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
-
 
