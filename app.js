@@ -1,13 +1,13 @@
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版 v1.0.0）
    - バージョン 1.0.0 正式安定版
+   - 通常会話80ms（頭欠けゼロ） ＆ ボタン操作音450ms（自声エコー根絶）のスマート分離設計
+   - 操作音声の漢字揺れ（お任せ/遊ぶ/ばっちり等）ピンポイント破棄フィルター
    - マイク制御完全復元＆安定化（音声入力100%確実復旧）
-   - 発話終了後80ms（0.08秒）超高速マイク再開（話し始めの頭欠け完全解消）
    - 一人称「クロ」「わたし」完全統一 ＆ 「余（あまり）」読み間違い根絶
    - 音声完全Blob化（メモリ一括取得再生）：短文・長文問わず途切れ・抜けを100%根絶
    - TimeProvider 日時提供エンジン（午前4時境界の生活リズム＆時計リアルタイム表示）
    - セリフの長さ（40〜80文字）を完全キープ ＆ VOICEVOX 音声・文字完全同期
-   - 操作ボタンの軽快な「ひとこと肉声（0.5秒）」化（タイムライン・日記完全保護）
    - 18時以降の夜の会話の自動取り込み ＆ 翌朝起動時の会話件数差分検知による自動補完システム
    - 日記リソースの選定（おてつだい検索の機械的データ除外＆情緒的思い出への昇華）
    - 会話セリフのローカル永続復元 ＆ 画面表示クリア（内部データ安全保護）
@@ -127,7 +127,7 @@ const TimeProvider = {
 };
 
 /* ==========================================================================
-   ★ MODULE 1: 音声合成＆音声認識（確実な音声入力復旧 ＆ 80ms頭欠けゼロ設計）
+   ★ MODULE 1: 音声合成＆音声認識（確実な音声復旧 ＆ 80ms頭欠けゼロ ＆ 自声鉄壁遮断）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -584,19 +584,24 @@ class AudioSpeechEngine {
     return blobUrl;
   }
 
+  /* ★ 自声エコー＆操作ボタン音声（漢字揺れ・ひらがな揺れ）の鉄壁破棄判定 */
   _isSelfEcho(text) {
     if (!text) return true;
     const normalized = text.replace(/[\s、。！？ニャンニャ]/g, '');
     if (normalized.length < 2) return true;
 
-    const actionWords = ["おまかせニャ", "おまかせ", "あそぶニャ", "あそぶ", "バッチリニャ", "バッチリ", "はーい"];
-    if (actionWords.some(w => normalized.includes(w.replace(/[\s、。！？ニャンニャ]/g, '')))) {
+    // ★ 操作用ひとことボイスの漢字揺れ・ひらがな揺れを完全ピンポイント破棄
+    // 「お任せ」「おまかせ」「任せ」「遊ぶ」「あそぶ」「遊ぼ」「ばっちり」「バッチリ」「はい」「はーい」等を確実にガード
+    const actionPattern = /^(?:おまかせ|お任せ|任せ|まかせ|あそぶ|遊ぶ|あそぼ|遊ぼ|ばっちり|バッチリ|ぱっちり|パッチリ|はーい|はい|ハイ)(?:ニャ|ニャン|にゃ|にゃん)?$/;
+    if (actionPattern.test(normalized)) {
+      return true;
+    }
+    if (normalized.length <= 8 && /(?:お任せ|おまかせ|遊ぶ|あそぶ|バッチリ|ばっちり|はーい)/.test(normalized)) {
       return true;
     }
 
     const now = Date.now();
-    // 直近0.2秒以内かつ自身が喋ったフレーズとほぼ一致する場合のみ破棄
-    const isVeryRecent = (now - this.lastSpeechEndTime) < 200;
+    const isVeryRecent = (now - this.lastSpeechEndTime) < 250;
 
     for (const spoken of this.recentSpokenTexts) {
       const normSpoken = spoken.replace(/[\s、。！？ニャンニャ]/g, '');
@@ -606,10 +611,10 @@ class AudioSpeechEngine {
     return false;
   }
 
-  /* ★ 発話処理（確実な停止＆80ms超高速再開） */
-  async speak(text, speakerIdOverride = null, onStart = null, onEnd = null) {
+  /* ★ 発話処理（通常会話80ms / ボタン操作時450msのスマート待機切り替え） */
+  async speak(text, speakerIdOverride = null, onStart = null, onEnd = null, cooldownOverride = null) {
     this.stopSpeaking();
-    this.stopListening(); // 発話直前にマイクをクリーンに解放
+    this.stopListening();
     this.unlockMasterAudio();
 
     try {
@@ -618,6 +623,7 @@ class AudioSpeechEngine {
     } catch(e) {}
 
     const speakerId = (speakerIdOverride !== null) ? speakerIdOverride : AppCore.getSpeakerId();
+    const cooldownMs = (cooldownOverride !== null) ? cooldownOverride : 80; // 通常会話は80ms、ボタンは450ms
 
     let clean = this._convertAllNumbersToKana(text)
       .replace(/<!--[\s\S]*?-->/g, '')
@@ -631,7 +637,7 @@ class AudioSpeechEngine {
     if (!clean) {
       if (onStart) onStart();
       if (onEnd) onEnd();
-      setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, 80);
+      setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, cooldownMs);
       return;
     }
 
@@ -674,12 +680,12 @@ class AudioSpeechEngine {
         this.lastSpeechEndTime = Date.now();
         if (onEnd) onEnd();
 
-        // ★ 発話終了後、最小安全マージン「80ms（0.08秒）」で即座にマイク再開（頭欠け完全ゼロ！）
+        // ★ 通常会話は80ms（頭欠けゼロ）、ボタン操作時は450ms（自声跳ね返り完全ゼロ）
         setTimeout(() => {
           if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !AppCore.state.isThinking) {
             this.startListening();
           }
-        }, 80);
+        }, cooldownMs);
       };
 
       this.masterAudio.onerror = () => {
@@ -687,7 +693,7 @@ class AudioSpeechEngine {
         this.isSpeaking = false;
         if (onStart) onStart();
         if (onEnd) onEnd();
-        setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, 80);
+        setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, cooldownMs);
       };
 
       await this.masterAudio.play();
@@ -696,7 +702,7 @@ class AudioSpeechEngine {
       this.isSpeaking = false;
       if (onStart) onStart();
       if (onEnd) onEnd();
-      setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, 80);
+      setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, cooldownMs);
     }
   }
 
@@ -2017,9 +2023,8 @@ const AppCore = {
 
       this.checkAndFinalizeYesterdayDiary();
 
-      // 安全な初回マイク接続
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 600);
-      Logger.log("[AppCore] 全システム正常稼働！音声入力完全復旧＆頭欠け80ms解消準備完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！通常80ms＆ボタン450msスマート分離準備完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
@@ -2626,6 +2631,7 @@ const AppCore = {
     badge.textContent = `🐾 Flash Lite`;
   },
 
+  /* ★ ボタン操作時のひとことボイス（専用クールダウン450msで自声跳ね返り完全遮断） */
   triggerActionVoice(shortPhrase, statusDisplay) {
     const feedbackPref = localStorage.getItem('kuro_button_feedback') || 'voice';
     const st = document.getElementById('status-text');
@@ -2639,12 +2645,13 @@ const AppCore = {
       return;
     }
 
+    // ボタン操作時だけ第5引数に「450ms」を指定（残響を完全に消してからマイク再開）
     this.audio.speak(shortPhrase, null, () => {
       if (this.avatar) this.avatar.setEmotion('talking');
     }, () => {
       if (this.avatar) this.avatar.setEmotion('idle');
       if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
-    });
+    }, 450);
   },
 
   _updateModeUI(speak = true) {
