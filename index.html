@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>AIペット クロちゃん🐾 v1.0.3</title>
+  <title>AIペット クロちゃん🐾 v1.0.4</title>
 
   <!-- キャッシュ完全無効化設定 -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -92,7 +91,7 @@
       background: #ffffff;
     }
 
-    /* 1. 最上部ステータスバー */
+    /* 1. 最上部ステータスバー（チラつきのない静かなデザイン） */
     .top-header {
       width: 100%;
       flex-shrink: 0;
@@ -140,20 +139,6 @@
       transition: all 0.25s ease-out;
       letter-spacing: 0.3px;
     }
-
-    /* ★ おやびんが声を発した瞬間にパッと優しく点灯する安心の安全スタイル */
-    .is-hearing-voice #status-text {
-      background: linear-gradient(135deg, #be185d, #ec4899) !important;
-      color: #ffffff !important;
-      box-shadow: 0 2px 12px rgba(236, 72, 153, 0.5), 0 0 0 1.5px #fbcfe8 inset !important;
-      transform: scale(1.04);
-      animation: pulseListening 0.8s ease-in-out infinite alternate;
-    }
-    @keyframes pulseListening {
-      0% { transform: scale(1.02); }
-      100% { transform: scale(1.06); }
-    }
-
     .is-paused-mode #status-text { background: #450a0a; color: #fca5a5; }
 
     .btn-top-diary {
@@ -1744,7 +1729,7 @@
       </div>
 
       <!-- ★ 画面最下部の控えめな極小バージョン表示 -->
-      <div class="app-version-tag">🐾 クロちゃん v1.0.3</div>
+      <div class="app-version-tag">🐾 クロちゃん v1.0.4</div>
     </div>
   </div>
 
@@ -1781,7 +1766,7 @@
   <div id="diag-panel">
     <div class="diag-modal-content">
       <div class="diag-header">
-        <span>🩺 システム診断モニタ (v1.0.3)</span>
+        <span>🩺 システム診断モニタ (v1.0.4)</span>
         <div class="diag-header-actions">
           <button type="button" class="diag-act-btn" id="diag-test-models-btn" title="全モデルの導通を今すぐテスト">⚡ モデル検証</button>
           <button type="button" class="diag-act-btn" id="diag-copy-evidence-btn" title="ログをクリップボードにコピー">📋 ログコピー</button>
@@ -1790,7 +1775,7 @@
         </div>
       </div>
       <div class="diag-logs" id="diag-logs">
-        <div class="log-row log-info">[System] AIペット クロちゃん対話エンジン v1.0.3 稼働中</div>
+        <div class="log-row log-info">[System] AIペット クロちゃん対話エンジン v1.0.4 稼働中</div>
       </div>
     </div>
   </div>
@@ -1848,7 +1833,7 @@
     <div class="modal-card">
       <h3>
         <span>⚙️ 設定・記憶帳</span>
-        <span style="font-size:11px;font-weight:normal;color:#94a3b8;margin-left:auto;">v1.0.3</span>
+        <span style="font-size:11px;font-weight:normal;color:#94a3b8;margin-left:auto;">v1.0.4</span>
       </h3>
 
       <!-- 1. トリセツ -->
@@ -2057,8 +2042,9 @@
     </div>
   </div>
 
-  <!-- 最新版 app.js (v1.0.3) -->
-  <script src="app.js?v=1.0.3"></script>
+  <!-- 最新版 app.js (v1.0.4) -->
+  <script src="app.js?v=1.0.4"></script>
 </body>
 </html>
+
 

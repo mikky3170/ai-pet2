@@ -1,9 +1,9 @@
 /* ==========================================================================
-   AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版 v1.0.3）
-   - バージョン 1.0.3 正式安定版
-   - 【根本根絶】単発認識（continuous: false）採用により言葉の重複リピートバグを100%根絶
-   - 【安心機能】マイクを奪い合わない安全な発話検知（お声に反応して最上部バッジが優しく点灯）
-   - 【点滅解消】クロちゃん発話終了後のスマートなマイク起動待機（パタパタ点滅を完全解消）
+   AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版 v1.0.4）
+   - バージョン 1.0.4 正式安定版
+   - 【点滅根絶】無音時のマイク自動切断と再起動の衝突（点滅無限ループ）を完全解消
+   - 【静寂待機】部屋の生活音による過敏なステータスチラつきを撤廃し、落ち着いた待機を実現
+   - 【重複ゼロ】1回話した言葉だけを100%確実に1文として受け取るクリーンな音声認識
    - 一人称「クロ」「わたし」完全統一 ＆ 「余（よ）」読み間違い根絶
    - 音声完全Blob化（メモリ一括取得再生）：短文・長文問わず途切れ・抜けを100%根絶
    - TimeProvider 日時提供エンジン（午前4時境界の生活リズム＆時計リアルタイム表示）
@@ -126,7 +126,7 @@ const TimeProvider = {
 };
 
 /* ==========================================================================
-   ★ MODULE 1: 音声合成＆音声認識（超安定・単発認識 ＆ 重複ゼロ構造）
+   ★ MODULE 1: 音声合成＆音声認識（静粛待機 ＆ 点滅根絶エンジン）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -145,6 +145,7 @@ class AudioSpeechEngine {
     this.isListening = false;
     this.isStarting = false;
     this.recognition = null;
+    this.restartTimer = null;
 
     this.fixedPhraseMap = new Map();
     this.blobUrlCache = new Map();
@@ -162,7 +163,6 @@ class AudioSpeechEngine {
 
     this._setupRecognition();
     this._setupInteractionUnlock();
-    this._startWatchdog();
   }
 
   setRate(r) {
@@ -604,7 +604,7 @@ class AudioSpeechEngine {
     return false;
   }
 
-  /* ★ 発話処理（スマホOSのスピーカー切替時間を静かに待って再開） */
+  /* ★ 発話処理（スマホOSの切替時間を静かに待機して再開） */
   async speak(text, speakerIdOverride = null, onStart = null, onEnd = null, cooldownOverride = null) {
     this.stopSpeaking();
     this.stopListening();
@@ -616,8 +616,7 @@ class AudioSpeechEngine {
     } catch(e) {}
 
     const speakerId = (speakerIdOverride !== null) ? speakerIdOverride : AppCore.getSpeakerId();
-    // スマホOSの切替時間を考慮した安全マージン（通常250ms）
-    const cooldownMs = (cooldownOverride !== null) ? cooldownOverride : 250;
+    const cooldownMs = (cooldownOverride !== null) ? cooldownOverride : 280;
 
     let clean = this._convertAllNumbersToKana(text)
       .replace(/<!--[\s\S]*?-->/g, '')
@@ -674,7 +673,7 @@ class AudioSpeechEngine {
         this.lastSpeechEndTime = Date.now();
         if (onEnd) onEnd();
 
-        // ★ 音声終了後、OSがマイクへ戻る時間を静かに待ってから一度だけクリーンに再開（点滅根絶）
+        // ★ 音声終了後、OSがマイクへ戻る時間を静かに待ってから一度だけクリーンに起動
         setTimeout(() => {
           if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !AppCore.state.isThinking && !AppCore.state.isProcessingInput) {
             this.startListening();
@@ -820,7 +819,7 @@ class AudioSpeechEngine {
   }
 
   /* ==========================================================================
-     ★ 音声認識：単発認識（continuous: false）で重複ループを100%根本根絶
+     ★ 音声認識：単発・静寂待機（無音タイムアウト連鎖を根絶）
      ========================================================================== */
   _setupRecognition() {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -831,7 +830,6 @@ class AudioSpeechEngine {
 
     this.recognition = new SpeechRec();
     this.recognition.lang = 'ja-JP';
-    // ★ 重複ループの元凶（continuous: true / interimResults: true）を完全撤廃！
     this.recognition.continuous = false;
     this.recognition.interimResults = false;
 
@@ -839,28 +837,11 @@ class AudioSpeechEngine {
       this.isListening = true;
       this.isStarting = false;
       if (this.onListeningStatus) this.onListeningStatus(true);
-      Logger.log("[マイク] リスニング待機中（単発・重複ゼロモード）", "info");
+      Logger.log("[マイク] 静かに待機中…", "info");
     };
 
-    // ★ おやびんが声を発した瞬間に、最上部バッジがパッと優しく点灯！
-    this.recognition.onspeechstart = () => {
-      if (this.isSpeaking || this.isReadingAloud || AppCore.state.isProcessingInput) return;
-      document.body.classList.add('is-hearing-voice');
-      const st = document.getElementById('status-text');
-      if (st) st.textContent = "🗣️ お声を聞いてるニャ！";
-    };
-
-    this.recognition.onspeechend = () => {
-      document.body.classList.remove('is-hearing-voice');
-      const st = document.getElementById('status-text');
-      if (st && AppCore.state.isRunning && !this.isSpeaking) {
-        st.textContent = "💭 まとめてるニャ…";
-      }
-    };
-
-    // ★ 喋り終わったら、重複のない完成された美しい1文だけが1回だけ届く！
+    // 喋り終わると1回だけ完成された綺麗な文章が届く
     this.recognition.onresult = (event) => {
-      document.body.classList.remove('is-hearing-voice');
       if (this.isSpeaking || this.isReadingAloud || AppCore.state.isProcessingInput) return;
 
       const resultText = event.results[0]?.[0]?.transcript?.trim() || '';
@@ -879,43 +860,32 @@ class AudioSpeechEngine {
         return;
       }
 
-      Logger.log(`[音声認識完了⚡] 「${resultText}」`, "success");
+      Logger.log(`[おやびんのお声を受信⚡] 「${resultText}」`, "success");
       if (this.onSpeechFinal) this.onSpeechFinal(resultText);
     };
 
     this.recognition.onerror = (e) => {
       this.isStarting = false;
-      document.body.classList.remove('is-hearing-voice');
-      if (e.error === 'no-speech') return;
+      if (e.error === 'no-speech') return; // 無音タイムアウトは正常動作なので無視
       Logger.log(`[マイク情報] ${e.error}`, "info");
     };
 
-    // ★ 単発認識終了後、落ち着いて次のリスニングへ移行
+    // ★ 無音タイムアウト時：慌てて0秒で再起動せず、落ち着いた間隔でスタンバイ
     this.recognition.onend = () => {
       this.isListening = false;
       this.isStarting = false;
-      document.body.classList.remove('is-hearing-voice');
       if (this.onListeningStatus) this.onListeningStatus(false);
 
       if (!AppCore.state.isRunning) return;
 
-      // クロちゃんが喋っておらず、考え中でもない場合のみ、自然に次のお声をお待ちする
-      setTimeout(() => {
-        if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !AppCore.state.isThinking && !AppCore.state.isProcessingInput) {
+      // 無駄な点滅ループを防ぐため、1.5秒ほど静かに間を置いてから次を待つ
+      if (this.restartTimer) clearTimeout(this.restartTimer);
+      this.restartTimer = setTimeout(() => {
+        if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !AppCore.state.isThinking && !AppCore.state.isProcessingInput && !this.isListening) {
           this.startListening();
         }
-      }, 200);
+      }, 1500);
     };
-  }
-
-  _startWatchdog() {
-    this.watchdogInterval = setInterval(() => {
-      if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !AppCore.state.isThinking && !AppCore.state.isProcessingInput && !this.isListening && !this.isStarting) {
-        if (Date.now() - this.lastSpeechEndTime > 600) {
-          this.startListening();
-        }
-      }
-    }, 2500);
   }
 
   startListening() {
@@ -931,7 +901,7 @@ class AudioSpeechEngine {
   stopListening() {
     this.isListening = false;
     this.isStarting = false;
-    document.body.classList.remove('is-hearing-voice');
+    if (this.restartTimer) clearTimeout(this.restartTimer);
     if (this.recognition) {
       try { this.recognition.abort(); } catch(e) {}
     }
@@ -1362,7 +1332,7 @@ const StorageManager = {
 
     const pkg = {
       format: "kuro_pure_data_package",
-      version: "1.0.3",
+      version: "1.0.4",
       exportedAt: now.toLocaleString('ja-JP'),
       memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
@@ -2019,7 +1989,7 @@ const AppCore = {
       this.checkAndFinalizeYesterdayDiary();
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 600);
-      Logger.log("[AppCore] 全システム正常稼働！超安定・単発認識モード起動完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！静かで落ち着いた対話待機完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
@@ -2113,7 +2083,7 @@ const AppCore = {
       this.audio.playEffect('aizuchi');
     };
 
-    // ★ おやびんが喋り終わったら、重複ゼロの綺麗な吹き出しが1つスッと出現！
+    // ★ おやびんが喋り終わると、1つの綺麗な吹き出しがスッと画面に出現
     this.audio.onSpeechFinal = (finalText) => {
       if (this.state.isProcessingInput || this.state.isDiaryReading) return;
       this.state.isProcessingInput = true;
@@ -2125,7 +2095,7 @@ const AppCore = {
     this.audio.onListeningStatus = (l) => {
       const st = document.getElementById('status-text');
       if (st && this.state.isRunning && !this.audio.isSpeaking && !this.state.isThinking) {
-        st.textContent = l ? "👂 聴いてるニャ♪" : "💭 待機中ニャ…";
+        st.textContent = "👂 聴いてるニャ♪";
       }
     };
   },
@@ -3496,5 +3466,3 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
-
-
