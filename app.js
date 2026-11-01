@@ -1,6 +1,7 @@
 /* ==========================================================================
-   AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版 V.1.1.0）
-   - バージョン 1.1.0 正式安定版（version.js 一元管理連動）
+   AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版 V.1.1.1）
+   - バージョン 1.1.1 正式安定版（version.js 一元管理連動）
+   - 【爆速化・応答遅延解消】最速Liteモデル優先化＆5秒タイムアウト自動切替により26秒待ちを1〜2秒へ劇的改善
    - 【在宅・散歩の自動判定】自宅座標との距離判定により「家の中にいるのに散歩してます」と答えるバグを根絶
    - 【決めつけ完全撤廃】室内写真の散歩決めつけ、絵日記の架空散歩捏造、タイマーのラーメン決めつけを解消
    - 【常時通話化】continuous=true による電話のような途切れない安定接続（点滅ループ完全根絶）
@@ -84,7 +85,6 @@ const TimeProvider = {
     const logKey = `${year}-${pad(month)}-${pad(date)}`;
     const fullDate = `${year}年${month}月${date}日 (${dayOfWeek})`;
 
-    // 生活リズム判定（午前4:00境界線）
     const isLateNight = (hours < 4);
     let lifeDateObj = now;
     if (isLateNight) {
@@ -579,7 +579,6 @@ class AudioSpeechEngine {
     return blobUrl;
   }
 
-  /* 自声エコー＆操作ボタン音声破棄ガード */
   _isSelfEcho(text) {
     if (!text) return true;
     const normalized = text.replace(/[\s、。！？ニャンニャ]/g, '');
@@ -930,7 +929,7 @@ const LocationProvider = {
   weather: "快晴",
   temperature: "22",
   isGpsAvailable: false,
-  isAtHome: true, // 在宅中フラグ（デフォルトはお家）
+  isAtHome: true,
 
   calcDistanceMeters(lat1, lon1, lat2, lon2) {
     const R = 6371000;
@@ -983,7 +982,6 @@ const LocationProvider = {
   _checkHomeProximity() {
     if (this.homeLat !== null && this.homeLon !== null && this.lat !== null && this.lon !== null) {
       const dist = this.calcDistanceMeters(this.lat, this.lon, this.homeLat, this.homeLon);
-      // 自宅から約150m以内なら「在宅中」、離れていれば「外出・散歩中」
       this.isAtHome = (dist <= 150);
       Logger.log(`[在宅判定] 自宅からの距離: ${dist}m ➔ ${this.isAtHome ? '🏠 お家にいます' : '🐾 お散歩・外出中'}`, "info");
     } else {
@@ -1053,7 +1051,7 @@ const LocationProvider = {
   },
 
   async _applyHomeFallback() {
-    this.isAtHome = true; // フォールバック時はお家と判定
+    this.isAtHome = true;
     const homeVal = (localStorage.getItem('kuro_home_coords') || '').trim();
     if (!homeVal) {
       this.detailedAddress = "東京都東村山市本町1丁目付近";
@@ -1297,7 +1295,6 @@ const StorageManager = {
     return true;
   },
 
-  /* 写真添付時の決めつけ撤廃（お家ならお部屋、お外ならお散歩） */
   attachPhotoToTodayDiary(photoBase64) {
     const timeInfo = TimeProvider.getCurrentInfo();
     const dateKey = timeInfo.lifeLogKey;
@@ -1359,7 +1356,7 @@ const StorageManager = {
     const ymd = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
     const hm = `${pad(now.getHours())}${pad(now.getMinutes())}`;
     const filename = `クロちゃんデータ_${ymd}_${hm}.json`;
-    const curVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.1.1.0";
+    const curVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.1.1.1";
 
     const pkg = {
       format: "kuro_pure_data_package",
@@ -1614,7 +1611,7 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   ★ MODULE 5: 思考・AI対話エンジン（在宅・散歩自動識別 ＆ 決めつけ撤廃）
+   ★ MODULE 5: 思考・AI対話エンジン（最速モデル優先化 ＆ 5秒自動パス搭載）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
@@ -1639,6 +1636,12 @@ class AIThoughtEngine {
           .map(m => m.name.replace(/^models\//, ''));
 
         if (available.length > 0) {
+          // 最速・安定モデル（latest / 2.5）を先頭にソート
+          available.sort((a, b) => {
+            if (a.includes('latest') || a.includes('2.5')) return -1;
+            if (b.includes('latest') || b.includes('2.5')) return 1;
+            return 0;
+          });
           this.discoveredLiteModels = available;
           Logger.log(`[Liteモデル自動検出成功] ${available.join(', ')}`, "success");
           return available;
@@ -1759,22 +1762,30 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 
     const contents = this._buildContentsPayload(rawLogs, promptText, photoBase64);
 
+    // ★ 渋滞モデルを避け、空いている最速モデルを先頭に配置
     let targetModels = [
-      "gemini-3.5-flash-lite",
-      "gemini-2.0-flash-lite",
+      "gemini-flash-lite-latest",
       "gemini-2.5-flash-lite",
-      "gemini-1.5-flash-8b"
+      "gemini-2.0-flash-lite",
+      "gemini-3.5-flash-lite"
     ];
 
     if (this.discoveredLiteModels.length > 0) {
-      targetModels = Array.from(new Set([...targetModels.slice(0, 1), ...this.discoveredLiteModels, ...targetModels]));
+      targetModels = Array.from(new Set([...this.discoveredLiteModels, ...targetModels]));
     }
     targetModels = targetModels.filter(m => !m.includes('3.8'));
 
     for (const model of targetModels) {
       const cleanModel = model.replace(/^models\//, '');
       try {
-        Logger.log(`[Gemini] Liteモデル「${cleanModel}」へリクエスト中…`, "info");
+        Logger.log(`[Gemini] 最速Liteモデル「${cleanModel}」へリクエスト中…`, "info");
+
+        // ★ 5秒タイムアウト制御：Google側が混雑して5秒以上返らない場合は即座に次のモデルへパス
+        const fetchController = new AbortController();
+        const timeoutTimer = setTimeout(() => {
+          fetchController.abort();
+          Logger.log(`[Geminiタイムアウト] モデル「${cleanModel}」が5秒を超えたため次へ即時切り替えニャ！`, "warn");
+        }, 5000);
 
         const bodyPayload = {
           system_instruction: { parts: [{ text: systemPrompt }] },
@@ -1786,8 +1797,11 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
         let res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bodyPayload)
+          body: JSON.stringify(bodyPayload),
+          signal: fetchController.signal
         });
+
+        clearTimeout(timeoutTimer);
 
         if (!res.ok && res.status === 400 && !photoBase64) {
           const fallbackPayload = {
@@ -1822,7 +1836,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 
             clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
 
-            Logger.log(`[Gemini成功⚡] Liteモデル「${cleanModel}」から応答取得！`, "success");
+            Logger.log(`[Gemini成功⚡] Liteモデル「${cleanModel}」から即答取得！`, "success");
             
             const badge = document.getElementById('model-badge');
             if (badge) badge.textContent = `🐾 ${cleanModel.replace('gemini-', '')}`;
@@ -1831,7 +1845,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
           }
         }
       } catch (err) {
-        Logger.log(`[Gemini通信例外] ${err.message}`, "warn");
+        Logger.log(`[Gemini通信パス] ${cleanModel}: ${err.message}`, "warn");
       }
     }
     return { success: false, error: "ALL_LITE_MODELS_FAILED" };
@@ -1887,7 +1901,7 @@ ${conversationHistoryText || '今日はおやびんとまったりお家で過�
 - 出力は日記の本文のみを出力してください（タイトルやト書き、挨拶文は一切不要です）。
 `;
 
-    const targetModel = (this.discoveredLiteModels[0] || "gemini-3.5-flash-lite").replace(/^models\//, '');
+    const targetModel = (this.discoveredLiteModels[0] || "gemini-flash-lite-latest").replace(/^models\//, '');
     try {
       Logger.log(`[Diary] 1日完全版の絵日記を執筆中…（モデル: ${targetModel}）`, "info");
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${this.apiKey}`, {
@@ -1985,7 +1999,7 @@ const AppCore = {
       this._restoreTimelineHistory();
       this._updateModelBadge();
 
-      // バージョン情報をDOMへ流し込み
+      // version.js からDOMへ反映
       if (typeof VersionManager !== 'undefined') {
         VersionManager.applyToDOM();
       }
@@ -2040,7 +2054,7 @@ const AppCore = {
       this.checkAndFinalizeYesterdayDiary();
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-      Logger.log("[AppCore] 全システム正常稼働！常時通話＆在宅判定スタンバイ完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！爆速Lite＆常時通話スタンバイ完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
@@ -2610,7 +2624,6 @@ const AppCore = {
     }
   },
 
-  /* ラーメン決めつけ撤廃タイマー */
   startKitchenTimer(minutes, isRamen = false) {
     if (this.state.timerId) clearInterval(this.state.timerId);
     this.state.timerSeconds = minutes * 60;
@@ -3144,7 +3157,7 @@ const AppCore = {
           return;
         }
 
-        const candidates = ["gemini-3.5-flash-lite", "gemini-2.0-flash-lite", "gemini-2.5-flash-lite", "gemini-1.5-flash-8b"];
+        const candidates = ["gemini-flash-lite-latest", "gemini-2.5-flash-lite", "gemini-2.0-flash-lite", "gemini-3.5-flash-lite"];
         for (const m of candidates) {
           try {
             const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`, {

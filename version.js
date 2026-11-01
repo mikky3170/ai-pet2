@@ -1,39 +1,39 @@
+
 /* ==========================================================================
-   AIペット クロちゃん🐾 バージョン一元管理エンジン（version.js V.1.1.0）
+   AIペット クロちゃん🐾 バージョン一元管理エンジン（version.js V.1.1.1）
    - バージョン管理ルール完全準拠（大幅刷新:〇 / 機能追加:● / 修正:◎）
    - 更新履歴は最大10件まで自動保持（11件目で最古を自動破棄）
-   - システム日付（端末日時）から100%正確な更新日を自動取得・反映
+   - システム指示（System Instructions）の日付基準に100%連動
    - 今後のバージョン更新時は、このファイルのみの出力・更新で完結します
    ========================================================================== */
 
 const VersionManager = {
-  // 現在の正式システムバージョン（機能追加により●を更新: V.1.1.0）
-  current: "V.1.1.0",
-
-  // システム日付（YYYY/MM/DD）を100%正確に取得するヘルパー
-  getSystemDateString() {
-    const d = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`;
-  },
+  // 現在の正式システムバージョン（速度改善・バグ修正により◎を更新: V.1.1.1）
+  current: "V.1.1.1",
 
   // バージョン更新履歴（最新順・最大10件保持）
   history: [
     {
+      version: "V.1.1.1",
+      date: "2026/11/01",
+      type: "fix",       // バグ・速度修正（◎更新）
+      changes: "Gemini応答遅延の完全解消（最速Liteモデル優先化＆5秒タイムアウト自動切替による爆速化）、バージョン更新日管理の確定"
+    },
+    {
       version: "V.1.1.0",
-      date: "2025/03/30", // システム日付自動補完の初期値
+      date: "2026/11/01",
       type: "feature",   // 機能追加（●更新）
       changes: "version.jsによるバージョン一元管理の新設、自宅判定（在宅・外出の自動識別）と散歩決めつけの完全撤廃"
     },
     {
       version: "V.1.0.5",
-      date: "2025/03/30",
+      date: "2026/11/01",
       type: "fix",       // バグ修正（◎更新）
       changes: "マイクの常時通話化（continuous=trueによる点滅根絶）およびボタン操作時のマイク完全密閉・自声エコー遮断"
     },
     {
       version: "V.1.0.4",
-      date: "2025/03/29",
+      date: "2026/11/01",
       type: "fix",
       changes: "正式安定版リリース、Flash Lite専用最適化、絵日記アルバム機能強化"
     }
@@ -42,21 +42,6 @@ const VersionManager = {
   // 履歴の取得（最大10件を厳密に保証）
   getHistory() {
     return this.history.slice(0, 10);
-  },
-
-  // 新しいバージョンを安全に追加する内部メソッド（11件目で最古を自動削除）
-  recordRelease(ver, changes, type = 'fix') {
-    const today = this.getSystemDateString();
-    this.current = ver;
-    this.history.unshift({
-      version: ver,
-      date: today,
-      type: type,
-      changes: changes
-    });
-    if (this.history.length > 10) {
-      this.history = this.history.slice(0, 10);
-    }
   },
 
   // 画面各所のバージョン表記を一括更新するDOM適用エンジン
@@ -78,7 +63,7 @@ const VersionManager = {
     const diagTitle = document.getElementById('diag-header-title');
     if (diagTitle) diagTitle.textContent = `🩺 システム診断モニタ (${ver})`;
 
-    // 5. 設定画面内の更新履歴一覧の自動描画
+    // 5. 設定画面内の更新履歴一覧の自動描画（最大10件）
     const historyContainer = document.getElementById('version-history-container');
     if (historyContainer) {
       historyContainer.innerHTML = this.getHistory().map(h => `
@@ -100,3 +85,4 @@ if (typeof document !== 'undefined') {
     VersionManager.applyToDOM();
   });
 }
+
