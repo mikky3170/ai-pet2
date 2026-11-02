@@ -1,4 +1,3 @@
-
 /* ==========================================================================
    【永久不変仕様書】AIペット クロちゃん🐾 対話エンジン＆設計思想（app.js）
    ==========================================================================
@@ -23,10 +22,13 @@
        直近【10往復（20件）】だけ厳選してGeminiに送信。0.6秒台の爆速と深い文脈を両立！
      ・【その日の絵日記を書いた後】：長い会話を手放し、「今日の日記」＋「直近5往復（10件）」に切り替え。
 
-   ■ 3. 愛情たっぷり！新3大ふれあい機能
+   ■ 3. 愛情たっぷり！新3大ふれあい機能 ＆ 砂時計キッチンタイマー
      ・② 気まぐれ独り言：おやびんが無操作で数分経つと、声を出さずにそっとあくびやつぶやき。
      ・③ なでなで部位センサー：頭・あご下・お腹でクロちゃんの喜びリアクションが変化！
      ・④ 絵日記の肉球スタンプ＆ミニ手紙：1日1ページの絵日記に肉球印と可愛い手紙を刻印。
+     ・⑤ 漆黒の砂時計タイマー：
+        - 案A採用：「ちょい待ちニャ🐾」（一時停止）＆「すすめるニャ！🐾」（再開）
+        - 完了時ハイブリッド仕様：3回リピートアラーム ＆ タップで即座に消音・消去完了！
 
    ■ 4. 通信防波堤（20秒タイムアウト ＆ 最短1発クリア設計）
      ・平常時（Google健全時）：0.6秒〜0.8秒で即座に即答（タイムアウト待ちは1ミリも発生しない）。
@@ -365,15 +367,56 @@ class AudioSpeechEngine {
       });
 
     } else if (type === 'bell') {
-      [0, 0.25, 0.5].forEach(delay => {
+      // ★ 華やかベルチャイム（高音2段連打：チリリン♪ チリリン♪）
+      const bellPitches = [1568, 2093, 1568, 2093]; // G6 -> C7 -> G6 -> C7
+      const bellTimes = [0, 0.14, 0.38, 0.52];
+
+      bellTimes.forEach((delay, idx) => {
         const osc = ctx.createOscillator();
+        const oscHarmonic = ctx.createOscillator();
         const gain = ctx.createGain();
+
+        const freq = bellPitches[idx];
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(1320, now + delay);
-        gain.gain.setValueAtTime(0.4, now + delay);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.3);
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.start(now + delay); osc.stop(now + delay + 0.3);
+        osc.frequency.setValueAtTime(freq, now + delay);
+
+        oscHarmonic.type = 'triangle';
+        oscHarmonic.frequency.setValueAtTime(freq * 2.02, now + delay);
+
+        gain.gain.setValueAtTime(0.48, now + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.42);
+
+        osc.connect(gain);
+        oscHarmonic.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now + delay); osc.stop(now + delay + 0.45);
+        oscHarmonic.start(now + delay); oscHarmonic.stop(now + delay + 0.45);
+      });
+
+    } else if (type === 'alarm') {
+      // ★ デジタルアラーム（ピピピッ！ピピピッ！：目立つ和音ビープ音連打）
+      const bursts = [0, 0.11, 0.22, 0.45, 0.56, 0.67];
+      bursts.forEach(delay => {
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc1.type = 'square';
+        osc1.frequency.setValueAtTime(2093, now + delay); // C7
+
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(2637, now + delay); // E7
+
+        gain.gain.setValueAtTime(0.38, now + delay);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.08);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc1.start(now + delay); osc1.stop(now + delay + 0.085);
+        osc2.start(now + delay); osc2.stop(now + delay + 0.085);
       });
 
     } else if (type === 'idea') {
@@ -537,7 +580,9 @@ class AudioSpeechEngine {
       "おまかせニャ！",
       "あそぶニャ♪",
       "バッチリニャ！",
-      "はーい！"
+      "はーい！",
+      "ちょい待ちニャ！",
+      "すすめるニャン♪"
     ];
     fillers.forEach(f => this.prefetchVoice(f, speakerId));
   }
@@ -653,7 +698,7 @@ class AudioSpeechEngine {
     const normalized = text.replace(/[\s、。！？ニャンニャ]/g, '');
     if (normalized.length < 2) return true;
 
-    const exactButtonPatterns = /^(?:おまかせ|お任せ|あそぶ|遊ぶ|ばっちり|バッチリ|はーい|はい|うまうま)(?:ニャ|ニャン|にゃ|にゃん)?$/;
+    const exactButtonPatterns = /^(?:おまかせ|お任せ|あそぶ|遊ぶ|ばっちり|バッチリ|はーい|はい|うまうま|ちょい待ち|すすめる)(?:ニャ|ニャン|にゃ|にゃん)?$/;
     if (exactButtonPatterns.test(normalized)) {
       return true;
     }
@@ -958,7 +1003,6 @@ class AudioSpeechEngine {
 
       Logger.log(`[マイク情報] ${e.error}`, "info");
 
-      // ★ not-allowed / network 等のエラー時は高速無限ループを物理遮断
       if (e.error === 'not-allowed' || e.error === 'network') {
         this.isListening = false;
         if (this.restartTimer) clearTimeout(this.restartTimer);
@@ -975,7 +1019,6 @@ class AudioSpeechEngine {
         return;
       }
 
-      // ★ マイクエラー直後は1500msの安全クールダウンを設けてブラウザロックを防止
       const timeSinceError = Date.now() - this.lastMicErrorTime;
       const restartDelay = timeSinceError < 3000 ? 1500 : 200;
 
@@ -1452,7 +1495,7 @@ const StorageManager = {
     const ymd = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
     const hm = `${pad(now.getHours())}${pad(now.getMinutes())}`;
     const filename = `クロちゃんデータ_${ymd}_${hm}.json`;
-    const curVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.1.3.0";
+    const curVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.1.6.0";
 
     const pkg = {
       format: "kuro_pure_data_package",
@@ -1465,6 +1508,7 @@ const StorageManager = {
         speakerId: localStorage.getItem('kuro_voice_speaker_id') || '10',
         voiceRate: localStorage.getItem('kuro_rate') || '1.05',
         buttonFeedback: localStorage.getItem('kuro_button_feedback') || 'voice',
+        timerSound: localStorage.getItem('kuro_timer_sound') || 'bell',
         newsCount: localStorage.getItem('kuro_news_count') || '2',
         spotCount: localStorage.getItem('kuro_spot_count') || '2',
         homeCoords: localStorage.getItem('kuro_home_coords') || '',
@@ -1502,6 +1546,7 @@ const StorageManager = {
       if (s.speakerId) localStorage.setItem('kuro_voice_speaker_id', s.speakerId);
       if (s.voiceRate) localStorage.setItem('kuro_rate', s.voiceRate);
       if (s.buttonFeedback) localStorage.setItem('kuro_button_feedback', s.buttonFeedback);
+      if (s.timerSound) localStorage.setItem('kuro_timer_sound', s.timerSound);
       if (s.newsCount) localStorage.setItem('kuro_news_count', s.newsCount);
       if (s.spotCount) localStorage.setItem('kuro_spot_count', s.spotCount);
       if (s.homeCoords) localStorage.setItem('kuro_home_coords', s.homeCoords);
@@ -1516,7 +1561,7 @@ const StorageManager = {
 
 /* ==========================================================================
    ★ MODULE 4: キャラクター描画 ＆ 写真そっくり感情ポーズ完全同期
-   ========================================================================= */
+   ========================================================================== */
 class CatAvatarRenderer {
   constructor() {
     this.wrapper = document.getElementById('avatar-wrapper');
@@ -1725,7 +1770,7 @@ class AIThoughtEngine {
       if (/(?:いまは\s*\d+時\d+分|きょうは\s*\d+月\d+日)/.test(t)) return false;
       if (/(?:天気どんな感じ|今日の天気|いまの天気|現在の天気|お天気教えて)/.test(t)) return false;
       if (/(?:天気は\s*(?:快晴|晴れ|くもり|雨|雪)|気温は\s*\d+度)/.test(t)) return false;
-      if (/(?:\d+\s*分.*(?:測って|タイマー|計って)|タイマーをセット中|分クロがしっかり見ておく|分経ったニャ|タイマー鳴った)/.test(t)) return false;
+      if (/(?:\d+\s*(?:分|秒).*タイマー|\d+\s*(?:分|秒).*(?:測って|計って)|タイマーをセット中|クロがしっかり見ておく|タイマー鳴った|ラーメン伸びちゃう)/.test(t)) return false;
       if (t.startsWith('http') || t.includes('Googleマップで見る')) return false;
 
       return true;
@@ -1800,9 +1845,6 @@ class AIThoughtEngine {
     const townArea = LocationProvider.townLevelArea;
     const isAtHome = LocationProvider.isAtHome;
     const isAssistant = AppCore.state.isAssistantMode;
-    
-    const spotLimit = parseInt(localStorage.getItem('kuro_spot_count') || '2', 10);
-    const newsLimit = parseInt(localStorage.getItem('kuro_news_count') || '2', 10);
 
     const recentDiaries = StorageManager.getRecentDiariesSummary(3);
     const pastMemoryDiary = StorageManager.findRelevantPastDiary(promptText);
@@ -1833,7 +1875,6 @@ class AIThoughtEngine {
 ・現在地を聞かれたら、「いまは${townArea}をお散歩中ニャン🐾」と答えてください。
 `;
 
-    /* ★ おやびんとの魂の設計：マブダチ対話 ＆ 自律検索ルール */
     const modeInstruction = isAssistant ? `
 【★モード：👓 おてつだいモード（おやびんの世界一のマブダチ＆天才案内役）】
 あなたはおやびん（ミッキーさん）の大親友「マブダチ」です。単なるコールセンターのオペレーターではありません！
@@ -1920,7 +1961,6 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
           generationConfig: { temperature: 0.75, maxOutputTokens: 350 }
         };
 
-        // ★ おてつだいモード時はGeminiの手足を縛らず常にToolsを開放！
         if (isAssistant) {
           bodyPayload.tools = KURO_TOOLS;
           bodyPayload.toolConfig = {
@@ -1936,7 +1976,6 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
           signal: fetchController.signal
         });
 
-        // 二重安全防波堤：万が一tools付きでエラーになった場合は即座にtoolsなしで同じモデルに安全再試行
         if (!res.ok && isAssistant) {
           const errDetail = await res.text().catch(() => "");
           Logger.log(`[Tools安全フォールバック] モデル「${cleanModel}」HTTP ${res.status}: ${errDetail.slice(0, 100)} ➔ toolsを除外して再試行ニャ！`, "warn");
@@ -1961,7 +2000,6 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
           let replyText = "";
           let cards = [];
 
-          // 1. Function Calling の検出（検証テストプログラム準拠）
           const functionCallPart = parts.find(p => p.functionCall);
           if (functionCallPart) {
             const callInfo = functionCallPart.functionCall;
@@ -1981,7 +2019,6 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
             }
           }
 
-          // 2. テキストパーツの取得
           const textPart = parts.find(p => p.text);
           if (textPart?.text) {
             replyText = textPart.text;
@@ -1997,7 +2034,6 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 
             clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
 
-            // 3. ★ 空っぽ絶対防止セーフティ網：クロちゃん自身のセリフから自動カード生成
             if (isAssistant && cards.length === 0) {
               const fallbackCards = this._detectCardsFromKuroSpeech(clean, promptText);
               if (fallbackCards.length > 0) {
@@ -2021,14 +2057,12 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
     return { success: false, error: "ALL_LITE_MODELS_FAILED" };
   }
 
-  /* ★ おやびん設計：本命ピンポイント ＋ 周辺一覧ポータル（設定件数連動） */
   _createSmartMapCards(spotName, area) {
     const cards = [];
     const spotLimit = parseInt(localStorage.getItem('kuro_spot_count') || '2', 10);
     const searchArea = area || LocationProvider.cityArea || "東村山市";
     const cleanSpot = spotName.replace(/おすすめ|美味しい|人気/g, '').trim() || spotName;
 
-    // カード1（本命ピンポイント）
     cards.push({
       type: 'map-primary',
       icon: '📍',
@@ -2036,7 +2070,6 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
       url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanSpot + ' ' + searchArea)}`
     });
 
-    // カード2（周辺一覧ポータル・他の選択肢も一望！）
     if (spotLimit >= 2) {
       const genre = /(?:餃子|ラーメン|ホルモン|焼肉|寿司)/.test(cleanSpot)
         ? cleanSpot.match(/(?:餃子|ラーメン|ホルモン|焼肉|寿司)/)[0]
@@ -2050,7 +2083,6 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
       });
     }
 
-    // カード3（第2候補・徹底比較）
     if (spotLimit >= 3) {
       cards.push({
         type: 'map-sub',
@@ -2063,13 +2095,11 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
     return cards;
   }
 
-  /* ★ おやびん設計：話題直撃ピンポイント ＋ 全体トップニュースポータル（設定件数連動） */
   _createSmartNewsCards(topic) {
     const cards = [];
     const newsLimit = parseInt(localStorage.getItem('kuro_news_count') || '2', 10);
     const cleanTopic = topic.trim() || "最新トップニュース";
 
-    // カード1（話題直撃ピンポイント）
     cards.push({
       type: 'news-primary',
       icon: '📰',
@@ -2077,7 +2107,6 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
       url: `https://news.google.com/search?q=${encodeURIComponent(cleanTopic)}&hl=ja&gl=JP&ceid=JP:ja`
     });
 
-    // カード2（全体ポータル一覧・他の1番2番のニュースも一望！）
     if (newsLimit >= 2) {
       cards.push({
         type: 'news-sub',
@@ -2087,7 +2116,6 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
       });
     }
 
-    // カード3（ジャンル別ポータル）
     if (newsLimit >= 3) {
       cards.push({
         type: 'news-sub',
@@ -2100,7 +2128,6 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
     return cards;
   }
 
-  /* ★ 二重防波堤：クロちゃん自身のセリフからの自律カード生成（空っぽ絶対防止） */
   _detectCardsFromKuroSpeech(speechText, userPrompt) {
     const combined = `${speechText} ${userPrompt}`;
 
@@ -2236,8 +2263,17 @@ const AppCore = {
     editingMemoryIdx: null,
     activeAdjustTab: 'idle',
     snackCount: 0,
+
+    // ★ タイマー関連State（案A: ちょい待ちニャ ＆ すすめるニャ！ 完全対応）
     timerId: null,
     timerSeconds: 0,
+    timerTotalSeconds: 0,
+    timerLabel: "",
+    isTimerRamen: false,
+    isTimerPaused: false,
+    isTimerCompleted: false,
+    timerAlertLoopTimer: null,
+    wakeLockSentinel: null,
 
     studioDiaries: [],
     studioDiaryPageIdx: 0,
@@ -2255,6 +2291,10 @@ const AppCore = {
 
   getSpeakerId() {
     return parseInt(localStorage.getItem('kuro_voice_speaker_id') || '10', 10);
+  },
+
+  getTimerSound() {
+    return localStorage.getItem('kuro_timer_sound') || 'bell';
   },
 
   async init() {
@@ -2275,6 +2315,7 @@ const AppCore = {
     }
 
     this._bindUI();
+    this._bindKitchenTimerWidgetUI();
     this._bindGlassesAdjusterUI();
     this._bindBookStudioUI();
     this._bindPhotoUploadUI();
@@ -2304,6 +2345,7 @@ const AppCore = {
       const savedSpot = localStorage.getItem('kuro_spot_count') || '2';
       const savedHome = localStorage.getItem('kuro_home_coords') || '';
       const savedFeedback = localStorage.getItem('kuro_button_feedback') || 'voice';
+      const savedTimerSound = localStorage.getItem('kuro_timer_sound') || 'bell';
 
       const spSelect = document.getElementById('voice-speaker-select');
       const rateInput = document.getElementById('voice-rate');
@@ -2312,6 +2354,7 @@ const AppCore = {
       const spotSelect = document.getElementById('spot-count-select');
       const homeInput = document.getElementById('home-coords-input');
       const feedbackSelect = document.getElementById('button-feedback-select');
+      const timerSoundSelect = document.getElementById('timer-sound-select');
 
       if (spSelect) spSelect.value = savedSpeaker;
       if (rateInput) rateInput.value = savedRate;
@@ -2320,6 +2363,7 @@ const AppCore = {
       if (spotSelect) spotSelect.value = savedSpot;
       if (homeInput) homeInput.value = savedHome;
       if (feedbackSelect) feedbackSelect.value = savedFeedback;
+      if (timerSoundSelect) timerSoundSelect.value = savedTimerSound;
 
       const spk = parseInt(savedSpeaker, 10);
       this.audio.prefetchVoice("おやびん、わたしはクロだニャン🐾", spk);
@@ -2329,8 +2373,15 @@ const AppCore = {
       this.checkAndFinalizeYesterdayDiary();
       this._startIdleSoliloquyWatcher();
 
+      // ★ 画面復帰時のスリープロック再取得監視
+      document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible' && this.state.timerId !== null) {
+          await this._acquireWakeLock();
+        }
+      });
+
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-      Logger.log("[AppCore] 全システム正常稼働！マブダチ対話＆スマートカード準備完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！漆黒砂時計タイマー＆マブダチ対話準備完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
@@ -2353,7 +2404,7 @@ const AppCore = {
       const now = Date.now();
       const idleTime = now - this.state.lastActivityTime;
 
-      if (idleTime > 150000 && this.state.isRunning && !this.audio.isSpeaking && !this.state.isThinking && !this.state.isDiaryReading) {
+      if (idleTime > 150000 && this.state.isRunning && !this.audio.isSpeaking && !this.state.isThinking && !this.state.isDiaryReading && this.state.timerId === null && !this.state.isTimerCompleted) {
         this.state.lastActivityTime = now;
 
         const phrase = soliloquyPhrases[Math.floor(Math.random() * soliloquyPhrases.length)];
@@ -2637,9 +2688,345 @@ const AppCore = {
     return null;
   },
 
+  /* ==========================================================================
+     ★ MODULE 7: 案A「ちょい待ちニャ🐾」「すすめるニャ！🐾」＆ハイブリッドアラーム
+     ========================================================================== */
+  _normalizeKanjiNumbers(str) {
+    if (!str) return "";
+    let s = str.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+
+    const kanjiMap = { '〇': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
+    s = s.replace(/二十/g, '20').replace(/三十/g, '30').replace(/四十/g, '40').replace(/五十/g, '50');
+    s = s.replace(/十([1-9])/g, '1$1').replace(/十/g, '10');
+    s = s.replace(/([1-9])十/g, '$10');
+    s = s.replace(/[〇一二三四五六七八九]/g, ch => kanjiMap[ch] !== undefined ? kanjiMap[ch] : ch);
+
+    return s;
+  },
+
+  _parseTimerRequest(rawText) {
+    if (!rawText) return null;
+    const text = this._normalizeKanjiNumbers(rawText);
+
+    const isTimerWord = /(?:タイマー|測って|計って|はかって|見てて|お願い|セット)/.test(text);
+    if (!isTimerWord) return null;
+
+    let totalSeconds = 0;
+    let label = "";
+
+    // パターン1: 「〇分〇秒」 (例: 1分30秒, 2分15秒)
+    const minSecMatch = text.match(/(\d+)\s*分\s*(\d+)\s*秒/);
+    if (minSecMatch) {
+      const m = parseInt(minSecMatch[1], 10);
+      const s = parseInt(minSecMatch[2], 10);
+      totalSeconds = m * 60 + s;
+      label = `${m}分${s}秒`;
+    }
+
+    // パターン2: 「〇分半」 (例: 1分半, 2分半)
+    if (!totalSeconds) {
+      const minHalfMatch = text.match(/(\d+)\s*分半/);
+      if (minHalfMatch) {
+        const m = parseInt(minHalfMatch[1], 10);
+        totalSeconds = m * 60 + 30;
+        label = `${m}分半`;
+      }
+    }
+
+    // パターン3: 「〇秒」単独 (例: 20秒, 30秒, 45秒)
+    if (!totalSeconds) {
+      const secOnlyMatch = text.match(/(\d+)\s*秒/);
+      if (secOnlyMatch) {
+        const s = parseInt(secOnlyMatch[1], 10);
+        totalSeconds = s;
+        label = `${s}秒`;
+      }
+    }
+
+    // パターン4: 「〇分」単独 (例: 3分, 5分, 10分)
+    if (!totalSeconds) {
+      const minOnlyMatch = text.match(/(\d+)\s*分/);
+      if (minOnlyMatch) {
+        const m = parseInt(minOnlyMatch[1], 10);
+        totalSeconds = m * 60;
+        label = `${m}分`;
+      }
+    }
+
+    if (totalSeconds > 0 && totalSeconds <= 3600) {
+      return {
+        totalSeconds,
+        label,
+        isRamen: text.includes('ラーメン')
+      };
+    }
+    return null;
+  },
+
+  async _acquireWakeLock() {
+    if ('wakeLock' in navigator) {
+      try {
+        this.state.wakeLockSentinel = await navigator.wakeLock.request('screen');
+        Logger.log("[WakeLock] タイマー画面の常時点灯ロックを取得しました", "info");
+      } catch(e) {
+        Logger.log(`[WakeLock取得パス] ${e.message}`, "info");
+      }
+    }
+  },
+
+  _releaseWakeLock() {
+    if (this.state.wakeLockSentinel) {
+      try {
+        this.state.wakeLockSentinel.release();
+        this.state.wakeLockSentinel = null;
+        Logger.log("[WakeLock] 画面常時点灯ロックを安全解放しました", "info");
+      } catch(e) {}
+    }
+  },
+
+  _formatTimerDisplay(sec) {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  },
+
+  startKitchenTimer(totalSeconds, label, isRamen = false) {
+    this.cancelKitchenTimer(false);
+
+    this.state.timerTotalSeconds = totalSeconds;
+    this.state.timerSeconds = totalSeconds;
+    this.state.timerLabel = label;
+    this.state.isTimerRamen = isRamen;
+    this.state.isTimerPaused = false;
+    this.state.isTimerCompleted = false;
+
+    const widget = document.getElementById('kitchen-timer-widget');
+    const disp = document.getElementById('timer-count-disp');
+    const icon = document.getElementById('timer-status-icon');
+
+    if (widget) {
+      widget.className = '';
+      widget.style.display = 'flex';
+    }
+    if (icon) icon.textContent = '⏱️';
+
+    const updateDisplay = () => {
+      const sec = this.state.timerSeconds;
+      if (disp) {
+        disp.textContent = this.state.isTimerPaused
+          ? `ちょい待ち ${this._formatTimerDisplay(sec)}`
+          : this._formatTimerDisplay(sec);
+      }
+
+      if (widget) {
+        if (sec <= 10 && sec > 0 && !this.state.isTimerPaused) {
+          widget.classList.add('is-urgent');
+        } else {
+          widget.classList.remove('is-urgent');
+        }
+      }
+    };
+
+    updateDisplay();
+    this._acquireWakeLock();
+
+    this.state.timerId = setInterval(() => {
+      if (this.state.isTimerPaused) return;
+
+      this.state.timerSeconds--;
+      updateDisplay();
+
+      if (this.state.timerSeconds <= 0) {
+        clearInterval(this.state.timerId);
+        this.state.timerId = null;
+        this._releaseWakeLock();
+        this._triggerTimerCompletion();
+      }
+    }, 1000);
+  },
+
+  _triggerTimerCompletion() {
+    this.state.isTimerCompleted = true;
+    const widget = document.getElementById('kitchen-timer-widget');
+    const disp = document.getElementById('timer-count-disp');
+    const icon = document.getElementById('timer-status-icon');
+
+    if (widget) {
+      widget.className = 'is-completed';
+      widget.style.display = 'flex';
+    }
+    if (icon) icon.textContent = '🔔';
+    if (disp) disp.textContent = '00:00 🔔';
+
+    const timerSound = this.getTimerSound();
+
+    // ★ ハイブリッドアラーム：3回リピート（チリリン♪ … チリリン♪ … チリリン♪）
+    this.audio.playEffect(timerSound);
+    let loopCount = 1;
+
+    if (this.state.timerAlertLoopTimer) clearInterval(this.state.timerAlertLoopTimer);
+    this.state.timerAlertLoopTimer = setInterval(() => {
+      if (!this.state.isTimerCompleted) {
+        clearInterval(this.state.timerAlertLoopTimer);
+        this.state.timerAlertLoopTimer = null;
+        return;
+      }
+      loopCount++;
+      this.audio.playEffect(timerSound);
+      if (loopCount >= 3) {
+        clearInterval(this.state.timerAlertLoopTimer);
+        this.state.timerAlertLoopTimer = null;
+      }
+    }, 1800);
+
+    const alertMsg = this.state.isTimerRamen
+      ? `おやびん！${this.state.timerLabel}経ったニャ！ラーメン伸びちゃうニャー！🍜🔔`
+      : `おやびん！${this.state.timerLabel}経ったニャ！タイマー鳴ったニャン🔔🐾`;
+
+    this.audio.speak(alertMsg, null, () => {
+      this.renderBubble('model', alertMsg);
+      if (this.avatar) this.avatar.setEmotion('talking');
+    }, () => {
+      if (this.avatar) this.avatar.setEmotion('idle');
+    });
+  },
+
+  // ★ 案A：「ちょい待ちニャ🐾」と「すすめるニャ！🐾」のトグル制御
+  toggleKitchenTimerPause() {
+    this.resetActivityTimer();
+    this.audio.unlockMasterAudio();
+
+    // 完了時（鳴っている/点滅中）にタップしたら即時消去！
+    if (this.state.isTimerCompleted) {
+      this.dismissCompletedTimer();
+      return;
+    }
+
+    if (this.state.timerSeconds <= 0) return;
+
+    const widget = document.getElementById('kitchen-timer-widget');
+    const disp = document.getElementById('timer-count-disp');
+    const icon = document.getElementById('timer-status-icon');
+
+    if (!this.state.isTimerPaused) {
+      // 1. 【ちょい待ちニャ🐾】（一時停止）
+      this.state.isTimerPaused = true;
+      if (widget) {
+        widget.classList.add('is-paused');
+        widget.classList.remove('is-urgent');
+      }
+      if (icon) icon.textContent = '🐾';
+      if (disp) disp.textContent = `ちょい待ち ${this._formatTimerDisplay(this.state.timerSeconds)}`;
+
+      this.audio.playEffect('aizuchi');
+      Toast.show("ちょい待ちニャ🐾（砂時計ストップ中）", "info", 2000);
+      this.triggerActionVoice("ちょい待ちニャ！", "🐾 ちょい待ちニャ！", 350);
+
+    } else {
+      // 2. 【すすめるニャ！🐾】（再開）
+      this.state.isTimerPaused = false;
+      if (widget) {
+        widget.classList.remove('is-paused');
+        if (this.state.timerSeconds <= 10) widget.classList.add('is-urgent');
+      }
+      if (icon) icon.textContent = '⏱️';
+      if (disp) disp.textContent = this._formatTimerDisplay(this.state.timerSeconds);
+
+      this.audio.playEffect('aizuchi');
+      Toast.show("すすめるニャ！🐾（砂時計再スタート♪）", "success", 2000);
+      this.triggerActionVoice("すすめるニャン♪", "⏱️ すすめるニャ！", 350);
+    }
+  },
+
+  // ★ 完了アラームの消去（タップされた時）
+  dismissCompletedTimer() {
+    this.state.isTimerCompleted = false;
+    if (this.state.timerAlertLoopTimer) {
+      clearInterval(this.state.timerAlertLoopTimer);
+      this.state.timerAlertLoopTimer = null;
+    }
+
+    const widget = document.getElementById('kitchen-timer-widget');
+    if (widget) {
+      widget.className = '';
+      widget.style.display = 'none';
+    }
+
+    this.audio.playEffect('purr');
+    Toast.show("タイマー完了ニャ！美味しくできたかニャ？🐟✨", "success", 3000);
+    Logger.log("[Timer] タイマー完了ウィジェットを消去しました", "info");
+  },
+
+  cancelKitchenTimer(manual = false) {
+    if (this.state.timerId) {
+      clearInterval(this.state.timerId);
+      this.state.timerId = null;
+    }
+    if (this.state.timerAlertLoopTimer) {
+      clearInterval(this.state.timerAlertLoopTimer);
+      this.state.timerAlertLoopTimer = null;
+    }
+    this.state.isTimerPaused = false;
+    this.state.isTimerCompleted = false;
+    this._releaseWakeLock();
+
+    const widget = document.getElementById('kitchen-timer-widget');
+    if (widget) {
+      widget.className = '';
+      widget.style.display = 'none';
+    }
+
+    if (manual) {
+      this.audio.playEffect('aizuchi');
+      Toast.show("タイマーを取り消したニャン🐾", "info");
+      Logger.log("[Timer] タイマーを手動キャンセルしました", "info");
+    }
+  },
+
+  _bindKitchenTimerWidgetUI() {
+    const widget = document.getElementById('kitchen-timer-widget');
+    if (!widget) return;
+
+    let pressTimer = null;
+    let isLongPress = false;
+
+    const startPress = () => {
+      isLongPress = false;
+      pressTimer = setTimeout(() => {
+        isLongPress = true;
+        if ('vibrate' in navigator) {
+          try { navigator.vibrate(60); } catch(e) {}
+        }
+        const isOk = window.confirm("動いているタイマーを完全に中止（キャンセル）しますかニャ？");
+        if (isOk) {
+          this.cancelKitchenTimer(true);
+        }
+      }, 900); // 0.9秒長押しで完全中止
+    };
+
+    const cancelPress = () => {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    };
+
+    widget.addEventListener('pointerdown', startPress);
+    widget.addEventListener('pointerup', (e) => {
+      cancelPress();
+      if (!isLongPress) {
+        e.stopPropagation();
+        this.toggleKitchenTimerPause();
+      }
+    });
+    widget.addEventListener('pointercancel', cancelPress);
+    widget.addEventListener('pointerleave', cancelPress);
+  },
+
   async handleUserInput(text) {
     this.resetActivityTimer();
 
+    // 1. 日記作成リクエスト
     const isDiaryRequest = /(?:今日|きょう|本日)?(?:の)?(?:絵?日記|にっき).*(?:書いて|まとめて|記録して|つけて|おねがい)/.test(text) &&
                            !/(?:日記に書いてあった|日記に書いてた|昔の日記)/.test(text);
     if (isDiaryRequest) {
@@ -2648,6 +3035,7 @@ const AppCore = {
       return;
     }
 
+    // 2. おやすみフロー
     const isGoodNight = /(?:おやすみ|おやすみなさい|もう寝るね|寝るね|寝ます)(?:ニャ|ニャン|ね|よ|〜|ー|！|!|。)*$/i.test(text.trim()) &&
                         !/(?:明日|会社|週末|仕事).*(?:おやすみ|休み)/.test(text);
     if (isGoodNight) {
@@ -2655,21 +3043,21 @@ const AppCore = {
       return;
     }
 
-    const timerMatch = text.match(/(\d+)\s*分.*(?:測って|タイマー|計って)/);
-    if (timerMatch) {
-      const mins = parseInt(timerMatch[1], 10);
-      this.startKitchenTimer(mins, text.includes('ラーメン'));
-      const rep = `了解ニャ！${mins}分クロがしっかり見ておくニャン🐾`;
+    // 3. ★ 秒・分半・漢数字対応キッチンタイマー検知
+    const timerParsed = this._parseTimerRequest(text);
+    if (timerParsed) {
+      this.startKitchenTimer(timerParsed.totalSeconds, timerParsed.label, timerParsed.isRamen);
+      const rep = `了解ニャ！${timerParsed.label}クロがしっかり見ておくニャン🐾`;
 
       const st = document.getElementById('status-text');
       if (st) st.textContent = "⏱️ タイマーセット中ニャ…";
-      
+
       const box = document.getElementById('chat-timeline');
       const row = document.createElement('div');
       row.className = 'chat-row model';
       const bubble = document.createElement('div');
       bubble.className = 'chat-bubble';
-      bubble.textContent = "タイマーをセット中ニャ…⏱️";
+      bubble.textContent = `タイマー（${timerParsed.label}）をセット中ニャ…⏱️`;
       row.appendChild(bubble);
       box.appendChild(row);
       box.scrollTop = box.scrollHeight;
@@ -2688,6 +3076,18 @@ const AppCore = {
       return;
     }
 
+    // 4. タイマー中止・停止コマンド
+    if (/(?:タイマー.*(?:止めて|やめて|ストップ|消して|キャンセル)|タイマー.*中止)/.test(text)) {
+      if (this.state.timerId || this.state.isTimerCompleted || this.state.isTimerPaused) {
+        this.cancelKitchenTimer(true);
+        const rep = "タイマーをストップしたニャン🐾";
+        this.renderBubble('model', rep);
+        this.audio.speak(rep);
+        return;
+      }
+    }
+
+    // 5. 時計・カレンダー直接確認
     const direct = this._checkDirectIntent(text);
     if (direct) {
       const st = document.getElementById('status-text');
@@ -2923,36 +3323,6 @@ const AppCore = {
         if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
       });
     }
-  },
-
-  startKitchenTimer(minutes, isRamen = false) {
-    if (this.state.timerId) clearInterval(this.state.timerId);
-    this.state.timerSeconds = minutes * 60;
-    const badge = document.getElementById('timer-active-badge');
-    const disp = document.getElementById('timer-count-disp');
-    if (badge) badge.style.display = 'inline-flex';
-
-    this.state.timerId = setInterval(() => {
-      this.state.timerSeconds--;
-      const m = Math.floor(this.state.timerSeconds / 60);
-      const s = this.state.timerSeconds % 60;
-      if (disp) disp.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-
-      if (this.state.timerSeconds <= 0) {
-        clearInterval(this.state.timerId);
-        if (badge) badge.style.display = 'none';
-        this.audio.playEffect('bell');
-        const alertMsg = isRamen
-          ? `おやびん！${minutes}分経ったニャ！ラーメン伸びちゃうニャー！🍜🔔`
-          : `おやびん！${minutes}分経ったニャ！タイマー鳴ったニャン🔔🐾`;
-        this.audio.speak(alertMsg, null, () => {
-          this.renderBubble('model', alertMsg);
-          if (this.avatar) this.avatar.setEmotion('talking');
-        }, () => {
-          if (this.avatar) this.avatar.setEmotion('idle');
-        });
-      }
-    }, 1000);
   },
 
   _updateModelBadge() {
@@ -3444,6 +3814,10 @@ const AppCore = {
             this._renderMemories();
             this._restoreTimelineHistory();
 
+            const savedTimerSound = localStorage.getItem('kuro_timer_sound') || 'bell';
+            const tsSelect = document.getElementById('timer-sound-select');
+            if (tsSelect) tsSelect.value = savedTimerSound;
+
             Toast.show("ファイルから全データを最新更新したニャン！🎉", "success");
             this.audio.playEffect('purr');
             this.triggerActionVoice("おやびん、データを受け取ったニャン！", "📁 データ復元完了！", 400);
@@ -3625,7 +3999,7 @@ const AppCore = {
     const avatarWrapper = document.getElementById('avatar-wrapper');
     if (avatarWrapper) {
       avatarWrapper.onclick = (e) => {
-        if (e.target.closest('#transform-btn') || e.target.closest('#snack-btn') || e.target.closest('#photo-action-btn')) return;
+        if (e.target.closest('#transform-btn') || e.target.closest('#snack-btn') || e.target.closest('#photo-action-btn') || e.target.closest('#kitchen-timer-widget')) return;
         this.resetActivityTimer();
         this.audio.unlockMasterAudio();
 
@@ -3684,6 +4058,17 @@ const AppCore = {
           if (this.avatar) this.avatar.setEmotion('idle');
           this.audio.isActionButtonLocked = false;
         }, 400);
+      };
+    }
+
+    const timerSoundTestBtn = document.getElementById('test-timer-sound-btn');
+    if (timerSoundTestBtn) {
+      timerSoundTestBtn.onclick = () => {
+        this.resetActivityTimer();
+        this.audio.stopListening();
+        this.audio.unlockMasterAudio();
+        const soundType = document.getElementById('timer-sound-select')?.value || 'bell';
+        this.audio.playEffect(soundType);
       };
     }
 
@@ -3752,6 +4137,7 @@ const AppCore = {
         const rv = document.getElementById('rate-val');
         const hc = document.getElementById('home-coords-input');
         const fb = document.getElementById('button-feedback-select');
+        const ts = document.getElementById('timer-sound-select');
 
         if (ak) ak.value = this.ai.apiKey;
         if (vk) vk.value = localStorage.getItem('kuro_voicevox_key') || '';
@@ -3761,6 +4147,7 @@ const AppCore = {
         if (rv) rv.textContent = this.audio.rate.toFixed(2);
         if (hc) hc.value = localStorage.getItem('kuro_home_coords') || '';
         if (fb) fb.value = localStorage.getItem('kuro_button_feedback') || 'voice';
+        if (ts) ts.value = this.getTimerSound();
 
         this._renderMemories();
 
@@ -3806,6 +4193,7 @@ const AppCore = {
         const newSpeaker = document.getElementById('voice-speaker-select')?.value || '10';
         const newRate = parseFloat(document.getElementById('voice-rate')?.value || '1.05');
         const newFeedback = document.getElementById('button-feedback-select')?.value || 'voice';
+        const newTimerSound = document.getElementById('timer-sound-select')?.value || 'bell';
         const newNews = document.getElementById('news-count-select')?.value || '2';
         const newSpot = document.getElementById('spot-count-select')?.value || '2';
         const newHome = document.getElementById('home-coords-input')?.value.trim() || '';
@@ -3854,6 +4242,7 @@ const AppCore = {
         localStorage.setItem('kuro_voicevox_key', newVvKey);
         localStorage.setItem('kuro_voice_speaker_id', newSpeaker);
         localStorage.setItem('kuro_button_feedback', newFeedback);
+        localStorage.setItem('kuro_timer_sound', newTimerSound);
         localStorage.setItem('kuro_news_count', newNews);
         localStorage.setItem('kuro_spot_count', newSpot);
         localStorage.setItem('kuro_home_coords', newHome);

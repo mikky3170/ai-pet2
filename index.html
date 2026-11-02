@@ -139,7 +139,6 @@
       transition: all 0.25s ease-out;
       letter-spacing: 0.3px;
     }
-    /* 声を聞き取った瞬間の鮮やかなパルス発光アニメーション */
     #status-text.is-hearing {
       background: #0284c7 !important;
       color: #ffffff !important;
@@ -177,20 +176,6 @@
       white-space: nowrap;
     }
     .model-badge.lite { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
-
-    #timer-active-badge {
-      display: none;
-      align-items: center;
-      gap: 5px;
-      background: #fef08a;
-      border: 1.5px solid #eab308;
-      color: #854d0e;
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: 900;
-      animation: fadeIn 0.3s;
-    }
 
     /* 2. 会話タイムライン */
     #chat-timeline {
@@ -445,6 +430,128 @@
       filter: drop-shadow(0 0 12px #facc15);
     }
     #idea-bulb.active { opacity: 1; transform: scale(1.2) translateY(0); }
+
+    /* ★ 砂時計＆キッチンタイマーウィジェット（おやつボタンの真上・つら合わせ） */
+    #kitchen-timer-widget {
+      position: absolute;
+      left: 12px; /* おやつボタンの左端ラインと完全につらを一致 */
+      bottom: 74px; /* おやつボタンの真上 */
+      display: none; /* タイマー作動時に flex へ切替 */
+      flex-direction: column;
+      align-items: flex-start; /* 左端の垂直ラインを綺麗に整列 */
+      gap: 4px;
+      z-index: 36;
+      cursor: pointer;
+      pointer-events: auto;
+      animation: timerPopIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    @keyframes timerPopIn {
+      0% { opacity: 0; transform: scale(0.4) translateY(15px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    /* 砂時計コンテナ＆パルス */
+    .hourglass-box {
+      width: 44px;
+      height: 48px;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-left: 10px; /* プレートの幅と視覚的に美しくセンタリング */
+      filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.35));
+      animation: hourglassPulse 2.8s ease-in-out infinite;
+    }
+    @keyframes hourglassPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+
+    /* 砂時計の定期的なコロンと180度反転ループ */
+    .hourglass-spin-unit {
+      width: 100%;
+      height: 100%;
+      transform-origin: center center;
+      animation: hourglassTurn 8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+    }
+    @keyframes hourglassTurn {
+      0%, 42% { transform: rotate(0deg); }
+      48%, 92% { transform: rotate(180deg); }
+      98%, 100% { transform: rotate(360deg); }
+    }
+
+    /* 落ちる砂のアニメーション */
+    .sand-stream {
+      animation: sandFlow 0.65s linear infinite;
+    }
+    @keyframes sandFlow {
+      0% { opacity: 0.3; stroke-dashoffset: 8; }
+      50% { opacity: 1; }
+      100% { opacity: 0.4; stroke-dashoffset: 0; }
+    }
+
+    /* ★ ちょい待ち（一時停止）時のアニメーション完全停止 */
+    #kitchen-timer-widget.is-paused .hourglass-spin-unit,
+    #kitchen-timer-widget.is-paused .sand-stream,
+    #kitchen-timer-widget.is-paused .hourglass-box {
+      animation-play-state: paused !important;
+    }
+
+    /* カウントダウン表示プレート（愛らしい丸文字・上品なオレンジゴールド） */
+    .timer-plate {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      border: 1.8px solid #f59e0b;
+      color: #92400e;
+      border-radius: 16px;
+      padding: 4px 10px;
+      box-shadow: 0 4px 10px rgba(245, 158, 11, 0.25);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s ease-out;
+    }
+
+    /* ★ 可愛らしい角丸ぷっくりフォント */
+    #timer-count-disp {
+      font-size: 13.5px;
+      font-weight: 900;
+      font-family: 'Hiragino Maru Gothic ProN', 'M PLUS Rounded 1c', 'Arial Rounded MT Bold', -apple-system, sans-serif;
+      letter-spacing: 0.8px;
+    }
+
+    /* ★ ちょい待ちニャ🐾（一時停止）スタイル */
+    #kitchen-timer-widget.is-paused .timer-plate {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border-color: #94a3b8;
+      color: #475569;
+      box-shadow: 0 2px 6px rgba(100, 116, 139, 0.2);
+    }
+
+    /* 残り10秒以下のドキドキ警告点滅 */
+    #kitchen-timer-widget.is-urgent .timer-plate {
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      border-color: #ef4444;
+      color: #b91c1c;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+      animation: urgentHeartbeat 0.6s ease-in-out infinite alternate;
+    }
+    @keyframes urgentHeartbeat {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.06); }
+    }
+
+    /* ★ タイムアップ完了時のピカピカ点滅 */
+    #kitchen-timer-widget.is-completed .timer-plate {
+      background: linear-gradient(135deg, #fef08a 0%, #fde047 100%);
+      border-color: #eab308;
+      color: #854d0e;
+      box-shadow: 0 0 16px rgba(234, 179, 8, 0.7);
+      animation: completedFlash 0.5s ease-in-out infinite alternate;
+    }
+    @keyframes completedFlash {
+      0% { transform: scale(1); filter: brightness(1); }
+      100% { transform: scale(1.08); filter: brightness(1.2); }
+    }
 
     #cat-vector-avatar {
       width: 270px;
@@ -1481,7 +1588,6 @@
         <span id="clock-display">00:00</span>
         <!-- 本型絵日記アルバムを開くボタン -->
         <button type="button" class="btn-top-diary" id="top-diary-btn" title="これまでのクロ絵日記をアルバムで開くニャ！">📖 日記帳</button>
-        <div id="timer-active-badge">⏱️ <span id="timer-count-disp">03:00</span></div>
       </div>
 
       <div id="status-badge-container">
@@ -1737,6 +1843,37 @@
         </svg>
       </div>
 
+      <!-- ★ 砂時計＆キッチンタイマーウィジェット（おやつボタン真上・つら合わせ・漆黒の器） -->
+      <div id="kitchen-timer-widget" title="タップで「ちょい待ち／すすめる」、長押しで停止するニャ！">
+        <div class="hourglass-box">
+          <svg class="hourglass-spin-unit" viewBox="0 0 60 70">
+            <!-- 上下漆黒フレーム（チャコールブラック＆ハイライト） -->
+            <rect x="10" y="4" width="40" height="6" rx="3" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+            <line x1="12" y1="5" x2="48" y2="5" stroke="#64748b" stroke-width="1" stroke-linecap="round"/>
+            <rect x="10" y="60" width="40" height="6" rx="3" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+            <line x1="12" y1="61" x2="48" y2="61" stroke="#64748b" stroke-width="1" stroke-linecap="round"/>
+            <!-- 漆黒の左右支柱 -->
+            <line x1="14" y1="10" x2="14" y2="60" stroke="#1e293b" stroke-width="2.2"/>
+            <line x1="46" y1="10" x2="46" y2="60" stroke="#1e293b" stroke-width="2.2"/>
+            <!-- 琥珀＆クリスタルガラス本体（黒枠でシャープに輪郭強調） -->
+            <path d="M16 10 C16 30 27 34 27 35 C27 36 16 40 16 60 L44 60 C44 40 33 36 33 35 C33 34 44 30 44 10 Z"
+                  fill="rgba(254, 243, 199, 0.28)" stroke="#1e293b" stroke-width="2"/>
+            <!-- ガラスハイライト光沢 -->
+            <path d="M19 14 C19 28 26 31 26 35" stroke="rgba(255,255,255,0.85)" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+            <!-- 上部の黄金の砂 -->
+            <path d="M20 18 Q30 18 40 18 Q33 31 30 34 Q27 31 20 18 Z" fill="#f59e0b"/>
+            <!-- サラサラ落ちる砂の流れストリーム -->
+            <line x1="30" y1="34" x2="30" y2="54" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-dasharray="3,3" class="sand-stream"/>
+            <!-- 下部に溜まる砂山 -->
+            <path d="M21 58 Q30 50 39 58 Z" fill="#f59e0b"/>
+          </svg>
+        </div>
+        <div class="timer-plate">
+          <span id="timer-status-icon" style="font-size:12px;">⏱️</span>
+          <span id="timer-count-disp">03:00</span>
+        </div>
+      </div>
+
       <button class="btn-snack-floating" id="snack-btn" title="おやつ（ちゅ〜る）をあげるニャ！">
         <span>🐟</span><span>おやつ</span>
       </button>
@@ -1911,7 +2048,8 @@
           <div>
             ・<b>✨ 変身</b>：右下の「変身」ボタンを押すと、リアル写真と手描きイラストの姿が煙と共に瞬時に入れ替わるニャ！<br>
             ・<b>🐟 おやつ と なでなで</b>：左下の「おやつ」でちゅ〜るを食べるニャ（3回連続で極楽ゴロゴロ♪）。画面のクロをタップすると「なでなで」されて喉を鳴らして喜ぶニャ！<br>
-            ・<b>⏱️ タイマー</b>：「3分測って」と言うとキッチンタイマーが作動するニャ！<br>
+            ・<b>⏱️ タイマー</b>：「3分測って」「1分半タイマー」「20秒計って」と言うと、クロの左に砂時計付きタイマーが作動するニャ！タイマー中は画面が自動で暗くならないニャン！<br>
+            ・<b>🐾 ちょい待ちニャ ＆ すすめるニャ！</b>：動いているタイマーをタップすると「ちょい待ちニャ🐾」で一時停止、もう一度タップすると「すすめるニャ！🐾」で再開するニャ！<br>
             ・<b>🛑 ストップ・🟢 会話中</b>：お話しを途中で止めたい時は「ストップ」ボタン、会話をお休みしたい時は「会話中（緑）」ボタンを押してニャ。
           </div>
         </div>
@@ -1923,7 +2061,6 @@
       <div class="form-group">
         <label>クロの肉声ボイス（VOICEVOX）:</label>
         <div class="voice-control-row">
-          <!-- ★ VOICEVOX厳選8名（もち子さん・WhiteCUL・ミコ・Voidoll新設） -->
           <select id="voice-speaker-select" class="voice-select-box">
             <option value="10" selected>🌟 雨晴はう（ノーマル）【推奨・子猫声】</option>
             <option value="0">🌸 四国めたん（あまあま）</option>
@@ -1949,6 +2086,17 @@
           <option value="voice" selected>🔊 ひとこと喋る（「おまかせニャ！」「あそぶニャ♪」）</option>
           <option value="mute">🔇 消音（効果音のみ・静かモード）</option>
         </select>
+      </div>
+
+      <div class="form-group">
+        <label>タイマー完了アラーム音:</label>
+        <div class="voice-control-row">
+          <select id="timer-sound-select" class="voice-select-box" style="border-color:#fed7aa;background:#fffdfa;color:#9a3412;">
+            <option value="bell" selected>🔔 華やかベルチャイム（チリリン♪ チリリン♪）</option>
+            <option value="alarm">⏰ デジタルアラーム（ピピピッ！ピピピッ！）</option>
+          </select>
+          <button type="button" class="btn-voice-test" id="test-timer-sound-btn" style="border-color:#f59e0b;color:#d97706;background:#fffbeb;">🔊 テスト</button>
+        </div>
       </div>
 
       <div class="form-group">
@@ -2070,5 +2218,4 @@
   <script src="app.js"></script>
 </body>
 </html>
-
 
