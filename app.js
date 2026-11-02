@@ -6,22 +6,19 @@
      ・🐾 なかよしモード（通常モード）：
        おやびんとの雑談・共感・甘えん坊を楽しむ時間。
        「ラーメン」「餃子」「はま寿司」などのグルメ単語が出ても、Googleマップカードや
-       ニュースカードは【絶対に一切出さない】。
-       相槌で「クロが調べるニャ！」と早とちりせず、「美味しそうニャ♪」と楽しく雑談する。
+       ニュースカードは【絶対に一切出さない】。toolsも完全封印し0.6秒台の爆速雑談に徹する。
      ・👓 おてつだいモード（博士帽＆丸メガネ装着時）：
-       ネット検索や道案内をする天才発明家タイム。
-       このモードの時だけ、Googleマップやニュースのカード案内を積極的に行う。
+       ネット検索や道案内をする天才コンシェルジュタイム。
+       ① 漠然とした相談（「お腹空いた」「何か美味しいもの探して」）の時は、いきなり検索せず、
+          おやびんの好物から2〜3個だけを軽やかに投げて気分や移動手段（徒歩/車）を楽しく絞り込む。
+       ② 条件が揃った時に初めて Google Search ツールを発動し、設定件数（1〜3件）の
+          本物のWebページ・食べログURL（groundingMetadata）をカード化して案内する。
 
-   ■ 2. 記憶のライフサイクル（100件 ⇄ 10件 の切り替え仕様）
-     ・【その日の絵日記を書く前】：
-       朝やお昼の出来事も忘れないよう、今日の会話ログから【最大50往復（100件）】を
-       完全にAIの頭に入れて、1日を通した深い会話を展開する。
-     ・【その日の絵日記を書いた後】：
-       その日の出来事は絵日記にギュッと記録・整理されたため、長い会話は手放す。
-       以降は「今日の日記」＋「直近5往復（10件）の最新会話」にスッキリ切り替え、
-       夜のまったりした会話を楽しむ。
-     ・【直近3日間の絵日記】：常にAIが頭に入れており最近の出来事を共有。
-     ・【昔の思い出】：おやびんが過去を振り返る言葉を使った時だけ過去日記を参照。
+   ■ 2. 記憶のライフサイクル（知的クレンジング ＆ 10往復20件の厳選記憶）
+     ・時報（時間・日付）、天気、ボタン一声、タイマー等の単発ノイズを完全除外。
+     ・【その日の絵日記を書く前】：ノイズを除外した「中身のある実質的な会話」を
+       直近【10往復（20件）】だけ厳選してGeminiに送信。0.6秒台の爆速と深い文脈を両立！
+     ・【その日の絵日記を書いた後】：長い会話を手放し、「今日の日記」＋「直近5往復（10件）」に切り替え。
 
    ■ 3. 愛情たっぷり！新3大ふれあい機能
      ・② 気まぐれ独り言：おやびんが無操作で数分経つと、声を出さずにそっとあくびやつぶやき。
@@ -29,18 +26,14 @@
      ・④ 絵日記の肉球スタンプ＆ミニ手紙：1日1ページの絵日記に肉球印と可愛い手紙を刻印。
 
    ■ 4. 単語早とちり（文脈無視の誤作動）の完全禁止
-     ・時刻・日付：「この時間だけど疲れた」「今日何日かぶりに」「賞味期限の日付」等で
-       機械的な時報・カレンダーを絶対に発動させない。純粋な質問文の時のみ即答する。
-     ・おやすみ：「明日おやすみ」「寝るねこみたい」で勝手に就寝モードに入らない。
-     ・GPS・周辺施設：「川」「公園」「近く」などの単語単体で勝手にGPSを起動しない。
-     ・自声エコー破棄：おやびんの「おまかせするよ」「遊ぼう」を無視・破棄しない。
+     ・時刻・日付：「この時間だけど疲れた」「今日何日かぶりに」等で時報やカレンダーを出さない。
+     ・おやすみ：「明日おやすみ」で勝手に寝ない。文末の就寝挨拶のみで発動。
+     ・自声エコー破棄：おやびんの「おまかせするよ」「遊ぼう」を誤破棄しない。
 
    ■ 5. システム優先順位（絶対厳守）
-     ・優先1：VOICEVOX肉声とセリフの完全同期、Gemini連携モデル完全固定
-       ① 第1優先（主軸）: 「gemini-3.5-flash-lite」（0.6秒台最速）
-       ② 第2優先（5秒タイムアウト時バックアップ）: 「gemini-flash-lite-latest」
-     ・優先2：愛らしい表情・アニメーション・変身ギミックの100%維持
-     ・優先3：1日1ページの絵日記アルバム、オンデマンドGPS、タイマー等
+     ・優先1：VOICEVOX肉声とセリフ同期、Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
+     ・優先2：可愛いデザイン、スムーズなアニメーションの完全維持
+     ・優先3：絵日記アルバム、GPS、二重の安全防波堤（自動フォールバック）
    ========================================================================== */
 
 /* ★ Gemini連携モデル完全固定定数（変更・追加・動的ソートを物理的に禁止） */
@@ -941,7 +934,7 @@ class AudioSpeechEngine {
   }
 
   startListening() {
-    if (!this.recognition || !AppCore.state.isRunning || this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || this.isListening || this.isStarting || AppCore.state.isProcessingInput) return;
+    if (!this.recognition || !AppCore.state.isRunning || this.isSpeaking || this.isReadingAloud || this.audio?.isActionButtonLocked || this.isListening || this.isStarting || AppCore.state.isProcessingInput) return;
     try {
       this.isStarting = true;
       this.recognition.start();
@@ -1168,7 +1161,7 @@ const LocationProvider = {
 };
 
 /* ==========================================================================
-   ★ MODULE 3: 鉄壁ストレージ管理（100件 ⇄ 10件 ライフサイクル連動）
+   ★ MODULE 3: 鉄壁ストレージ管理
    ========================================================================== */
 const DATA_KEYS = {
   MEMORIES: 'kuro_data_memories',
@@ -1406,7 +1399,7 @@ const StorageManager = {
     const ymd = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
     const hm = `${pad(now.getHours())}${pad(now.getMinutes())}`;
     const filename = `クロちゃんデータ_${ymd}_${hm}.json`;
-    const curVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.1.2.0";
+    const curVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.1.3.0";
 
     const pkg = {
       format: "kuro_pure_data_package",
@@ -1661,13 +1654,44 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   ★ MODULE 5: 思考・AI対話エンジン（100件⇄10件 ライフサイクル完全対応）
+   ★ MODULE 5: 思考・AI対話エンジン（知的フィルター ＆ 10往復20件 厳選記憶）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
     this.apiKey = (localStorage.getItem('kuro_api_key') || '').trim();
   }
 
+  /* ★ 知的クレンジングフィルター：時報・天気・ボタン一声・タイマー・短発語を除外し、中身のある会話のみを抽出 */
+  _filterMeaningfulLogs(logs) {
+    return logs.filter(item => {
+      if (!item || !item.text) return false;
+      const t = item.text.trim();
+
+      // 1. 極端に短い単発語（1〜2文字）を除外
+      if (t.length <= 2 && /^(?:来た|うん|ああ|はい|おー|えっ|ニャ|にゃ)$/.test(t)) return false;
+
+      // 2. ボタン操作の一声定型句を除外
+      if (/^(?:おまかせ|お任せ|あそぶ|遊ぶ|バッチリ|ばっちり|はーい|はい|起きたニャ|お昼寝するニャ|今日の日記を書き込みましたニャン)(?:ニャ|ニャン|にゃ|にゃん|！|!|♪|🐾|💤)*$/.test(t)) return false;
+
+      // 3. 時間・日付の単発問答を除外
+      if (/(?:いま何時|今何時|いまの時間|現在の時間|何時ですか|今日何日|きょう何日|今日の日付|何曜日)/.test(t)) return false;
+      if (/(?:いまは\s*\d+時\d+分|きょうは\s*\d+月\d+日)/.test(t)) return false;
+
+      // 4. 天気の単発問答を除外
+      if (/(?:天気どんな感じ|今日の天気|いまの天気|現在の天気|お天気教えて)/.test(t)) return false;
+      if (/(?:天気は\s*(?:快晴|晴れ|くもり|雨|雪)|気温は\s*\d+度)/.test(t)) return false;
+
+      // 5. タイマーの定型やり取りを除外
+      if (/(?:\d+\s*分.*(?:測って|タイマー|計って)|タイマーをセット中|分クロがしっかり見ておく|分経ったニャ|タイマー鳴った)/.test(t)) return false;
+
+      // 6. 単なるURLリンクやマップ文字列を除外
+      if (t.startsWith('http') || t.includes('Googleマップで見る')) return false;
+
+      return true;
+    });
+  }
+
+  /* ★ 本物の記憶構築：定型ノイズを除外した「中身のある会話」を直近10往復（20件）厳選送信 */
   _buildContentsPayload(rawLogs, currentPrompt, photoBase64 = null) {
     const contents = [];
     let lastRole = null;
@@ -1677,12 +1701,17 @@ class AIThoughtEngine {
 
     let targetHistoryLogs = [];
     if (!todayDiary) {
+      // 日記作成前：本日の会話からノイズを除外した「中身のある会話」直近10往復（20件）を厳選！
       const dailyAll = StorageManager.getDailyLogs(timeInfo.lifeLogKey);
-      targetHistoryLogs = (dailyAll.length > 0) ? dailyAll.slice(-100) : rawLogs.slice(-100);
-      Logger.log(`[記憶深度] 日記作成前：本日の会話履歴 ${targetHistoryLogs.length} 件（最大100件）をフル活用して対話`, "info");
+      const baseLogs = (dailyAll.length > 0) ? dailyAll : rawLogs;
+      const meaningfulLogs = this._filterMeaningfulLogs(baseLogs);
+      targetHistoryLogs = meaningfulLogs.slice(-20);
+      Logger.log(`[知的記憶] 日記作成前：ノイズ除外後の実質的な会話 ${targetHistoryLogs.length} 件（直近10往復）を対話に反映`, "info");
     } else {
-      targetHistoryLogs = rawLogs.slice(-10);
-      Logger.log(`[記憶深度] 日記作成後：日記＋直近会話 ${targetHistoryLogs.length} 件（5往復）で夜の対話`, "info");
+      // 日記作成後：日記＋直近の会話からノイズを除外した10件（5往復）で夜の対話
+      const meaningfulLogs = this._filterMeaningfulLogs(rawLogs);
+      targetHistoryLogs = meaningfulLogs.slice(-10);
+      Logger.log(`[知的記憶] 日記作成後：日記＋実質的な会話 ${targetHistoryLogs.length} 件（5往復）で夜の対話`, "info");
     }
 
     for (const item of targetHistoryLogs) {
@@ -1734,6 +1763,9 @@ class AIThoughtEngine {
     const isAtHome = LocationProvider.isAtHome;
     const isAssistant = AppCore.state.isAssistantMode;
     
+    const spotLimit = parseInt(localStorage.getItem('kuro_spot_count') || '2', 10);
+    const newsLimit = parseInt(localStorage.getItem('kuro_news_count') || '2', 10);
+
     const recentDiaries = StorageManager.getRecentDiariesSummary(3);
     const pastMemoryDiary = StorageManager.findRelevantPastDiary(promptText);
 
@@ -1763,10 +1795,17 @@ class AIThoughtEngine {
 ・現在地を聞かれたら、「いまは${townArea}をお散歩中ニャン🐾」と答えてください。
 `;
 
+    // ★ コンシェルジュ対話：好物を2〜3個だけ軽く振るラリー ＆ 確定時に厳選紹介
     const modeInstruction = isAssistant ? `
-【★モード：👓 おてつだいモード】
-・いまは博士帽と丸メガネを装着した天才発明家モードです。
-・おやびんのお調べや知りたいこと（ニュース、お店、天気、調べ物）を積極的に賢くアシストしてください。
+【★モード：👓 おてつだいモード（天才発明家＆グルメ・情報コンシェルジュ）】
+・いまは博士帽と丸メガネを装着した天才お調べモードです。
+・【★お店探しのコンシェルジュ対話ルール】
+  ① おやびんが「お腹空いた」「何か美味しいもの探して」と漠然と言った時は、いきなりGoogle検索で決めつけず、
+     おやびんの好物（ラーメン、餃子、焼肉、ホルモン、お寿司、麻婆豆腐など）から【2〜3個だけを軽く例に挙げて】、
+     「今日はラーメンとかホルモンの気分かニャ？それとも他がいいニャ？🐾」と楽しく気分を聞き出してください。
+  ② おやびんが「歩きで行けるこってりラーメン」「駅前の寿司」のようにジャンルや条件を具体化したら、
+     Google検索ツールを活用し、設定件数（${spotLimit}件）に絞って最高のお店をクロちゃんの口調で魅力的に紹介してください。
+  ③ ニュースを探す時も、設定件数（${newsLimit}件）に合わせて重要ニュースを要約して紹介してください。
 ` : `
 【★モード：🐾 なかよしモード】
 ・いまはおやびんと純粋にお話しやスキンシップを楽しむ甘えん坊モードです。
@@ -1803,10 +1842,14 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
     const contents = this._buildContentsPayload(rawLogs, promptText, photoBase64);
     const targetModels = FIXED_LITE_MODELS;
 
+    const isSpecificSearch = isAssistant && 
+      /(?:探して|教えて|どこにある|おすすめ|近くの|周辺の|最新ニュース|速報)/.test(promptText) &&
+      !/(?:お腹空いた|お腹すいた|何か美味しいもの)/.test(promptText);
+
     for (const model of targetModels) {
       const cleanModel = model.replace(/^models\//, '');
       try {
-        Logger.log(`[Gemini] 固定Liteモデル「${cleanModel}」へリクエスト中…`, "info");
+        Logger.log(`[Gemini] 固定Liteモデル「${cleanModel}」へリクエスト中…（SearchTools: ${isSpecificSearch ? 'ON' : 'OFF'}）`, "info");
 
         const fetchController = new AbortController();
         const timeoutTimer = setTimeout(() => {
@@ -1817,8 +1860,12 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
         const bodyPayload = {
           system_instruction: { parts: [{ text: systemPrompt }] },
           contents: contents,
-          generationConfig: { temperature: 0.75, maxOutputTokens: 250 }
+          generationConfig: { temperature: 0.75, maxOutputTokens: 350 }
         };
+
+        if (isSpecificSearch) {
+          bodyPayload.tools = [{ google_search: {} }];
+        }
 
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${this.apiKey}`;
         let res = await fetch(endpoint, {
@@ -1827,6 +1874,18 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
           body: JSON.stringify(bodyPayload),
           signal: fetchController.signal
         });
+
+        // 二重の安全防波堤：tools付きリクエストが失敗した場合は即座にtoolsなしで再試行
+        if (!res.ok && isSpecificSearch && res.status === 400) {
+          Logger.log(`[Toolsフォールバック] モデル「${cleanModel}」のtoolsを除外して安全再試行ニャ！`, "warn");
+          delete bodyPayload.tools;
+          res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyPayload),
+            signal: fetchController.signal
+          });
+        }
 
         clearTimeout(timeoutTimer);
 
@@ -1849,6 +1908,8 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
           const data = await res.json();
           const cand = data.candidates?.[0];
           const raw = cand?.content?.parts?.[0]?.text;
+          const groundingMetadata = cand?.groundingMetadata;
+
           if (raw) {
             let topicTag = "";
             const tm = raw.match(/<!--TOPIC:(.*?)-->/i);
@@ -1863,12 +1924,29 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 
             clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
 
-            Logger.log(`[Gemini成功⚡] Liteモデル「${cleanModel}」から即答取得！`, "success");
+            // 本物URLカードの抽出
+            const groundingCards = [];
+            if (groundingMetadata?.groundingChunks) {
+              const maxCards = /(?:ニュース)/.test(promptText) ? newsLimit : spotLimit;
+              for (const chunk of groundingMetadata.groundingChunks) {
+                if (chunk.web?.uri) {
+                  groundingCards.push({
+                    type: /(?:ニュース)/.test(promptText) ? 'news-primary' : 'map-primary',
+                    icon: /(?:ニュース)/.test(promptText) ? '📰' : '📍',
+                    title: chunk.web.title || "公式Webページ・詳細情報",
+                    url: chunk.web.uri
+                  });
+                  if (groundingCards.length >= maxCards) break;
+                }
+              }
+            }
+
+            Logger.log(`[Gemini成功⚡] Liteモデル「${cleanModel}」から即答取得！（本物カード: ${groundingCards.length}件）`, "success");
             
             const badge = document.getElementById('model-badge');
             if (badge) badge.textContent = `🐾 ${cleanModel.replace('gemini-', '')}`;
 
-            return { success: true, text: clean, topicTag, modelUsed: cleanModel };
+            return { success: true, text: clean, topicTag, groundingCards, modelUsed: cleanModel };
           }
         }
       } catch (err) {
@@ -1965,7 +2043,9 @@ const CHARACTER_CONFIG = {
   defaultMemories: [
     "名前：クロ（ノルウェージャンフォレストキャット、1歳の元気な女の子）",
     "飼い主：おやびん（ミッキーさん。世界で一番大好き！）",
-    "大好物：ちゅ〜る、かつおぶし、ラーメン、餃子",
+    "クロの大好物：ちゅ〜る（まぐろ味）、かつおぶし、カリカリ",
+    "クロの苦手なもの：掃除機の音、お風呂、動物病院の注射、爪切り",
+    "おやびんの大好物：ラーメン、餃子、焼肉、ホルモン、お寿司、麻婆豆腐",
     "前世：世界的に有名な大天才発明家（自慢好きで発明の話が得意）",
     "家族：ママのかよちゃん、お兄ちゃんのりゅうせいくん、弟分のたいせいくん、大親友のかまぶーくん"
   ]
@@ -1988,7 +2068,6 @@ const AppCore = {
     studioDiaryPageIdx: 0,
     isDiaryReading: false,
 
-    // ★ 機能②: 気まぐれ独り言管理タイマー
     idleSoliloquyTimer: null,
     lastActivityTime: Date.now()
   },
@@ -2073,18 +2152,15 @@ const AppCore = {
       this.audio.preloadAllFillers(spk);
 
       this.checkAndFinalizeYesterdayDiary();
-
-      // ★ 機能②: 気まぐれ独り言ウォッチャー起動
       this._startIdleSoliloquyWatcher();
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-      Logger.log("[AppCore] 全システム正常稼働！黄金比350ms＆最速3.5-flash-lite固定スタンバイ完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！知的記憶＆最速3.5-flash-lite固定スタンバイ完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
   },
 
-  /* ★ 機能②: 気まぐれ独り言エンジン（おやびん無操作時にそっと呟く） */
   _startIdleSoliloquyWatcher() {
     if (this.state.idleSoliloquyTimer) clearInterval(this.state.idleSoliloquyTimer);
 
@@ -2102,9 +2178,8 @@ const AppCore = {
       const now = Date.now();
       const idleTime = now - this.state.lastActivityTime;
 
-      // 2分半（150秒）以上おやびんが操作・発話していない時、静かに呟く
       if (idleTime > 150000 && this.state.isRunning && !this.audio.isSpeaking && !this.state.isThinking && !this.state.isDiaryReading) {
-        this.state.lastActivityTime = now; // 次回までタイマーリセット
+        this.state.lastActivityTime = now;
 
         const phrase = soliloquyPhrases[Math.floor(Math.random() * soliloquyPhrases.length)];
         const bubble = this.renderBubble('model', phrase);
@@ -2417,15 +2492,6 @@ const AppCore = {
           url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((topic || 'グルメ') + ' ' + area)}`
         });
       }
-
-      if (spotLimit >= 3) {
-        cards.push({
-          type: 'map-sub',
-          icon: '⭐',
-          title: `高評価・人気ランキング順で探す`,
-          url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop + ' 高評価 ' + area)}`
-        });
-      }
     }
 
     const isNewsIntent = /(?:ニュース|速報|話題|出来事|トレンド)/.test(userText);
@@ -2536,7 +2602,7 @@ const AppCore = {
       this.audio.playImmediateFiller('location');
       await LocationProvider.fetchLocationOnDemand(true);
     } else {
-      const isSearchIntent = this.state.isAssistantMode && /(?:探して|教えて|ニュース|スポット|天気|気温)/.test(text);
+      const isSearchIntent = this.state.isAssistantMode && /(?:探して|教えて|ニュース|スポット|天気|気温)/.test(text) && !/(?:お腹空いた|お腹すいた|何か美味しいもの)/.test(text);
       this.audio.playImmediateFiller(isSearchIntent ? 'search' : 'think');
     }
 
@@ -2685,15 +2751,22 @@ const AppCore = {
       StorageManager.appendChatLog('user', promptText);
       StorageManager.appendChatLog('model', res.text);
 
-      const cards = this._generateSmartCards(promptText, res.topicTag);
+      let cards = [];
+      if (this.state.isAssistantMode) {
+        if (res.groundingCards && res.groundingCards.length > 0) {
+          cards = res.groundingCards;
+        } else {
+          cards = this._generateSmartCards(promptText, res.topicTag);
+        }
 
-      if (this.state.isAssistantMode && /(?:いまどこ|今どこ|現在地|どこ歩いて|ここどこ)/.test(promptText)) {
-        cards.unshift({
-          type: 'map-primary',
-          icon: '📍',
-          title: `Googleマップで現在地を見る`,
-          url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(LocationProvider.detailedAddress)}`
-        });
+        if (/(?:いまどこ|今どこ|現在地|どこ歩いて|ここどこ)/.test(promptText)) {
+          cards.unshift({
+            type: 'map-primary',
+            icon: '📍',
+            title: `Googleマップで現在地を見る`,
+            url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(LocationProvider.detailedAddress)}`
+          });
+        }
       }
 
       this.audio.speak(res.text, null, () => {
@@ -2828,7 +2901,7 @@ const AppCore = {
   },
 
   /* ==========================================================================
-     ★ MODULE 7: 本型絵日記アルバム（機能④：肉球スタンプ＆ミニ手紙付き）
+     ★ MODULE 7: 本型絵日記アルバム（肉球スタンプ＆ミニ手紙付き）
      ========================================================================== */
   _bindBookStudioUI() {
     const modal = document.getElementById('book-studio-modal');
@@ -2932,7 +3005,6 @@ const AppCore = {
     if (btnPrev) btnPrev.disabled = (curIdx >= diaries.length - 1);
     if (btnNext) btnNext.disabled = (curIdx <= 0);
 
-    // ★ 機能④: 日替わりクロちゃんミニ手紙の選定
     const loveLetters = [
       "おやびん、今日も一日お疲れさまニャ！クロはずっと味方ニャよ♡",
       "今日もおやびんと一緒にいられて、クロは世界一幸せな猫ニャン🐾",
@@ -2979,7 +3051,6 @@ const AppCore = {
           <textarea class="book-diary-textarea" id="studio-diary-content-input" rows="6">${diary.content}</textarea>
         </div>
 
-        <!-- ★ 機能④: 今日の肉球スタンプ＆クロちゃんからのミニお手紙カード -->
         <div style="background:#fff7ed; border:1.5px dashed #fed7aa; border-radius:14px; padding:8px 12px; display:flex; flex-direction:column; gap:4px; margin-top:2px;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span style="font-size:11px; font-weight:900; color:#c2410c;">🐾 今日の仲良し度スタンプ:</span>
@@ -3440,7 +3511,6 @@ const AppCore = {
       };
     }
 
-    /* ★ 機能③: なでなで部位センサー（頭・あご下・お腹でクロちゃんの反応が変化！） */
     const avatarWrapper = document.getElementById('avatar-wrapper');
     if (avatarWrapper) {
       avatarWrapper.onclick = (e) => {
@@ -3450,22 +3520,19 @@ const AppCore = {
 
         const rect = avatarWrapper.getBoundingClientRect();
         const clickY = e.clientY - rect.top;
-        const ratio = clickY / rect.height; // 0.0(頭) 〜 1.0(足元)
+        const ratio = clickY / rect.height;
 
         const st = document.getElementById('status-text');
 
         if (ratio < 0.35) {
-          // ① 頭・お耳をなでなで
           this.audio.playEffect('happy_meow');
           if (st) st.textContent = "💖 お耳なでなで、うっとりニャ…";
           Toast.show("お耳をなでなでされて目を細めてるニャン…♡", "success", 2000);
         } else if (ratio < 0.70) {
-          // ② あご下・ほっぺをなでなで（一番の極楽！）
           this.audio.playEffect('purr');
           if (st) st.textContent = "😻 あご下最高ニャ〜極楽ニャン♡";
           Toast.show("あご下を撫でられて喉をゴロゴロ鳴らしてるニャ♪", "success", 2000);
         } else {
-          // ③ お腹あたりをなでなで（くすぐったい！）
           this.audio.playEffect('aizuchi');
           if (st) st.textContent = "🐾 こそばゆいニャ〜！くすぐったいニャ！";
           Toast.show("お腹をくすぐられてジタバタ喜んでるニャン！🐾", "info", 2000);
