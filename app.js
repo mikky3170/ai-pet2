@@ -25,10 +25,9 @@
      ・③ なでなで部位センサー：頭・あご下・お腹でクロちゃんの喜びリアクションが変化！
      ・④ 絵日記の肉球スタンプ＆ミニ手紙：1日1ページの絵日記に肉球印と可愛い手紙を刻印。
 
-   ■ 4. 単語早とちり（文脈無視の誤作動）の完全禁止
-     ・時刻・日付：「この時間だけど疲れた」「今日何日かぶりに」等で時報やカレンダーを出さない。
-     ・おやすみ：「明日おやすみ」で勝手に寝ない。文末の就寝挨拶のみで発動。
-     ・自声エコー破棄：おやびんの「おまかせするよ」「遊ぼう」を誤破棄しない。
+   ■ 4. 通信防波堤（20秒タイムアウト ＆ 最短1発クリア設計）
+     ・平常時（Google健全時）：0.6秒〜0.8秒で即座に即答（タイムアウト待ちは1ミリも発生しない）。
+     ・混雑時（Google高負荷時）：16秒かかっても自滅切断せず、確実に「成功（200 OK）」をキャッチ！
 
    ■ 5. システム優先順位（絶対厳守）
      ・優先1：VOICEVOX肉声とセリフ同期、Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
@@ -39,7 +38,7 @@
 /* ★ Gemini連携モデル完全固定定数（変更・追加・動的ソートを物理的に禁止） */
 const FIXED_LITE_MODELS = Object.freeze([
   "gemini-3.5-flash-lite",     // 第1優先（主軸・実測0.69秒の最速モデル）
-  "gemini-flash-lite-latest"   // 第2優先（5秒無応答時のバックアップ）
+  "gemini-flash-lite-latest"   // 第2優先（20秒タイムアウト時バックアップ）
 ]);
 
 /* ==========================================================================
@@ -1463,7 +1462,7 @@ const StorageManager = {
 
 /* ==========================================================================
    ★ MODULE 4: キャラクター描画 ＆ 写真そっくり感情ポーズ完全同期
-   ========================================================================== */
+   ========================================================================= */
 class CatAvatarRenderer {
   constructor() {
     this.wrapper = document.getElementById('avatar-wrapper');
@@ -1654,44 +1653,31 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   ★ MODULE 5: 思考・AI対話エンジン（知的フィルター ＆ 10往復20件 厳選記憶）
+   ★ MODULE 5: 思考・AI対話エンジン（20秒タイムアウト ＆ 最短1発クリア）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
     this.apiKey = (localStorage.getItem('kuro_api_key') || '').trim();
   }
 
-  /* ★ 知的クレンジングフィルター：時報・天気・ボタン一声・タイマー・短発語を除外し、中身のある会話のみを抽出 */
   _filterMeaningfulLogs(logs) {
     return logs.filter(item => {
       if (!item || !item.text) return false;
       const t = item.text.trim();
 
-      // 1. 極端に短い単発語（1〜2文字）を除外
       if (t.length <= 2 && /^(?:来た|うん|ああ|はい|おー|えっ|ニャ|にゃ)$/.test(t)) return false;
-
-      // 2. ボタン操作の一声定型句を除外
       if (/^(?:おまかせ|お任せ|あそぶ|遊ぶ|バッチリ|ばっちり|はーい|はい|起きたニャ|お昼寝するニャ|今日の日記を書き込みましたニャン)(?:ニャ|ニャン|にゃ|にゃん|！|!|♪|🐾|💤)*$/.test(t)) return false;
-
-      // 3. 時間・日付の単発問答を除外
       if (/(?:いま何時|今何時|いまの時間|現在の時間|何時ですか|今日何日|きょう何日|今日の日付|何曜日)/.test(t)) return false;
       if (/(?:いまは\s*\d+時\d+分|きょうは\s*\d+月\d+日)/.test(t)) return false;
-
-      // 4. 天気の単発問答を除外
       if (/(?:天気どんな感じ|今日の天気|いまの天気|現在の天気|お天気教えて)/.test(t)) return false;
       if (/(?:天気は\s*(?:快晴|晴れ|くもり|雨|雪)|気温は\s*\d+度)/.test(t)) return false;
-
-      // 5. タイマーの定型やり取りを除外
       if (/(?:\d+\s*分.*(?:測って|タイマー|計って)|タイマーをセット中|分クロがしっかり見ておく|分経ったニャ|タイマー鳴った)/.test(t)) return false;
-
-      // 6. 単なるURLリンクやマップ文字列を除外
       if (t.startsWith('http') || t.includes('Googleマップで見る')) return false;
 
       return true;
     });
   }
 
-  /* ★ 本物の記憶構築：定型ノイズを除外した「中身のある会話」を直近10往復（20件）厳選送信 */
   _buildContentsPayload(rawLogs, currentPrompt, photoBase64 = null) {
     const contents = [];
     let lastRole = null;
@@ -1701,14 +1687,12 @@ class AIThoughtEngine {
 
     let targetHistoryLogs = [];
     if (!todayDiary) {
-      // 日記作成前：本日の会話からノイズを除外した「中身のある会話」直近10往復（20件）を厳選！
       const dailyAll = StorageManager.getDailyLogs(timeInfo.lifeLogKey);
       const baseLogs = (dailyAll.length > 0) ? dailyAll : rawLogs;
       const meaningfulLogs = this._filterMeaningfulLogs(baseLogs);
       targetHistoryLogs = meaningfulLogs.slice(-20);
-      Logger.log(`[知的記憶] 日記作成前：ノイズ除外後の実質的な会話 ${targetHistoryLogs.length} 件（直近10往復）を対話に反映`, "info");
+      Logger.log(`[知的記憶] 日記作成前：実質的な会話 ${targetHistoryLogs.length} 件（直近10往復）を対話に反映`, "info");
     } else {
-      // 日記作成後：日記＋直近の会話からノイズを除外した10件（5往復）で夜の対話
       const meaningfulLogs = this._filterMeaningfulLogs(rawLogs);
       targetHistoryLogs = meaningfulLogs.slice(-10);
       Logger.log(`[知的記憶] 日記作成後：日記＋実質的な会話 ${targetHistoryLogs.length} 件（5往復）で夜の対話`, "info");
@@ -1795,7 +1779,6 @@ class AIThoughtEngine {
 ・現在地を聞かれたら、「いまは${townArea}をお散歩中ニャン🐾」と答えてください。
 `;
 
-    // ★ コンシェルジュ対話：好物を2〜3個だけ軽く振るラリー ＆ 確定時に厳選紹介
     const modeInstruction = isAssistant ? `
 【★モード：👓 おてつだいモード（天才発明家＆グルメ・情報コンシェルジュ）】
 ・いまは博士帽と丸メガネを装着した天才お調べモードです。
@@ -1852,10 +1835,20 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
         Logger.log(`[Gemini] 固定Liteモデル「${cleanModel}」へリクエスト中…（SearchTools: ${isSpecificSearch ? 'ON' : 'OFF'}）`, "info");
 
         const fetchController = new AbortController();
+        
+        // ★ タイムアウトを20秒（20000ms）に拡大！混雑時の16秒通信も途中で自滅切断せず確実にキャッチ！
         const timeoutTimer = setTimeout(() => {
           fetchController.abort();
-          Logger.log(`[Geminiタイムアウト] モデル「${cleanModel}」が5秒を超えたため次へ即時切り替えニャ！`, "warn");
-        }, 5000);
+          Logger.log(`[Geminiタイムアウト] モデル「${cleanModel}」が20秒を超えたため次へ即時切り替えニャ！`, "warn");
+        }, 20000);
+
+        // 3.5秒経過時の中間フィードバック演出（フリーズ感の払拭）
+        const keepWarmTimer = setTimeout(() => {
+          const st = document.getElementById('status-text');
+          if (st && AppCore.state.isThinking) {
+            st.textContent = "💭 一生懸命考え中ニャ…🐾";
+          }
+        }, 3500);
 
         const bodyPayload = {
           system_instruction: { parts: [{ text: systemPrompt }] },
@@ -1875,7 +1868,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
           signal: fetchController.signal
         });
 
-        // 二重の安全防波堤：tools付きリクエストが失敗した場合は即座にtoolsなしで再試行
+        // 二重安全防波堤：tools付きリクエストが失敗した場合は即座にtoolsなしで再試行
         if (!res.ok && isSpecificSearch && res.status === 400) {
           Logger.log(`[Toolsフォールバック] モデル「${cleanModel}」のtoolsを除外して安全再試行ニャ！`, "warn");
           delete bodyPayload.tools;
@@ -1888,6 +1881,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
         }
 
         clearTimeout(timeoutTimer);
+        clearTimeout(keepWarmTimer);
 
         if (!res.ok && res.status === 400 && !photoBase64) {
           const fallbackPayload = {
@@ -1924,7 +1918,6 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 
             clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
 
-            // 本物URLカードの抽出
             const groundingCards = [];
             if (groundingMetadata?.groundingChunks) {
               const maxCards = /(?:ニュース)/.test(promptText) ? newsLimit : spotLimit;
@@ -1941,7 +1934,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
               }
             }
 
-            Logger.log(`[Gemini成功⚡] Liteモデル「${cleanModel}」から即答取得！（本物カード: ${groundingCards.length}件）`, "success");
+            Logger.log(`[Gemini成功⚡] Liteモデル「${cleanModel}」から応答取得！（所要時間内クリア / カード: ${groundingCards.length}件）`, "success");
             
             const badge = document.getElementById('model-badge');
             if (badge) badge.textContent = `🐾 ${cleanModel.replace('gemini-', '')}`;
@@ -2155,7 +2148,7 @@ const AppCore = {
       this._startIdleSoliloquyWatcher();
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-      Logger.log("[AppCore] 全システム正常稼働！知的記憶＆最速3.5-flash-lite固定スタンバイ完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！20秒耐性＆最速3.5-flash-lite固定スタンバイ完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
@@ -2900,9 +2893,6 @@ const AppCore = {
     }
   },
 
-  /* ==========================================================================
-     ★ MODULE 7: 本型絵日記アルバム（肉球スタンプ＆ミニ手紙付き）
-     ========================================================================== */
   _bindBookStudioUI() {
     const modal = document.getElementById('book-studio-modal');
     const topDiaryBtn = document.getElementById('top-diary-btn');
@@ -3809,4 +3799,5 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
+
 
