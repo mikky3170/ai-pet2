@@ -1,25 +1,41 @@
-
 /* ==========================================================================
-   AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全復元版 V.1.2.0）
-   - バージョン 1.2.0 正式安定版（version.js 一元管理連動）
-   - 【黄金比完全復元】通常会話350ms / ボタン400〜500msの絶妙な耳ふさぎ間隔を100%維持
-   - 【防波堤ガード復元】!isThinking && !isProcessingInput による自声ループ完全根絶
-   - 【マイク原点回帰】余計なイベントを全廃し、喋り始めを絶対に逃さない安定常時通話へ復元
-   - 【モデル完全固定】① gemini-3.5-flash-lite（主軸0.69秒）/ ② gemini-flash-lite-latest（5秒控え）
-   - 【在宅・散歩の自動判定】自宅座標との距離判定により「家の中にいるのに散歩してます」と答えるバグを根絶
-   - 【決めつけ完全撤廃】室内写真の散歩決めつけ、絵日記の架空散歩捏造、タイマーのラーメン決めつけを解消
-   - 一人称「クロ」「わたし」完全統一 ＆ 「余（よ）」読み間違い根絶
-   - 音声完全Blob化（メモリ一括取得再生）：短文・長文問わず途切れ・抜けを100%根絶
-   - TimeProvider 日時提供エンジン（午前4時境界の生活リズム＆時計リアルタイム表示）
-   - セリフの長さ（40〜80文字）を完全キープ ＆ VOICEVOX 音声・文字完全同期
-   - 18時以降の夜の会話の自動取り込み ＆ 翌朝起動時の会話件数差分検知による自動補完システム
-   - 日記リソースの選定（おてつだい検索の機械的データ除外＆情緒的思い出への昇華）
-   - 会話セリフのローカル永続復元 ＆ 画面表示クリア（内部データ安全保護）
-   - 手動バックアップの日時付きファイル名（クロちゃんデータ_YYYYMMDD_HHmm.json）
-   - 純粋な1日1ページ絵日記アルバム（写真解除・日記削除の誤操作防止警告つき）
-   - 日記の「本文のみ」スラスラ滑らか朗読（カッコ・句読点のブレーキ解消）
-   - オンデマンド高精度GPS（町名丁目ピンポイント回答＆至近距離スポット特定）
-   - 散歩写真の超軽量圧縮＆Gemini 3.5 Flash Lite画像認識・写真付き絵日記連動
+   【永久不変仕様書】AIペット クロちゃん🐾 対話エンジン＆設計思想（app.js）
+   ==========================================================================
+   ■ 1. なかよしモード と おてつだいモード の絶対分離ルール
+     ・🐾 なかよしモード（通常モード）：
+       おやびんとの雑談・共感・甘えん坊を楽しむ時間。
+       「ラーメン」「餃子」「はま寿司」などのグルメ単語が出ても、Googleマップカードや
+       ニュースカードは【絶対に一切出さない】。
+       相槌で「クロが調べるニャ！」と早とちりせず、「美味しそうニャ♪」と楽しく雑談する。
+     ・👓 おてつだいモード（博士帽＆丸メガネ装着時）：
+       ネット検索や道案内をする天才発明家タイム。
+       このモードの時だけ、Googleマップやニュースのカード案内を積極的に行う。
+
+   ■ 2. 記憶のライフサイクル（100件 ⇄ 10件 の切り替え仕様）
+     ・【その日の絵日記を書く前】：
+       朝やお昼の出来事も忘れないよう、今日の会話ログから【最大50往復（100件）】を
+       完全にAIの頭に入れて、1日を通した深い会話を展開する。
+     ・【その日の絵日記を書いた後】：
+       その日の出来事は絵日記にギュッと記録・整理されたため、長い会話は手放す。
+       以降は「今日の日記」＋「直近5往復（10件）の最新会話」にスッキリ切り替え、
+       夜のまったりした会話を楽しむ。
+     ・【直近3日間の絵日記】：常にAIが頭に入れており最近の出来事を共有。
+     ・【昔の思い出】：おやびんが過去を振り返る言葉を使った時だけ過去日記を参照。
+
+   ■ 3. 単語早とちり（文脈無視の誤作動）の完全禁止
+     ・時刻・日付：「この時間だけど疲れた」「今日何日かぶりに」「賞味期限の日付」等で
+       機械的な時報・カレンダーを絶対に発動させない。純粋な質問文の時のみ即答する。
+     ・おやすみ：「明日おやすみ」「寝るねこみたい」で勝手に就寝モードに入らない。
+       文末の就寝の挨拶でのみ発動する。
+     ・GPS・周辺施設：「川」「公園」「近く」などの単語単体で勝手にGPSを起動しない。
+     ・自声エコー破棄：おやびんの「おまかせするよ」「遊ぼう」を無視・破棄しない。
+
+   ■ 4. システム優先順位（絶対厳守）
+     ・優先1：VOICEVOX肉声とセリフの完全同期、Gemini連携モデル完全固定
+       ① 第1優先（主軸）: 「gemini-3.5-flash-lite」（0.6秒台最速）
+       ② 第2優先（5秒タイムアウト時バックアップ）: 「gemini-flash-lite-latest」
+     ・優先2：愛らしい表情・アニメーション・変身ギミックの100%維持
+     ・優先3：1日1ページの絵日記アルバム、オンデマンドGPS、タイマー等
    ========================================================================== */
 
 /* ★ Gemini連携モデル完全固定定数（変更・追加・動的ソートを物理的に禁止） */
@@ -490,15 +506,21 @@ class AudioSpeechEngine {
     const speakerId = AppCore.getSpeakerId();
     let phrase = "そうニャね♪";
 
-    if (type === 'location') {
-      phrase = Math.random() > 0.5 ? "確認するニャ！" : "ちょっと待ってニャ♪";
-    } else if (type === 'search') {
-      phrase = "クロが調べるニャ！";
-    } else if (type === 'think') {
-      phrase = "えーっとニャ…";
-    } else {
-      const candidates = ["そうニャね♪", "うんうん、聞いてるニャ♪"];
+    // なかよしモード時は「調べるニャ」を出さず、共感・傾聴の相槌に徹する
+    if (!AppCore.state.isAssistantMode) {
+      const candidates = ["そうニャね♪", "うんうん、聞いてるニャ♪", "えーっとニャ…"];
       phrase = candidates[Math.floor(Math.random() * candidates.length)];
+    } else {
+      if (type === 'location') {
+        phrase = Math.random() > 0.5 ? "確認するニャ！" : "ちょっと待ってニャ♪";
+      } else if (type === 'search') {
+        phrase = "クロが調べるニャ！";
+      } else if (type === 'think') {
+        phrase = "えーっとニャ…";
+      } else {
+        const candidates = ["そうニャね♪", "うんうん、聞いてるニャ♪"];
+        phrase = candidates[Math.floor(Math.random() * candidates.length)];
+      }
     }
 
     const key = `${speakerId}_${phrase}`;
@@ -586,32 +608,30 @@ class AudioSpeechEngine {
     return blobUrl;
   }
 
-  /* ★ 自声エコー判定（完全復元：過去の確定判定ロジック） */
+  /* ★ 自声エコー判定（完全厳密化：おやびんの「おまかせするよ」「遊ぼう」は絶対破棄しない） */
   _isSelfEcho(text) {
     if (!text) return true;
     const normalized = text.replace(/[\s、。！？ニャンニャ]/g, '');
     if (normalized.length < 2) return true;
 
-    const actionPattern = /^(?:おまかせ|お任せ|任せ|まかせ|あそぶ|遊ぶ|あそぼ|遊ぼ|ばっちり|バッチリ|ぱっちり|パッチリ|はーい|はい|ハイ|うまうま|ちゅーる|最高)(?:ニャ|ニャン|にゃ|にゃん)?$/;
-    if (actionPattern.test(normalized)) {
-      return true;
-    }
-    if (normalized.length <= 10 && /(?:お任せ|おまかせ|遊ぶ|あそぶ|バッチリ|ばっちり|はーい|うまうま)/.test(normalized)) {
+    // ボタン直後の完全一致オウム返し短文のみをエコーとみなす
+    const exactButtonPatterns = /^(?:おまかせ|お任せ|あそぶ|遊ぶ|ばっちり|バッチリ|はーい|はい|うまうま)(?:ニャ|ニャン|にゃ|にゃん)?$/;
+    if (exactButtonPatterns.test(normalized)) {
       return true;
     }
 
     const now = Date.now();
-    const isVeryRecent = (now - this.lastSpeechEndTime) < 500;
+    const isVeryRecent = (now - this.lastSpeechEndTime) < 450;
 
     for (const spoken of this.recentSpokenTexts) {
       const normSpoken = spoken.replace(/[\s、。！？ニャンニャ]/g, '');
       if (normSpoken === normalized) return true;
-      if (isVeryRecent && (normSpoken.includes(normalized) || normalized.includes(normSpoken))) return true;
+      if (isVeryRecent && normalized.length <= 6 && normSpoken.includes(normalized)) return true;
     }
     return false;
   }
 
-  /* ★ 発話処理（完全復元：黄金値 cooldownMs=350 ＆ 鉄壁防波堤ガード） */
+  /* ★ 発話処理（黄金値 cooldownMs=350 ＆ 鉄壁防波堤ガード） */
   async speak(text, speakerIdOverride = null, onStart = null, onEnd = null, cooldownOverride = null) {
     this.stopSpeaking();
     this.stopListening();
@@ -623,7 +643,6 @@ class AudioSpeechEngine {
     } catch(e) {}
 
     const speakerId = (speakerIdOverride !== null) ? speakerIdOverride : AppCore.getSpeakerId();
-    // ★ 通常会話時の黄金値: 350ms（おやびんの喋り始めを最速で拾う設定）
     const cooldownMs = (cooldownOverride !== null) ? cooldownOverride : 350;
 
     let clean = this._convertAllNumbersToKana(text)
@@ -685,7 +704,6 @@ class AudioSpeechEngine {
         this.lastSpeechEndTime = Date.now();
         if (onEnd) onEnd();
 
-        // ★ 鉄壁ガード完全復元：!isThinking && !isProcessingInput を厳密に判定して再開
         setTimeout(() => {
           if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !this.isActionButtonLocked && !AppCore.state.isThinking && !AppCore.state.isProcessingInput) {
             const st = document.getElementById('status-text');
@@ -852,9 +870,6 @@ class AudioSpeechEngine {
     this.fillerAudio.currentTime = 0;
   }
 
-  /* ==========================================================================
-     ★ 音声認識：余計なイベント完全撤去・素直な常時通話（喋り始めを逃さない）
-     ========================================================================== */
   _setupRecognition() {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRec) {
@@ -875,7 +890,7 @@ class AudioSpeechEngine {
     };
 
     this.recognition.onresult = (event) => {
-      if (this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || AppCore.state.isProcessingInput) {
+      if (this.isSpeaking || this.isReadingAloud || this.audio?.isActionButtonLocked || AppCore.state.isProcessingInput) {
         return;
       }
 
@@ -911,14 +926,13 @@ class AudioSpeechEngine {
 
       if (this.onListeningStatus) this.onListeningStatus(false);
 
-      // ★ 発話中・入力処理中は再起動しない（黄金比ガード）
-      if (!AppCore.state.isRunning || this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || AppCore.state.isProcessingInput) {
+      if (!AppCore.state.isRunning || this.isSpeaking || this.isReadingAloud || this.audio?.isActionButtonLocked || AppCore.state.isProcessingInput) {
         return;
       }
 
       if (this.restartTimer) clearTimeout(this.restartTimer);
       this.restartTimer = setTimeout(() => {
-        if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !this.isActionButtonLocked && !AppCore.state.isProcessingInput && !this.isListening) {
+        if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !this.audio?.isActionButtonLocked && !AppCore.state.isProcessingInput && !this.isListening) {
           this.startListening();
         }
       }, 150);
@@ -948,7 +962,7 @@ class AudioSpeechEngine {
 }
 
 /* ==========================================================================
-   ★ MODULE 2: オンデマンド高精度GPS ＆ 【在宅・外出の自動判定】
+   ★ MODULE 2: オンデマンド高精度GPS ＆ 在宅・外出の自動判定
    ========================================================================== */
 const LocationProvider = {
   lat: null,
@@ -1153,7 +1167,7 @@ const LocationProvider = {
 };
 
 /* ==========================================================================
-   ★ MODULE 3: 鉄壁ストレージ管理（生活リズム対応 ＆ 会話数差分検知付き）
+   ★ MODULE 3: 鉄壁ストレージ管理（100件 ⇄ 10件 ライフサイクル連動）
    ========================================================================== */
 const DATA_KEYS = {
   MEMORIES: 'kuro_data_memories',
@@ -1357,16 +1371,19 @@ const StorageManager = {
     return list.map(d => `・【${d.fullDate}の日記】(天気:${d.weather} ${d.temperature}℃): ${d.content}`).join("\n");
   },
 
+  /* ★ 過去日記の検索（おやびんが過去を振り返る言葉を使った時のみ発動・誤爆完全防止） */
   findRelevantPastDiary(queryText) {
     if (!queryText) return null;
+    const isPastQuery = /(?:昔|まえ|前|あの時|あのとき|先週|せんしゅう|先月|せんげつ|昨日|きのう|おととい|一昨日|覚えてる|おぼえてる)/.test(queryText);
+    if (!isPastQuery) return null;
+
     const list = this.loadAllDiaries();
     if (list.length === 0) return null;
 
-    const isPastQuery = /(?:昔|まえ|前|あの時|あのとき|先週|せんしゅう|先月|せんげつ|昨日|きのう|おととい|一昨日|覚えてる|おぼえてる)/.test(queryText);
     const cleanTokens = queryText
       .replace(/[？?！!。、\s]/g, ' ')
       .split(' ')
-      .filter(w => w.length >= 2 && !/^(?:クロ|おやびん|今日|何時|なんじ|どこ|これ|それ|あれ)$/.test(w));
+      .filter(w => w.length >= 2 && !/^(?:クロ|おやびん|今日|何時|なんじ|どこ|これ|それ|あれ|昔|まえ|前|昨日)$/.test(w));
 
     for (const diary of list) {
       for (const token of cleanTokens) {
@@ -1377,7 +1394,7 @@ const StorageManager = {
       }
     }
 
-    if (isPastQuery && list.length > 1) {
+    if (list.length > 1) {
       return list[1];
     }
     return null;
@@ -1644,19 +1661,34 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   ★ MODULE 5: 思考・AI対話エンジン（2モデル完全固定 ＆ 5秒即時フォールバック）
+   ★ MODULE 5: 思考・AI対話エンジン（100件⇄10件 ライフサイクル完全対応）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
     this.apiKey = (localStorage.getItem('kuro_api_key') || '').trim();
   }
 
+  /* ★ 会話記憶のライフサイクル：日記作成前=100件(50往復) / 日記作成後=10件(5往復) */
   _buildContentsPayload(rawLogs, currentPrompt, photoBase64 = null) {
     const contents = [];
     let lastRole = null;
-    const recentLogs = rawLogs.slice(-10);
 
-    for (const item of recentLogs) {
+    const todayDiary = StorageManager.getTodayDiary();
+    const timeInfo = TimeProvider.getCurrentInfo();
+
+    let targetHistoryLogs = [];
+    if (!todayDiary) {
+      // 【日記作成前】：今日の全会話から最大100件（50往復）をしっかり頭に入れて会話
+      const dailyAll = StorageManager.getDailyLogs(timeInfo.lifeLogKey);
+      targetHistoryLogs = (dailyAll.length > 0) ? dailyAll.slice(-100) : rawLogs.slice(-100);
+      Logger.log(`[記憶深度] 日記作成前：本日の会話履歴 ${targetHistoryLogs.length} 件（最大100件）をフル活用して対話`, "info");
+    } else {
+      // 【日記作成後】：日記完成後は長大な記憶を手放し、直近10件（5往復）にスッキリ切り替え
+      targetHistoryLogs = rawLogs.slice(-10);
+      Logger.log(`[記憶深度] 日記作成後：日記＋直近会話 ${targetHistoryLogs.length} 件（5往復）で夜の対話`, "info");
+    }
+
+    for (const item of targetHistoryLogs) {
       if (!item.text) continue;
       const role = item.role === 'model' ? 'model' : 'user';
 
@@ -1703,17 +1735,18 @@ class AIThoughtEngine {
     const temp = LocationProvider.temperature;
     const townArea = LocationProvider.townLevelArea;
     const isAtHome = LocationProvider.isAtHome;
+    const isAssistant = AppCore.state.isAssistantMode;
     
     const recentDiaries = StorageManager.getRecentDiariesSummary(3);
     const pastMemoryDiary = StorageManager.findRelevantPastDiary(promptText);
 
     let spotsContext = "";
-    if (LocationProvider.nearbySpots && LocationProvider.nearbySpots.length > 0) {
+    if (isAssistant && LocationProvider.nearbySpots && LocationProvider.nearbySpots.length > 0) {
       spotsContext = "【周辺スポット（近い順）】\n" +
         LocationProvider.nearbySpots.map((s, idx) => `・${idx + 1}. 【${s.dist}m先】${s.name}（${s.type}）`).join('\n') +
         (isAtHome
-          ? "\n※ルール: お家の中にいるので、近くの場所を聞かれたら「お家の近く（〇m先）には〇〇があるニャ！」と教えてください。"
-          : "\n※ルール: お散歩中なので、近くの場所を聞かれたら「すぐ〇m先にあるのは〇〇だニャ！」と教えてください。");
+          ? "\n※おてつだいルール: お家の中にいるので、近くの場所を聞かれたら「お家の近くには〇〇があるニャ！」と教えてください。"
+          : "\n※おてつだいルール: お散歩中なので、近くの場所を聞かれたら「すぐ〇m先にあるのは〇〇だニャ！」と教えてください。");
     }
 
     const lateNightInstruction = timeInfo.isLateNight ? `
@@ -1733,13 +1766,24 @@ class AIThoughtEngine {
 ・現在地を聞かれたら、「いまは${townArea}をお散歩中ニャン🐾」と答えてください。
 `;
 
+    const modeInstruction = isAssistant ? `
+【★モード：👓 おてつだいモード】
+・いまは博士帽と丸メガネを装着した天才発明家モードです。
+・おやびんのお調べや知りたいこと（ニュース、お店、天気、調べ物）を積極的に賢くアシストしてください。
+` : `
+【★モード：🐾 なかよしモード】
+・いまはおやびんと純粋にお話しやスキンシップを楽しむ甘えん坊モードです。
+・ラーメン、餃子、お寿司などの話題が出ても、お店を探そうとせず「美味しそうニャ！クロも一口食べたいニャン♪」とおやびんとの雑談を楽しく盛り上げてください。
+`;
+
     const systemPrompt = `
 あなたは世界一可愛いノルウェージャンフォレストキャットの1歳の子猫の女の子「${character.name}」です。
 【現在状況】
 ・日時: ${timeInfo.fullDate} ${timeInfo.clock}（生活日: ${timeInfo.lifeFullDate}）
-・現在地（町名詳細）: ${townArea}
+・現在地: ${townArea}
 ・在宅判定: ${isAtHome ? '🏠 お家（室内）にいます' : '🐾 お外（散歩・外出）にいます'}
-・天気: ${weather} / 現在の気温: ${temp}度
+・天気: ${weather} / 気温: ${temp}度
+${modeInstruction}
 ${homeLocationInstruction}
 ${lateNightInstruction}
 ${spotsContext ? spotsContext + '\n' : ''}
@@ -1750,19 +1794,16 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 
 【★絶対厳守の話し方ルール】
 - 飼い主さんのことは必ず親しみを込めて「おやびん」と呼んでください。
-- 【重要・一人称】クロちゃん自身の一人称は、必ず女の子らしく「クロ」または「わたし」を使ってください。「余（よ）」という言葉や一人称は絶対に使わないでください。
+- 【重要・一人称】クロちゃん自身の一人称は、必ず女の子らしく「クロ」または「わたし」を使ってください。「余（よ）」は禁止です。
 - 語尾は必ず「〜ニャ」「〜ニャン♪」「〜だニャ！」「〜ニャ🐾」をつけてください。
-- 【重要】動作描写・ト書き（例: （笑う）、*しっぽを振る*、〜な様子など）の出力は一切禁止です。純粋なセリフ（発話テキスト）のみを出力してください。
-- 文を途中で絶対に切らないでください。必ず文章の最後まで話し終えて完結させてください。
+- ト書き（動作描写）の出力は一切禁止です。純粋なセリフのみを出力してください。
+- 文を途中で切らず、文章の最後まで話し終えて完結させてください。
 - 長さはテンポよく【40〜80文字程度（1〜2文）】で、愛らしく表情豊かに話してください。
-- 写真が送られてきたら、写っているもの（お花、ご飯、景色、お部屋の様子など）を褒めて嬉しそうにコメントしてください。
-- 前世は大天才発明家なので、テクノロジーや相談事では「クロの前世の大発明ニャ！」と自慢げに提案してください。
-- おやびんが話題にした主要キーワードがあれば末尾に <!--TOPIC:単語--> を添えてください。
+- 写真が送られてきたら、写っているものを褒めて嬉しそうにコメントしてください。
+- おてつだいモード時のみ、主要検索単語があれば末尾に <!--TOPIC:単語--> を添えてください。
 `;
 
     const contents = this._buildContentsPayload(rawLogs, promptText, photoBase64);
-
-    // ★ 完全固定モデルリスト（第1: 3.5-flash-lite / 第2: flash-lite-latest のみ）
     const targetModels = FIXED_LITE_MODELS;
 
     for (const model of targetModels) {
@@ -1770,7 +1811,6 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
       try {
         Logger.log(`[Gemini] 固定Liteモデル「${cleanModel}」へリクエスト中…`, "info");
 
-        // ★ 5秒タイムアウト制御：5秒を超えたら即座に次のモデル（latest）へ切り替え
         const fetchController = new AbortController();
         const timeoutTimer = setTimeout(() => {
           fetchController.abort();
@@ -1886,7 +1926,7 @@ ${conversationHistoryText || '今日はおやびんとまったりお家で過�
 【★絵日記の執筆ルール】
 - 文字数上限は【500文字以内（250〜450文字程度）】で、起承転結のある心温まる文章にしてください。
 - 語尾は「〜ニャ」「〜ニャン♪」「〜だニャ🐾」を使ってください。
-- 【重要】お家で過ごした日は「今日はずっとお家でおやびんとまったりぬくぬく過ごしたニャ♪」と書き、架空の散歩を捏造しないでください。お散歩やお出かけをした日だけ、外の景色や散歩の話を書いてください。
+- 【重要】お家で過ごした日は「今日はずっとお家でおやびんとまったりぬくぬく過ごしたニャ♪」と書き、架空の散歩を捏造しないでください。
 - 【重要】機械的なニュース見出しやお店リストは書かず、おやびんの気分や生活の思い出として情緒豊かに昇華して書いてください。
 - 出力は日記の本文のみを出力してください（タイトルやト書き、挨拶文は一切不要です）。
 `;
@@ -2271,6 +2311,7 @@ const AppCore = {
     });
   },
 
+  /* ★ 時刻・日付の意図判定（質問意図を厳密化：「この時間だけど疲れた」等の誤爆を完全根絶） */
   _checkDirectIntent(text) {
     let clean = text.replace(/^(?:ねえ|あのね|おーい)?\s*(?:クロちゃん|クロ|くろ)[、,\s]*/i, '').trim();
 
@@ -2280,12 +2321,18 @@ const AppCore = {
       return { display: rep, spoken: rep, waiting: "お返事するニャ…🐾" };
     }
 
-    if (/(?:いま|今)?(?:何時|なんじ|時間)/.test(clean) && !/(?:何日|いつ|日記|何時間|何分)/.test(clean)) {
+    // 時刻の明確な質問のみに限定（「この時間だけど疲れた」等はAIへパス）
+    const isClockQuery = /^(?:いま|今)?(?:何時|なんじ)(?:ですか|だニャ|だにゃ|かな|？|\?|！|!)?$/i.test(clean) ||
+                         /(?:何時か|何時なのか|時間を|現在の時間|いまの時間).*(?:教えて|おしえて|言って|わかる)/.test(clean);
+    if (isClockQuery && !/(?:何日|いつ|日記|何時間|何分|時間ある|時間ない|時間だけど)/.test(clean)) {
       const info = TimeProvider.getCurrentInfo();
       return { display: info.clockDisplay, spoken: info.spokenClock, waiting: "時計を確認してるニャ…⏱️" };
     }
 
-    if (/(?:今日|きょう).*(?:何日|なんにち|いつ|何曜日|なんようび)|日付/.test(clean)) {
+    // 日付の明確な質問のみに限定（「今日何日かぶりに」「賞味期限の日付」等はAIへパス）
+    const isDateQuery = /^(?:今日|きょう|本日)?(?:って)?(?:何日|なんにち|何曜日|なんようび)(?:ですか|だニャ|だにゃ|かな|？|\?|！|!)?$/i.test(clean) ||
+                        /(?:今日の日付|きょうの日付|今日が何日か|何曜日か).*(?:教えて|おしえて|わかる)/.test(clean);
+    if (isDateQuery) {
       const info = TimeProvider.getCurrentInfo();
       return { display: info.dateDisplay, spoken: info.spokenDate, waiting: "カレンダーを見てるニャ…📅" };
     }
@@ -2293,13 +2340,23 @@ const AppCore = {
     return null;
   },
 
+  /* ★ スマートカード生成（なかよしモード時は完全封印！おてつだいモード時のみ出力） */
   _generateSmartCards(userText, topic) {
+    // 【絶対ルール】なかよしモード時はカードを一切出さない！
+    if (!this.state.isAssistantMode) {
+      return [];
+    }
+
     const cards = [];
     const area = LocationProvider.cityArea || "";
     const spotLimit = parseInt(localStorage.getItem('kuro_spot_count') || '2', 10);
     const newsLimit = parseInt(localStorage.getItem('kuro_news_count') || '2', 10);
 
-    if (/(?:ラーメン|餃子|タイ料理|焼肉|ランチ|ご飯|居酒屋|お店|スポット|グルメ|寿司|カレー|カフェ|レストラン)/.test(userText)) {
+    // お店を探す意図がある時のみマップカードを出力
+    const isSpotSearchIntent = /(?:探して|教えて|どこにある|おすすめ|行きたい|食べたい|検索)/.test(userText) ||
+                               /(?:ラーメン|餃子|寿司|居酒屋|カフェ|レストラン)/.test(userText);
+
+    if (isSpotSearchIntent) {
       const shop = topic || "人気店";
       cards.push({
         type: 'map-primary',
@@ -2327,7 +2384,9 @@ const AppCore = {
       }
     }
 
-    if (/(?:ニュース|速報|話題|出来事|トレンド)/.test(userText)) {
+    // ニュースを知りたい意図がある時のみニュースカードを出力
+    const isNewsIntent = /(?:ニュース|速報|話題|出来事|トレンド)/.test(userText);
+    if (isNewsIntent) {
       const t = topic || "最新ニュース";
       cards.push({
         type: 'news-primary',
@@ -2349,20 +2408,25 @@ const AppCore = {
   },
 
   async handleUserInput(text) {
-    const isDiaryRequest = /(?:今日|きょう|本日)?(?:の)?(?:日記|にっき).*(?:書いて|まとめて|記録して|おねがい)/.test(text);
+    // 1. 日記作成フロー（明確な今日の日記作成依頼のみ）
+    const isDiaryRequest = /(?:今日|きょう|本日)?(?:の)?(?:絵?日記|にっき).*(?:書いて|まとめて|記録して|つけて|おねがい)/.test(text) &&
+                           !/(?:日記に書いてあった|日記に書いてた|昔の日記)/.test(text);
     if (isDiaryRequest) {
       this.audio.playImmediateFiller('think');
       await this.handleDiaryCreationFlow(text);
       return;
     }
 
-    const isGoodNight = /(?:おやすみ|寝るね|もう寝る|ねるね|おやすみなさい)/.test(text);
+    // 2. おやすみフロー（文末の就寝挨拶のみ：「明日おやすみ」等の誤爆完全防止）
+    const isGoodNight = /(?:おやすみ|おやすみなさい|もう寝るね|寝るね|寝ます)(?:ニャ|ニャン|ね|よ|〜|ー|！|!|。)*$/i.test(text.trim()) &&
+                        !/(?:明日|会社|週末|仕事).*(?:おやすみ|休み)/.test(text);
     if (isGoodNight) {
       this.handleGoodNightFlow(text);
       return;
     }
 
-    const timerMatch = text.match(/(\d+)\s*分.*(?:測って|タイマー|計って|おしえて)/);
+    // 3. タイマー判定（明確な「〇分測って/タイマー」指示のみ）
+    const timerMatch = text.match(/(\d+)\s*分.*(?:測って|タイマー|計って)/);
     if (timerMatch) {
       const mins = parseInt(timerMatch[1], 10);
       this.startKitchenTimer(mins, text.includes('ラーメン'));
@@ -2395,6 +2459,7 @@ const AppCore = {
       return;
     }
 
+    // 4. 時刻・日付の即答判定
     const direct = this._checkDirectIntent(text);
     if (direct) {
       const st = document.getElementById('status-text');
@@ -2425,16 +2490,18 @@ const AppCore = {
       return;
     }
 
-    const isLocationQuery = /(?:いまどこ|今どこ|現在地|どこ歩いて|ここどこ|川|公園|近く|周辺|なにがある|何がある)/.test(text);
+    // 5. 現在地・位置情報の問い合わせ（明確な現在地質問のみ）
+    const isLocationQuery = /(?:いまどこ|今どこ|現在地|どこ歩いて|ここどこ|近くに何がある|周辺に何がある)/.test(text);
     if (isLocationQuery) {
       this.audio.playImmediateFiller('location');
       await LocationProvider.fetchLocationOnDemand(true);
     } else {
-      const isSearchIntent = /(?:ラーメン|お店|ニュース|天気|気温|スポット)/.test(text);
+      // なかよしモード時は調べる相槌を出さず、共感相槌に徹する
+      const isSearchIntent = this.state.isAssistantMode && /(?:探して|教えて|ニュース|スポット|天気|気温)/.test(text);
       this.audio.playImmediateFiller(isSearchIntent ? 'search' : 'think');
     }
 
-    if (/(?:どう|困った|疲れた|発明|ひらめき|教えて)/.test(text)) {
+    if (this.state.isAssistantMode && /(?:どう|困った|発明|ひらめき)/.test(text)) {
       this.audio.playEffect('idea');
       if (this.avatar) this.avatar.triggerIdeaBulb();
     }
@@ -2554,7 +2621,7 @@ const AppCore = {
     let thinkingStatus = "💭 考え中ニャ…";
     if (photoBase64) {
       thinkingStatus = "📷 写真見てるニャ…";
-    } else if (/(?:ニュース|ラーメン|お店|天気|気温|スポット|近く)/.test(promptText)) {
+    } else if (this.state.isAssistantMode && /(?:ニュース|ラーメン|お店|天気|気温|スポット|近く)/.test(promptText)) {
       thinkingStatus = "🔍 お調べ中ニャ…";
     }
     if (st) st.textContent = thinkingStatus;
@@ -2564,7 +2631,7 @@ const AppCore = {
     row.className = 'chat-row model';
     const bubble = document.createElement('div');
     bubble.className = 'chat-bubble thinking-bubble';
-    bubble.textContent = photoBase64 ? "写真を見てるニャ…📷✨" : (/(?:ニュース|ラーメン|お店|天気|気温)/.test(promptText) ? "クロがお調べしてるニャ…🔍" : "クロが考えてるニャ…💭");
+    bubble.textContent = photoBase64 ? "写真を見てるニャ…📷✨" : (this.state.isAssistantMode && /(?:ニュース|ラーメン|お店|天気|気温)/.test(promptText) ? "クロがお調べしてるニャ…🔍" : "クロが考えてるニャ…💭");
     row.appendChild(bubble);
     box.appendChild(row);
     box.scrollTop = box.scrollHeight;
@@ -2579,9 +2646,10 @@ const AppCore = {
       StorageManager.appendChatLog('user', promptText);
       StorageManager.appendChatLog('model', res.text);
 
+      // なかよしモード時はカードを出さず、おてつだいモード時のみ生成
       const cards = this._generateSmartCards(promptText, res.topicTag);
 
-      if (/(?:いまどこ|今どこ|現在地|どこ歩いて|ここどこ)/.test(promptText)) {
+      if (this.state.isAssistantMode && /(?:いまどこ|今どこ|現在地|どこ歩いて|ここどこ)/.test(promptText)) {
         cards.unshift({
           type: 'map-primary',
           icon: '📍',
@@ -2669,7 +2737,6 @@ const AppCore = {
     badge.textContent = `🐾 3.5 Flash Lite`;
   },
 
-  /* ★ ボタン操作時の一声ボイス（完全復元：過去の個別チューニング黄金値） */
   triggerActionVoice(shortPhrase, statusDisplay, cooldownMs = 350) {
     this.audio.stopListening();
     this.audio.isActionButtonLocked = true;
@@ -2710,21 +2777,19 @@ const AppCore = {
       if (icon) icon.textContent = "👓";
       if (txt) txt.textContent = "おてつだい";
       if (speak) {
-        // ★ モード切替の黄金値: 400ms
         this.triggerActionVoice("おまかせニャ！", "👓 おまかせニャ！", 400);
       }
     } else {
       if (icon) icon.textContent = "🐾";
       if (txt) txt.textContent = "なかよし";
       if (speak) {
-        // ★ モード切替の黄金値: 400ms
         this.triggerActionVoice("あそぶニャ♪", "🐾 あそぶニャ♪", 400);
       }
     }
   },
 
   /* ==========================================================================
-     ★ MODULE 7: 本型絵日記アルバム（写真解除・日記削除の誤操作防止警告つき）
+     ★ MODULE 7: 本型絵日記アルバム
      ========================================================================== */
   _bindBookStudioUI() {
     const modal = document.getElementById('book-studio-modal');
@@ -3157,7 +3222,6 @@ const AppCore = {
       };
     }
 
-    // ★ 診断モニタ内の検証ボタン（完全固定の2モデルのみを検証・404警告ゼロ）
     const btnTestModels = document.getElementById('diag-test-models-btn');
     if (btnTestModels) {
       btnTestModels.onclick = async () => {
@@ -3205,7 +3269,6 @@ const AppCore = {
       };
     }
 
-    /* ★ おやつボタン：黄金値 450ms */
     const snackBtn = document.getElementById('snack-btn');
     if (snackBtn) {
       snackBtn.onclick = (e) => {
@@ -3260,7 +3323,6 @@ const AppCore = {
       };
     }
 
-    /* ★ モード切替ボタン：黄金値 400ms */
     const modeBtn = document.getElementById('mode-toggle-btn');
     if (modeBtn) {
       modeBtn.onclick = () => {
@@ -3270,7 +3332,6 @@ const AppCore = {
       };
     }
 
-    /* ★ ストップボタン：黄金値 400ms */
     const stopBtn = document.getElementById('stop-action-btn');
     if (stopBtn) {
       stopBtn.onclick = () => {
@@ -3286,7 +3347,6 @@ const AppCore = {
       };
     }
 
-    /* ★ 会話中 / お休みボタン */
     const pauseBtn = document.getElementById('pause-btn');
     if (pauseBtn) {
       pauseBtn.onclick = () => {
@@ -3445,7 +3505,6 @@ const AppCore = {
       };
     }
 
-    /* ★ 設定保存ボタン：黄金値 500ms */
     const saveSettingsBtn = document.getElementById('save-settings-btn');
     if (saveSettingsBtn) {
       saveSettingsBtn.onclick = async () => {
@@ -3581,4 +3640,5 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
+
 
