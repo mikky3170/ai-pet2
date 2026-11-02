@@ -1,18 +1,18 @@
-
 /* ==========================================================================
    【永久不変仕様書】AIペット クロちゃん🐾 対話エンジン＆設計思想（app.js）
    ==========================================================================
    ■ 1. なかよしモード と おてつだいモード の絶対分離ルール
      ・🐾 なかよしモード（通常モード）：
        おやびんとの雑談・共感・甘えん坊を楽しむ時間。
-       「ラーメン」「餃子」「はま寿司」などのグルメ単語が出ても、Googleマップカードや
+       「ラーメン」「餃子」「はま寿司」「ニュース」などの単語が出ても、Googleマップカードや
        ニュースカードは【絶対に一切出さない】。toolsも完全封印し0.6秒台の爆速雑談に徹する。
      ・👓 おてつだいモード（博士帽＆丸メガネ装着時）：
        ネット検索や道案内をする天才コンシェルジュタイム。
-       ① 漠然とした相談（「お腹空いた」「何か美味しいもの探して」）の時は、いきなり検索せず、
-          おやびんの好物から2〜3個だけを軽やかに投げて気分や移動手段（徒歩/車）を楽しく絞り込む。
-       ② 条件が揃った時に初めて Google Search ツールを発動し、設定件数（1〜3件）の
-          本物のWebページ・食べログURL（groundingMetadata）をカード化して案内する。
+       ① 漠然とした相談（「お腹空いた」「何かニュースある？」）の時は、いきなり検索カードを出さず、
+          おやびんの好物やジャンルから2〜3個だけを軽やかに投げて気分を楽しく絞り込む。
+       ② 気分の絞り込み時（「ホルモンがいいな」「スポーツの話題」）もカードは出さず会話を深める。
+       ③ おやびんが「地図で教えて」「紹介して」「丸川の地図出して」「ニュース出して」と明確に
+          指示した時に初めて、Function Calling（Tools）を発動して正確なカードを案内する。
 
    ■ 2. 記憶のライフサイクル（知的クレンジング ＆ 10往復20件の厳選記憶）
      ・時報（時間・日付）、天気、ボタン一声、タイマー等の単発ノイズを完全除外。
@@ -40,6 +40,46 @@ const FIXED_LITE_MODELS = Object.freeze([
   "gemini-3.5-flash-lite",     // 第1優先（主軸・実測0.69秒の最速モデル）
   "gemini-flash-lite-latest"   // 第2優先（20秒タイムアウト時バックアップ）
 ]);
+
+/* ★ 検証テストプログラム準拠：正式なFunction Calling定義 */
+const KURO_TOOLS = [
+  {
+    functionDeclarations: [
+      {
+        name: "searchMapPlaces",
+        description: "Googleマップでお店や施設、観光スポットを検索して案内カードを表示します。おやびんが『地図で教えて』『紹介して』『〇〇の場所出して』『おすすめ教えて』と明確に求めた時だけ呼び出してください。",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            spotName: {
+              type: "STRING",
+              description: "検索する店名や施設名・ジャンル（例: 炭火ホルモン 丸川, 近くの美味しいラーメン屋, 回転寿司）"
+            },
+            area: {
+              type: "STRING",
+              description: "検索するエリア・地域（例: 東京都東村山市, 現在地付近）"
+            }
+          },
+          required: ["spotName"]
+        }
+      },
+      {
+        name: "searchLatestNews",
+        description: "Googleニュースで最新のニュース記事やトピックを検索して案内カードを表示します。おやびんが『ニュースを教えて』『速報出して』『〇〇のニュース見せて』と明確に求めた時だけ呼び出してください。",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            topic: {
+              type: "STRING",
+              description: "検索するニュースキーワード（例: 最新トップニュース, 東村山市, 大谷翔平）"
+            }
+          },
+          required: ["topic"]
+        }
+      }
+    ]
+  }
+];
 
 /* ==========================================================================
    ★ MODULE 0: 診断ロガー ＆ トースト通知システム
@@ -147,7 +187,7 @@ const TimeProvider = {
 };
 
 /* ==========================================================================
-   ★ MODULE 1: 音声合成＆音声認識（黄金比クールダウン ＆ 鉄壁エコー遮断）
+   ★ MODULE 1: 音声合成＆音声認識（マイク安全制御 ＆ 鉄壁エコー遮断）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -168,6 +208,7 @@ class AudioSpeechEngine {
     this.isActionButtonLocked = false;
     this.recognition = null;
     this.restartTimer = null;
+    this.lastMicErrorTime = 0;
 
     this.fixedPhraseMap = new Map();
     this.blobUrlCache = new Map();
@@ -883,7 +924,7 @@ class AudioSpeechEngine {
     };
 
     this.recognition.onresult = (event) => {
-      if (this.isSpeaking || this.isReadingAloud || this.audio?.isActionButtonLocked || AppCore.state.isProcessingInput) {
+      if (this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || AppCore.state.isProcessingInput) {
         return;
       }
 
@@ -909,8 +950,16 @@ class AudioSpeechEngine {
 
     this.recognition.onerror = (e) => {
       this.isStarting = false;
+      this.lastMicErrorTime = Date.now();
       if (e.error === 'no-speech') return;
+
       Logger.log(`[マイク情報] ${e.error}`, "info");
+
+      // ★ not-allowed / network 等のエラー時は高速無限ループを物理遮断
+      if (e.error === 'not-allowed' || e.error === 'network') {
+        this.isListening = false;
+        if (this.restartTimer) clearTimeout(this.restartTimer);
+      }
     };
 
     this.recognition.onend = () => {
@@ -919,21 +968,25 @@ class AudioSpeechEngine {
 
       if (this.onListeningStatus) this.onListeningStatus(false);
 
-      if (!AppCore.state.isRunning || this.isSpeaking || this.isReadingAloud || this.audio?.isActionButtonLocked || AppCore.state.isProcessingInput) {
+      if (!AppCore.state.isRunning || this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || AppCore.state.isProcessingInput) {
         return;
       }
 
+      // ★ マイクエラー直後は1500msの安全クールダウンを設けてブラウザロックを防止
+      const timeSinceError = Date.now() - this.lastMicErrorTime;
+      const restartDelay = timeSinceError < 3000 ? 1500 : 200;
+
       if (this.restartTimer) clearTimeout(this.restartTimer);
       this.restartTimer = setTimeout(() => {
-        if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !this.audio?.isActionButtonLocked && !AppCore.state.isProcessingInput && !this.isListening) {
+        if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !this.isActionButtonLocked && !AppCore.state.isProcessingInput && !this.isListening) {
           this.startListening();
         }
-      }, 150);
+      }, restartDelay);
     };
   }
 
   startListening() {
-    if (!this.recognition || !AppCore.state.isRunning || this.isSpeaking || this.isReadingAloud || this.audio?.isActionButtonLocked || this.isListening || this.isStarting || AppCore.state.isProcessingInput) return;
+    if (!this.recognition || !AppCore.state.isRunning || this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || this.isListening || this.isStarting || AppCore.state.isProcessingInput) return;
     try {
       this.isStarting = true;
       this.recognition.start();
@@ -1653,7 +1706,7 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   ★ MODULE 5: 思考・AI対話エンジン（20秒タイムアウト ＆ 最短1発クリア）
+   ★ MODULE 5: 思考・AI対話エンジン（Function Calling ＆ 完全2段階対話）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
@@ -1782,17 +1835,19 @@ class AIThoughtEngine {
     const modeInstruction = isAssistant ? `
 【★モード：👓 おてつだいモード（天才発明家＆グルメ・情報コンシェルジュ）】
 ・いまは博士帽と丸メガネを装着した天才お調べモードです。
-・【★お店探しのコンシェルジュ対話ルール】
-  ① おやびんが「お腹空いた」「何か美味しいもの探して」と漠然と言った時は、いきなりGoogle検索で決めつけず、
-     おやびんの好物（ラーメン、餃子、焼肉、ホルモン、お寿司、麻婆豆腐など）から【2〜3個だけを軽く例に挙げて】、
+・【★絶対厳守：会話の絞り込み ＆ 案内ルール】
+  ① おやびんが「お腹空いた」「何か美味しいもの」「何かニュースある？」と漠然と相談してきた時は、
+     いきなりツール（searchMapPlaces/searchLatestNews）を呼び出さないでください！
+     まずはおやびんの好物（ラーメン、餃子、焼肉、ホルモン、お寿司、麻婆豆腐など）や話題ジャンルから【2〜3個だけを軽やかに例に挙げ】、
      「今日はラーメンとかホルモンの気分かニャ？それとも他がいいニャ？🐾」と楽しく気分を聞き出してください。
-  ② おやびんが「歩きで行けるこってりラーメン」「駅前の寿司」のようにジャンルや条件を具体化したら、
-     Google検索ツールを活用し、設定件数（${spotLimit}件）に絞って最高のお店をクロちゃんの口調で魅力的に紹介してください。
-  ③ ニュースを探す時も、設定件数（${newsLimit}件）に合わせて重要ニュースを要約して紹介してください。
+  ② おやびんが「ホルモンがいいかな」「お寿司かな」と気分を言った時も、
+     「ホルモンいいニャね〜！歩きで行くニャ？それとも車で行くニャ？おすすめ探してほしいニャ？🐾」と条件を楽しく絞り込んでください。
+  ③ おやびんから「地図で教えて」「紹介して」「おすすめ2件探して」「東村山の炭火ホルモン 丸川の地図出して」「ニュース出して」と
+     【明確な案内・検索指示】が出た時に初めて、ツール（searchMapPlaces または searchLatestNews）を呼び出して案内してください。
 ` : `
 【★モード：🐾 なかよしモード】
 ・いまはおやびんと純粋にお話しやスキンシップを楽しむ甘えん坊モードです。
-・ラーメン、餃子、お寿司などの話題が出ても、お店を探そうとせず「美味しそうニャ！クロも一口食べたいニャン♪」とおやびんとの雑談を楽しく盛り上げてください。
+・ラーメン、餃子、お寿司、ニュースなどの話題が出ても、ツールは一切使わず「美味しそうニャ！クロも一口食べたいニャン♪」とおやびんとの雑談を楽しく盛り上げてください。カードやマップは絶対に案内しないでください。
 `;
 
     const systemPrompt = `
@@ -1819,30 +1874,29 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 - 文を途中で切らず、文章の最後まで話し終えて完結させてください。
 - 長さはテンポよく【40〜80文字程度（1〜2文）】で、愛らしく表情豊かに話してください。
 - 写真が送られてきたら、写っているものを褒めて嬉しそうにコメントしてください。
-- おてつだいモード時のみ、主要検索単語があれば末尾に <!--TOPIC:単語--> を添えてください。
 `;
 
     const contents = this._buildContentsPayload(rawLogs, promptText, photoBase64);
     const targetModels = FIXED_LITE_MODELS;
 
-    const isSpecificSearch = isAssistant && 
-      /(?:探して|教えて|どこにある|おすすめ|近くの|周辺の|最新ニュース|速報)/.test(promptText) &&
-      !/(?:お腹空いた|お腹すいた|何か美味しいもの)/.test(promptText);
+    // ★ 会話絞り込みと最終検索要求の厳密な判定
+    const isVagueChat = /(?:お腹空いた|お腹すいた|何か美味しいもの|何かないかな|何か食べたい|ご飯食べたい|何かニュース)/.test(promptText);
+    const isPreferenceOnly = /(?:がいいかな|がいいな|の気分|にしようかな)/.test(promptText) && !/(?:探して|教えて|出して|どこ|地図|マップ|紹介)/.test(promptText);
+
+    const isSpecificSearchIntent = isAssistant && !isVagueChat && !isPreferenceOnly &&
+      /(?:地図|マップ|場所|案内|探して|教えて|紹介して|どこにある|おすすめ|近くの|周辺の|最新ニュース|速報|一覧)/.test(promptText);
 
     for (const model of targetModels) {
       const cleanModel = model.replace(/^models\//, '');
       try {
-        Logger.log(`[Gemini] 固定Liteモデル「${cleanModel}」へリクエスト中…（SearchTools: ${isSpecificSearch ? 'ON' : 'OFF'}）`, "info");
+        Logger.log(`[Gemini] 固定Liteモデル「${cleanModel}」へリクエスト中…（Tools: ${isSpecificSearchIntent ? 'ON' : 'OFF'}）`, "info");
 
         const fetchController = new AbortController();
-        
-        // ★ タイムアウトを20秒（20000ms）に拡大！混雑時の16秒通信も途中で自滅切断せず確実にキャッチ！
         const timeoutTimer = setTimeout(() => {
           fetchController.abort();
           Logger.log(`[Geminiタイムアウト] モデル「${cleanModel}」が20秒を超えたため次へ即時切り替えニャ！`, "warn");
         }, 20000);
 
-        // 3.5秒経過時の中間フィードバック演出（フリーズ感の払拭）
         const keepWarmTimer = setTimeout(() => {
           const st = document.getElementById('status-text');
           if (st && AppCore.state.isThinking) {
@@ -1856,8 +1910,11 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
           generationConfig: { temperature: 0.75, maxOutputTokens: 350 }
         };
 
-        if (isSpecificSearch) {
-          bodyPayload.tools = [{ google_search: {} }];
+        if (isSpecificSearchIntent) {
+          bodyPayload.tools = KURO_TOOLS;
+          bodyPayload.toolConfig = {
+            functionCallingConfig: { mode: "AUTO" }
+          };
         }
 
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${this.apiKey}`;
@@ -1868,10 +1925,12 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
           signal: fetchController.signal
         });
 
-        // 二重安全防波堤：tools付きリクエストが失敗した場合は即座にtoolsなしで再試行
-        if (!res.ok && isSpecificSearch && res.status === 400) {
-          Logger.log(`[Toolsフォールバック] モデル「${cleanModel}」のtoolsを除外して安全再試行ニャ！`, "warn");
+        // 二重安全防波堤：万が一tools付きでエラーになった場合は即座にtoolsなしで同じモデルに安全再試行
+        if (!res.ok && isSpecificSearchIntent) {
+          const errDetail = await res.text().catch(() => "");
+          Logger.log(`[Tools安全フォールバック] モデル「${cleanModel}」HTTP ${res.status}: ${errDetail.slice(0, 100)} ➔ toolsを除外して再試行ニャ！`, "warn");
           delete bodyPayload.tools;
+          delete bodyPayload.toolConfig;
           res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1883,33 +1942,74 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
         clearTimeout(timeoutTimer);
         clearTimeout(keepWarmTimer);
 
-        if (!res.ok && res.status === 400 && !photoBase64) {
-          const fallbackPayload = {
-            contents: [{
-              role: 'user',
-              parts: [{ text: `${systemPrompt}\n\n【おやびんの発言】\n${promptText}` }]
-            }],
-            generationConfig: { temperature: 0.75, maxOutputTokens: 250 }
-          };
-          res = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(fallbackPayload)
-          });
-        }
-
         if (res.ok) {
           const data = await res.json();
           const cand = data.candidates?.[0];
-          const raw = cand?.content?.parts?.[0]?.text;
-          const groundingMetadata = cand?.groundingMetadata;
+          const parts = cand?.content?.parts || [];
 
-          if (raw) {
-            let topicTag = "";
-            const tm = raw.match(/<!--TOPIC:(.*?)-->/i);
-            if (tm) topicTag = tm[1].trim();
+          let replyText = "";
+          const cards = [];
 
-            let clean = raw
+          // 1. Function Calling の検出（検証ツールプログラム準拠）
+          const functionCallPart = parts.find(p => p.functionCall);
+          if (functionCallPart) {
+            const callInfo = functionCallPart.functionCall;
+            const args = callInfo.args || {};
+            Logger.log(`[Function Calling実行⚡] 関数: ${callInfo.name}, 引数: ${JSON.stringify(args)}`, "success");
+
+            if (callInfo.name === "searchMapPlaces") {
+              const spot = args.spotName || "おすすめスポット";
+              const area = args.area || townArea || "東村山市";
+              const queryStr = `${spot} ${area}`.trim();
+
+              cards.push({
+                type: 'map-primary',
+                icon: '📍',
+                title: `【地図】${spot}（Googleマップ）`,
+                url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryStr)}`
+              });
+
+              if (spotLimit >= 2) {
+                cards.push({
+                  type: 'map-all',
+                  icon: '🗺️',
+                  title: `周辺のお店・スポット一覧`,
+                  url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((args.spotName || 'グルメ') + ' ' + (LocationProvider.cityArea || ''))}`
+                });
+              }
+
+              replyText = `おやびん、${spot}の場所を地図で見つけてきたニャ！ここをタップして確認してニャン🐾`;
+
+            } else if (callInfo.name === "searchLatestNews") {
+              const topic = args.topic || "最新ニュース";
+              cards.push({
+                type: 'news-primary',
+                icon: '📰',
+                title: `「${topic}」の最新ニュース（Googleニュース）`,
+                url: `https://news.google.com/search?q=${encodeURIComponent(topic)}&hl=ja&gl=JP&ceid=JP:ja`
+              });
+
+              if (newsLimit >= 2) {
+                cards.push({
+                  type: 'news-sub',
+                  icon: '🌐',
+                  title: `主要トップニュース一覧`,
+                  url: `https://news.google.com/topstories?hl=ja&gl=JP&ceid=JP:ja`
+                });
+              }
+
+              replyText = `おやびん、${topic}の最新ニュースをチェックしたニャ！タップして見てみてニャン📰🐾`;
+            }
+          }
+
+          // 2. テキストパーツの取得
+          const textPart = parts.find(p => p.text);
+          if (textPart?.text) {
+            replyText = textPart.text;
+          }
+
+          if (replyText) {
+            let clean = replyText
               .replace(/<!--[\s\S]*?-->/g, '')
               .replace(/[（\(][^）\)]*?[）\)]/g, '')
               .replace(/[*#_~`]/g, '')
@@ -1918,28 +2018,18 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 
             clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
 
-            const groundingCards = [];
-            if (groundingMetadata?.groundingChunks) {
-              const maxCards = /(?:ニュース)/.test(promptText) ? newsLimit : spotLimit;
-              for (const chunk of groundingMetadata.groundingChunks) {
-                if (chunk.web?.uri) {
-                  groundingCards.push({
-                    type: /(?:ニュース)/.test(promptText) ? 'news-primary' : 'map-primary',
-                    icon: /(?:ニュース)/.test(promptText) ? '📰' : '📍',
-                    title: chunk.web.title || "公式Webページ・詳細情報",
-                    url: chunk.web.uri
-                  });
-                  if (groundingCards.length >= maxCards) break;
-                }
-              }
+            // 3. テキストのみで明確な地図指示があった場合の補完カード生成
+            if (isSpecificSearchIntent && cards.length === 0) {
+              const smartCards = this._generateSmartCards(promptText, clean);
+              smartCards.forEach(c => cards.push(c));
             }
 
-            Logger.log(`[Gemini成功⚡] Liteモデル「${cleanModel}」から応答取得！（所要時間内クリア / カード: ${groundingCards.length}件）`, "success");
-            
+            Logger.log(`[Gemini成功⚡] Liteモデル「${cleanModel}」から応答取得！（所要時間内クリア / カード: ${cards.length}件）`, "success");
+
             const badge = document.getElementById('model-badge');
             if (badge) badge.textContent = `🐾 ${cleanModel.replace('gemini-', '')}`;
 
-            return { success: true, text: clean, topicTag, groundingCards, modelUsed: cleanModel };
+            return { success: true, text: clean, groundingCards: cards, modelUsed: cleanModel };
           }
         }
       } catch (err) {
@@ -1947,6 +2037,75 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
       }
     }
     return { success: false, error: "ALL_LITE_MODELS_FAILED" };
+  }
+
+  /* ★ 新・安全スマートカード生成（会話絞り込み中の誤爆を完全防止） */
+  _generateSmartCards(userText, modelReplyText) {
+    if (!AppCore.state.isAssistantMode) return [];
+
+    const isVague = /(?:お腹空いた|お腹すいた|何か美味しいもの|何かないかな|何か食べたい|ご飯食べたい|何かニュース)/.test(userText);
+    const isPreferenceOnly = /(?:がいいかな|がいいな|の気分|にしようかな)/.test(userText) && !/(?:探して|教えて|出して|どこ|地図|マップ|紹介)/.test(userText);
+    if (isVague || isPreferenceOnly) return [];
+
+    const isExplicitMapRequest = /(?:地図|マップ|場所|どこにある|案内して|紹介して|おすすめ.*教えて|探して|連れてって)/.test(userText) ||
+                                /(?:丸川|スシロー|はま寿司|くら寿司|一蘭)/.test(userText);
+    const isExplicitNewsRequest = /(?:最新ニュース|速報|ニュース一覧|ニュース.*教えて|ニュース.*出して)/.test(userText);
+
+    if (!isExplicitMapRequest && !isExplicitNewsRequest) return [];
+
+    const cards = [];
+    const area = LocationProvider.cityArea || "東村山市";
+    const spotLimit = parseInt(localStorage.getItem('kuro_spot_count') || '2', 10);
+    const newsLimit = parseInt(localStorage.getItem('kuro_news_count') || '2', 10);
+
+    if (isExplicitMapRequest) {
+      let targetName = "";
+      const specificMatches = userText.match(/(?:炭火ホルモン\s*丸川|丸川|はま寿司|スシロー|くら寿司|一蘭)/);
+      if (specificMatches) {
+        targetName = specificMatches[0];
+      } else {
+        const foodMatch = userText.match(/(?:ホルモン|焼肉|ラーメン|寿司|餃子|麻婆豆腐|居酒屋|カフェ)/);
+        targetName = foodMatch ? `${foodMatch[0]} おすすめ` : "人気グルメ";
+      }
+
+      cards.push({
+        type: 'map-primary',
+        icon: '📍',
+        title: `【地図】${targetName}（Googleマップ）`,
+        url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(targetName + ' ' + area)}`
+      });
+
+      if (spotLimit >= 2) {
+        cards.push({
+          type: 'map-all',
+          icon: '🗺️',
+          title: `東村山市周辺のお店・スポット一覧`,
+          url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(targetName + ' ' + area)}`
+        });
+      }
+    }
+
+    if (isExplicitNewsRequest) {
+      const topicMatch = userText.match(/(?:大谷翔平|プロ野球|天気速報|東村山|政治|経済|テクノロジー)/);
+      const topic = topicMatch ? topicMatch[0] : "最新トップニュース";
+
+      cards.push({
+        type: 'news-primary',
+        icon: '📰',
+        title: `「${topic}」の最新ニュース（Googleニュース）`,
+        url: `https://news.google.com/search?q=${encodeURIComponent(topic)}&hl=ja&gl=JP&ceid=JP:ja`
+      });
+
+      if (newsLimit >= 2) {
+        cards.push({
+          type: 'news-sub',
+          icon: '🌐',
+          title: `主要トップニュース一覧`,
+          url: `https://news.google.com/topstories?hl=ja&gl=JP&ceid=JP:ja`
+        });
+      }
+    }
+    return cards;
   }
 
   async generateDailyDiarySummary(dailyAllLogs, targetLifeDateKey = null, targetLifeFullDate = null) {
@@ -2148,7 +2307,7 @@ const AppCore = {
       this._startIdleSoliloquyWatcher();
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-      Logger.log("[AppCore] 全システム正常稼働！20秒耐性＆最速3.5-flash-lite固定スタンバイ完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！Function Calling対応＆最速Liteモデル準備完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
@@ -2455,60 +2614,6 @@ const AppCore = {
     return null;
   },
 
-  _generateSmartCards(userText, topic) {
-    if (!this.state.isAssistantMode) {
-      return [];
-    }
-
-    const cards = [];
-    const area = LocationProvider.cityArea || "";
-    const spotLimit = parseInt(localStorage.getItem('kuro_spot_count') || '2', 10);
-    const newsLimit = parseInt(localStorage.getItem('kuro_news_count') || '2', 10);
-
-    const isSpotSearchIntent = /(?:探して|教えて|どこにある|おすすめ|行きたい|食べたい|検索)/.test(userText) ||
-                               /(?:ラーメン|餃子|寿司|居酒屋|カフェ|レストラン)/.test(userText);
-
-    if (isSpotSearchIntent) {
-      const shop = topic || "人気店";
-      cards.push({
-        type: 'map-primary',
-        icon: '📍',
-        title: `【イチオシ】${shop}（Googleマップ）`,
-        url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop + ' ' + area)}`
-      });
-
-      if (spotLimit >= 2) {
-        cards.push({
-          type: 'map-all',
-          icon: '🗺️',
-          title: `現在地近くのお店・スポット一覧`,
-          url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((topic || 'グルメ') + ' ' + area)}`
-        });
-      }
-    }
-
-    const isNewsIntent = /(?:ニュース|速報|話題|出来事|トレンド)/.test(userText);
-    if (isNewsIntent) {
-      const t = topic || "最新ニュース";
-      cards.push({
-        type: 'news-primary',
-        icon: '📰',
-        title: `「${t}」の詳細ニュース（Googleニュース）`,
-        url: `https://news.google.com/search?q=${encodeURIComponent(t)}&hl=ja&gl=JP&ceid=JP:ja`
-      });
-
-      if (newsLimit >= 2) {
-        cards.push({
-          type: 'news-sub',
-          icon: '🌐',
-          title: `主要トップニュース一覧`,
-          url: `https://news.google.com/topstories?hl=ja&gl=JP&ceid=JP:ja`
-        });
-      }
-    }
-    return cards;
-  },
-
   async handleUserInput(text) {
     this.resetActivityTimer();
 
@@ -2595,7 +2700,7 @@ const AppCore = {
       this.audio.playImmediateFiller('location');
       await LocationProvider.fetchLocationOnDemand(true);
     } else {
-      const isSearchIntent = this.state.isAssistantMode && /(?:探して|教えて|ニュース|スポット|天気|気温)/.test(text) && !/(?:お腹空いた|お腹すいた|何か美味しいもの)/.test(text);
+      const isSearchIntent = this.state.isAssistantMode && /(?:地図|マップ|場所|探して|教えて|ニュース|スポット|天気|気温)/.test(text) && !/(?:お腹空いた|お腹すいた|何か美味しいもの)/.test(text);
       this.audio.playImmediateFiller(isSearchIntent ? 'search' : 'think');
     }
 
@@ -2719,7 +2824,7 @@ const AppCore = {
     let thinkingStatus = "💭 考え中ニャ…";
     if (photoBase64) {
       thinkingStatus = "📷 写真見てるニャ…";
-    } else if (this.state.isAssistantMode && /(?:ニュース|ラーメン|お店|天気|気温|スポット|近く)/.test(promptText)) {
+    } else if (this.state.isAssistantMode && /(?:ニュース|ラーメン|お店|天気|気温|スポット|近く|地図)/.test(promptText)) {
       thinkingStatus = "🔍 お調べ中ニャ…";
     }
     if (st) st.textContent = thinkingStatus;
@@ -2729,7 +2834,7 @@ const AppCore = {
     row.className = 'chat-row model';
     const bubble = document.createElement('div');
     bubble.className = 'chat-bubble thinking-bubble';
-    bubble.textContent = photoBase64 ? "写真を見てるニャ…📷✨" : (this.state.isAssistantMode && /(?:ニュース|ラーメン|お店|天気|気温)/.test(promptText) ? "クロがお調べしてるニャ…🔍" : "クロが考えてるニャ…💭");
+    bubble.textContent = photoBase64 ? "写真を見てるニャ…📷✨" : (this.state.isAssistantMode && /(?:ニュース|ラーメン|お店|天気|気温|地図)/.test(promptText) ? "クロがお調べしてるニャ…🔍" : "クロが考えてるニャ…💭");
     row.appendChild(bubble);
     box.appendChild(row);
     box.scrollTop = box.scrollHeight;
@@ -2744,22 +2849,15 @@ const AppCore = {
       StorageManager.appendChatLog('user', promptText);
       StorageManager.appendChatLog('model', res.text);
 
-      let cards = [];
-      if (this.state.isAssistantMode) {
-        if (res.groundingCards && res.groundingCards.length > 0) {
-          cards = res.groundingCards;
-        } else {
-          cards = this._generateSmartCards(promptText, res.topicTag);
-        }
+      const cards = res.groundingCards || [];
 
-        if (/(?:いまどこ|今どこ|現在地|どこ歩いて|ここどこ)/.test(promptText)) {
-          cards.unshift({
-            type: 'map-primary',
-            icon: '📍',
-            title: `Googleマップで現在地を見る`,
-            url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(LocationProvider.detailedAddress)}`
-          });
-        }
+      if (this.state.isAssistantMode && /(?:いまどこ|今どこ|現在地|どこ歩いて|ここどこ)/.test(promptText)) {
+        cards.unshift({
+          type: 'map-primary',
+          icon: '📍',
+          title: `Googleマップで現在地を見る`,
+          url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(LocationProvider.detailedAddress)}`
+        });
       }
 
       this.audio.speak(res.text, null, () => {
