@@ -1,7 +1,9 @@
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版 V.1.1.1）
    - バージョン 1.1.1 正式安定版（version.js 一元管理連動）
-   - 【爆速化・応答遅延解消】最速Liteモデル優先化＆5秒タイムアウト自動切替により26秒待ちを1〜2秒へ劇的改善
+   - 【モデル完全固定】① gemini-3.5-flash-lite（主軸0.69秒）/ ② gemini-flash-lite-latest（5秒控え）
+   - 【廃止モデル完全撤廃】404エラーとなる2.0/2.5、および3.8-flashをコードレベルで完全排除
+   - 【マイク安全フィードバック】スマホ禁忌ゼロの onspeechstart による「聞こえてるニャ…！」パルス発光
    - 【在宅・散歩の自動判定】自宅座標との距離判定により「家の中にいるのに散歩してます」と答えるバグを根絶
    - 【決めつけ完全撤廃】室内写真の散歩決めつけ、絵日記の架空散歩捏造、タイマーのラーメン決めつけを解消
    - 【常時通話化】continuous=true による電話のような途切れない安定接続（点滅ループ完全根絶）
@@ -18,8 +20,13 @@
    - 日記の「本文のみ」スラスラ滑らか朗読（カッコ・句読点のブレーキ解消）
    - オンデマンド高精度GPS（町名丁目ピンポイント回答＆至近距離スポット特定）
    - 散歩写真の超軽量圧縮＆Gemini 3.5 Flash Lite画像認識・写真付き絵日記連動
-   - Gemini 3.5 Flash Lite 専用（gemini-3.8-flash 完全除外・禁止）
    ========================================================================== */
+
+/* ★ Gemini連携モデル完全固定定数（変更・追加・動的ソートを物理的に禁止） */
+const FIXED_LITE_MODELS = Object.freeze([
+  "gemini-3.5-flash-lite",     // 第1優先（主軸・実測0.69秒の最速モデル）
+  "gemini-flash-lite-latest"   // 第2優先（5秒無応答時のバックアップ）
+]);
 
 /* ==========================================================================
    ★ MODULE 0: 診断ロガー ＆ トースト通知システム
@@ -127,7 +134,7 @@ const TimeProvider = {
 };
 
 /* ==========================================================================
-   ★ MODULE 1: 音声合成＆音声認識（常時通話モード ＆ ボタン音声完全遮断）
+   ★ MODULE 1: 音声合成＆音声認識（常時通話モード ＆ 安全フィードバック）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -823,7 +830,7 @@ class AudioSpeechEngine {
   }
 
   /* ==========================================================================
-     ★ 音声認識：常時通話モード（普通の電話と同じように接続維持）
+     ★ 音声認識：常時通話モード ＆ 安全フィードバック（スマホ競合ゼロ）
      ========================================================================== */
   _setupRecognition() {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -844,7 +851,31 @@ class AudioSpeechEngine {
       Logger.log("[マイク] 通話接続中（聴いてるニャ♪）", "info");
     };
 
+    // ★ 声の入力を感知した瞬間（スマホ禁忌なしの安全フィードバック）
+    this.recognition.onspeechstart = () => {
+      if (this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || AppCore.state.isProcessingInput) return;
+      const st = document.getElementById('status-text');
+      if (st) {
+        st.textContent = "🗣️ 聞こえてるニャ…！";
+        st.classList.add('is-hearing');
+      }
+    };
+
+    // ★ 声が止まった瞬間
+    this.recognition.onspeechend = () => {
+      const st = document.getElementById('status-text');
+      if (st) {
+        st.classList.remove('is-hearing');
+        if (this.isListening && !this.isSpeaking && !AppCore.state.isThinking) {
+          st.textContent = "👂 聴いてるニャ♪";
+        }
+      }
+    };
+
     this.recognition.onresult = (event) => {
+      const st = document.getElementById('status-text');
+      if (st) st.classList.remove('is-hearing');
+
       if (this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || AppCore.state.isProcessingInput) {
         return;
       }
@@ -871,6 +902,8 @@ class AudioSpeechEngine {
 
     this.recognition.onerror = (e) => {
       this.isStarting = false;
+      const st = document.getElementById('status-text');
+      if (st) st.classList.remove('is-hearing');
       if (e.error === 'no-speech') return;
       Logger.log(`[マイク情報] ${e.error}`, "info");
     };
@@ -878,6 +911,9 @@ class AudioSpeechEngine {
     this.recognition.onend = () => {
       this.isListening = false;
       this.isStarting = false;
+      const st = document.getElementById('status-text');
+      if (st) st.classList.remove('is-hearing');
+
       if (this.onListeningStatus) this.onListeningStatus(false);
 
       if (!AppCore.state.isRunning || this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || AppCore.state.isProcessingInput) {
@@ -906,6 +942,9 @@ class AudioSpeechEngine {
   stopListening() {
     this.isListening = false;
     this.isStarting = false;
+    const st = document.getElementById('status-text');
+    if (st) st.classList.remove('is-hearing');
+
     if (this.restartTimer) clearTimeout(this.restartTimer);
     if (this.recognition) {
       try { this.recognition.abort(); } catch(e) {}
@@ -1611,44 +1650,11 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   ★ MODULE 5: 思考・AI対話エンジン（最速モデル優先化 ＆ 5秒自動パス搭載）
+   ★ MODULE 5: 思考・AI対話エンジン（2モデル完全固定 ＆ 5秒即時フォールバック）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
     this.apiKey = (localStorage.getItem('kuro_api_key') || '').trim();
-    this.discoveredLiteModels = [];
-  }
-
-  async discoverAvailableLiteModels() {
-    if (!this.apiKey) return [];
-    try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${this.apiKey}`);
-      if (res.ok) {
-        const data = await res.json();
-        const available = (data.models || [])
-          .filter(m => {
-            const name = (m.name || '').toLowerCase();
-            const methods = m.supportedGenerationMethods || [];
-            return methods.includes('generateContent') && 
-                   name.includes('lite') && 
-                   !name.includes('3.8');
-          })
-          .map(m => m.name.replace(/^models\//, ''));
-
-        if (available.length > 0) {
-          // 最速・安定モデル（latest / 2.5）を先頭にソート
-          available.sort((a, b) => {
-            if (a.includes('latest') || a.includes('2.5')) return -1;
-            if (b.includes('latest') || b.includes('2.5')) return 1;
-            return 0;
-          });
-          this.discoveredLiteModels = available;
-          Logger.log(`[Liteモデル自動検出成功] ${available.join(', ')}`, "success");
-          return available;
-        }
-      }
-    } catch(e) {}
-    return [];
   }
 
   _buildContentsPayload(rawLogs, currentPrompt, photoBase64 = null) {
@@ -1762,25 +1768,15 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 
     const contents = this._buildContentsPayload(rawLogs, promptText, photoBase64);
 
-    // ★ 渋滞モデルを避け、空いている最速モデルを先頭に配置
-    let targetModels = [
-      "gemini-flash-lite-latest",
-      "gemini-2.5-flash-lite",
-      "gemini-2.0-flash-lite",
-      "gemini-3.5-flash-lite"
-    ];
-
-    if (this.discoveredLiteModels.length > 0) {
-      targetModels = Array.from(new Set([...this.discoveredLiteModels, ...targetModels]));
-    }
-    targetModels = targetModels.filter(m => !m.includes('3.8'));
+    // ★ 完全固定モデルリスト（第1: 3.5-flash-lite / 第2: flash-lite-latest のみ）
+    const targetModels = FIXED_LITE_MODELS;
 
     for (const model of targetModels) {
       const cleanModel = model.replace(/^models\//, '');
       try {
-        Logger.log(`[Gemini] 最速Liteモデル「${cleanModel}」へリクエスト中…`, "info");
+        Logger.log(`[Gemini] 固定Liteモデル「${cleanModel}」へリクエスト中…`, "info");
 
-        // ★ 5秒タイムアウト制御：Google側が混雑して5秒以上返らない場合は即座に次のモデルへパス
+        // ★ 5秒タイムアウト制御：5秒を超えたら即座に次のモデル（latest）へ切り替え
         const fetchController = new AbortController();
         const timeoutTimer = setTimeout(() => {
           fetchController.abort();
@@ -1901,9 +1897,10 @@ ${conversationHistoryText || '今日はおやびんとまったりお家で過�
 - 出力は日記の本文のみを出力してください（タイトルやト書き、挨拶文は一切不要です）。
 `;
 
-    const targetModel = (this.discoveredLiteModels[0] || "gemini-flash-lite-latest").replace(/^models\//, '');
+    // 絵日記も第1優先の gemini-3.5-flash-lite で作成（控え: gemini-flash-lite-latest）
+    const targetModel = FIXED_LITE_MODELS[0];
     try {
-      Logger.log(`[Diary] 1日完全版の絵日記を執筆中…（モデル: ${targetModel}）`, "info");
+      Logger.log(`[Diary] 1日完全版の絵日記を執筆中…（最速モデル: ${targetModel}）`, "info");
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${this.apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2042,19 +2039,10 @@ const AppCore = {
       this.audio.prefetchVoice("今日の日記を書き込みましたニャン🐾", spk);
       this.audio.preloadAllFillers(spk);
 
-      if (this.ai.apiKey) {
-        this.ai.discoverAvailableLiteModels().then(models => {
-          if (models.length > 0) {
-            const badge = document.getElementById('model-badge');
-            if (badge) badge.textContent = `🐾 ${models[0].replace('gemini-', '')}`;
-          }
-        });
-      }
-
       this.checkAndFinalizeYesterdayDiary();
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-      Logger.log("[AppCore] 全システム正常稼働！爆速Lite＆常時通話スタンバイ完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！最速3.5-flash-lite固定＆常時通話スタンバイ完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
@@ -2127,7 +2115,8 @@ const AppCore = {
 
     const logs = StorageManager.loadRecentTimelineLogs();
     if (logs.length === 0) {
-      this.renderBubble('model', "おやびん、わたしはクロだニャ🐾 今日もいっぱいお話しするニャン♪");
+      // プリフェッチ音声と完全一致
+      this.renderBubble('model', "おやびん、わたしはクロだニャン🐾 今日もいっぱいお話しするニャ♪");
       return;
     }
 
@@ -2658,7 +2647,7 @@ const AppCore = {
     const badge = document.getElementById('model-badge');
     if (!badge) return;
     badge.className = "model-badge lite";
-    badge.textContent = `🐾 Flash Lite`;
+    badge.textContent = `🐾 3.5 Flash Lite`;
   },
 
   /* ★ ボタン操作時の一声ボイス（ボタンを押した瞬間にマイクを完全密閉＆終了後に安全再開） */
@@ -3147,17 +3136,18 @@ const AppCore = {
       };
     }
 
+    // ★ 診断モニタ内の検証ボタン（完全固定の2モデルのみを検証・404警告ゼロ）
     const btnTestModels = document.getElementById('diag-test-models-btn');
     if (btnTestModels) {
       btnTestModels.onclick = async () => {
-        Toast.show("Liteモデル接続テスト中ニャ…", "info");
+        Toast.show("最速Liteモデル検証中ニャ…", "info");
         const key = this.ai.apiKey;
         if (!key) {
           Toast.show("APIキーが設定されていませんニャ", "error");
           return;
         }
 
-        const candidates = ["gemini-flash-lite-latest", "gemini-2.5-flash-lite", "gemini-2.0-flash-lite", "gemini-3.5-flash-lite"];
+        const candidates = FIXED_LITE_MODELS;
         for (const m of candidates) {
           try {
             const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`, {
@@ -3275,7 +3265,7 @@ const AppCore = {
       };
     }
 
-    /* ★ 会話中 / お休みボタン */
+    /* ★ 会話中 / お休みボタン（可愛い「🟢 会話中」を100%キープ） */
     const pauseBtn = document.getElementById('pause-btn');
     if (pauseBtn) {
       pauseBtn.onclick = () => {
@@ -3415,7 +3405,6 @@ const AppCore = {
 
         this._renderMemories();
 
-        // バージョン更新履歴（最新10件）の描画
         if (typeof VersionManager !== 'undefined') {
           VersionManager.applyToDOM();
         }
@@ -3570,4 +3559,5 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
+
 

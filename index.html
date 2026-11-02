@@ -139,6 +139,17 @@
       transition: all 0.25s ease-out;
       letter-spacing: 0.3px;
     }
+    /* ★ 声を聞き取った瞬間の鮮やかなパルス発光アニメーション */
+    #status-text.is-hearing {
+      background: #0284c7 !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.8), 0 0 0 1.5px #bae6fd inset !important;
+      animation: hearingPulse 0.8s ease-in-out infinite alternate;
+    }
+    @keyframes hearingPulse {
+      0% { transform: scale(1); filter: brightness(1); }
+      100% { transform: scale(1.03); filter: brightness(1.2); }
+    }
     .is-paused-mode #status-text { background: #450a0a; color: #fca5a5; }
 
     .btn-top-diary {
@@ -764,7 +775,7 @@
     }
     .btn-circle:active { transform: scale(0.93); background: rgba(51, 65, 85, 0.8); }
 
-    /* ★ 画面最下部の控えめな極小バージョン表示（version.jsから動的流し込み） */
+    /* 画面最下部の控えめな極小バージョン表示（version.jsから動的流し込み） */
     .app-version-tag {
       font-size: 9.5px;
       color: #94a3b8;
@@ -1478,7 +1489,8 @@
       </div>
 
       <div class="top-header-right">
-        <span id="model-badge" class="model-badge lite">🐾 Flash Lite</span>
+        <!-- ★ 初期バッジ表示を 3.5 Flash Lite に統一 -->
+        <span id="model-badge" class="model-badge lite">🐾 3.5 Flash Lite</span>
       </div>
     </div>
 
@@ -1760,7 +1772,7 @@
         <button class="btn-circle" id="settings-btn" title="設定・記憶・トリセツ">⚙️</button>
       </div>
 
-      <!-- ★ 画面最下部の控えめな極小バージョン表示（version.jsから動的反映） -->
+      <!-- 画面最下部の控えめな極小バージョン表示（version.jsから動的反映） -->
       <div class="app-version-tag">🐾 クロちゃん</div>
     </div>
   </div>
@@ -1860,7 +1872,7 @@
     </div>
   </div>
 
-  <!-- ★ 設定モーダル -->
+  <!-- 設定モーダル -->
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal-card">
       <h3>
@@ -1901,7 +1913,7 @@
             ・<b>✨ 変身</b>：右下の「変身」ボタンを押すと、リアル写真と手描きイラストの姿が煙と共に瞬時に入れ替わるニャ！<br>
             ・<b>🐟 おやつ と なでなで</b>：左下の「おやつ」でちゅ〜るを食べるニャ（3回連続で極楽ゴロゴロ♪）。画面のクロをタップすると「なでなで」されて喉を鳴らして喜ぶニャ！<br>
             ・<b>⏱️ タイマー</b>：「3分測って」と言うとキッチンタイマーが作動するニャ！<br>
-            ・<b>🛑 ストップ・🟢 一時停止</b>：お話しを途中で止めたい時は「ストップ」ボタン、会話をお休みしたい時は「会話中（緑）」ボタンを押してニャ。
+            ・<b>🛑 ストップ・🟢 会話中</b>：お話しを途中で止めたい時は「ストップ」ボタン、会話をお休みしたい時は「会話中（緑）」ボタンを押してニャ。
           </div>
         </div>
       </details>
@@ -2056,7 +2068,7 @@
     </div>
   </div>
 
-  <!-- バージョン一元管理スクリプト（新設） -->
+  <!-- バージョン一元管理スクリプト -->
   <script src="version.js"></script>
   <!-- 対話エンジン本体 -->
   <script src="app.js"></script>
