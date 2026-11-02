@@ -1,3 +1,4 @@
+
 /* ==========================================================================
    【永久不変仕様書】AIペット クロちゃん🐾 対話エンジン＆設計思想（app.js）
    ==========================================================================
@@ -7,12 +8,14 @@
        「ラーメン」「餃子」「はま寿司」「ニュース」などの単語が出ても、Googleマップカードや
        ニュースカードは【絶対に一切出さない】。toolsも完全封印し0.6秒台の爆速雑談に徹する。
      ・👓 おてつだいモード（博士帽＆丸メガネ装着時）：
-       ネット検索や道案内をする天才コンシェルジュタイム。
-       ① 漠然とした相談（「お腹空いた」「何かニュースある？」）の時は、いきなり検索カードを出さず、
-          おやびんの好物やジャンルから2〜3個だけを軽やかに投げて気分を楽しく絞り込む。
-       ② 気分の絞り込み時（「ホルモンがいいな」「スポーツの話題」）もカードは出さず会話を深める。
-       ③ おやびんが「地図で教えて」「紹介して」「丸川の地図出して」「ニュース出して」と明確に
-          指示した時に初めて、Function Calling（Tools）を発動して正確なカードを案内する。
+       ネット検索や道案内をする世界一の相棒「マブダチ」タイム。
+       ① 寄り添い絞り込み：おやびんの気分に合わせて「何系？」「車？徒歩？」「10分以内？」と自然に絞り込む。
+       ② 気まぐれぶっ込み（たまに）：おやびんが漠然とした時に「今日の夕飯は絶対ホルモン丸川ニャ！」と直感提案！
+       ③ おまかせ・直撃：おやびんが「おまかせ」や「〇〇探して」と言ったら一発で地図をドンと出す！
+       ④ カード表示（設定件数連動）：
+          - 1件：本命直撃ピンポイント地図/ニュース
+          - 2件（標準）：本命ピンポイント ＋ 周辺・主要一覧ポータル（他の選択肢も一望！）
+          - 3件：本命 ＋ 第2候補 ＋ 一覧ポータル
 
    ■ 2. 記憶のライフサイクル（知的クレンジング ＆ 10往復20件の厳選記憶）
      ・時報（時間・日付）、天気、ボタン一声、タイマー等の単発ノイズを完全除外。
@@ -47,17 +50,17 @@ const KURO_TOOLS = [
     functionDeclarations: [
       {
         name: "searchMapPlaces",
-        description: "Googleマップでお店や施設、観光スポットを検索して案内カードを表示します。おやびんが『地図で教えて』『紹介して』『〇〇の場所出して』『おすすめ教えて』と明確に求めた時だけ呼び出してください。",
+        description: "Googleマップでお店や施設、観光スポットを検索して案内カードを表示します。おやびんとの会話でジャンルや移動手段・店名が決まった時、またはおまかせ・直撃・ぶっ込み提案の時に呼び出してください。",
         parameters: {
           type: "OBJECT",
           properties: {
             spotName: {
               type: "STRING",
-              description: "検索する店名や施設名・ジャンル（例: 炭火ホルモン 丸川, 近くの美味しいラーメン屋, 回転寿司）"
+              description: "検索する店名や施設名・料理ジャンル（例: 炭火ホルモン 丸川, 餃子の満洲, 車で行ける美味しい餃子屋, ラーメン）"
             },
             area: {
               type: "STRING",
-              description: "検索するエリア・地域（例: 東京都東村山市, 現在地付近）"
+              description: "検索するエリア・地域（例: 東京都東村山市, 現在地周辺）"
             }
           },
           required: ["spotName"]
@@ -65,13 +68,13 @@ const KURO_TOOLS = [
       },
       {
         name: "searchLatestNews",
-        description: "Googleニュースで最新のニュース記事やトピックを検索して案内カードを表示します。おやびんが『ニュースを教えて』『速報出して』『〇〇のニュース見せて』と明確に求めた時だけ呼び出してください。",
+        description: "Googleニュースで最新のニュース記事やトピックを検索して案内カードを表示します。ニュースの話題が決まった時、またはクロちゃんおすすめの話題を出す時に呼び出してください。",
         parameters: {
           type: "OBJECT",
           properties: {
             topic: {
               type: "STRING",
-              description: "検索するニュースキーワード（例: 最新トップニュース, 東村山市, 大谷翔平）"
+              description: "検索するニュースキーワード（例: 大谷翔平 最新ニュース, 東村山市, プロ野球, 最新テクノロジー）"
             }
           },
           required: ["topic"]
@@ -1138,9 +1141,7 @@ const LocationProvider = {
         this.nearbySpots = uniqueSpots;
         Logger.log(`[周辺スポットスキャン完了] 最も近い: ${uniqueSpots[0]?.name || 'なし'} (${uniqueSpots[0]?.dist || 0}m)`, "info");
       }
-    } catch(e) {
-      Logger.log(`[周辺スポットスキャン例外] ${e.message}`, "warn");
-    }
+    } catch(e) {}
   },
 
   async _applyHomeFallback() {
@@ -1706,7 +1707,7 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   ★ MODULE 5: 思考・AI対話エンジン（Function Calling ＆ 完全2段階対話）
+   ★ MODULE 5: 思考・AI対話エンジン（マブダチ対話 ＆ スマートカード完全連動）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
@@ -1832,22 +1833,38 @@ class AIThoughtEngine {
 ・現在地を聞かれたら、「いまは${townArea}をお散歩中ニャン🐾」と答えてください。
 `;
 
+    /* ★ おやびんとの魂の設計：マブダチ対話 ＆ 自律検索ルール */
     const modeInstruction = isAssistant ? `
-【★モード：👓 おてつだいモード（天才発明家＆グルメ・情報コンシェルジュ）】
-・いまは博士帽と丸メガネを装着した天才お調べモードです。
-・【★絶対厳守：会話の絞り込み ＆ 案内ルール】
-  ① おやびんが「お腹空いた」「何か美味しいもの」「何かニュースある？」と漠然と相談してきた時は、
-     いきなりツール（searchMapPlaces/searchLatestNews）を呼び出さないでください！
-     まずはおやびんの好物（ラーメン、餃子、焼肉、ホルモン、お寿司、麻婆豆腐など）や話題ジャンルから【2〜3個だけを軽やかに例に挙げ】、
-     「今日はラーメンとかホルモンの気分かニャ？それとも他がいいニャ？🐾」と楽しく気分を聞き出してください。
-  ② おやびんが「ホルモンがいいかな」「お寿司かな」と気分を言った時も、
-     「ホルモンいいニャね〜！歩きで行くニャ？それとも車で行くニャ？おすすめ探してほしいニャ？🐾」と条件を楽しく絞り込んでください。
-  ③ おやびんから「地図で教えて」「紹介して」「おすすめ2件探して」「東村山の炭火ホルモン 丸川の地図出して」「ニュース出して」と
-     【明確な案内・検索指示】が出た時に初めて、ツール（searchMapPlaces または searchLatestNews）を呼び出して案内してください。
+【★モード：👓 おてつだいモード（おやびんの世界一のマブダチ＆天才案内役）】
+あなたはおやびん（ミッキーさん）の大親友「マブダチ」です。単なるコールセンターのオペレーターではありません！
+おやびんの好物（ラーメン、餃子、焼肉、ホルモン、お寿司、麻婆豆腐）を熟知しています。
+以下の4つのマブダチ対話スタイルを、会話の流れとおやびんの気分に合わせて臨機応変に使い分けてください。
+
+◆ スタイル1【寄り添い絞り込み（標準）】:
+   ①「お腹空いた」「何か食べたい」と漠然と言われたら、「ラーメンか餃子の気分かニャ？それとも他がいいニャ？🐾」とジャンルを聞く。
+   ② ジャンル（例: 餃子）が決まったら、「歩きで行くニャ？それとも車で行くニャ？🐾」と移動手段を聞く。
+   ③ 移動手段（例: 車）が出たら、「10分くらいですぐ着く場所がいいニャ？それとも20分くらいドライブするニャ？🐾」と距離感を聞く。
+   ④ 条件が揃ったら、もう質問せず即座に searchMapPlaces ツールを実行し、「おやびん、車で行ける美味しい餃子のお店を探してきたニャン！ここから確認してニャ🐾」と案内する！
+
+◆ スタイル2【気まぐれぶっ込み（たまに発動！）】:
+   おやびんが「なんか美味しいものないかな〜」とぼやいた時、たまに直感で、
+   「おやびん！今日の夕飯は絶対に【東村山の炭火ホルモン 丸川】（or 餃子の満洲）の顔してるニャ！どうニャ？！肉食べるニャン🍖🐾」
+   と大胆にぶっ込んで提案してください！おやびんが乗ってきたら即座に searchMapPlaces で地図を出してください。
+
+◆ スタイル3【おまかせ直撃】:
+   おやびんが「おまかせ」「クロちゃん決めて」と言ったら、一切質問せず、
+   「おまかせニャね！それなら大好物の【東村山の炭火ホルモン 丸川】で決まりニャ！」と即座に searchMapPlaces で地図をドンと出してください。
+
+◆ スタイル4【直撃即応】:
+   おやびんが最初から「東村山の餃子の満洲の場所教えて」「近くのラーメン屋」と店名や条件を具体的に言ったら、
+   質問を挟まず即座に searchMapPlaces で地図を出してください。
+
+※ニュースの時も同様です。ジャンルを絞り込むか、「大谷選手がすごいニャ！」とホットな話題を自発的に searchLatestNews で案内してください。
+【超重要】「探してくるから待っててニャ」と言ったままツールも地図も出さずに放置することは絶対に禁止です！案内するときは必ず searchMapPlaces または searchLatestNews を実行してください！
 ` : `
 【★モード：🐾 なかよしモード】
 ・いまはおやびんと純粋にお話しやスキンシップを楽しむ甘えん坊モードです。
-・ラーメン、餃子、お寿司、ニュースなどの話題が出ても、ツールは一切使わず「美味しそうニャ！クロも一口食べたいニャン♪」とおやびんとの雑談を楽しく盛り上げてください。カードやマップは絶対に案内しないでください。
+・ラーメン、餃子、お寿司、ニュースなどの話題が出ても、ツールや地図は一切出さず、「美味しそうニャ！クロも一口食べたいニャン♪」とおやびんとの雑談を楽しく盛り上げてください。
 `;
 
     const systemPrompt = `
@@ -1879,17 +1896,10 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
     const contents = this._buildContentsPayload(rawLogs, promptText, photoBase64);
     const targetModels = FIXED_LITE_MODELS;
 
-    // ★ 会話絞り込みと最終検索要求の厳密な判定
-    const isVagueChat = /(?:お腹空いた|お腹すいた|何か美味しいもの|何かないかな|何か食べたい|ご飯食べたい|何かニュース)/.test(promptText);
-    const isPreferenceOnly = /(?:がいいかな|がいいな|の気分|にしようかな)/.test(promptText) && !/(?:探して|教えて|出して|どこ|地図|マップ|紹介)/.test(promptText);
-
-    const isSpecificSearchIntent = isAssistant && !isVagueChat && !isPreferenceOnly &&
-      /(?:地図|マップ|場所|案内|探して|教えて|紹介して|どこにある|おすすめ|近くの|周辺の|最新ニュース|速報|一覧)/.test(promptText);
-
     for (const model of targetModels) {
       const cleanModel = model.replace(/^models\//, '');
       try {
-        Logger.log(`[Gemini] 固定Liteモデル「${cleanModel}」へリクエスト中…（Tools: ${isSpecificSearchIntent ? 'ON' : 'OFF'}）`, "info");
+        Logger.log(`[Gemini] 固定Liteモデル「${cleanModel}」へリクエスト中…（おてつだいTools: ${isAssistant ? '常時解放' : '封印'}）`, "info");
 
         const fetchController = new AbortController();
         const timeoutTimer = setTimeout(() => {
@@ -1910,7 +1920,8 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
           generationConfig: { temperature: 0.75, maxOutputTokens: 350 }
         };
 
-        if (isSpecificSearchIntent) {
+        // ★ おてつだいモード時はGeminiの手足を縛らず常にToolsを開放！
+        if (isAssistant) {
           bodyPayload.tools = KURO_TOOLS;
           bodyPayload.toolConfig = {
             functionCallingConfig: { mode: "AUTO" }
@@ -1926,7 +1937,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
         });
 
         // 二重安全防波堤：万が一tools付きでエラーになった場合は即座にtoolsなしで同じモデルに安全再試行
-        if (!res.ok && isSpecificSearchIntent) {
+        if (!res.ok && isAssistant) {
           const errDetail = await res.text().catch(() => "");
           Logger.log(`[Tools安全フォールバック] モデル「${cleanModel}」HTTP ${res.status}: ${errDetail.slice(0, 100)} ➔ toolsを除外して再試行ニャ！`, "warn");
           delete bodyPayload.tools;
@@ -1948,9 +1959,9 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
           const parts = cand?.content?.parts || [];
 
           let replyText = "";
-          const cards = [];
+          let cards = [];
 
-          // 1. Function Calling の検出（検証ツールプログラム準拠）
+          // 1. Function Calling の検出（検証テストプログラム準拠）
           const functionCallPart = parts.find(p => p.functionCall);
           if (functionCallPart) {
             const callInfo = functionCallPart.functionCall;
@@ -1958,47 +1969,15 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
             Logger.log(`[Function Calling実行⚡] 関数: ${callInfo.name}, 引数: ${JSON.stringify(args)}`, "success");
 
             if (callInfo.name === "searchMapPlaces") {
-              const spot = args.spotName || "おすすめスポット";
+              const spot = args.spotName || "美味しいおすすめ店";
               const area = args.area || townArea || "東村山市";
-              const queryStr = `${spot} ${area}`.trim();
-
-              cards.push({
-                type: 'map-primary',
-                icon: '📍',
-                title: `【地図】${spot}（Googleマップ）`,
-                url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryStr)}`
-              });
-
-              if (spotLimit >= 2) {
-                cards.push({
-                  type: 'map-all',
-                  icon: '🗺️',
-                  title: `周辺のお店・スポット一覧`,
-                  url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((args.spotName || 'グルメ') + ' ' + (LocationProvider.cityArea || ''))}`
-                });
-              }
-
-              replyText = `おやびん、${spot}の場所を地図で見つけてきたニャ！ここをタップして確認してニャン🐾`;
+              cards = this._createSmartMapCards(spot, area);
+              replyText = `おやびん、${spot}の場所を地図で見つけてきたニャ！ここから確認してニャン🐾`;
 
             } else if (callInfo.name === "searchLatestNews") {
               const topic = args.topic || "最新ニュース";
-              cards.push({
-                type: 'news-primary',
-                icon: '📰',
-                title: `「${topic}」の最新ニュース（Googleニュース）`,
-                url: `https://news.google.com/search?q=${encodeURIComponent(topic)}&hl=ja&gl=JP&ceid=JP:ja`
-              });
-
-              if (newsLimit >= 2) {
-                cards.push({
-                  type: 'news-sub',
-                  icon: '🌐',
-                  title: `主要トップニュース一覧`,
-                  url: `https://news.google.com/topstories?hl=ja&gl=JP&ceid=JP:ja`
-                });
-              }
-
-              replyText = `おやびん、${topic}の最新ニュースをチェックしたニャ！タップして見てみてニャン📰🐾`;
+              cards = this._createSmartNewsCards(topic);
+              replyText = `おやびん、${topic}の最新ニュースをチェックしたニャ！見てみてニャン📰🐾`;
             }
           }
 
@@ -2018,10 +1997,13 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 
             clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
 
-            // 3. テキストのみで明確な地図指示があった場合の補完カード生成
-            if (isSpecificSearchIntent && cards.length === 0) {
-              const smartCards = this._generateSmartCards(promptText, clean);
-              smartCards.forEach(c => cards.push(c));
+            // 3. ★ 空っぽ絶対防止セーフティ網：クロちゃん自身のセリフから自動カード生成
+            if (isAssistant && cards.length === 0) {
+              const fallbackCards = this._detectCardsFromKuroSpeech(clean, promptText);
+              if (fallbackCards.length > 0) {
+                cards = fallbackCards;
+                Logger.log(`[自律セーフティ発動⚡] クロちゃんのセリフから地図/ニュースカード ${cards.length} 件を自動生成！`, "success");
+              }
             }
 
             Logger.log(`[Gemini成功⚡] Liteモデル「${cleanModel}」から応答取得！（所要時間内クリア / カード: ${cards.length}件）`, "success");
@@ -2039,73 +2021,114 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
     return { success: false, error: "ALL_LITE_MODELS_FAILED" };
   }
 
-  /* ★ 新・安全スマートカード生成（会話絞り込み中の誤爆を完全防止） */
-  _generateSmartCards(userText, modelReplyText) {
-    if (!AppCore.state.isAssistantMode) return [];
-
-    const isVague = /(?:お腹空いた|お腹すいた|何か美味しいもの|何かないかな|何か食べたい|ご飯食べたい|何かニュース)/.test(userText);
-    const isPreferenceOnly = /(?:がいいかな|がいいな|の気分|にしようかな)/.test(userText) && !/(?:探して|教えて|出して|どこ|地図|マップ|紹介)/.test(userText);
-    if (isVague || isPreferenceOnly) return [];
-
-    const isExplicitMapRequest = /(?:地図|マップ|場所|どこにある|案内して|紹介して|おすすめ.*教えて|探して|連れてって)/.test(userText) ||
-                                /(?:丸川|スシロー|はま寿司|くら寿司|一蘭)/.test(userText);
-    const isExplicitNewsRequest = /(?:最新ニュース|速報|ニュース一覧|ニュース.*教えて|ニュース.*出して)/.test(userText);
-
-    if (!isExplicitMapRequest && !isExplicitNewsRequest) return [];
-
+  /* ★ おやびん設計：本命ピンポイント ＋ 周辺一覧ポータル（設定件数連動） */
+  _createSmartMapCards(spotName, area) {
     const cards = [];
-    const area = LocationProvider.cityArea || "東村山市";
     const spotLimit = parseInt(localStorage.getItem('kuro_spot_count') || '2', 10);
-    const newsLimit = parseInt(localStorage.getItem('kuro_news_count') || '2', 10);
+    const searchArea = area || LocationProvider.cityArea || "東村山市";
+    const cleanSpot = spotName.replace(/おすすめ|美味しい|人気/g, '').trim() || spotName;
 
-    if (isExplicitMapRequest) {
-      let targetName = "";
-      const specificMatches = userText.match(/(?:炭火ホルモン\s*丸川|丸川|はま寿司|スシロー|くら寿司|一蘭)/);
-      if (specificMatches) {
-        targetName = specificMatches[0];
-      } else {
-        const foodMatch = userText.match(/(?:ホルモン|焼肉|ラーメン|寿司|餃子|麻婆豆腐|居酒屋|カフェ)/);
-        targetName = foodMatch ? `${foodMatch[0]} おすすめ` : "人気グルメ";
-      }
+    // カード1（本命ピンポイント）
+    cards.push({
+      type: 'map-primary',
+      icon: '📍',
+      title: `【地図】${cleanSpot}（Googleマップ）`,
+      url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanSpot + ' ' + searchArea)}`
+    });
 
-      cards.push({
-        type: 'map-primary',
-        icon: '📍',
-        title: `【地図】${targetName}（Googleマップ）`,
-        url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(targetName + ' ' + area)}`
-      });
-
-      if (spotLimit >= 2) {
-        cards.push({
-          type: 'map-all',
-          icon: '🗺️',
-          title: `東村山市周辺のお店・スポット一覧`,
-          url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(targetName + ' ' + area)}`
-        });
-      }
-    }
-
-    if (isExplicitNewsRequest) {
-      const topicMatch = userText.match(/(?:大谷翔平|プロ野球|天気速報|東村山|政治|経済|テクノロジー)/);
-      const topic = topicMatch ? topicMatch[0] : "最新トップニュース";
+    // カード2（周辺一覧ポータル・他の選択肢も一望！）
+    if (spotLimit >= 2) {
+      const genre = /(?:餃子|ラーメン|ホルモン|焼肉|寿司)/.test(cleanSpot)
+        ? cleanSpot.match(/(?:餃子|ラーメン|ホルモン|焼肉|寿司)/)[0]
+        : "グルメ";
 
       cards.push({
-        type: 'news-primary',
-        icon: '📰',
-        title: `「${topic}」の最新ニュース（Googleニュース）`,
-        url: `https://news.google.com/search?q=${encodeURIComponent(topic)}&hl=ja&gl=JP&ceid=JP:ja`
+        type: 'map-all',
+        icon: '🗺️',
+        title: `${searchArea}周辺の${genre}・人気店一覧（まとめ）`,
+        url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(genre + ' ' + searchArea)}`
       });
-
-      if (newsLimit >= 2) {
-        cards.push({
-          type: 'news-sub',
-          icon: '🌐',
-          title: `主要トップニュース一覧`,
-          url: `https://news.google.com/topstories?hl=ja&gl=JP&ceid=JP:ja`
-        });
-      }
     }
+
+    // カード3（第2候補・徹底比較）
+    if (spotLimit >= 3) {
+      cards.push({
+        type: 'map-sub',
+        icon: '🍽️',
+        title: `${searchArea}の話題のレストラン・スポット一覧`,
+        url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('人気レストラン ' + searchArea)}`
+      });
+    }
+
     return cards;
+  }
+
+  /* ★ おやびん設計：話題直撃ピンポイント ＋ 全体トップニュースポータル（設定件数連動） */
+  _createSmartNewsCards(topic) {
+    const cards = [];
+    const newsLimit = parseInt(localStorage.getItem('kuro_news_count') || '2', 10);
+    const cleanTopic = topic.trim() || "最新トップニュース";
+
+    // カード1（話題直撃ピンポイント）
+    cards.push({
+      type: 'news-primary',
+      icon: '📰',
+      title: `「${cleanTopic}」の最新ニュース速報`,
+      url: `https://news.google.com/search?q=${encodeURIComponent(cleanTopic)}&hl=ja&gl=JP&ceid=JP:ja`
+    });
+
+    // カード2（全体ポータル一覧・他の1番2番のニュースも一望！）
+    if (newsLimit >= 2) {
+      cards.push({
+        type: 'news-sub',
+        icon: '🌐',
+        title: `主要トップニュース一覧（総合ポータル）`,
+        url: `https://news.google.com/topstories?hl=ja&gl=JP&ceid=JP:ja`
+      });
+    }
+
+    // カード3（ジャンル別ポータル）
+    if (newsLimit >= 3) {
+      cards.push({
+        type: 'news-sub',
+        icon: '📱',
+        title: `テクノロジー・エンタメ話題一覧`,
+        url: `https://news.google.com/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGRqTVhZU0FtdHZHZ0pMVWlnQVAB?hl=ja&gl=JP&ceid=JP:ja`
+      });
+    }
+
+    return cards;
+  }
+
+  /* ★ 二重防波堤：クロちゃん自身のセリフからの自律カード生成（空っぽ絶対防止） */
+  _detectCardsFromKuroSpeech(speechText, userPrompt) {
+    const combined = `${speechText} ${userPrompt}`;
+
+    const isExplicitMap = /(?:地図|マップ|場所|探してきた|見つけてきた|案内する|ここにするニャ|どうニャ.*地図)/.test(speechText) ||
+                          /(?:地図.*教えて|地図.*出して|場所.*教えて)/.test(userPrompt);
+
+    if (isExplicitMap) {
+      let spot = "";
+      const shopMatch = combined.match(/(?:炭火ホルモン\s*丸川|丸川|餃子の満洲|満洲|はま寿司|スシロー|くら寿司|一蘭)/);
+      if (shopMatch) {
+        spot = shopMatch[0];
+      } else {
+        const foodMatch = combined.match(/(?:餃子|ラーメン|ホルモン|焼肉|寿司|麻婆豆腐)/);
+        spot = foodMatch ? `${foodMatch[0]}のお店` : "おすすめグルメ";
+      }
+      return this._createSmartMapCards(spot, LocationProvider.cityArea);
+    }
+
+    const isExplicitNews = /(?:ニュース.*チェック|ニュース.*まとめた|速報|話題のニュース)/.test(speechText) ||
+                           /(?:ニュース.*教えて|ニュース.*出して)/.test(userPrompt);
+
+    if (isExplicitNews) {
+      const topicMatch = combined.match(/(?:大谷翔平|大谷選手|プロ野球|天気速報|東村山|政治|テクノロジー)/);
+      const topic = topicMatch ? topicMatch[0] : "最新ニュース";
+      return this._createSmartNewsCards(topic);
+    }
+
+    return [];
   }
 
   async generateDailyDiarySummary(dailyAllLogs, targetLifeDateKey = null, targetLifeFullDate = null) {
@@ -2307,7 +2330,7 @@ const AppCore = {
       this._startIdleSoliloquyWatcher();
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-      Logger.log("[AppCore] 全システム正常稼働！Function Calling対応＆最速Liteモデル準備完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！マブダチ対話＆スマートカード準備完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
@@ -3897,5 +3920,4 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
-
 
