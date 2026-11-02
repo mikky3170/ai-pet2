@@ -139,7 +139,7 @@
       transition: all 0.25s ease-out;
       letter-spacing: 0.3px;
     }
-    /* ★ 声を聞き取った瞬間の鮮やかなパルス発光アニメーション */
+    /* 声を聞き取った瞬間の鮮やかなパルス発光アニメーション */
     #status-text.is-hearing {
       background: #0284c7 !important;
       color: #ffffff !important;
@@ -1489,7 +1489,6 @@
       </div>
 
       <div class="top-header-right">
-        <!-- ★ 初期バッジ表示を 3.5 Flash Lite に統一 -->
         <span id="model-badge" class="model-badge lite">🐾 3.5 Flash Lite</span>
       </div>
     </div>
@@ -1924,19 +1923,16 @@
       <div class="form-group">
         <label>クロの肉声ボイス（VOICEVOX）:</label>
         <div class="voice-control-row">
+          <!-- ★ VOICEVOX厳選8名（もち子さん・WhiteCUL・ミコ・Voidoll新設） -->
           <select id="voice-speaker-select" class="voice-select-box">
             <option value="10" selected>🌟 雨晴はう（ノーマル）【推奨・子猫声】</option>
             <option value="0">🌸 四国めたん（あまあま）</option>
-            <option value="2">🌸 四国めたん（ノーマル）</option>
-            <option value="6">🌸 四国めたん（ツンツン）</option>
-            <option value="1">🌱 ずんだもん（あまあま）</option>
             <option value="3">🌱 ずんだもん（ノーマル）</option>
-            <option value="7">🌱 ずんだもん（ツンツン）</option>
-            <option value="55">🐱 猫使アル（ノーマル）</option>
-            <option value="56">🐱 猫使アル（おちつき）</option>
             <option value="58">🐱 猫使ビィ（ノーマル）</option>
-            <option value="8">🌻 春日部つむぎ（ノーマル）</option>
-            <option value="9">⚡ 波音リツ（ノーマル）</option>
+            <option value="20">🍡 もち子さん（ノーマル）</option>
+            <option value="23">❄️ WhiteCUL（ノーマル）</option>
+            <option value="43">🌸 櫻歌ミコ（ノーマル）</option>
+            <option value="75">🤖 Voidoll（ノーマル）</option>
           </select>
           <button type="button" class="btn-voice-test" id="test-voice-btn">🔊 テスト</button>
         </div>

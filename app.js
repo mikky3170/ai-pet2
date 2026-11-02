@@ -1,8 +1,9 @@
+
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆システムロジック（app.js 完全版 V.1.1.1）
    - バージョン 1.1.1 正式安定版（version.js 一元管理連動）
+   - 【自然なステータス連動】聴いてる ➔ 聞こえてる ➔ 考え中/お調べ中 ➔ お話し中 ➔ 復帰
    - 【モデル完全固定】① gemini-3.5-flash-lite（主軸0.69秒）/ ② gemini-flash-lite-latest（5秒控え）
-   - 【廃止モデル完全撤廃】404エラーとなる2.0/2.5、および3.8-flashをコードレベルで完全排除
    - 【マイク安全フィードバック】スマホ禁忌ゼロの onspeechstart による「聞こえてるニャ…！」パルス発光
    - 【在宅・散歩の自動判定】自宅座標との距離判定により「家の中にいるのに散歩してます」と答えるバグを根絶
    - 【決めつけ完全撤廃】室内写真の散歩決めつけ、絵日記の架空散歩捏造、タイマーのラーメン決めつけを解消
@@ -109,7 +110,7 @@ const TimeProvider = {
     const spokenDate = `きょうは、${year}年${month}月${date}日、${dayOfWeek}曜日だニャ！`;
 
     const clockDisplay = `いまは ${hours}時${pad(minutes)}分 だニャン🐾`;
-    const dateDisplay = `きょうは ${month}月${date}日 (${dayOfWeek}曜日) だニャ！`;
+    const dateDisplay = `きょうは ${month}月${date}日 (${dayOfWeek曜日}) だニャ！`;
 
     return {
       now,
@@ -650,6 +651,8 @@ class AudioSpeechEngine {
       if (!hasTriggeredStart) {
         hasTriggeredStart = true;
         this.isSpeaking = true;
+        const st = document.getElementById('status-text');
+        if (st) st.textContent = "🗣️ お話し中ニャ♪";
         if (onStart) onStart();
       }
     };
@@ -683,6 +686,8 @@ class AudioSpeechEngine {
 
         setTimeout(() => {
           if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !this.isActionButtonLocked && !AppCore.state.isThinking && !AppCore.state.isProcessingInput) {
+            const st = document.getElementById('status-text');
+            if (st) st.textContent = "👂 聴いてるニャ♪";
             this.startListening();
           }
         }, cooldownMs);
@@ -694,7 +699,11 @@ class AudioSpeechEngine {
         if (onStart) onStart();
         if (onEnd) onEnd();
         setTimeout(() => {
-          if (AppCore.state.isRunning && !this.isActionButtonLocked) this.startListening();
+          if (AppCore.state.isRunning && !this.isActionButtonLocked) {
+            const st = document.getElementById('status-text');
+            if (st) st.textContent = "👂 聴いてるニャ♪";
+            this.startListening();
+          }
         }, cooldownMs);
       };
 
@@ -705,7 +714,11 @@ class AudioSpeechEngine {
       if (onStart) onStart();
       if (onEnd) onEnd();
       setTimeout(() => {
-        if (AppCore.state.isRunning && !this.isActionButtonLocked) this.startListening();
+        if (AppCore.state.isRunning && !this.isActionButtonLocked) {
+          const st = document.getElementById('status-text');
+          if (st) st.textContent = "👂 聴いてるニャ♪";
+          this.startListening();
+        }
       }, cooldownMs);
     }
   }
@@ -786,6 +799,9 @@ class AudioSpeechEngine {
         this.masterAudio.src = blobUrl;
         this.masterAudio.playbackRate = this.rate;
         this.isSpeaking = true;
+        const st = document.getElementById('status-text');
+        if (st) st.textContent = "🗣️ お話し中ニャ♪";
+
         if (AppCore.avatar) AppCore.avatar.setEmotion('talking');
 
         this.masterAudio.onended = () => {
@@ -804,6 +820,9 @@ class AudioSpeechEngine {
     this.isReadingAloud = false;
     this.isSpeaking = false;
     if (AppCore.avatar) AppCore.avatar.setEmotion('idle');
+    const st = document.getElementById('status-text');
+    if (st && AppCore.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
+
     if (onComplete) onComplete();
     setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, 200);
   }
@@ -815,6 +834,8 @@ class AudioSpeechEngine {
       this.readingAbortController = null;
     }
     this.stopSpeaking();
+    const st = document.getElementById('status-text');
+    if (st && AppCore.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
   }
 
   stopSpeaking() {
@@ -866,9 +887,6 @@ class AudioSpeechEngine {
       const st = document.getElementById('status-text');
       if (st) {
         st.classList.remove('is-hearing');
-        if (this.isListening && !this.isSpeaking && !AppCore.state.isThinking) {
-          st.textContent = "👂 聴いてるニャ♪";
-        }
       }
     };
 
@@ -1734,7 +1752,7 @@ class AIThoughtEngine {
 ・現在地を聞かれたら、「いまはお家でミッキーさんとまったりしてるニャン🐾」「${townArea}のお家にいるニャ♪」と答えてください。
 ・写真を見せられたら、お部屋の中で見せてもらった思い出として嬉しそうにコメントしてください。
 ` : `
-【★超重要・現在のシチュエーション：お外でお散歩・外出中です】
+【★超重要・現在のシチューション：お外でお散歩・外出中です】
 ・いまはお外の【${townArea}】をミッキーさんとお散歩中またはお出かけ中です。
 ・現在地を聞かれたら、「いまは${townArea}をお散歩中ニャン🐾」と答えてください。
 `;
@@ -2115,7 +2133,6 @@ const AppCore = {
 
     const logs = StorageManager.loadRecentTimelineLogs();
     if (logs.length === 0) {
-      // プリフェッチ音声と完全一致
       this.renderBubble('model', "おやびん、わたしはクロだニャン🐾 今日もいっぱいお話しするニャ♪");
       return;
     }
@@ -2135,6 +2152,8 @@ const AppCore = {
       this.state.isDiaryReading = false;
       this._updateDiaryReadBtnUI(false);
       this.audio.playEffect('aizuchi');
+      const st = document.getElementById('status-text');
+      if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
     };
 
     this.audio.onSpeechFinal = (finalText) => {
@@ -2374,6 +2393,9 @@ const AppCore = {
       const mins = parseInt(timerMatch[1], 10);
       this.startKitchenTimer(mins, text.includes('ラーメン'));
       const rep = `了解ニャ！${mins}分クロがしっかり見ておくニャン🐾`;
+
+      const st = document.getElementById('status-text');
+      if (st) st.textContent = "⏱️ タイマーセット中ニャ…";
       
       const box = document.getElementById('chat-timeline');
       const row = document.createElement('div');
@@ -2394,12 +2416,16 @@ const AppCore = {
       }, () => {
         if (this.avatar) this.avatar.setEmotion('idle');
         this.state.isProcessingInput = false;
+        if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
       });
       return;
     }
 
     const direct = this._checkDirectIntent(text);
     if (direct) {
+      const st = document.getElementById('status-text');
+      if (st) st.textContent = direct.waiting || "確認中ニャ…🐾";
+
       const box = document.getElementById('chat-timeline');
       const row = document.createElement('div');
       row.className = 'chat-row model';
@@ -2420,6 +2446,7 @@ const AppCore = {
       }, () => {
         if (this.avatar) this.avatar.setEmotion('idle');
         this.state.isProcessingInput = false;
+        if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
       });
       return;
     }
@@ -2444,6 +2471,9 @@ const AppCore = {
   async handleGoodNightFlow(userText) {
     StorageManager.appendChatLog('user', userText);
 
+    const st = document.getElementById('status-text');
+    if (st) st.textContent = "💤 おやすみ準備中ニャ…";
+
     const timeInfo = TimeProvider.getCurrentInfo();
     const reply = "おやすみニャおやびん♪ 今日の夜の分も日記に書き足して仕上げておくニャン…💤 良い夢見てニャ🐾";
 
@@ -2464,6 +2494,7 @@ const AppCore = {
     }, () => {
       if (this.avatar) this.avatar.setEmotion('idle');
       this.state.isProcessingInput = false;
+      if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
     });
 
     const lifeKey = timeInfo.lifeLogKey;
@@ -2482,6 +2513,10 @@ const AppCore = {
     this.state.isDiaryProcessing = true;
     this.state.isThinking = true;
     if (this.avatar) this.avatar.setEmotion('thinking');
+
+    // ★ ステータスバーを「📖 日記書き中ニャ…」に切り替え
+    const st = document.getElementById('status-text');
+    if (st) st.textContent = "📖 日記書き中ニャ…";
 
     const box = document.getElementById('chat-timeline');
     const row = document.createElement('div');
@@ -2519,6 +2554,7 @@ const AppCore = {
         this.state.isThinking = false;
         this.state.isProcessingInput = false;
         this.state.isDiaryProcessing = false;
+        if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
       });
 
     } else {
@@ -2532,6 +2568,7 @@ const AppCore = {
         this.state.isThinking = false;
         this.state.isProcessingInput = false;
         this.state.isDiaryProcessing = false;
+        if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
       });
     }
   },
@@ -2539,6 +2576,16 @@ const AppCore = {
   async executeThought(promptText, photoBase64 = null) {
     this.state.isThinking = true;
     if (this.avatar) this.avatar.setEmotion('thinking');
+
+    // ★ 上部ステータスバーを状況に合わせて切り替え（考え中 / お調べ中 / 写真確認中）
+    const st = document.getElementById('status-text');
+    let thinkingStatus = "💭 考え中ニャ…";
+    if (photoBase64) {
+      thinkingStatus = "📷 写真見てるニャ…";
+    } else if (/(?:ニュース|ラーメン|お店|天気|気温|スポット|近く)/.test(promptText)) {
+      thinkingStatus = "🔍 お調べ中ニャ…";
+    }
+    if (st) st.textContent = thinkingStatus;
 
     const box = document.getElementById('chat-timeline');
     const row = document.createElement('div');
@@ -2574,8 +2621,6 @@ const AppCore = {
       this.audio.speak(res.text, null, () => {
         bubble.className = 'chat-bubble';
         bubble.textContent = res.text;
-        const st = document.getElementById('status-text');
-        if (st) st.textContent = "🗣️ お話し中ニャ♪";
 
         if (cards.length > 0) {
           const cardBox = document.createElement('div');
@@ -2596,6 +2641,7 @@ const AppCore = {
         if (this.avatar) this.avatar.setEmotion('idle');
         this.state.isThinking = false;
         this.state.isProcessingInput = false;
+        if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
       });
 
     } else {
@@ -2609,6 +2655,7 @@ const AppCore = {
         if (this.avatar) this.avatar.setEmotion('talking');
       }, () => {
         if (this.avatar) this.avatar.setEmotion('idle');
+        if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
       });
     }
   },
@@ -2654,6 +2701,7 @@ const AppCore = {
   triggerActionVoice(shortPhrase, statusDisplay, cooldownMs = 350) {
     this.audio.stopListening();
     this.audio.isActionButtonLocked = true;
+    this.audio.unlockMasterAudio();
 
     const feedbackPref = localStorage.getItem('kuro_button_feedback') || 'voice';
     const st = document.getElementById('status-text');
@@ -3265,7 +3313,7 @@ const AppCore = {
       };
     }
 
-    /* ★ 会話中 / お休みボタン（可愛い「🟢 会話中」を100%キープ） */
+    /* ★ 会話中 / お休みボタン */
     const pauseBtn = document.getElementById('pause-btn');
     if (pauseBtn) {
       pauseBtn.onclick = () => {
@@ -3559,5 +3607,4 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
-
 
