@@ -1,4 +1,3 @@
-
 /* ==========================================================================
    【永久不変仕様書】AIペット クロちゃん🐾 対話エンジン＆設計思想（app.js）
    ==========================================================================
@@ -27,7 +26,7 @@
        直近【10往復（20件）】だけ厳選してGeminiに送信。0.6秒台の爆速と深い文脈を両立！
      ・【その日の絵日記を書いた後】：長い会話を手放し、「今日の日記」＋「直近5往復（10件）」に切り替え。
 
-   ■ 3. 愛情たっぷり！ふれあい機能 ＆ 砂時計キッチンタイマー ＆ 空中くるりん着地
+   ■ 3. 愛情たっぷり！ふれあい機能 ＆ 砂時計キッチンタイマー ＆ スヤスヤお昼寝
      ・① スマホ横倒し検知 ＆ 空中くるりん着地（足跡キラリ🐾✨ ＆ 最新へ自動スクロール）：
         - 歩行時や持ち歩きの揺れ（傾き45度未満）では動かない「不感帯（遊び）」を設定。
         - 横倒し検知時、ボタン類がシュッと一時退避し、クロちゃんが空中で身を丸めて「くるりんっ♪トンッ！」と着地。
@@ -38,6 +37,9 @@
      ・④ 漆黒の砂時計タイマー：
         - 「ちょい待ちニャ🐾」（一時停止）＆「すすめるニャ！🐾」（再開）
         - 完了時ハイブリッド仕様：3回リピートアラーム ＆ タップで即座に消音・消去完了！
+     ・⑤ リアル猫ちゃんスヤスヤお昼寝（Zzz…）＆自然まばたき：
+        - 通常待機中は約4.5秒に1回、リアル猫ちゃんの瞳が上品にパチパチまばたき。
+        - お休み中（一時停止）にすると、まぶたを優しく閉じてスヤスヤ揺れ、頭上から「Zzz…💤」がポワポワ出現！
 
    ■ 4. 通信防波堤（20秒タイムアウト ＆ 最短1発クリア設計）
      ・平常時（Google健全時）：0.6秒〜0.8秒で即座に即答（タイムアウト待ちは1ミリも発生しない）。
@@ -1365,7 +1367,6 @@ const StorageManager = {
     }
   },
 
-  // ★ 散歩写真プール管理：その日撮った写真を配列で保持（AI最適選定用）
   addPhotoToDailyPool(photoBase64, userComment = "") {
     const timeInfo = TimeProvider.getCurrentInfo();
     const photoPoolKey = `kuro_daily_photos_${timeInfo.lifeLogKey}`;
@@ -1378,7 +1379,6 @@ const StorageManager = {
         time: timeInfo.clock,
         timestamp: Date.now()
       });
-      // 最大10枚まで安全保持
       localStorage.setItem(photoPoolKey, JSON.stringify(pool.slice(-10)));
       Logger.log(`[PhotoPool] 今日の写真プールに保存完了（総数: ${pool.length}枚）`, "info");
     } catch(e) {}
@@ -1533,7 +1533,7 @@ const StorageManager = {
     const ymd = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
     const hm = `${pad(now.getHours())}${pad(now.getMinutes())}`;
     const filename = `クロちゃんデータ_${ymd}_${hm}.json`;
-    const curVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.1.6.0";
+    const curVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.1.7.0";
 
     const pkg = {
       format: "kuro_pure_data_package",
@@ -1790,11 +1790,9 @@ class CatAvatarRenderer {
     }, 1800);
   }
 
-  // ★ 空中くるりん＆トンッ！着地アニメーション（キラリ足跡エフェクト🐾✨連動）
   triggerFlipLanding() {
     if (!this.catStageBox) return;
 
-    // UIボタン類の退避
     const snackBtn = document.getElementById('snack-btn');
     const transBtn = document.getElementById('transform-btn');
     const timerWidget = document.getElementById('kitchen-timer-widget');
@@ -1806,12 +1804,10 @@ class CatAvatarRenderer {
       }
     });
 
-    // 猫ちゃんの空中くるりん着地
     this.catStageBox.classList.remove('cat-stage-flip');
     void this.catStageBox.offsetWidth;
     this.catStageBox.classList.add('cat-stage-flip');
 
-    // 着地直前（320ms）に足元へキラリ足跡エフェクト（🐾✨）がフワッと弾ける
     setTimeout(() => {
       if (this.sparkleEl) {
         this.sparkleEl.classList.remove('is-popping');
@@ -1823,7 +1819,6 @@ class CatAvatarRenderer {
       }
     }, 320);
 
-    // 0.42秒後、着地完了でUIボタンをポンッ♪と再出現
     setTimeout(() => {
       if (this.catStageBox) this.catStageBox.classList.remove('cat-stage-flip');
 
@@ -2249,7 +2244,6 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
     return [];
   }
 
-  // ★ 散歩写真AI最適選定：絵日記の内容に最もふさわしい写真を自律選定
   async generateDailyDiarySummary(dailyAllLogs, targetLifeDateKey = null, targetLifeFullDate = null) {
     if (!this.apiKey) return { success: false };
 
@@ -2321,7 +2315,6 @@ ${conversationHistoryText || '今日はおやびんとまったりお家で過�
           clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
           Logger.log(`[Diary成功⚡] 絵日記が完成したニャ！（文字数: ${clean.length}字）`, "success");
 
-          // 写真プールから日記内容に一番合致する写真をAI選定
           const photoPool = StorageManager.getDailyPhotoPool(lifeKey);
           let bestPhoto = null;
           if (photoPool.length > 0) {
@@ -2449,8 +2442,8 @@ const AppCore = {
     this._bindGlassesAdjusterUI();
     this._bindBookStudioUI();
     this._bindPhotoUploadUI();
-    this._bindOrientationWatcher(); // スマホ横倒し検知＆回転時最下部自動スクロール
-    this._bindScrollToBottomUI();   // 「🐾 最新へ」肉球ボタン連動
+    this._bindOrientationWatcher();
+    this._bindScrollToBottomUI();
 
     try {
       this._renderMemories();
@@ -2512,15 +2505,12 @@ const AppCore = {
       });
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-      Logger.log("[AppCore] 全システム正常稼働！光彩ルーフ＆スマートステータス＆AI写真選定準備完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！光彩ルーフ＆ワイドステータス＆スヤスヤお昼寝準備完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
   },
 
-  /* ==========================================================================
-     ★ MODULE 6.1: 会話タイムラインの最下部（最新）スクロール制御
-     ========================================================================== */
   _scrollToLatest(smooth = true) {
     const box = document.getElementById('chat-timeline');
     if (!box) return;
@@ -2534,9 +2524,6 @@ const AppCore = {
     }
   },
 
-  /* ==========================================================================
-     ★ MODULE 6.2: 「🐾 最新へ」肉球ボタンの監視とスクロール連動
-     ========================================================================== */
   _bindScrollToBottomUI() {
     const box = document.getElementById('chat-timeline');
     const btn = document.getElementById('btn-scroll-bottom');
@@ -2559,9 +2546,6 @@ const AppCore = {
     };
   },
 
-  /* ==========================================================================
-     ★ MODULE 6.3: スマホ横倒し検知 ＆ 空中くるりん着地制御（自動スクロール連動）
-     ========================================================================== */
   _bindOrientationWatcher() {
     const checkOrientation = () => {
       const isWidthGreater = window.innerWidth > window.innerHeight;
@@ -2573,12 +2557,10 @@ const AppCore = {
           clearTimeout(this.state.orientationDebounceTimer);
         }
 
-        // 200msの不感帯（デバウンス）
         this.state.orientationDebounceTimer = setTimeout(() => {
           this.state.isLandscape = newLandscape;
           Logger.log(`[姿勢検知⚡] スマホの向きが変化: ${newLandscape ? '📱 横向き（Landscape）' : '📱 縦向き（Portrait）'}`, "info");
 
-          // 空中くるりん着地アニメーション発動 ＆ スッキリステータス表示
           if (this.avatar) {
             this.avatar.triggerFlipLanding();
           }
@@ -2595,7 +2577,6 @@ const AppCore = {
             }, 1800);
           }
 
-          // 最新会話への自動スクロール
           setTimeout(() => { this._scrollToLatest(true); }, 150);
           setTimeout(() => { this._scrollToLatest(true); }, 450);
 
@@ -2696,7 +2677,6 @@ const AppCore = {
     }
   },
 
-  // ★ 改善：怖くない優しいリロード処理
   async forceRefreshApp() {
     const isOk = window.confirm("【ご安心ください】\n日記や会話、記憶データは一切消えません。\n最新の画面プログラムを読み直しますかニャ？🐾");
     if (!isOk) return;
@@ -2917,9 +2897,6 @@ const AppCore = {
     return null;
   },
 
-  /* ==========================================================================
-   ★ MODULE 7: 砂時計タイマー ＆ ハイブリッドアラーム
-   ========================================================================== */
   _normalizeKanjiNumbers(str) {
     if (!str) return "";
     let s = str.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
@@ -3835,9 +3812,6 @@ const AppCore = {
     }
   },
 
-  /* ==========================================================================
-     ★ MODULE 8: 設定・記憶帳・その他UI制御
-     ========================================================================== */
   _bindGlassesAdjusterUI() {
     const modal = document.getElementById('glasses-adjust-modal');
     const previewImg = document.getElementById('adjust-cat-img');
@@ -4185,6 +4159,7 @@ const AppCore = {
       };
     }
 
+    // ★ 会話中／おやすみ中（お昼寝中）トグルボタン
     const pauseBtn = document.getElementById('pause-btn');
     if (pauseBtn) {
       pauseBtn.onclick = () => {
@@ -4192,20 +4167,32 @@ const AppCore = {
         this.state.isRunning = !this.state.isRunning;
         const icon = document.getElementById('pause-icon');
         const txt = document.getElementById('pause-text');
+        const wrap = document.getElementById('avatar-wrapper');
 
         if (!this.state.isRunning) {
+          // お昼寝モード突入
           pauseBtn.classList.add('is-paused');
           if (icon) icon.textContent = "🛑";
           if (txt) txt.textContent = "お休み中";
+          if (wrap) wrap.classList.add('is-sleeping');
+
           this.audio.stopListening();
           this.audio.stopReadingAloud();
           this.audio.stopSpeaking();
-          this.renderBubble('model', "お昼寝するニャ…💤");
+          this.renderBubble('model', "お昼寝するニャ…💤（すやすや…）");
+          const st = document.getElementById('status-text');
+          if (st) st.textContent = "💤 すやすやお昼寝中…";
+
         } else {
+          // 起床
           pauseBtn.classList.remove('is-paused');
           if (icon) icon.textContent = "🟢";
           if (txt) txt.textContent = "会話中";
+          if (wrap) wrap.classList.remove('is-sleeping');
+
           this.renderBubble('model', "起きたニャ！呼んでニャ🐾");
+          const st = document.getElementById('status-text');
+          if (st) st.textContent = "👂 聴いてるニャ♪";
           this.audio.startListening();
         }
       };
@@ -4524,5 +4511,4 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
-
 

@@ -25,19 +25,27 @@
       --bubble-bg: rgba(255, 255, 255, 0.98);
       --text-color: #1f2937;
       --shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-      --outer-bg: #e2e8f0; /* ライトモード時の角丸外側（スマホのバーと調和） */
+      --outer-bg: #cbd5e1; /* ライトモード時の角丸外側 */
       --container-bg: #ffffff;
-      /* ★ ひと目で分かる上品なシャンパンピンク＆シルバーの光彩ライン */
-      --roof-border-color: rgba(244, 114, 182, 0.65);
-      --roof-glow: 0 0 14px rgba(244, 114, 182, 0.35), 0 -2px 0 1px rgba(255, 255, 255, 0.9) inset;
+      /* ★ ひと目でくっきり分かる上質シャンパンピンク＆シルバーの二重インセット光彩ルーフ */
+      --roof-border-color: #f472b6;
+      --roof-glow: 
+        inset 0 3px 0 0 rgba(255, 255, 255, 0.95),
+        inset 0 0 14px rgba(244, 114, 182, 0.55),
+        inset 0 0 0 2.5px rgba(244, 114, 182, 0.8),
+        0 8px 30px rgba(244, 114, 182, 0.25);
     }
 
     /* スマホのダークモード連動 */
     @media (prefers-color-scheme: dark) {
       :root {
         --outer-bg: #090d16;
-        --roof-border-color: rgba(244, 114, 182, 0.5);
-        --roof-glow: 0 0 16px rgba(56, 189, 248, 0.35), 0 -1.5px 0 1px rgba(255, 255, 255, 0.2) inset;
+        --roof-border-color: #f472b6;
+        --roof-glow: 
+          inset 0 2px 0 0 rgba(255, 255, 255, 0.35),
+          inset 0 0 16px rgba(56, 189, 248, 0.45),
+          inset 0 0 0 2.5px rgba(244, 114, 182, 0.7),
+          0 8px 30px rgba(0, 0, 0, 0.6);
       }
     }
 
@@ -94,7 +102,7 @@
     #toast-notification.error { background: #450a0a; color: #fca5a5; border: 1.5px solid #ef4444; }
     #toast-notification.info { background: #0f172a; color: #38bdf8; border: 1.5px solid #38bdf8; }
 
-    /* ★ 上部角丸 ＆ 誰が見てもひと目で分かる美しい光彩ルーフボーダー */
+    /* ★ 上部角丸 ＆ 画面端に張り付いても内側でくっきり発光する二重ルーフボーダー */
     #pet-container {
       position: absolute;
       width: 100%;
@@ -103,14 +111,14 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: env(safe-area-inset-top, 10px) 14px env(safe-area-inset-bottom, 10px) 14px;
+      padding: env(safe-area-inset-top, 8px) 12px env(safe-area-inset-bottom, 8px) 12px;
       z-index: 50;
       box-sizing: border-box;
       background: var(--container-bg);
-      border-top-left-radius: 28px;
-      border-top-right-radius: 28px;
-      border-top: 2px solid var(--roof-border-color);
-      box-shadow: var(--roof-glow), 0 10px 35px rgba(0, 0, 0, 0.1);
+      border-top-left-radius: 26px;
+      border-top-right-radius: 26px;
+      border-top: 3px solid var(--roof-border-color);
+      box-shadow: var(--roof-glow);
       transition: all 0.3s ease-out;
       overflow: hidden;
     }
@@ -141,10 +149,10 @@
       justify-content: space-between;
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(8px);
-      padding: 6px 10px;
+      padding: 6px 8px;
       border-radius: 24px;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-      border: 1px solid rgba(241, 245, 249, 0.8);
+      border: 1px solid rgba(241, 245, 249, 0.85);
       font-size: 11px;
       font-weight: bold;
       color: #4a5568;
@@ -155,32 +163,34 @@
     .top-header-left, .top-header-right { display: flex; align-items: center; flex-shrink: 0; gap: 5px; }
     #clock-display { font-size: 12px; font-weight: 800; color: #334155; padding-left: 2px; }
 
+    /* ★ 改善：左右の余白を贅沢に活かしたワイドオーバルピル（幅広ステータスバッジ） */
     #status-badge-container {
       flex: 1;
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 0 2px;
+      padding: 0 4px;
       min-width: 0;
     }
 
-    /* ★ 改善：文字切れを起こさずスッキリ収まるスマートバッジ */
     #status-text {
-      width: auto;
+      width: 100%;
       max-width: 100%;
-      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       background: #0f172a;
       color: #38bdf8;
-      font-size: 11.5px;
+      font-size: 12px;
       font-weight: 900;
-      padding: 5px 10px;
+      padding: 5px 12px;
       border-radius: 20px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.15) inset;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       transition: all 0.25s ease-out;
-      letter-spacing: 0.2px;
+      letter-spacing: 0.3px;
     }
     #status-text.is-hearing {
       background: #0284c7 !important;
@@ -190,7 +200,7 @@
     }
     @keyframes hearingPulse {
       0% { transform: scale(1); filter: brightness(1); }
-      100% { transform: scale(1.03); filter: brightness(1.2); }
+      100% { transform: scale(1.02); filter: brightness(1.2); }
     }
     .is-paused-mode #status-text { background: #450a0a; color: #fca5a5; }
 
@@ -392,22 +402,23 @@
       position: relative;
       flex-shrink: 0;
       width: 100%;
-      height: 335px;
+      height: 320px;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
       align-items: center;
       cursor: pointer;
       z-index: 20;
-      margin-bottom: -6px;
+      margin-bottom: -4px;
       background: transparent;
     }
 
+    /* ★ 改善：メイン画面・モーダル・横画面で完全統一した310pxスケール */
     #cat-stage-box {
       position: relative;
       width: 100%;
       max-width: 400px;
-      height: 325px;
+      height: 310px;
       display: flex;
       justify-content: center;
       align-items: flex-end;
@@ -479,6 +490,50 @@
     .pet-avatar-wrapper.is-happy #cat-stage-box:not(.cat-stage-flip) { animation: catStageHappy 0.45s ease-in-out infinite alternate; }
     @keyframes catStageHappy { 0% { transform: translateY(0) scale(1); } 100% { transform: translateY(-7px) scale(1.03); } }
 
+    /* ★ おやすみ中（お昼寝中）の愛らしいスヤスヤ揺れアニメーション */
+    .pet-avatar-wrapper.is-sleeping #cat-stage-box {
+      animation: catStageSleep 4.0s ease-in-out infinite alternate !important;
+    }
+    @keyframes catStageSleep {
+      0% { transform: translateY(0) scale(1, 1) rotate(0deg); }
+      50% { transform: translateY(3px) scale(1.015, 0.985) rotate(-1deg); }
+      100% { transform: translateY(0) scale(1, 1) rotate(0.5deg); }
+    }
+
+    /* ★ お昼寝中のポワポワ「Zzz…💭」エフェクト */
+    #sleep-zzz-bubble {
+      position: absolute;
+      top: 25px;
+      right: 50px;
+      pointer-events: none;
+      z-index: 48;
+      opacity: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      transition: opacity 0.4s ease-out;
+    }
+    .pet-avatar-wrapper.is-sleeping #sleep-zzz-bubble {
+      opacity: 1;
+    }
+    .zzz-item {
+      font-weight: 900;
+      color: #38bdf8;
+      text-shadow: 0 0 10px rgba(56, 189, 248, 0.8), 0 2px 4px rgba(0,0,0,0.4);
+      animation: zzzFloat 2.6s infinite ease-in-out;
+      opacity: 0;
+    }
+    .zzz-item:nth-child(1) { font-size: 14px; animation-delay: 0s; }
+    .zzz-item:nth-child(2) { font-size: 20px; animation-delay: 0.85s; }
+    .zzz-item:nth-child(3) { font-size: 26px; animation-delay: 1.7s; }
+    @keyframes zzzFloat {
+      0% { opacity: 0; transform: translate(0, 10px) scale(0.6); }
+      40% { opacity: 1; transform: translate(10px, -12px) scale(1.05); }
+      80% { opacity: 0.8; transform: translate(18px, -30px) scale(1.2); }
+      100% { opacity: 0; transform: translate(25px, -45px) scale(1.35); }
+    }
+
     #transform-smoke {
       position: absolute;
       bottom: 25px;
@@ -530,6 +585,61 @@
       pointer-events: none;
       border: none !important;
       box-shadow: none !important;
+    }
+
+    /* ★ リアル猫ちゃん専用の自然な「まばたき＆おやすみ目閉じ」レイヤー */
+    .real-eyelid-unit {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      max-width: 400px;
+      height: 310px;
+      pointer-events: none;
+      z-index: 12;
+      display: none;
+    }
+    .pet-avatar-wrapper.is-real-mode .real-eyelid-unit {
+      display: block;
+    }
+
+    .real-eyelid {
+      position: absolute;
+      background: radial-gradient(ellipse at center, #1e212b 0%, #11131a 80%, rgba(17, 19, 26, 0) 100%);
+      border-radius: 50%;
+      transform-origin: top center;
+      transform: scaleY(0);
+      opacity: 0.96;
+      transition: transform 0.12s ease-out;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    }
+    /* リアルクロちゃんの両目の瞳位置 */
+    .real-eyelid.eye-left {
+      bottom: 185px;
+      left: calc(50% - 25px);
+      width: 20px;
+      height: 16px;
+    }
+    .real-eyelid.eye-right {
+      bottom: 185px;
+      left: calc(50% + 5px);
+      width: 20px;
+      height: 16px;
+    }
+
+    /* 通常待機中の自動まばたき */
+    .pet-avatar-wrapper.is-real-mode.is-idling:not(.is-sleeping) .real-eyelid {
+      animation: realEyeBlink 4.6s ease-in-out infinite;
+    }
+    @keyframes realEyeBlink {
+      0%, 93%, 100% { transform: scaleY(0); }
+      96%, 98% { transform: scaleY(1.05); }
+    }
+
+    /* おやすみ中（目を閉じたままキープ） */
+    .pet-avatar-wrapper.is-sleeping .real-eyelid {
+      transform: scaleY(1.08) !important;
+      animation: none !important;
+      border-bottom: 1.5px solid #0a0b0e;
     }
 
     .accessory-layer {
@@ -674,7 +784,7 @@
 
     #cat-vector-avatar {
       width: 270px;
-      height: 325px;
+      height: 310px;
       position: absolute;
       bottom: 0;
       display: none;
@@ -1015,26 +1125,21 @@
 
     /* ==========================================================================
        ★ 横向きモード（Landscape）最適化スタイル
-       【左下角丸の追加 ＆ 四隅の完全対称化】
        ========================================================================== */
     @media (orientation: landscape) and (max-height: 520px) {
-      body {
-        padding: 0;
-      }
+      body { padding: 0; }
       #pet-container {
         max-width: 100vw;
         flex-direction: row;
         justify-content: space-between;
         padding: env(safe-area-inset-top, 6px) env(safe-area-inset-right, 12px) env(safe-area-inset-bottom, 6px) env(safe-area-inset-left, 12px);
         gap: 12px;
-        /* 四隅を完全対称に丸く整列 */
         border-top-left-radius: 24px;
         border-top-right-radius: 24px;
         border-bottom-left-radius: 24px;
         border-bottom-right-radius: 24px;
       }
 
-      /* 左列：情報＆会話エリア（左下も美しくフィット） */
       .app-col-left {
         flex: 1.15;
         height: 100%;
@@ -1054,7 +1159,6 @@
         padding-bottom: 6px;
       }
 
-      /* 右列：クロちゃんステージ＆土台操作バー */
       .app-col-right {
         flex: 0.95;
         height: 100%;
@@ -1102,10 +1206,7 @@
         bottom: 58px;
       }
 
-      /* 土台の黒い操作バー */
-      .bottom-controls {
-        width: 100%;
-      }
+      .bottom-controls { width: 100%; }
       .action-bar {
         padding: 5px 8px;
         border-radius: 26px;
@@ -1121,9 +1222,7 @@
         height: 38px;
         font-size: 14px;
       }
-      .app-version-tag {
-        display: none;
-      }
+      .app-version-tag { display: none; }
     }
 
     /* 5. モーダル共通スタイル ＆ 設定モーダル */
@@ -1446,7 +1545,6 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ★ 改善：怖くない優しいリロードボタン ＆ 安心キャプション */
     .btn-safe-reload {
       width: 100%;
       padding: 10px;
@@ -1780,7 +1878,7 @@
     .log-error { color: #f87171; font-weight: bold; }
     .log-info { color: #94a3b8; }
 
-    /* 8. メガネ・帽子アジャスター */
+    /* 8. メガネ・帽子アジャスター（メイン画面と完全同一の310px高さ） */
     #glasses-adjust-modal {
       position: fixed;
       inset: 0;
@@ -1798,8 +1896,8 @@
     .adjust-tabs { display: flex; width: 100%; max-width: 420px; background: #1e293b; border-radius: 16px; padding: 4px; gap: 4px; }
     .adjust-tab-btn { flex: 1; border: none; background: transparent; color: #94a3b8; padding: 8px 4px; font-size: 11.5px; font-weight: 800; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
     .adjust-tab-btn.active { background: #f472b6; color: white; box-shadow: 0 2px 8px rgba(244, 114, 182, 0.4); }
-    .adjust-preview-stage { position: relative; width: 100%; max-width: 380px; height: 300px; display: flex; justify-content: center; align-items: flex-end; }
-    .adjust-cat-img { position: absolute; bottom: 0; height: 100%; max-height: 300px; object-fit: contain; object-position: bottom center; pointer-events: none; }
+    .adjust-preview-stage { position: relative; width: 100%; max-width: 380px; height: 310px; display: flex; justify-content: center; align-items: flex-end; }
+    .adjust-cat-img { position: absolute; bottom: 0; height: 100%; max-height: 310px; object-fit: contain; object-position: bottom center; pointer-events: none; }
     .adjust-controls-box { width: 100%; max-width: 420px; background: #1e293b; border-radius: 20px; padding: 12px 16px; color: #e2e8f0; display: flex; flex-direction: column; gap: 8px; }
     .adjust-row { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: bold; }
     .adjust-row span:first-child { width: 68px; flex-shrink: 0; }
@@ -1819,7 +1917,7 @@
   </div>
 
   <div id="pet-container">
-    <!-- ▼ 左列：情報 ＆ 会話エリア（横向き時に左側に整列、広々使える） -->
+    <!-- ▼ 左列：情報 ＆ 会話エリア -->
     <div class="app-col-left">
       <!-- 1. 最上部ステータスバー -->
       <div class="top-header">
@@ -1829,6 +1927,7 @@
           <button type="button" class="btn-top-diary" id="top-diary-btn" title="これまでのクロ絵日記をアルバムで開くニャ！">📖 日記帳</button>
         </div>
 
+        <!-- ★ ワイドオーバルピル（幅広ステータスバッジ） -->
         <div id="status-badge-container">
           <span id="status-text">👂 聴いてるニャ♪</span>
         </div>
@@ -1853,6 +1952,13 @@
       <div class="pet-avatar-wrapper is-idling pose-idle-active" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
         <div class="cat-ground-shadow"></div>
         <div id="idea-bulb">💡</div>
+
+        <!-- ★ お昼寝中（お休み中）のポワポワ「Zzz…💭」エフェクト -->
+        <div id="sleep-zzz-bubble">
+          <div class="zzz-item">z</div>
+          <div class="zzz-item">Zz</div>
+          <div class="zzz-item">Zzz…💤</div>
+        </div>
 
         <!-- 空中くるりん着地時のキラリ足跡エフェクト -->
         <div class="paw-landing-sparkle" id="paw-landing-sparkle">🐾✨</div>
@@ -1879,6 +1985,11 @@
           <!-- リアル写真モード用フレーム -->
           <div class="cat-frame active" id="frame-idle">
             <img src="idle.jpg" alt="待機中" class="cat-avatar-img" id="img-idle">
+            <!-- ★ リアル猫ちゃん自然まばたき＆目閉じまぶたオーバーレイ -->
+            <div class="real-eyelid-unit">
+              <div class="real-eyelid eye-left"></div>
+              <div class="real-eyelid eye-right"></div>
+            </div>
             <div class="accessory-layer" id="acc-idle"></div>
           </div>
           <div class="cat-frame" id="frame-talking">
@@ -2251,7 +2362,7 @@
     </div>
   </div>
 
-  <!-- 設定モーダル（お掃除完了・楽しい設定だけが美しく並ぶ画面） -->
+  <!-- 設定モーダル -->
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal-card">
       <h3>
@@ -2412,7 +2523,7 @@
         <div id="version-history-container"></div>
       </div>
 
-      <!-- ▼ 第4ブロック：高度な接続・システム保守（暗号座標と再読み込みはここにスッキリ格納！） -->
+      <!-- ▼ 第4ブロック：高度な接続・システム保守 -->
       <details class="secure-details">
         <summary class="secure-summary">
           <span>🔒 外部連携APIキー設定（Google AI / VoiceVox）</span>
@@ -2436,7 +2547,6 @@
           <span>▼</span>
         </summary>
         <div class="secure-content">
-          <!-- ★ お掃除移設：普段使わないGPS座標はここにスッキリ格納 -->
           <div class="form-group" style="margin-bottom:8px;">
             <label>🏠 拠点・自宅のGPS座標 / 住所（在宅センサー用）:</label>
             <input type="text" id="home-coords-input" placeholder="例: 35.7582, 139.4678 または 東京都東村山市本町1丁目">
@@ -2448,7 +2558,6 @@
 
           <button type="button" class="btn-adjust-open" style="background:#0f172a;color:#38bdf8;border-color:#334155;margin-top:6px;" id="open-diag-modal-btn">🩺 システム診断モニタを開く</button>
           
-          <!-- ★ 改善：怖くない優しい画面リロードボタン ＆ 安心注記 -->
           <button type="button" class="btn-safe-reload" id="force-refresh-btn" style="margin-top:8px;">🔄 画面を最新版に更新する（再読み込み）</button>
           <div class="safe-reload-note">※日記や記憶データは消えずに安全にキープされます</div>
         </div>
@@ -2469,4 +2578,4 @@
 </body>
 </html>
 
-🐾
+
