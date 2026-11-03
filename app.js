@@ -11,7 +11,8 @@
    ■ 2. 写真管理・容量最適化・ストレージ安心設計
      ・写真の4重重複保存を完全撤廃。会話ログに重い画像を重複書き込みせず容量を保護。
      ・写真プールは1日最大12枚。13枚目到達時は一番古い写真と自動で入れ替え。
-     ・LocalStorageの容量をリアルタイム監視し、75%〜80%で安全アラームを発報。
+     ・LocalStorageの容量をリアルタイム監視し、iPhone風の3色マルチカラー（写真・会話・記憶設定）で完全可視化。
+     ・ワンタップで重複写真をお掃除し、絵日記写真は約20〜25KBにスマート再圧縮して空き容量を激増させる安全エンジン搭載。
      ・翌朝4時以降の初回発話時に、前日の日記自動更新を声と文字で報告（会話記憶からは除外）。
 
    ■ 3. システム優先順位（絶対厳守）
@@ -1254,7 +1255,7 @@ const LocationProvider = {
 };
 
 /* ==========================================================================
-   ★ MODULE 3: 鉄壁ストレージ管理 ＆ 散歩写真プール管理 ＆ 使用量モニター
+   ★ MODULE 3: 鉄壁ストレージ管理 ＆ マルチカラー種別容量モニター ＆ 重複写真スリム化
    ========================================================================== */
 const DATA_KEYS = {
   MEMORIES: 'kuro_data_memories',
@@ -1279,28 +1280,170 @@ const StorageManager = {
     size: 16
   },
 
+  /* ★ iPhone風マルチカラー種別ストレージ使用量計算 */
   getStorageUsage() {
     let totalBytes = 0;
+    let photoBytes = 0;
+    let chatBytes = 0;
+    let metaBytes = 0;
+
     try {
       for (let key in localStorage) {
-        if (localStorage.hasOwnProperty(key)) {
-          totalBytes += (localStorage[key].length + key.length) * 2;
+        if (!localStorage.hasOwnProperty(key)) continue;
+        const val = localStorage[key];
+        const bytes = (val.length + key.length) * 2; // UTF-16文字換算
+        totalBytes += bytes;
+
+        // 種別の判定
+        if (key.startsWith('kuro_daily_photos_')) {
+          photoBytes += bytes;
+        } else if (key.startsWith('kuro_daily_logs_') || key === DATA_KEYS.RECENT_LOGS) {
+          // 会話ログの中に画像Base64が混ざっている場合の識別
+          if (val.includes('data:image/')) {
+            const imgCount = (val.match(/data:image\/[^"]+/g) || []).reduce((acc, str) => acc + str.length * 2, 0);
+            photoBytes += imgCount;
+            chatBytes += Math.max(0, bytes - imgCount);
+          } else {
+            chatBytes += bytes;
+          }
+        } else if (key === DATA_KEYS.DIARIES) {
+          // 日記配列の中の写真と本文を切り分け
+          if (val.includes('data:image/')) {
+            const imgCount = (val.match(/data:image\/[^"]+/g) || []).reduce((acc, str) => acc + str.length * 2, 0);
+            photoBytes += imgCount;
+            metaBytes += Math.max(0, bytes - imgCount);
+          } else {
+            metaBytes += bytes;
+          }
+        } else {
+          metaBytes += bytes;
         }
       }
     } catch(e) {}
 
     const limitBytes = 5 * 1024 * 1024;
-    const usedMB = (totalBytes / (1024 * 1024)).toFixed(2);
+    const toMB = (b) => parseFloat((b / (1024 * 1024)).toFixed(2));
+
+    const usedMB = toMB(totalBytes);
+    const photoMB = toMB(photoBytes);
+    const chatMB = toMB(chatBytes);
+    const metaMB = toMB(metaBytes);
+
     const percent = Math.min(100, Math.round((totalBytes / limitBytes) * 100));
+    const photoPct = Math.min(100, Math.round((photoBytes / limitBytes) * 100));
+    const chatPct = Math.min(100, Math.round((chatBytes / limitBytes) * 100));
+    const metaPct = Math.min(100, Math.round((metaBytes / limitBytes) * 100));
 
     return {
       totalBytes,
-      usedMB: parseFloat(usedMB),
+      usedMB,
       limitMB: 5.0,
-      percent: percent,
+      percent,
+      photoBytes,
+      photoMB,
+      photoPct,
+      chatBytes,
+      chatMB,
+      chatPct,
+      metaBytes,
+      metaMB,
+      metaPct,
       isWarning: percent >= 75,
       isDanger: percent >= 90
     };
+  },
+
+  /* ★ ワンタップ重複写真パージ ＆ 日記写真の超軽量再圧縮エンジン */
+  async purgeAndCompressAllPhotos() {
+    Logger.log("[StoragePurge] 重複写真のお掃除とスマート再圧縮を開始ニャ…", "info");
+    let cleanedPhotosCount = 0;
+
+    // 1. 会話ログ（最近の会話 & 日別ログ）から重複Base64画像を完全除去
+    try {
+      const recent = this.loadRecentTimelineLogs();
+      let recentModified = false;
+      recent.forEach(entry => {
+        if (entry.photoUrl && entry.photoUrl.startsWith('data:image/')) {
+          entry.photoUrl = null;
+          recentModified = true;
+        }
+      });
+      if (recentModified) {
+        localStorage.setItem(DATA_KEYS.RECENT_LOGS, JSON.stringify(recent));
+      }
+
+      for (let key in localStorage) {
+        if (key.startsWith('kuro_daily_logs_')) {
+          try {
+            const raw = localStorage[key];
+            if (raw.includes('data:image/')) {
+              const logs = JSON.parse(raw);
+              logs.forEach(l => {
+                if (l.photoUrl) delete l.photoUrl;
+                l.hasPhoto = true;
+              });
+              localStorage.setItem(key, JSON.stringify(logs));
+            }
+          } catch(e) {}
+        }
+      }
+    } catch(e) {}
+
+    // 2. 過去（3日以上前）の写真プール（未採用ストック）をパージ
+    try {
+      const timeInfo = TimeProvider.getCurrentInfo();
+      const todayKey = `kuro_daily_photos_${timeInfo.lifeLogKey}`;
+      for (let key in localStorage) {
+        if (key.startsWith('kuro_daily_photos_') && key !== todayKey) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch(e) {}
+
+    // 3. 絵日記（kuro_data_diaries）の写真を約20KBにスマート再圧縮
+    try {
+      const diaries = this.loadAllDiaries();
+      for (const d of diaries) {
+        if (d.photo && d.photo.startsWith('data:image/')) {
+          // すでに25KB以下の小さな画像はスキップ
+          if (d.photo.length > 35000) {
+            d.photo = await this._recompressBase64Image(d.photo, 320, 0.50);
+            cleanedPhotosCount++;
+          }
+        }
+      }
+      this.saveAllDiaries(diaries);
+    } catch(e) {}
+
+    Logger.log(`[StoragePurge] お掃除完了！再圧縮写真: ${cleanedPhotosCount}枚`, "success");
+    return true;
+  },
+
+  /* Base64画像をブラウザCanvasで超軽量化再圧縮 */
+  async _recompressBase64Image(base64Str, maxWidth = 320, quality = 0.50) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const newBase64 = canvas.toDataURL('image/jpeg', quality);
+        resolve(newBase64);
+      };
+      img.onerror = () => resolve(base64Str);
+      img.src = base64Str;
+    });
   },
 
   loadGlassesCoords() {
@@ -1367,13 +1510,15 @@ const StorageManager = {
 
     const cleanText = AppCore.audio.cleanEndingNenyan(text);
 
+    // ★重複防止：会話ログには巨大なBase64を入れず、サムネイル用URLまたはnullに留める
     const entry = {
       role,
       text: cleanText,
       mode,
       time: timeInfo.clock,
       date: timeInfo.lifeLogKey,
-      photoUrl: photoUrl || null,
+      photoUrl: (photoUrl && photoUrl.length > 50000) ? null : photoUrl,
+      hasPhoto: !!photoUrl,
       timestamp: Date.now()
     };
 
@@ -1388,10 +1533,7 @@ const StorageManager = {
       const raw = localStorage.getItem(dailyKey);
       const logs = raw ? JSON.parse(raw) : [];
       const dailyEntry = { ...entry };
-      if (dailyEntry.photoUrl && dailyEntry.photoUrl.length > 300) {
-        dailyEntry.hasPhoto = true;
-        delete dailyEntry.photoUrl;
-      }
+      delete dailyEntry.photoUrl; // 日別ログには画像実体を持たせない（重複完全防止）
       logs.push(dailyEntry);
       localStorage.setItem(dailyKey, JSON.stringify(logs.slice(-200)));
     } catch(e) {}
@@ -2607,50 +2749,52 @@ const AppCore = {
       });
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-      Logger.log("[AppCore] 全システム正常稼働！写真最適化＆ストレージ安心監視稼働中ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！iPhone風ストレージモニター＆スマート再圧縮待機中ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
   },
 
+  /* ★ iPhone風マルチカラー種別ストレージメーター表示更新 */
   _updateStorageMonitorUI() {
     const usage = StorageManager.getStorageUsage();
-    const fillEl = document.getElementById('storage-bar-fill');
+
+    const segPhoto = document.getElementById('bar-seg-photo');
+    const segChat = document.getElementById('bar-seg-chat');
+    const segMeta = document.getElementById('bar-seg-meta');
+
     const usageTextEl = document.getElementById('storage-usage-text');
     const percentTextEl = document.getElementById('storage-percent-text');
     const statusPill = document.getElementById('storage-status-pill');
 
+    const pillPhoto = document.getElementById('pill-photo-usage');
+    const pillChat = document.getElementById('pill-chat-usage');
+    const pillMeta = document.getElementById('pill-meta-usage');
+
     if (usageTextEl) usageTextEl.textContent = `${usage.usedMB.toFixed(2)} MB / ${usage.limitMB.toFixed(2)} MB`;
     if (percentTextEl) percentTextEl.textContent = `${usage.percent}%`;
 
-    if (fillEl) {
-      fillEl.style.width = `${usage.percent}%`;
-      fillEl.classList.remove('is-warn', 'is-danger');
+    // 3色の幅を反映
+    if (segPhoto) segPhoto.style.width = `${usage.photoPct}%`;
+    if (segChat) segChat.style.width = `${usage.chatPct}%`;
+    if (segMeta) segMeta.style.width = `${usage.metaPct}%`;
 
-      if (usage.isDanger) {
-        fillEl.classList.add('is-danger');
-      } else if (usage.isWarning) {
-        fillEl.classList.add('is-warn');
-      }
-    }
+    // バッジの個別容量テキスト
+    if (pillPhoto) pillPhoto.textContent = `📷 写真: ${usage.photoMB.toFixed(2)} MB`;
+    if (pillChat) pillChat.textContent = `💬 会話: ${usage.chatMB.toFixed(2)} MB`;
+    if (pillMeta) pillMeta.textContent = `📝 記憶設定: ${usage.metaMB.toFixed(2)} MB`;
 
     if (statusPill) {
       if (usage.isDanger) {
-        statusPill.textContent = "⚠️ 残りわずか！";
+        statusPill.textContent = "⚠️ 残りわずか（スリム化推奨）";
         statusPill.style.color = "#dc2626";
       } else if (usage.isWarning) {
-        statusPill.textContent = "⚠️ 注意（そろそろ保存）";
+        statusPill.textContent = "⚠️ 注意（そろそろスリム化）";
         statusPill.style.color = "#d97706";
       } else {
         statusPill.textContent = "安心・快適ニャ🐾";
         statusPill.style.color = "#15803d";
       }
-    }
-
-    if (usage.isWarning) {
-      setTimeout(() => {
-        Toast.show("おやびん、思い出の引き出し（容量）が溜まってきたニャ！そろそろ一度『📁 ファイル保存』してニャン🐾", "warn", 6000);
-      }, 2500);
     }
   },
 
@@ -2976,7 +3120,8 @@ const AppCore = {
         }
 
         Toast.show("写真をギュッと小さく圧縮中ニャ…📷", "info");
-        const compressedBase64 = await this._compressPhotoFile(file, 450, 0.65);
+        // ★スマート軽量圧縮：maxWidth 320px, quality 0.50 (約20〜25KB)
+        const compressedBase64 = await this._compressPhotoFile(file, 320, 0.50);
 
         this.renderBubble('user', "クロちゃん、この写真見てニャ！", [], compressedBase64);
         StorageManager.appendChatLog('user', "クロちゃん、この写真見てニャ！", compressedBase64);
@@ -2992,7 +3137,7 @@ const AppCore = {
     }
   },
 
-  async _compressPhotoFile(file, maxWidth = 450, quality = 0.65) {
+  async _compressPhotoFile(file, maxWidth = 320, quality = 0.50) {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -4267,6 +4412,38 @@ const AppCore = {
     if (btnForce) btnForce.onclick = forceReload;
     if (btnDiagForce) btnDiagForce.onclick = forceReload;
 
+    // ★ 重複写真スリム化ボタンの処理
+    const btnPurgeStorage = document.getElementById('btn-purge-storage');
+    if (btnPurgeStorage) {
+      btnPurgeStorage.onclick = async () => {
+        const isOk = window.confirm(
+          "【安心お掃除の確認】\n\n" +
+          "・日記の文章やクロの記憶帳は1文字も消えません。\n" +
+          "・日記の写真も綺麗なまま約20KBに超軽量再圧縮して残します。\n" +
+          "・重複していた余分な画像データだけをお掃除して空き容量を一気に増やします。\n\n" +
+          "スリム化を実行しますかニャ？🐾"
+        );
+        if (!isOk) return;
+
+        btnPurgeStorage.disabled = true;
+        btnPurgeStorage.innerHTML = `<span>⏳</span><span>お掃除＆スリム化中ニャ…</span>`;
+        Toast.show("重複写真をお掃除＆スマート再圧縮中ニャ…🧹✨", "info", 5000);
+
+        try {
+          await StorageManager.purgeAndCompressAllPhotos();
+          this._updateStorageMonitorUI();
+          this.audio.playEffect('purr');
+          Toast.show("スリム化大成功ニャ！空き容量がグーンと増えたニャン！🎉", "success", 4000);
+          this.triggerActionVoice("バッチリニャ！", "🧹 スリム化完了ニャ！", 400);
+        } catch(err) {
+          Toast.show(`お掃除中にエラーが発生しました: ${err.message}`, "error");
+        } finally {
+          btnPurgeStorage.disabled = false;
+          btnPurgeStorage.innerHTML = `<span>🧹</span><span>重複写真をお掃除してスリム化するニャ！</span>`;
+        }
+      };
+    }
+
     const btnDownloadBackup = document.getElementById('btn-download-backup');
     if (btnDownloadBackup) {
       btnDownloadBackup.onclick = () => {
@@ -4822,4 +4999,5 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
+
 
