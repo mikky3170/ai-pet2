@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -290,7 +291,10 @@
       overflow: hidden;
       border: 2px solid #bae6fd;
       box-shadow: 0 4px 12px rgba(2, 132, 199, 0.15);
+      cursor: pointer;
+      transition: transform 0.15s;
     }
+    .timeline-photo-wrap:active { transform: scale(0.97); }
     .timeline-shared-img {
       width: 100%;
       height: auto;
@@ -356,6 +360,7 @@
       border-radius: 12px;
       border: 1px solid #fed7aa;
       margin-top: 4px;
+      cursor: pointer;
     }
     .timeline-diary-body {
       font-size: 12.5px;
@@ -1430,7 +1435,7 @@
     }
     .btn-pc-sync:active { background: #dcfce7; }
 
-    /* ★ iPhone風マルチカラー・ストレージ使用量モニター */
+    /* iPhone風マルチカラー・ストレージ使用量モニター */
     .storage-monitor-box {
       background: #ffffff;
       border: 1.5px solid #bbf7d0;
@@ -1661,6 +1666,7 @@
       font-weight: 700;
     }
 
+    /* ▼ 絵日記アルバム（レイアウト劇的拡張・フッターページャー集約） */
     #book-studio-modal {
       position: fixed;
       inset: 0;
@@ -1677,7 +1683,7 @@
       background: #fffdfa;
       width: 100%;
       max-width: 680px;
-      height: 90vh;
+      height: 92vh;
       border-radius: 28px;
       display: flex;
       flex-direction: column;
@@ -1688,14 +1694,15 @@
     .studio-top-bar {
       background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
       color: #f8fafc;
-      padding: 12px 18px;
+      padding: 10px 18px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 2px solid #334155;
+      flex-shrink: 0;
     }
     .studio-top-title {
-      font-size: 15px;
+      font-size: 14.5px;
       font-weight: 900;
       color: #38bdf8;
       display: flex;
@@ -1707,45 +1714,16 @@
       display: flex;
       overflow: hidden;
       background: #fdfaf5;
+      min-height: 0;
     }
     .studio-diary-book-pane {
       flex: 1;
       display: flex;
       flex-direction: column;
-      padding: 14px 18px;
+      padding: 10px 14px;
       background: #fffdfa;
       overflow-y: auto;
-    }
-    .book-pager-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-      background: #ffedd5;
-      padding: 6px 12px;
-      border-radius: 16px;
-      border: 1px solid #fed7aa;
-    }
-    .btn-pager {
-      background: #ffffff;
-      border: 1.5px solid #ea580c;
-      color: #c2410c;
-      border-radius: 10px;
-      padding: 6px 14px;
-      font-size: 12px;
-      font-weight: 900;
-      cursor: pointer;
-    }
-    .btn-pager:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
-      border-color: #cbd5e1;
-      color: #94a3b8;
-    }
-    .pager-page-info {
-      font-size: 12.5px;
-      font-weight: 900;
-      color: #9a3412;
+      min-height: 0;
     }
 
     .book-page-sheet {
@@ -1753,12 +1731,13 @@
       background: #ffffff;
       border: 2px solid #fed7aa;
       border-radius: 20px;
-      padding: 14px 16px;
+      padding: 12px 14px;
       box-shadow: 0 4px 16px rgba(234, 88, 12, 0.08);
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
       position: relative;
+      min-height: 0;
     }
     .book-page-ribbon {
       position: absolute;
@@ -1777,19 +1756,20 @@
       justify-content: space-between;
       align-items: center;
       border-bottom: 1.5px dashed #fed7aa;
-      padding-bottom: 8px;
+      padding-bottom: 6px;
       margin-top: 2px;
       flex-wrap: wrap;
       gap: 6px;
+      flex-shrink: 0;
     }
     .book-date-title {
-      font-size: 14.5px;
+      font-size: 14px;
       font-weight: 900;
       color: #9a3412;
     }
     .book-meta-tags {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
       font-size: 11px;
       font-weight: 800;
@@ -1801,7 +1781,7 @@
       color: #ffffff;
       border: none;
       border-radius: 12px;
-      padding: 5px 12px;
+      padding: 5px 11px;
       font-size: 11.5px;
       font-weight: 900;
       cursor: pointer;
@@ -1833,9 +1813,11 @@
       font-weight: 800;
     }
 
+    /* 写真全貌キープ ＆ タップでフルサイズ拡大可能な写真枠 */
     .book-photo-frame {
       width: 100%;
-      height: 150px;
+      height: 145px;
+      max-height: 145px;
       border: 2px dashed #fed7aa;
       border-radius: 14px;
       background: #fffaf5;
@@ -1844,11 +1826,34 @@
       align-items: center;
       overflow: hidden;
       position: relative;
+      cursor: pointer;
+      flex-shrink: 0;
     }
     .book-photo-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain; /* ★ アスペクト比を100%完全維持（縦でも横でも切れない） */
+      display: block;
+      transition: transform 0.2s ease-out;
+    }
+    .book-photo-frame:hover .book-photo-img {
+      transform: scale(1.02);
+    }
+    .book-photo-zoom-hint {
+      position: absolute;
+      bottom: 6px;
+      right: 8px;
+      background: rgba(15, 23, 42, 0.75);
+      color: #ffffff;
+      padding: 2.5px 7px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 800;
+      backdrop-filter: blur(4px);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 3px;
     }
     .book-photo-placeholder {
       display: flex;
@@ -1856,7 +1861,7 @@
       align-items: center;
       gap: 3px;
       color: #ea580c;
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 800;
     }
     .book-photo-remove-btn {
@@ -1870,16 +1875,18 @@
       padding: 4px 8px;
       font-size: 11px;
       cursor: pointer;
+      z-index: 10;
     }
 
     .snap-strip-container {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
       background: #fffaf5;
       border: 1px dashed #fed7aa;
       border-radius: 12px;
-      padding: 6px 10px;
+      padding: 5px 8px;
+      flex-shrink: 0;
     }
     .snap-strip-header {
       font-size: 10.5px;
@@ -1890,13 +1897,13 @@
     }
     .snap-thumbnails-row {
       display: flex;
-      gap: 8px;
+      gap: 7px;
       overflow-x: auto;
-      padding: 4px 2px;
+      padding: 2px 1px;
     }
     .snap-thumb-item {
-      width: 48px;
-      height: 48px;
+      width: 44px;
+      height: 44px;
       border-radius: 8px;
       border: 1.5px solid #fed7aa;
       overflow: hidden;
@@ -1904,6 +1911,7 @@
       cursor: pointer;
       position: relative;
       transition: transform 0.15s, border-color 0.15s;
+      background: #ffffff;
     }
     .snap-thumb-item:active { transform: scale(0.92); }
     .snap-thumb-item.is-selected {
@@ -1916,16 +1924,20 @@
       object-fit: cover;
     }
 
+    /* 日記本文エリア：広々伸びる可変エリア */
     .book-content-box {
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 4px;
+      min-height: 120px;
     }
     .book-textarea-label {
       font-size: 11.5px;
       font-weight: 800;
       color: #4b5563;
+      display: flex;
+      justify-content: space-between;
     }
     .book-diary-textarea {
       flex: 1;
@@ -1940,27 +1952,68 @@
       resize: none;
       outline: none;
       background: #ffffff;
+      min-height: 100px;
     }
     .book-diary-textarea:focus { border-color: #f97316; }
 
+    /* 最下部フッターバー（左：ページ送り / 右：保存閉じる） */
     .studio-footer-bar {
       background: #ffffff;
-      padding: 10px 18px;
+      padding: 9px 14px;
       border-top: 1.5px solid #fed7aa;
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
+      flex-shrink: 0;
     }
+    .footer-pager-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-pager {
+      background: #ffedd5;
+      border: 1.5px solid #ea580c;
+      color: #c2410c;
+      border-radius: 10px;
+      padding: 6px 11px;
+      font-size: 11.5px;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      transition: background 0.15s;
+    }
+    .btn-pager:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      border-color: #cbd5e1;
+      background: #f1f5f9;
+      color: #94a3b8;
+    }
+    .pager-page-info {
+      font-size: 11.5px;
+      font-weight: 900;
+      color: #9a3412;
+      padding: 0 4px;
+      white-space: nowrap;
+    }
+
     .btn-studio-save-exit {
-      padding: 9px 18px;
+      padding: 8px 16px;
       background: linear-gradient(135deg, #10b981, #059669);
       color: white;
       border: none;
       border-radius: 12px;
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 900;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
     }
     .btn-diary-close {
       background: #7c2d12;
@@ -1975,6 +2028,60 @@
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    /* ▼ 写真フルサイズ拡大表示モーダル（新設） */
+    #photo-lightbox-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.92);
+      backdrop-filter: blur(8px);
+      z-index: 500;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 14px;
+      cursor: pointer;
+      animation: fadeIn 0.2s ease-out;
+    }
+    #photo-lightbox-modal.is-open { display: flex; }
+    .lightbox-content-box {
+      position: relative;
+      max-width: 92vw;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      pointer-events: auto;
+    }
+    .lightbox-full-img {
+      max-width: 90vw;
+      max-height: 82vh;
+      object-fit: contain;
+      border-radius: 14px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+      border: 2px solid rgba(255, 255, 255, 0.25);
+    }
+    .lightbox-caption {
+      margin-top: 8px;
+      color: #f1f5f9;
+      font-size: 12.5px;
+      font-weight: 800;
+      text-align: center;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    }
+    .btn-lightbox-close {
+      position: absolute;
+      top: -38px;
+      right: 0;
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: #ffffff;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
     }
 
     #diag-panel {
@@ -2398,6 +2505,7 @@
     </div>
   </div>
 
+  <!-- ▼ 絵日記アルバムモーダル（上部ページャーをフッターに集約し、本文と写真を広々拡大） -->
   <div id="book-studio-modal">
     <div class="book-studio-window">
       <div class="studio-top-bar">
@@ -2410,19 +2518,28 @@
 
       <div class="studio-main-body">
         <div class="studio-diary-book-pane">
-          <div class="book-pager-bar">
-            <button type="button" class="btn-pager" id="btn-studio-prev-page">◀ 前の日</button>
-            <span class="pager-page-info" id="studio-page-indicator">1 / 1 日目</span>
-            <button type="button" class="btn-pager" id="btn-studio-next-page">次の日 ▶</button>
-          </div>
-
-          <div id="studio-diary-single-page" style="flex:1;display:flex;flex-direction:column;"></div>
+          <div id="studio-diary-single-page" style="flex:1;display:flex;flex-direction:column;min-height:0;"></div>
         </div>
       </div>
 
+      <!-- 最下部フッターバー（左：ページ送り / 右：保存して閉じる） -->
       <div class="studio-footer-bar">
+        <div class="footer-pager-group">
+          <button type="button" class="btn-pager" id="btn-studio-prev-page">◀ 前の日</button>
+          <span class="pager-page-info" id="studio-page-indicator">1 / 1 日目</span>
+          <button type="button" class="btn-pager" id="btn-studio-next-page">次の日 ▶</button>
+        </div>
         <button type="button" class="btn-studio-save-exit" id="btn-studio-save-exit">💾 保存して閉じる</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ▼ 写真フルサイズ拡大表示モーダル（新設：タップで全画面・原寸アスペクト比鑑賞） -->
+  <div id="photo-lightbox-modal">
+    <div class="lightbox-content-box">
+      <button type="button" class="btn-lightbox-close" id="btn-lightbox-close">✕ 閉じる</button>
+      <img src="" alt="写真拡大プレビュー" class="lightbox-full-img" id="lightbox-full-img">
+      <div class="lightbox-caption" id="lightbox-caption">📸 写真の全貌</div>
     </div>
   </div>
 
@@ -2518,7 +2635,7 @@
           <div>お家にいる時は「お家でまったりしてるニャン🐾」と正確に答え、お外にいる時だけ「〇〇町をお散歩中ニャ！」と答える賢いセンサーを搭載したニャ！</div>
 
           <div class="manual-sec-title">📷 写真を見せる ＆ 思い出写真</div>
-          <div>下の「📷 写真」ボタンを押すと、スマホのカメラで撮った写真やアルバムの写真をクロちゃんに見せられるニャ！今日撮った写真の中から、日記の内容に一番ぴったりのベストショットをAIが選んで絵日記に飾るニャン♪ アルバムの下にあるスナップ写真をタップすれば、好きな写真にいつでも差し替えできるニャ！<br>
+          <div>下の「📷 写真」ボタンを押すと、スマホのカメラで撮った写真やアルバムの写真をクロちゃんに見せられるニャ！今日撮った写真の中から、日記の内容に一番ぴったりのベストショットをAIが選んで絵日記に飾るニャン♪ アルバムの下にあるスナップ写真をタップすれば、好きな写真にいつでも差し替えできるニャ！さらに日記の写真をタップすると全画面で大きく見られるニャン！<br>
           <span style="color:#c2410c;font-weight:800;">※お写真は1日に最大12枚まで思い出としてプールにストックされます（13枚目以降は古い写真と自動で入れ替わりますニャ）。</span></div>
 
           <div class="manual-sec-title">📖 絵日記の仕様と生活リズム（午前4時切り替え・自動補完）</div>
@@ -2612,7 +2729,7 @@
           <span>データ安心バックアップ（ファイル管理）</span>
         </div>
         <div class="pc-sync-desc">
-          日記や記憶データをいつでもファイルに保存・復元できますニャ！
+          日記、日別スナップ写真（最大12枚）、全会話ログをいつでもファイルに保存・完全復元できますニャ！
         </div>
         <div class="pc-sync-btn-row">
           <button type="button" class="btn-pc-sync" id="btn-download-backup">📁 ファイル保存</button>
@@ -2620,7 +2737,7 @@
           <input type="file" id="file-input-restore" accept=".json" style="display:none;">
         </div>
 
-        <!-- ★ iPhone風マルチカラー・ストレージ使用量モニター -->
+        <!-- iPhone風マルチカラー・ストレージ使用量モニター -->
         <div class="storage-monitor-box">
           <div class="storage-monitor-header">
             <span>📊 ストレージ使用量（思い出の引き出し）:</span>
@@ -2758,4 +2875,5 @@
   <script src="app.js"></script>
 </body>
 </html>
+
 
