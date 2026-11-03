@@ -14,7 +14,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="クロちゃん🐾">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
 
   <style>
     :root {
@@ -23,6 +24,19 @@
       --bubble-bg: rgba(255, 255, 255, 0.98);
       --text-color: #1f2937;
       --shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+      --outer-bg: #f1f5f9; /* ライトモード時の角丸外側背景 */
+      --container-bg: #ffffff;
+      --roof-highlight: rgba(255, 255, 255, 0.85);
+      --roof-border: rgba(226, 232, 240, 0.9);
+    }
+
+    /* ★ スマホのダークモード連動：角丸の外側をブラウザの黒に完全同化 */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --outer-bg: #090d16;
+        --roof-highlight: rgba(255, 255, 255, 0.12);
+        --roof-border: rgba(51, 65, 85, 0.6);
+      }
     }
 
     * {
@@ -38,12 +52,13 @@
       width: 100vw;
       height: 100dvh;
       overflow: hidden;
-      background: #ffffff;
+      background: var(--outer-bg);
       font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
       position: relative;
       display: flex;
       justify-content: center;
       align-items: center;
+      transition: background-color 0.3s ease-out;
     }
 
     /* トースト通知 */
@@ -77,6 +92,7 @@
     #toast-notification.error { background: #450a0a; color: #fca5a5; border: 1.5px solid #ef4444; }
     #toast-notification.info { background: #0f172a; color: #38bdf8; border: 1.5px solid #38bdf8; }
 
+    /* ★ 提案①：上部角丸 ＆ しっとりガラス光彩ルーフボーダー（ネイティブアプリの風格） */
     #pet-container {
       position: absolute;
       width: 100%;
@@ -85,11 +101,17 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: env(safe-area-inset-top, 8px) 14px env(safe-area-inset-bottom, 10px) 14px;
+      padding: env(safe-area-inset-top, 10px) 14px env(safe-area-inset-bottom, 10px) 14px;
       z-index: 50;
       box-sizing: border-box;
-      background: #ffffff;
+      background: var(--container-bg);
+      border-top-left-radius: 28px;
+      border-top-right-radius: 28px;
+      box-shadow: 0 -1px 0 1px var(--roof-highlight) inset,
+                  0 0 0 1px var(--roof-border),
+                  0 -4px 20px rgba(0, 0, 0, 0.05);
       transition: all 0.3s ease-out;
+      overflow: hidden;
     }
 
     /* 左右カラムラッパー（縦向き時は透明なパススルー、横向き時に2分割） */
@@ -99,6 +121,7 @@
       width: 100%;
       flex: 1;
       min-height: 0;
+      position: relative;
     }
     .app-col-right {
       display: flex;
@@ -211,6 +234,40 @@
     #chat-timeline::-webkit-scrollbar-thumb {
       background: rgba(244, 114, 182, 0.35);
       border-radius: 4px;
+    }
+
+    /* ★ 提案③：過去を読んでいる時だけひょっこり出る「🐾 最新へ」肉球ボタン */
+    #btn-scroll-bottom {
+      position: absolute;
+      right: 14px;
+      bottom: 12px;
+      background: rgba(15, 23, 42, 0.88);
+      color: #ffffff;
+      border: 1.5px solid rgba(56, 189, 248, 0.6);
+      backdrop-filter: blur(8px);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 11.5px;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+      z-index: 25;
+      opacity: 0;
+      transform: translateY(12px) scale(0.9);
+      pointer-events: none;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #btn-scroll-bottom.is-visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+    #btn-scroll-bottom:active {
+      transform: scale(0.92);
+      background: rgba(2, 132, 199, 0.95);
     }
 
     .chat-row { display: flex; flex-direction: column; width: 100%; animation: fadeIn 0.2s ease-out; }
@@ -357,26 +414,38 @@
       pointer-events: none;
     }
 
-    /* ★ 改良：四角い影・回転エッジを完全撤去した猫らしい空中ピョン着地バウンド */
+    /* 猫らしい空中ピョン着地バウンド */
     .cat-stage-flip {
       animation: catFlipLanding 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
     }
     @keyframes catFlipLanding {
-      0% {
-        transform: translateY(0) scale(1);
-      }
-      32% {
-        transform: translateY(-32px) scale(0.92, 1.04); /* 空中にピョンッと軽く浮く */
-      }
-      65% {
-        transform: translateY(-8px) scale(0.96, 0.98);  /* 落下して身構える */
-      }
-      84% {
-        transform: translateY(4px) scale(1.06, 0.93);   /* 地面にトンッと着地して弾む */
-      }
-      100% {
-        transform: translateY(0) scale(1);              /* 元の姿勢にふわっと戻る */
-      }
+      0% { transform: translateY(0) scale(1); }
+      32% { transform: translateY(-32px) scale(0.92, 1.04); }
+      65% { transform: translateY(-8px) scale(0.96, 0.98); }
+      84% { transform: translateY(4px) scale(1.06, 0.93); }
+      100% { transform: translateY(0) scale(1); }
+    }
+
+    /* ★ 提案②：空中くるりん着地時の「🐾 キラリ足跡エフェクト」 */
+    .paw-landing-sparkle {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) scale(0);
+      font-size: 28px;
+      pointer-events: none;
+      z-index: 45;
+      opacity: 0;
+      filter: drop-shadow(0 0 10px rgba(244, 114, 182, 0.8));
+    }
+    .paw-landing-sparkle.is-popping {
+      animation: pawSparklePop 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    @keyframes pawSparklePop {
+      0% { opacity: 0; transform: translateX(-50%) scale(0.2) translateY(10px); }
+      35% { opacity: 1; transform: translateX(-50%) scale(1.25) translateY(-8px); }
+      70% { opacity: 0.9; transform: translateX(-50%) scale(1.05) translateY(-14px); }
+      100% { opacity: 0; transform: translateX(-50%) scale(1.4) translateY(-24px); }
     }
 
     /* UIボタンの一時的退避＆ポンッ♪再出現 */
@@ -491,7 +560,7 @@
     }
     #idea-bulb.active { opacity: 1; transform: scale(1.2) translateY(0); }
 
-    /* ★ 砂時計＆キッチンタイマーウィジェット（おやつボタンの真上・つら合わせ） */
+    /* 砂時計＆キッチンタイマーウィジェット（おやつボタンの真上・つら合わせ） */
     #kitchen-timer-widget {
       position: absolute;
       left: 12px;
@@ -943,9 +1012,6 @@
 
     /* ==========================================================================
        ★ 横向きモード（Landscape）最適化スタイル
-       【おやびん様ご考案仕様】
-       左列：ステータスバー ＋ 広々セリフタイムライン（画面下まで読める！）
-       右列：クロちゃん本体 ＋ 足元の土台黒い操作バー（今の黄金比率100%維持！）
        ========================================================================== */
     @media (orientation: landscape) and (max-height: 520px) {
       body {
@@ -957,6 +1023,8 @@
         justify-content: space-between;
         padding: env(safe-area-inset-top, 6px) env(safe-area-inset-right, 12px) env(safe-area-inset-bottom, 6px) env(safe-area-inset-left, 12px);
         gap: 12px;
+        border-top-left-radius: 24px;
+        border-top-right-radius: 24px;
       }
 
       /* 左列：情報＆会話エリア（縦に広々！） */
@@ -1025,7 +1093,7 @@
         bottom: 58px;
       }
 
-      /* 土台の黒い操作バー（クロちゃんの足元にフィット） */
+      /* 土台の黒い操作バー */
       .bottom-controls {
         width: 100%;
       }
@@ -1753,14 +1821,22 @@
 
       <!-- 2. 会話タイムライン -->
       <div id="chat-timeline"></div>
+
+      <!-- ★ 提案③：過去ログ読書時に最新へジャンプする可愛い肉球ボタン -->
+      <button type="button" id="btn-scroll-bottom" title="最新のメッセージへジャンプするニャ！">
+        <span>🐾</span><span>最新へ</span>
+      </button>
     </div>
 
-    <!-- ▼ 右列：クロちゃんステージ ＆ 土台の黒い操作バー（今の黄金比率を100%維持！） -->
+    <!-- ▼ 右列：クロちゃんステージ ＆ 土台の黒い操作バー -->
     <div class="app-col-right">
       <!-- 3. クロちゃん本体ステージ -->
       <div class="pet-avatar-wrapper is-idling pose-idle-active" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
         <div class="cat-ground-shadow"></div>
         <div id="idea-bulb">💡</div>
+
+        <!-- ★ 提案②：空中くるりん着地時のキラリ足跡エフェクト -->
+        <div class="paw-landing-sparkle" id="paw-landing-sparkle">🐾✨</div>
 
         <!-- 変身の煙（モクモクパフ）SVG -->
         <svg id="transform-smoke" viewBox="0 0 200 160">
@@ -1998,7 +2074,7 @@
           </svg>
         </div>
 
-        <!-- ★ 砂時計＆キッチンタイマーウィジェット（おやつボタン真上・つら合わせ・漆黒の器） -->
+        <!-- 砂時計＆キッチンタイマーウィジェット -->
         <div id="kitchen-timer-widget" title="タップで「ちょい待ち／すすめる」、長押しで停止するニャ！">
           <div class="hourglass-box">
             <svg class="hourglass-spin-unit" viewBox="0 0 60 70">
@@ -2031,7 +2107,7 @@
         </button>
       </div>
 
-      <!-- 4. 最下部操作バー ＆ バージョン刻印（クロちゃんの足元の台座） -->
+      <!-- 4. 最下部操作バー ＆ バージョン刻印 -->
       <div class="bottom-controls">
         <div class="action-bar" id="action-bar">
           <button class="btn-mode-toggle" id="mode-toggle-btn" title="なかよし雑談とおてつだいを切り替えるニャ！">
@@ -2180,7 +2256,7 @@
           ・<b>👓 おてつだい</b>：博士帽とメガネを装着！ネット検索して「近くのラーメン屋」や「最新ニュース」をGoogleマップ付きで案内するニャ！（※機械的なニュース一覧や店舗リストは日記から自動除外され、おやびんの気分や会話の思い出として優しく記録されます）。</div>
 
           <div class="manual-sec-title">📱 画面の向きと空中くるりん着地</div>
-          <div>スマホを横向きに寝かせると、ボタンがサッと道をあけて、クロちゃんが空中で身をひるがえして「くるりんっ♪トンッ！」と華麗に着地するニャ！左に広い会話、右にクロちゃんが大きく見えて大迫力ニャン🐾（歩行中のちょっとした揺れでは動かない安心安全設計ニャ！）</div>
+          <div>スマホを横向きに寝かせると、ボタンがサッと道をあけて、クロちゃんが空中で身をひるがえして「くるりんっ♪トンッ！」と華麗に着地するニャ！足元にキラキラ肉球が弾けて、最新のお話しへ自動でシュッと移動するニャン🐾（歩行中のちょっとした揺れでは動かない安心安全設計ニャ！）</div>
 
           <div class="manual-sec-title">🏠 在宅判定とお散歩（どこ？と聞いた時）</div>
           <div>お家にいる時は「お家でまったりしてるニャン🐾」と正確に答え、お外にいる時だけ「〇〇町をお散歩中ニャ！」と答える賢いセンサーを搭載したニャ！</div>

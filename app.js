@@ -1,3 +1,4 @@
+
 /* ==========================================================================
    【永久不変仕様書】AIペット クロちゃん🐾 対話エンジン＆設計思想（app.js）
    ==========================================================================
@@ -23,15 +24,16 @@
      ・【その日の絵日記を書いた後】：長い会話を手放し、「今日の日記」＋「直近5往復（10件）」に切り替え。
 
    ■ 3. 愛情たっぷり！ふれあい機能 ＆ 砂時計キッチンタイマー ＆ 空中くるりん着地
-     ・① スマホ横倒し検知 ＆ 空中くるりん着地：
+     ・① スマホ横倒し検知 ＆ 空中くるりん着地（足跡キラリ🐾✨ ＆ 最新へ自動スクロール）：
         - 歩行時や持ち歩きの揺れ（傾き45度未満）では動かない「不感帯（遊び）」を設定。
         - 横倒し検知時、ボタン類がシュッと一時退避し、クロちゃんが空中で身を丸めて「くるりんっ♪トンッ！」と着地。
-        - 着地した瞬間に、ボタン類が足元に「ポンッ♪」と再登場！
+        - 着地した瞬間に足元に光る足跡（🐾✨）が弾け、最新のお話し位置へ自動でシュッとスクロール！
+        - 過去ログ読書時だけひょっこり現れる「🐾 最新へ」肉球ボタンも完全連動！
      ・② 気まぐれ独り言：おやびんが無操作で数分経つと、声を出さずにそっとあくびやつぶやき。
      ・③ なでなで部位センサー：頭・あご下・お腹でクロちゃんの喜びリアクションが変化！
      ・④ 絵日記の肉球スタンプ＆ミニ手紙：1日1ページの絵日記に肉球印と可愛い手紙を刻印。
      ・⑤ 漆黒の砂時計タイマー：
-        - 案A採用：「ちょい待ちニャ🐾」（一時停止）＆「すすめるニャ！🐾」（再開）
+        - 「ちょい待ちニャ🐾」（一時停止）＆「すすめるニャ！🐾」（再開）
         - 完了時ハイブリッド仕様：3回リピートアラーム ＆ タップで即座に消音・消去完了！
 
    ■ 4. 通信防波堤（20秒タイムアウト ＆ 最短1発クリア設計）
@@ -1569,6 +1571,7 @@ class CatAvatarRenderer {
     this.wrapper = document.getElementById('avatar-wrapper');
     this.smokeEl = document.getElementById('transform-smoke');
     this.catStageBox = document.getElementById('cat-stage-box');
+    this.sparkleEl = document.getElementById('paw-landing-sparkle');
     this.frames = {
       idle: document.getElementById('frame-idle'),
       talking: document.getElementById('frame-talking'),
@@ -1753,7 +1756,7 @@ class CatAvatarRenderer {
     }, 1800);
   }
 
-  // ★ 空中くるりん＆トンッ！着地アニメーション発動
+  // ★ 空中くるりん＆トンッ！着地アニメーション（キラリ足跡エフェクト🐾✨連動）
   triggerFlipLanding() {
     if (!this.catStageBox) return;
 
@@ -1773,6 +1776,18 @@ class CatAvatarRenderer {
     this.catStageBox.classList.remove('cat-stage-flip');
     void this.catStageBox.offsetWidth;
     this.catStageBox.classList.add('cat-stage-flip');
+
+    // ★ 提案②：着地直前（320ms）に足元へキラリ足跡エフェクト（🐾✨）がフワッと弾ける
+    setTimeout(() => {
+      if (this.sparkleEl) {
+        this.sparkleEl.classList.remove('is-popping');
+        void this.sparkleEl.offsetWidth;
+        this.sparkleEl.classList.add('is-popping');
+        setTimeout(() => {
+          if (this.sparkleEl) this.sparkleEl.classList.remove('is-popping');
+        }, 700);
+      }
+    }, 320);
 
     // 0.42秒後、着地完了でUIボタンをポンッ♪と再出現
     setTimeout(() => {
@@ -2365,7 +2380,8 @@ const AppCore = {
     this._bindGlassesAdjusterUI();
     this._bindBookStudioUI();
     this._bindPhotoUploadUI();
-    this._bindOrientationWatcher(); // ★ スマホ横倒し検知の初期化
+    this._bindOrientationWatcher(); // ★ スマホ横倒し検知＆回転時最下部自動スクロール
+    this._bindScrollToBottomUI();   // ★ 提案③：「🐾 最新へ」肉球ボタン連動
 
     try {
       this._renderMemories();
@@ -2427,18 +2443,59 @@ const AppCore = {
       });
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-      Logger.log("[AppCore] 全システム正常稼働！横倒し着地アニメーション＆漆黒砂時計タイマー準備完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！上部角丸＆空中着地キラリ足跡＆最新へ自動スクロール準備完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
   },
 
   /* ==========================================================================
-     ★ MODULE 6.1: スマホ横倒し検知 ＆ 空中くるりん着地制御（不感帯・デバウンス）
+     ★ MODULE 6.1: 会話タイムラインの最下部（最新）スクロール制御
+     ========================================================================== */
+  _scrollToLatest(smooth = true) {
+    const box = document.getElementById('chat-timeline');
+    if (!box) return;
+    try {
+      box.scrollTo({
+        top: box.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto'
+      });
+    } catch(e) {
+      box.scrollTop = box.scrollHeight;
+    }
+  },
+
+  /* ==========================================================================
+     ★ MODULE 6.2: 提案③「🐾 最新へ」肉球ボタンの監視とスクロール連動
+     ========================================================================== */
+  _bindScrollToBottomUI() {
+    const box = document.getElementById('chat-timeline');
+    const btn = document.getElementById('btn-scroll-bottom');
+    if (!box || !btn) return;
+
+    box.addEventListener('scroll', () => {
+      // 一番下から110px以上上にスクロールして過去ログを読んでいる場合のみボタンを表示
+      const distanceFromBottom = box.scrollHeight - (box.scrollTop + box.clientHeight);
+      if (distanceFromBottom > 110) {
+        btn.classList.add('is-visible');
+      } else {
+        btn.classList.remove('is-visible');
+      }
+    }, { passive: true });
+
+    btn.onclick = () => {
+      this.resetActivityTimer();
+      this.audio.playEffect('aizuchi');
+      this._scrollToLatest(true);
+      btn.classList.remove('is-visible');
+    };
+  },
+
+  /* ==========================================================================
+     ★ MODULE 6.3: スマホ横倒し検知 ＆ 空中くるりん着地制御（自動スクロール連動）
      ========================================================================== */
   _bindOrientationWatcher() {
     const checkOrientation = () => {
-      // 1. 画面の物理アスペクト比 ＆ メディアクエリ監視
       const isWidthGreater = window.innerWidth > window.innerHeight;
       const isLandscapeMedia = window.matchMedia && window.matchMedia('(orientation: landscape)').matches;
       const newLandscape = isWidthGreater || isLandscapeMedia;
@@ -2448,17 +2505,36 @@ const AppCore = {
           clearTimeout(this.state.orientationDebounceTimer);
         }
 
-        // 200msの不感帯（デバウンス）：持ち歩き時の瞬間的な揺れでは発動しない
+        // 200msの不感帯（デバウンス）：持ち歩きの細かな揺れでは発動しない
         this.state.orientationDebounceTimer = setTimeout(() => {
           this.state.isLandscape = newLandscape;
           Logger.log(`[姿勢検知⚡] スマホの向きが変化: ${newLandscape ? '📱 横向き（Landscape）' : '📱 縦向き（Portrait）'}`, "info");
 
-          // 空中くるりん＆着地アニメーション発動！
+          // ★ 提案②：空中くるりん着地アニメーション発動 ＆ プチつぶやき
           if (this.avatar) {
             this.avatar.triggerFlipLanding();
           }
           this.audio.playEffect('purr');
+
+          const st = document.getElementById('status-text');
+          if (st && !this.audio.isSpeaking && !this.state.isThinking) {
+            const originalText = st.textContent;
+            st.textContent = "くるりんっ♪着地成功ニャ🐾";
+            setTimeout(() => {
+              if (st && !this.audio.isSpeaking && !this.state.isThinking && this.state.isRunning) {
+                st.textContent = originalText.includes('着地') ? "👂 聴いてるニャ♪" : originalText;
+              }
+            }, 1800);
+          }
+
+          // ★ 画面回転時の最新会話への自動スクロール（レイアウト確定後に2段階で実行）
+          setTimeout(() => { this._scrollToLatest(true); }, 150);
+          setTimeout(() => { this._scrollToLatest(true); }, 450);
+
         }, 200);
+      } else {
+        // 回転していなくても画面リサイズ等があった場合は最新へ位置補正
+        setTimeout(() => { this._scrollToLatest(false); }, 100);
       }
     };
 
@@ -2468,7 +2544,7 @@ const AppCore = {
       window.screen.orientation.addEventListener('change', checkOrientation);
     }
 
-    // 初回初期化時の向きチェック
+    // 初回初期化
     this.state.isLandscape = (window.innerWidth > window.innerHeight);
   },
 
@@ -2586,7 +2662,7 @@ const AppCore = {
     logs.forEach(h => {
       this.renderBubble(h.role, h.text, [], h.photoUrl || null);
     });
-    box.scrollTop = box.scrollHeight;
+    this._scrollToLatest(false);
   },
 
   _setupAudioCallbacks() {
@@ -2652,7 +2728,7 @@ const AppCore = {
     }
 
     box.appendChild(row);
-    box.scrollTop = box.scrollHeight;
+    this._scrollToLatest(true);
     return b;
   },
 
@@ -2680,7 +2756,7 @@ const AppCore = {
 
     row.appendChild(card);
     box.appendChild(row);
-    box.scrollTop = box.scrollHeight;
+    this._scrollToLatest(true);
   },
 
   _bindPhotoUploadUI() {
@@ -2774,7 +2850,7 @@ const AppCore = {
   },
 
   /* ==========================================================================
-     ★ MODULE 7: 案A「ちょい待ちニャ🐾」「すすめるニャ！🐾」＆ハイブリッドアラーム
+     ★ MODULE 7: 砂時計タイマー ＆ ハイブリッドアラーム
      ========================================================================== */
   _normalizeKanjiNumbers(str) {
     if (!str) return "";
@@ -3132,7 +3208,7 @@ const AppCore = {
       bubble.textContent = `タイマー（${timerParsed.label}）をセット中ニャ…⏱️`;
       row.appendChild(bubble);
       box.appendChild(row);
-      box.scrollTop = box.scrollHeight;
+      this._scrollToLatest(true);
 
       StorageManager.appendChatLog('user', text);
       StorageManager.appendChatLog('model', rep);
@@ -3171,7 +3247,7 @@ const AppCore = {
       bubble.textContent = direct.waiting || "確認中ニャ…🐾";
       row.appendChild(bubble);
       box.appendChild(row);
-      box.scrollTop = box.scrollHeight;
+      this._scrollToLatest(true);
 
       StorageManager.appendChatLog('user', text);
       StorageManager.appendChatLog('model', direct.display);
@@ -3179,7 +3255,7 @@ const AppCore = {
       this.audio.speak(direct.spoken, null, () => {
         bubble.textContent = direct.display;
         if (this.avatar) this.avatar.setEmotion('talking');
-        box.scrollTop = box.scrollHeight;
+        this._scrollToLatest(true);
       }, () => {
         if (this.avatar) this.avatar.setEmotion('idle');
         this.state.isProcessingInput = false;
@@ -3222,7 +3298,7 @@ const AppCore = {
     bubble.textContent = reply;
     row.appendChild(bubble);
     box.appendChild(row);
-    box.scrollTop = box.scrollHeight;
+    this._scrollToLatest(true);
 
     StorageManager.appendChatLog('model', reply);
 
@@ -3262,7 +3338,7 @@ const AppCore = {
     bubble.textContent = "今日の日記を一生懸命まとめてるニャ…📖✍️";
     row.appendChild(bubble);
     box.appendChild(row);
-    box.scrollTop = box.scrollHeight;
+    this._scrollToLatest(true);
 
     const timeInfo = TimeProvider.getCurrentInfo();
     const lifeKey = timeInfo.lifeLogKey;
@@ -3284,7 +3360,7 @@ const AppCore = {
         this.renderDiaryCard(diaryData);
 
         if (this.avatar) this.avatar.setEmotion('talking');
-        box.scrollTop = box.scrollHeight;
+        this._scrollToLatest(true);
       }, () => {
         if (this.avatar) this.avatar.setEmotion('idle');
         this.state.isThinking = false;
@@ -3330,14 +3406,14 @@ const AppCore = {
     bubble.textContent = photoBase64 ? "写真を見てるニャ…📷✨" : (this.state.isAssistantMode && /(?:ニュース|ラーメン|お店|天気|気温|地図)/.test(promptText) ? "クロがお調べしてるニャ…🔍" : "クロが考えてるニャ…💭");
     row.appendChild(bubble);
     box.appendChild(row);
-    box.scrollTop = box.scrollHeight;
+    this._scrollToLatest(true);
 
     const rawLogs = StorageManager.loadRecentTimelineLogs();
     const res = await this.ai.generateReply(promptText, rawLogs, CHARACTER_CONFIG, this.memories, photoBase64);
 
     if (res.success && res.text) {
       bubble.textContent = "返事の準備をしてるニャ…🎙️";
-      box.scrollTop = box.scrollHeight;
+      this._scrollToLatest(true);
 
       StorageManager.appendChatLog('user', promptText);
       StorageManager.appendChatLog('model', res.text);
@@ -3371,7 +3447,7 @@ const AppCore = {
         }
 
         if (this.avatar) this.avatar.setEmotion('talking');
-        box.scrollTop = box.scrollHeight;
+        this._scrollToLatest(true);
       }, () => {
         if (this.avatar) this.avatar.setEmotion('idle');
         this.state.isThinking = false;
@@ -4379,4 +4455,5 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
+
 
