@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -25,9 +24,8 @@
       --bubble-bg: rgba(255, 255, 255, 0.98);
       --text-color: #1f2937;
       --shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-      --outer-bg: #cbd5e1; /* ライトモード時の角丸外側 */
+      --outer-bg: #cbd5e1;
       --container-bg: #ffffff;
-      /* ★ 上質シャンパンピンク＆シルバーの二重インセット光彩ルーフ */
       --roof-border-color: #f472b6;
       --roof-glow: 
         inset 0 3px 0 0 rgba(255, 255, 255, 0.95),
@@ -36,7 +34,6 @@
         0 8px 30px rgba(244, 114, 182, 0.25);
     }
 
-    /* スマホ・タブレットのダークモード連動 */
     @media (prefers-color-scheme: dark) {
       :root {
         --outer-bg: #090d16;
@@ -71,7 +68,6 @@
       transition: background-color 0.3s ease-out;
     }
 
-    /* トースト通知 */
     #toast-notification {
       position: fixed;
       top: env(safe-area-inset-top, 14px);
@@ -102,11 +98,10 @@
     #toast-notification.error { background: #450a0a; color: #fca5a5; border: 1.5px solid #ef4444; }
     #toast-notification.info { background: #0f172a; color: #38bdf8; border: 1.5px solid #38bdf8; }
 
-    /* ★ メインコンテナ：タブレット縦向きでも全幅に美しく広がり、四隅すべてが26pxの上品な角丸！ */
     #pet-container {
       position: absolute;
       width: 100%;
-      max-width: 100%; /* タブレット縦向きでも余白なく全幅に広がるレスポンシブ設計 */
+      max-width: 100%;
       height: 100%;
       display: flex;
       flex-direction: column;
@@ -115,14 +110,13 @@
       z-index: 50;
       box-sizing: border-box;
       background: var(--container-bg);
-      border-radius: 26px; /* ★ 四隅すべてを完全な丸みで統一 */
+      border-radius: 26px;
       border-top: 3px solid var(--roof-border-color);
       box-shadow: var(--roof-glow);
       transition: all 0.3s ease-out;
       overflow: hidden;
     }
 
-    /* 左右カラムラッパー */
     .app-col-left {
       display: flex;
       flex-direction: column;
@@ -139,7 +133,6 @@
       flex-shrink: 0;
     }
 
-    /* 1. 最上部ステータスバー */
     .top-header {
       width: 100%;
       flex-shrink: 0;
@@ -164,7 +157,6 @@
     .top-header-right { display: flex; align-items: center; flex-shrink: 0; gap: 4px; padding-right: 2px; }
     #clock-display { font-size: 12px; font-weight: 800; color: #334155; padding-left: 0; margin-left: 0; }
 
-    /* ワイドオーバルピル（幅広ステータスバッジ） */
     #status-badge-container {
       flex: 1;
       display: flex;
@@ -232,7 +224,6 @@
     }
     .model-badge.lite { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
 
-    /* 2. 会話タイムライン */
     #chat-timeline {
       flex: 1;
       width: 100%;
@@ -251,7 +242,6 @@
       border-radius: 4px;
     }
 
-    /* 過去ログ読書時の「🐾 最新へ」肉球ボタン */
     #btn-scroll-bottom {
       position: absolute;
       right: 14px;
@@ -399,7 +389,6 @@
     .card-icon { font-size: 15px; flex-shrink: 0; }
     .card-arrow { font-size: 11px; color: #64748b; font-weight: bold; flex-shrink: 0; }
 
-    /* 3. クロちゃん本体ステージ（安定スケーリング） */
     .pet-avatar-wrapper {
       position: relative;
       flex-shrink: 0;
@@ -415,7 +404,6 @@
       background: transparent;
     }
 
-    /* ★ 320px×310px 完全固定キャンバス */
     #cat-stage-box {
       position: relative;
       width: 320px;
@@ -430,7 +418,6 @@
       flex-shrink: 0;
     }
 
-    /* 空中ピョン着地バウンド */
     .cat-stage-flip {
       animation: catFlipLanding 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
     }
@@ -442,7 +429,6 @@
       100% { transform: translateY(0) scale(1); }
     }
 
-    /* 空中くるりん着地時の「🐾 キラリ足跡エフェクト」 */
     .paw-landing-sparkle {
       position: absolute;
       bottom: 20px;
@@ -464,7 +450,6 @@
       100% { opacity: 0; transform: translateX(-50%) scale(1.4) translateY(-24px); }
     }
 
-    /* なでなで時のハート＆肉球ポップ */
     .touch-heart-bubble {
       position: absolute;
       top: 40px;
@@ -486,7 +471,6 @@
       100% { opacity: 0; transform: translateX(-50%) scale(1.4) translateY(-40px); }
     }
 
-    /* UIボタンの一時的退避＆ポンッ♪再出現 */
     .ui-dodge-away {
       opacity: 0 !important;
       transform: scale(0.4) translateY(20px) !important;
@@ -514,7 +498,6 @@
     .pet-avatar-wrapper.is-happy #cat-stage-box:not(.cat-stage-flip) { animation: catStageHappy 0.45s ease-in-out infinite alternate; }
     @keyframes catStageHappy { 0% { transform: translateY(0) scale(1); } 100% { transform: translateY(-7px) scale(1.03); } }
 
-    /* おやすみ中（お昼寝中）の愛らしいスヤスヤ揺れアニメーション */
     .pet-avatar-wrapper.is-sleeping #cat-stage-box {
       animation: catStageSleep 4.0s ease-in-out infinite alternate !important;
     }
@@ -524,7 +507,6 @@
       100% { transform: translateY(0) scale(1, 1) rotate(0.5deg); }
     }
 
-    /* お昼寝突入時の「ふぁ〜あ…あくび」アニメーション */
     .pet-avatar-wrapper.is-yawning #cat-stage-box {
       animation: catYawnMotion 1.4s ease-in-out forwards !important;
     }
@@ -535,7 +517,6 @@
       100% { transform: scale(1) translateY(0); }
     }
 
-    /* お昼寝中のポワポワ「Zzz…💭」エフェクト */
     #sleep-zzz-bubble {
       position: absolute;
       top: 15px;
@@ -622,7 +603,6 @@
       box-shadow: none !important;
     }
 
-    /* ★ 待機中（idle）写真専用の自然な「まばたき＆おやすみ目閉じ」ユニット */
     .real-eyelid-unit {
       position: absolute;
       bottom: 0;
@@ -637,10 +617,8 @@
       display: block;
     }
 
-    /* ★ 【新開発】黒毛の毛並みテクスチャ ＆ 愛らしいアイラインスリットを描く自然なまぶた！ */
     .real-eyelid {
       position: absolute;
-      /* 上から下へ向かう細やかな黒毛〜ダークチャコールの自然な毛並みグラデーション */
       background: 
         radial-gradient(ellipse at 50% 25%, rgba(51, 65, 85, 0.4) 0%, rgba(15, 23, 42, 0.98) 75%),
         repeating-linear-gradient(175deg, #181a24 0px, #0f1118 2px, #262933 3.5px, #0f1118 5px);
@@ -651,10 +629,9 @@
       transition: transform 0.12s ease-out;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.8), inset 0 -1.5px 1px rgba(10, 12, 16, 0.9);
       pointer-events: none;
-      border-bottom: 1.5px solid #08090d; /* 閉じた瞳の優しいアイライン */
+      border-bottom: 1.5px solid #08090d;
     }
 
-    /* 通常待機中の自動まばたき */
     .pet-avatar-wrapper.is-real-mode.is-idling:not(.is-sleeping) .real-eyelid {
       animation: realEyeBlink 4.6s ease-in-out infinite;
     }
@@ -663,7 +640,6 @@
       96%, 98% { transform: scaleY(1.05); }
     }
 
-    /* おやすみ中（目を閉じたままキープ） */
     .pet-avatar-wrapper.is-sleeping .real-eyelid {
       transform: scaleY(1.08) !important;
       animation: none !important;
@@ -700,7 +676,6 @@
     }
     #idea-bulb.active { opacity: 1; transform: scale(1.2) translateY(0); }
 
-    /* 砂時計＆キッチンタイマーウィジェット */
     #kitchen-timer-widget {
       position: absolute;
       left: 12px;
@@ -1015,7 +990,6 @@
     }
     .btn-snack-floating:active { transform: scale(0.92); }
 
-    /* 4. 最下部操作バー ＆ バージョン刻印 */
     .bottom-controls {
       width: 100%;
       flex-shrink: 0;
@@ -1025,7 +999,6 @@
       z-index: 30;
     }
     
-    /* ★ タブレット縦向きでも押しやすい中央最大幅520px設計 */
     .action-bar {
       display: flex;
       align-items: center;
@@ -1159,17 +1132,12 @@
       pointer-events: none;
     }
 
-    /* ==========================================================================
-       ★ 横向き（Landscape）最適化スタイル
-       【左右全角1文字分のゆとり余白 ＆ 頭上開放クリアランス ＆ 完全角丸統一】
-       ========================================================================== */
     @media (orientation: landscape) {
       body { padding: 0; }
       #pet-container {
         max-width: 100vw;
         flex-direction: row;
         justify-content: space-between;
-        /* ★ 左右のパディングを全角1文字分（約18px〜20px）内側へ広げて画面フチとの当たりを解消！ */
         padding: calc(env(safe-area-inset-top, 6px) + 6px) calc(env(safe-area-inset-right, 14px) + 18px) calc(env(safe-area-inset-bottom, 6px) + 4px) calc(env(safe-area-inset-left, 14px) + 18px);
         gap: 16px;
         border-radius: 26px;
@@ -1212,10 +1180,9 @@
         height: auto;
         min-height: 0;
         margin-bottom: 0;
-        justify-content: flex-end; /* 底面接地 */
+        justify-content: flex-end;
       }
 
-      /* ★ 頭上に全角1文字分（約18px）の心地よい余白抜けを確保したスケーリング式 */
       #cat-stage-box {
         width: 320px !important;
         height: 310px !important;
@@ -1260,7 +1227,6 @@
       .app-version-tag { display: none; }
     }
 
-    /* 5. モーダル共通スタイル ＆ 設定モーダル */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -1464,6 +1430,54 @@
     }
     .btn-pc-sync:active { background: #dcfce7; }
 
+    /* ストレージ使用量モニター */
+    .storage-monitor-box {
+      background: #ffffff;
+      border: 1px solid #bbf7d0;
+      border-radius: 12px;
+      padding: 10px;
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .storage-monitor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11.5px;
+      font-weight: 900;
+      color: #166534;
+    }
+    .storage-bar-track {
+      width: 100%;
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+    .storage-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #22c55e, #10b981);
+      border-radius: 6px;
+      width: 10%;
+      transition: width 0.3s ease-out, background 0.3s;
+    }
+    .storage-bar-fill.is-warn {
+      background: linear-gradient(90deg, #f59e0b, #ea580c);
+    }
+    .storage-bar-fill.is-danger {
+      background: linear-gradient(90deg, #ef4444, #b91c1c);
+    }
+    .storage-monitor-footer {
+      font-size: 10.5px;
+      color: #475569;
+      display: flex;
+      justify-content: space-between;
+      font-weight: 700;
+    }
+
     .home-coord-row { display: flex; gap: 6px; margin-top: 5px; }
     .btn-coord-action {
       padding: 6px 10px;
@@ -1605,7 +1619,6 @@
       font-weight: 700;
     }
 
-    /* 6. 本型絵日記アルバム */
     #book-studio-modal {
       position: fixed;
       inset: 0;
@@ -1817,7 +1830,6 @@
       cursor: pointer;
     }
 
-    /* 予備写真サムネイル一覧（思い出スナップストリップ） */
     .snap-strip-container {
       display: flex;
       flex-direction: column;
@@ -1923,7 +1935,6 @@
       justify-content: center;
     }
 
-    /* 7. システム診断モニタ */
     #diag-panel {
       position: fixed;
       inset: 0;
@@ -1958,7 +1969,6 @@
     .log-error { color: #f87171; font-weight: bold; }
     .log-info { color: #94a3b8; }
 
-    /* 8. メガネ・帽子アジャスター（着せ替え専用アトリエ） */
     #glasses-adjust-modal {
       position: fixed;
       inset: 0;
@@ -2017,15 +2027,12 @@
   <div id="pet-container">
     <!-- ▼ 左列：情報 ＆ 会話エリア -->
     <div class="app-col-left">
-      <!-- 1. 最上部ステータスバー -->
       <div class="top-header">
         <div class="top-header-left">
           <span id="clock-display">00:00</span>
-          <!-- 本型絵日記アルバムを開くボタン -->
           <button type="button" class="btn-top-diary" id="top-diary-btn" title="これまでのクロ絵日記をアルバムで開くニャ！">📖 日記帳</button>
         </div>
 
-        <!-- ワイドオーバルピル（幅広ステータスバッジ） -->
         <div id="status-badge-container">
           <span id="status-text">👂 聴いてるニャ♪</span>
         </div>
@@ -2035,36 +2042,28 @@
         </div>
       </div>
 
-      <!-- 2. 会話タイムライン -->
       <div id="chat-timeline"></div>
 
-      <!-- 過去ログ読書時に最新へジャンプする可愛い肉球ボタン -->
       <button type="button" id="btn-scroll-bottom" title="最新のメッセージへジャンプするニャ！">
         <span>🐾</span><span>最新へ</span>
       </button>
     </div>
 
-    <!-- ▼ 右列：クロちゃんステージ ＆ 土台の操作バー -->
+    <!-- ▼ 右列：クロちゃんステージ ＆ 操作バー -->
     <div class="app-col-right">
-      <!-- 3. クロちゃん本体ステージ -->
       <div class="pet-avatar-wrapper is-idling pose-idle-active" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
         <div class="cat-ground-shadow"></div>
         <div id="idea-bulb">💡</div>
 
-        <!-- お昼寝中（お休み中）のポワポワ「Zzz…💭」エフェクト -->
         <div id="sleep-zzz-bubble">
           <div class="zzz-item">z</div>
           <div class="zzz-item">Zz</div>
           <div class="zzz-item">Zzz…💤</div>
         </div>
 
-        <!-- 空中くるりん着地時のキラリ足跡エフェクト -->
         <div class="paw-landing-sparkle" id="paw-landing-sparkle">🐾✨</div>
-
-        <!-- なでなで時のハートポップ -->
         <div class="touch-heart-bubble" id="touch-heart-bubble">💖</div>
 
-        <!-- 変身の煙（モクモクパフ）SVG -->
         <svg id="transform-smoke" viewBox="0 0 200 160">
           <g fill="#ffffff" stroke="#cbd5e1" stroke-width="2.5" opacity="0.95">
             <circle cx="100" cy="80" r="38" />
@@ -2082,10 +2081,7 @@
           </g>
         </svg>
 
-        <!-- ★ 320px×310px 完全固定キャンバス -->
         <div id="cat-stage-box">
-          <!-- リアル写真モード用フレーム -->
-          <!-- ★ 待機中（idle）にのみ、自然な毛並みまぶたユニットを配置！ -->
           <div class="cat-frame active" id="frame-idle">
             <img src="idle.jpg" alt="待機中" class="cat-avatar-img" id="img-idle">
             <div class="real-eyelid-unit" id="eyelid-unit-idle">
@@ -2094,7 +2090,6 @@
             </div>
             <div class="accessory-layer" id="acc-idle"></div>
           </div>
-          <!-- お話し中・考え中・大喜びからは余計なまぶたを完全撤去！ -->
           <div class="cat-frame" id="frame-talking">
             <img src="talking.jpg" alt="お話し中" class="cat-avatar-img" id="img-talking">
             <div class="accessory-layer" id="acc-talking"></div>
@@ -2108,7 +2103,6 @@
             <div class="accessory-layer" id="acc-happy"></div>
           </div>
 
-          <!-- ノルウェージャン「クロちゃん」ベクターアニメーション -->
           <svg viewBox="0 0 200 240" id="cat-vector-avatar" class="active-mode">
             <defs>
               <radialGradient id="grad-fur-black" cx="50%" cy="40%" r="60%">
@@ -2143,7 +2137,6 @@
               </pattern>
             </defs>
 
-            <!-- POSE 1: 待機中 -->
             <g id="pose-idle" class="pose-group">
               <g class="anim-idle-tail">
                 <path d="M125 195 C165 185 195 150 188 115 C182 85 195 72 196 68 C188 76 172 98 162 125 C152 152 144 178 128 194 Z" fill="url(#grad-tail-smoke)"/>
@@ -2162,7 +2155,6 @@
               </g>
             </g>
 
-            <!-- POSE 2: お話し中 -->
             <g id="pose-talking" class="pose-group">
               <g class="anim-talking-tail">
                 <path d="M136 175 C160 160 188 120 182 85 C178 60 192 42 196 35 C186 46 172 70 164 96 C155 125 148 155 136 175 Z" fill="url(#grad-tail-smoke)"/>
@@ -2175,7 +2167,6 @@
               <path d="M78 132 Q100 118 122 132 Q130 160 118 184 Q100 198 82 184 Q70 160 78 132 Z" fill="#ffffff" opacity="0.95"/>
             </g>
 
-            <!-- POSE 3: 考え中 -->
             <g id="pose-thinking" class="pose-group">
               <path d="M125 195 C165 185 195 150 188 115 C182 85 195 72 196 68 C188 76 172 98 162 125 Z" fill="url(#grad-tail-smoke)"/>
               <path d="M52 226 C42 185 50 145 54 130 C48 120 48 100 56 85 C68 45 82 50 100 50 C118 50 132 45 144 85 C152 100 152 120 146 130 C150 145 158 185 148 226 Z" fill="url(#grad-fur-black)"/>
@@ -2189,7 +2180,6 @@
               </g>
             </g>
 
-            <!-- POSE 4: 大喜び -->
             <g id="pose-happy" class="pose-group">
               <g class="anim-happy-tail">
                 <path d="M136 175 C165 150 195 110 188 75 C184 50 196 36 200 30 C190 40 175 65 166 92 C156 122 148 152 136 175 Z" fill="url(#grad-tail-smoke)"/>
@@ -2218,7 +2208,6 @@
               </g>
             </g>
 
-            <!-- お顔ユニット -->
             <g id="head-unit" class="anim-idle-head">
               <g class="anim-ear-l">
                 <path d="M50 75 C48 58 62 26 74 18 C77 16 80 18 81 22 C86 36 90 54 88 70 Z" fill="url(#grad-fur-black)"/>
@@ -2284,7 +2273,6 @@
               <path d="M136 106 Q156 104 172 108" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.9"/>
               <path d="M137 112 Q156 114 170 120" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.9"/>
 
-              <!-- おてつだい装備 -->
               <g id="cat-vector-accessories">
                 <g id="vec-acc-hat">
                   <path d="M72 50 Q100 42 128 50 L124 58 Q100 50 76 58 Z" fill="#1e293b"/>
@@ -2307,7 +2295,6 @@
           </svg>
         </div>
 
-        <!-- 砂時計＆キッチンタイマーウィジェット -->
         <div id="kitchen-timer-widget" title="タップで「ちょい待ち／すすめる」、長押しで停止するニャ！">
           <div class="hourglass-box">
             <svg class="hourglass-spin-unit" viewBox="0 0 60 70">
@@ -2340,7 +2327,6 @@
         </button>
       </div>
 
-      <!-- 4. 最下部操作バー ＆ バージョン刻印 -->
       <div class="bottom-controls">
         <div class="action-bar" id="action-bar">
           <button class="btn-mode-toggle" id="mode-toggle-btn" title="なかよし雑談とおてつだいを切り替えるニャ！">
@@ -2370,7 +2356,6 @@
     </div>
   </div>
 
-  <!-- 本型絵日記アルバム -->
   <div id="book-studio-modal">
     <div class="book-studio-window">
       <div class="studio-top-bar">
@@ -2399,7 +2384,6 @@
     </div>
   </div>
 
-  <!-- システム診断モニタ -->
   <div id="diag-panel">
     <div class="diag-modal-content">
       <div class="diag-header">
@@ -2417,7 +2401,6 @@
     </div>
   </div>
 
-  <!-- メガネ・帽子アジャスターモーダル（着せ替え専用アトリエ） -->
   <div id="glasses-adjust-modal">
     <div class="adjust-header">
       <span>👓 写真ごとのメガネ・帽子位置を微調整</span>
@@ -2465,7 +2448,6 @@
     </div>
   </div>
 
-  <!-- 設定モーダル -->
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal-card">
       <h3>
@@ -2473,7 +2455,6 @@
         <span id="setting-modal-version-tag" style="font-size:11px;font-weight:normal;color:#94a3b8;margin-left:auto;"></span>
       </h3>
 
-      <!-- 1. トリセツ -->
       <details class="manual-details">
         <summary class="manual-summary">
           <span>📖 クロちゃんの取り扱い説明書（トリセツ）</span>
@@ -2495,7 +2476,8 @@
           <div>お家にいる時は「お家でまったりしてるニャン🐾」と正確に答え、お外にいる時だけ「〇〇町をお散歩中ニャ！」と答える賢いセンサーを搭載したニャ！</div>
 
           <div class="manual-sec-title">📷 写真を見せる ＆ 思い出写真</div>
-          <div>下の「📷 写真」ボタンを押すと、スマホのカメラで撮った写真やアルバムの写真をクロちゃんに見せられるニャ！今日撮った写真の中から、日記の内容に一番ぴったりのベストショットをAIが選んで絵日記に飾るニャン♪ アルバムの下にあるスナップ写真をタップすれば、好きな写真にいつでも差し替えできるニャ！</div>
+          <div>下の「📷 写真」ボタンを押すと、スマホのカメラで撮った写真やアルバムの写真をクロちゃんに見せられるニャ！今日撮った写真の中から、日記の内容に一番ぴったりのベストショットをAIが選んで絵日記に飾るニャン♪ アルバムの下にあるスナップ写真をタップすれば、好きな写真にいつでも差し替えできるニャ！<br>
+          <span style="color:#c2410c;font-weight:800;">※お写真は1日に最大12枚まで思い出としてプールにストックされます（13枚目以降は古い写真と自動で入れ替わりますニャ）。</span></div>
 
           <div class="manual-sec-title">📖 絵日記の仕様と生活リズム（午前4時切り替え・自動補完）</div>
           <div>
@@ -2515,7 +2497,6 @@
         </div>
       </details>
 
-      <!-- ▼ 第1ブロック：クロちゃんの個性・声・見た目 -->
       <div class="setting-section-header">🐾 クロちゃんの声と見た目</div>
 
       <div class="form-group">
@@ -2572,7 +2553,6 @@
         <button type="button" class="btn-adjust-open" id="open-glasses-adjust-btn">👓 写真ごとのメガネ・帽子位置を微調整する</button>
       </div>
 
-      <!-- ▼ 第2ブロック：クロちゃんの記憶 ＆ バックアップ -->
       <div class="setting-section-header">📔 記憶帳 ＆ バックアップ</div>
 
       <div class="form-group">
@@ -2597,6 +2577,20 @@
           <button type="button" class="btn-trigger-restore" id="btn-trigger-restore">📁 ファイル読込</button>
           <input type="file" id="file-input-restore" accept=".json" style="display:none;">
         </div>
+
+        <div class="storage-monitor-box">
+          <div class="storage-monitor-header">
+            <span>📊 ストレージ使用量（思い出の引き出し）:</span>
+            <span id="storage-status-pill" style="font-size:11px; color:#15803d; font-weight:800;">快適ニャ🐾</span>
+          </div>
+          <div class="storage-bar-track">
+            <div class="storage-bar-fill" id="storage-bar-fill"></div>
+          </div>
+          <div class="storage-monitor-footer">
+            <span id="storage-usage-text">0.00 MB / 5.00 MB</span>
+            <span id="storage-percent-text">0%</span>
+          </div>
+        </div>
       </div>
 
       <div class="form-group">
@@ -2620,13 +2614,11 @@
         <button type="button" class="btn-clear-timeline" id="btn-clear-chat-display">🧹 画面の会話表示をクリア（お掃除）</button>
       </div>
 
-      <!-- ▼ 第3ブロック：バージョン更新履歴（最新10件） -->
       <div class="setting-section-header">📜 バージョン更新履歴（最新10件）</div>
       <div class="form-group">
         <div id="version-history-container"></div>
       </div>
 
-      <!-- ▼ 第4ブロック：高度な接続・システム保守 -->
       <details class="secure-details">
         <summary class="secure-summary">
           <span>🔒 外部連携APIキー設定（Google AI / VoiceVox）</span>
@@ -2659,7 +2651,6 @@
             </div>
           </div>
 
-          <!-- ★ 世界観を守るため奥底に隔離された「瞳・まぶた位置の精密キャリブレーション」 -->
           <details style="background:#f1f5f9; border-radius:12px; padding:8px; margin-top:6px; border:1px solid #cbd5e1;">
             <summary style="font-weight:800; font-size:11.5px; color:#475569; cursor:pointer; outline:none;">
               👁️ 瞳・まぶた（瞬き・目閉じ）位置の精密調整（初期設定用）
@@ -2699,7 +2690,6 @@
         </div>
       </details>
 
-      <!-- 保存ボタン -->
       <button class="btn-save" id="save-settings-btn">
         <span id="save-btn-icon">💾</span>
         <span id="save-btn-text">設定と記憶を保存するニャン♪</span>
@@ -2707,9 +2697,7 @@
     </div>
   </div>
 
-  <!-- バージョン一元管理スクリプト -->
   <script src="version.js"></script>
-  <!-- 対話エンジン本体 -->
   <script src="app.js"></script>
 </body>
 </html>
