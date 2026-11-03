@@ -22,7 +22,11 @@
        直近【10往復（20件）】だけ厳選してGeminiに送信。0.6秒台の爆速と深い文脈を両立！
      ・【その日の絵日記を書いた後】：長い会話を手放し、「今日の日記」＋「直近5往復（10件）」に切り替え。
 
-   ■ 3. 愛情たっぷり！新3大ふれあい機能 ＆ 砂時計キッチンタイマー
+   ■ 3. 愛情たっぷり！ふれあい機能 ＆ 砂時計キッチンタイマー ＆ 空中くるりん着地
+     ・① スマホ横倒し検知 ＆ 空中くるりん着地：
+        - 歩行時や持ち歩きの揺れ（傾き45度未満）では動かない「不感帯（遊び）」を設定。
+        - 横倒し検知時、ボタン類がシュッと一時退避し、クロちゃんが空中で身を丸めて「くるりんっ♪トンッ！」と着地。
+        - 着地した瞬間に、ボタン類が足元に「ポンッ♪」と再登場！
      ・② 気まぐれ独り言：おやびんが無操作で数分経つと、声を出さずにそっとあくびやつぶやき。
      ・③ なでなで部位センサー：頭・あご下・お腹でクロちゃんの喜びリアクションが変化！
      ・④ 絵日記の肉球スタンプ＆ミニ手紙：1日1ページの絵日記に肉球印と可愛い手紙を刻印。
@@ -367,8 +371,7 @@ class AudioSpeechEngine {
       });
 
     } else if (type === 'bell') {
-      // ★ 華やかベルチャイム（高音2段連打：チリリン♪ チリリン♪）
-      const bellPitches = [1568, 2093, 1568, 2093]; // G6 -> C7 -> G6 -> C7
+      const bellPitches = [1568, 2093, 1568, 2093];
       const bellTimes = [0, 0.14, 0.38, 0.52];
 
       bellTimes.forEach((delay, idx) => {
@@ -395,7 +398,6 @@ class AudioSpeechEngine {
       });
 
     } else if (type === 'alarm') {
-      // ★ デジタルアラーム（ピピピッ！ピピピッ！：目立つ和音ビープ音連打）
       const bursts = [0, 0.11, 0.22, 0.45, 0.56, 0.67];
       bursts.forEach(delay => {
         const osc1 = ctx.createOscillator();
@@ -403,10 +405,10 @@ class AudioSpeechEngine {
         const gain = ctx.createGain();
 
         osc1.type = 'square';
-        osc1.frequency.setValueAtTime(2093, now + delay); // C7
+        osc1.frequency.setValueAtTime(2093, now + delay);
 
         osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(2637, now + delay); // E7
+        osc2.frequency.setValueAtTime(2637, now + delay);
 
         gain.gain.setValueAtTime(0.38, now + delay);
         gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.08);
@@ -1566,6 +1568,7 @@ class CatAvatarRenderer {
   constructor() {
     this.wrapper = document.getElementById('avatar-wrapper');
     this.smokeEl = document.getElementById('transform-smoke');
+    this.catStageBox = document.getElementById('cat-stage-box');
     this.frames = {
       idle: document.getElementById('frame-idle'),
       talking: document.getElementById('frame-talking'),
@@ -1748,6 +1751,45 @@ class CatAvatarRenderer {
       bulb.classList.remove('active');
       if (this.wrapper) this.wrapper.classList.remove('spark-idea');
     }, 1800);
+  }
+
+  // ★ 空中くるりん＆トンッ！着地アニメーション発動
+  triggerFlipLanding() {
+    if (!this.catStageBox) return;
+
+    // UIボタン類の退避
+    const snackBtn = document.getElementById('snack-btn');
+    const transBtn = document.getElementById('transform-btn');
+    const timerWidget = document.getElementById('kitchen-timer-widget');
+
+    [snackBtn, transBtn, timerWidget].forEach(el => {
+      if (el) {
+        el.classList.add('ui-dodge-away');
+        el.classList.remove('ui-pop-in');
+      }
+    });
+
+    // 猫ちゃんの空中くるりん着地
+    this.catStageBox.classList.remove('cat-stage-flip');
+    void this.catStageBox.offsetWidth;
+    this.catStageBox.classList.add('cat-stage-flip');
+
+    // 0.42秒後、着地完了でUIボタンをポンッ♪と再出現
+    setTimeout(() => {
+      if (this.catStageBox) this.catStageBox.classList.remove('cat-stage-flip');
+
+      [snackBtn, transBtn, timerWidget].forEach(el => {
+        if (el) {
+          el.classList.remove('ui-dodge-away');
+          el.classList.add('ui-pop-in');
+        }
+      });
+      setTimeout(() => {
+        [snackBtn, transBtn, timerWidget].forEach(el => {
+          if (el) el.classList.remove('ui-pop-in');
+        });
+      }, 350);
+    }, 420);
   }
 }
 
@@ -2171,7 +2213,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
 
     const filteredLogs = dailyAllLogs.filter(l => {
       if (!l.text) return false;
-      if (/(?:今日|きょう)?(?:の)?(?:日記|にっき).*(?:書いて|まとめて)/.test(l.text)) return false;
+      if (/(?:今日|きょう)?(?:の)?(?:絵?日記|にっき).*(?:書いて|まとめて)/.test(l.text)) return false;
       if (l.text.startsWith('http') || l.text.includes('Googleマップで見る')) return false;
 
       if (l.mode === 'assistant') {
@@ -2264,7 +2306,7 @@ const AppCore = {
     activeAdjustTab: 'idle',
     snackCount: 0,
 
-    // ★ タイマー関連State（案A: ちょい待ちニャ ＆ すすめるニャ！ 完全対応）
+    // ★ タイマー関連State
     timerId: null,
     timerSeconds: 0,
     timerTotalSeconds: 0,
@@ -2274,6 +2316,10 @@ const AppCore = {
     isTimerCompleted: false,
     timerAlertLoopTimer: null,
     wakeLockSentinel: null,
+
+    // ★ 画面向き＆姿勢制御State（不感帯・デバウンス対応）
+    isLandscape: false,
+    orientationDebounceTimer: null,
 
     studioDiaries: [],
     studioDiaryPageIdx: 0,
@@ -2319,6 +2365,7 @@ const AppCore = {
     this._bindGlassesAdjusterUI();
     this._bindBookStudioUI();
     this._bindPhotoUploadUI();
+    this._bindOrientationWatcher(); // ★ スマホ横倒し検知の初期化
 
     try {
       this._renderMemories();
@@ -2373,7 +2420,6 @@ const AppCore = {
       this.checkAndFinalizeYesterdayDiary();
       this._startIdleSoliloquyWatcher();
 
-      // ★ 画面復帰時のスリープロック再取得監視
       document.addEventListener('visibilitychange', async () => {
         if (document.visibilityState === 'visible' && this.state.timerId !== null) {
           await this._acquireWakeLock();
@@ -2381,10 +2427,49 @@ const AppCore = {
       });
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-      Logger.log("[AppCore] 全システム正常稼働！漆黒砂時計タイマー＆マブダチ対話準備完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！横倒し着地アニメーション＆漆黒砂時計タイマー準備完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
+  },
+
+  /* ==========================================================================
+     ★ MODULE 6.1: スマホ横倒し検知 ＆ 空中くるりん着地制御（不感帯・デバウンス）
+     ========================================================================== */
+  _bindOrientationWatcher() {
+    const checkOrientation = () => {
+      // 1. 画面の物理アスペクト比 ＆ メディアクエリ監視
+      const isWidthGreater = window.innerWidth > window.innerHeight;
+      const isLandscapeMedia = window.matchMedia && window.matchMedia('(orientation: landscape)').matches;
+      const newLandscape = isWidthGreater || isLandscapeMedia;
+
+      if (newLandscape !== this.state.isLandscape) {
+        if (this.state.orientationDebounceTimer) {
+          clearTimeout(this.state.orientationDebounceTimer);
+        }
+
+        // 200msの不感帯（デバウンス）：持ち歩き時の瞬間的な揺れでは発動しない
+        this.state.orientationDebounceTimer = setTimeout(() => {
+          this.state.isLandscape = newLandscape;
+          Logger.log(`[姿勢検知⚡] スマホの向きが変化: ${newLandscape ? '📱 横向き（Landscape）' : '📱 縦向き（Portrait）'}`, "info");
+
+          // 空中くるりん＆着地アニメーション発動！
+          if (this.avatar) {
+            this.avatar.triggerFlipLanding();
+          }
+          this.audio.playEffect('purr');
+        }, 200);
+      }
+    };
+
+    window.addEventListener('resize', checkOrientation, { passive: true });
+    window.addEventListener('orientationchange', checkOrientation, { passive: true });
+    if (window.screen?.orientation) {
+      window.screen.orientation.addEventListener('change', checkOrientation);
+    }
+
+    // 初回初期化時の向きチェック
+    this.state.isLandscape = (window.innerWidth > window.innerHeight);
   },
 
   _startIdleSoliloquyWatcher() {
@@ -2714,7 +2799,6 @@ const AppCore = {
     let totalSeconds = 0;
     let label = "";
 
-    // パターン1: 「〇分〇秒」 (例: 1分30秒, 2分15秒)
     const minSecMatch = text.match(/(\d+)\s*分\s*(\d+)\s*秒/);
     if (minSecMatch) {
       const m = parseInt(minSecMatch[1], 10);
@@ -2723,7 +2807,6 @@ const AppCore = {
       label = `${m}分${s}秒`;
     }
 
-    // パターン2: 「〇分半」 (例: 1分半, 2分半)
     if (!totalSeconds) {
       const minHalfMatch = text.match(/(\d+)\s*分半/);
       if (minHalfMatch) {
@@ -2733,7 +2816,6 @@ const AppCore = {
       }
     }
 
-    // パターン3: 「〇秒」単独 (例: 20秒, 30秒, 45秒)
     if (!totalSeconds) {
       const secOnlyMatch = text.match(/(\d+)\s*秒/);
       if (secOnlyMatch) {
@@ -2743,7 +2825,6 @@ const AppCore = {
       }
     }
 
-    // パターン4: 「〇分」単独 (例: 3分, 5分, 10分)
     if (!totalSeconds) {
       const minOnlyMatch = text.match(/(\d+)\s*分/);
       if (minOnlyMatch) {
@@ -2860,7 +2941,6 @@ const AppCore = {
 
     const timerSound = this.getTimerSound();
 
-    // ★ ハイブリッドアラーム：3回リピート（チリリン♪ … チリリン♪ … チリリン♪）
     this.audio.playEffect(timerSound);
     let loopCount = 1;
 
@@ -2891,12 +2971,10 @@ const AppCore = {
     });
   },
 
-  // ★ 案A：「ちょい待ちニャ🐾」と「すすめるニャ！🐾」のトグル制御
   toggleKitchenTimerPause() {
     this.resetActivityTimer();
     this.audio.unlockMasterAudio();
 
-    // 完了時（鳴っている/点滅中）にタップしたら即時消去！
     if (this.state.isTimerCompleted) {
       this.dismissCompletedTimer();
       return;
@@ -2909,7 +2987,6 @@ const AppCore = {
     const icon = document.getElementById('timer-status-icon');
 
     if (!this.state.isTimerPaused) {
-      // 1. 【ちょい待ちニャ🐾】（一時停止）
       this.state.isTimerPaused = true;
       if (widget) {
         widget.classList.add('is-paused');
@@ -2923,7 +3000,6 @@ const AppCore = {
       this.triggerActionVoice("ちょい待ちニャ！", "🐾 ちょい待ちニャ！", 350);
 
     } else {
-      // 2. 【すすめるニャ！🐾】（再開）
       this.state.isTimerPaused = false;
       if (widget) {
         widget.classList.remove('is-paused');
@@ -2938,7 +3014,6 @@ const AppCore = {
     }
   },
 
-  // ★ 完了アラームの消去（タップされた時）
   dismissCompletedTimer() {
     this.state.isTimerCompleted = false;
     if (this.state.timerAlertLoopTimer) {
@@ -3001,7 +3076,7 @@ const AppCore = {
         if (isOk) {
           this.cancelKitchenTimer(true);
         }
-      }, 900); // 0.9秒長押しで完全中止
+      }, 900);
     };
 
     const cancelPress = () => {
@@ -3026,7 +3101,6 @@ const AppCore = {
   async handleUserInput(text) {
     this.resetActivityTimer();
 
-    // 1. 日記作成リクエスト
     const isDiaryRequest = /(?:今日|きょう|本日)?(?:の)?(?:絵?日記|にっき).*(?:書いて|まとめて|記録して|つけて|おねがい)/.test(text) &&
                            !/(?:日記に書いてあった|日記に書いてた|昔の日記)/.test(text);
     if (isDiaryRequest) {
@@ -3035,7 +3109,6 @@ const AppCore = {
       return;
     }
 
-    // 2. おやすみフロー
     const isGoodNight = /(?:おやすみ|おやすみなさい|もう寝るね|寝るね|寝ます)(?:ニャ|ニャン|ね|よ|〜|ー|！|!|。)*$/i.test(text.trim()) &&
                         !/(?:明日|会社|週末|仕事).*(?:おやすみ|休み)/.test(text);
     if (isGoodNight) {
@@ -3043,7 +3116,6 @@ const AppCore = {
       return;
     }
 
-    // 3. ★ 秒・分半・漢数字対応キッチンタイマー検知
     const timerParsed = this._parseTimerRequest(text);
     if (timerParsed) {
       this.startKitchenTimer(timerParsed.totalSeconds, timerParsed.label, timerParsed.isRamen);
@@ -3076,7 +3148,6 @@ const AppCore = {
       return;
     }
 
-    // 4. タイマー中止・停止コマンド
     if (/(?:タイマー.*(?:止めて|やめて|ストップ|消して|キャンセル)|タイマー.*中止)/.test(text)) {
       if (this.state.timerId || this.state.isTimerCompleted || this.state.isTimerPaused) {
         this.cancelKitchenTimer(true);
@@ -3087,7 +3158,6 @@ const AppCore = {
       }
     }
 
-    // 5. 時計・カレンダー直接確認
     const direct = this._checkDirectIntent(text);
     if (direct) {
       const st = document.getElementById('status-text');
