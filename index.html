@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -15,7 +16,7 @@
   <meta name="apple-mobile-web-app-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="クロちゃん🐾">
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#090d16" media="(prefers-color-scheme: dark)">
 
   <style>
     :root {
@@ -24,18 +25,19 @@
       --bubble-bg: rgba(255, 255, 255, 0.98);
       --text-color: #1f2937;
       --shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-      --outer-bg: #f1f5f9; /* ライトモード時の角丸外側背景 */
+      --outer-bg: #e2e8f0; /* ライトモード時の角丸外側（スマホのバーと調和） */
       --container-bg: #ffffff;
-      --roof-highlight: rgba(255, 255, 255, 0.85);
-      --roof-border: rgba(226, 232, 240, 0.9);
+      /* ★ ひと目で分かる上品なシャンパンピンク＆シルバーの光彩ライン */
+      --roof-border-color: rgba(244, 114, 182, 0.65);
+      --roof-glow: 0 0 14px rgba(244, 114, 182, 0.35), 0 -2px 0 1px rgba(255, 255, 255, 0.9) inset;
     }
 
-    /* ★ スマホのダークモード連動：角丸の外側をブラウザの黒に完全同化 */
+    /* スマホのダークモード連動 */
     @media (prefers-color-scheme: dark) {
       :root {
         --outer-bg: #090d16;
-        --roof-highlight: rgba(255, 255, 255, 0.12);
-        --roof-border: rgba(51, 65, 85, 0.6);
+        --roof-border-color: rgba(244, 114, 182, 0.5);
+        --roof-glow: 0 0 16px rgba(56, 189, 248, 0.35), 0 -1.5px 0 1px rgba(255, 255, 255, 0.2) inset;
       }
     }
 
@@ -92,7 +94,7 @@
     #toast-notification.error { background: #450a0a; color: #fca5a5; border: 1.5px solid #ef4444; }
     #toast-notification.info { background: #0f172a; color: #38bdf8; border: 1.5px solid #38bdf8; }
 
-    /* ★ 提案①：上部角丸 ＆ しっとりガラス光彩ルーフボーダー（ネイティブアプリの風格） */
+    /* ★ 上部角丸 ＆ 誰が見てもひと目で分かる美しい光彩ルーフボーダー */
     #pet-container {
       position: absolute;
       width: 100%;
@@ -107,14 +109,13 @@
       background: var(--container-bg);
       border-top-left-radius: 28px;
       border-top-right-radius: 28px;
-      box-shadow: 0 -1px 0 1px var(--roof-highlight) inset,
-                  0 0 0 1px var(--roof-border),
-                  0 -4px 20px rgba(0, 0, 0, 0.05);
+      border-top: 2px solid var(--roof-border-color);
+      box-shadow: var(--roof-glow), 0 10px 35px rgba(0, 0, 0, 0.1);
       transition: all 0.3s ease-out;
       overflow: hidden;
     }
 
-    /* 左右カラムラッパー（縦向き時は透明なパススルー、横向き時に2分割） */
+    /* 左右カラムラッパー */
     .app-col-left {
       display: flex;
       flex-direction: column;
@@ -159,25 +160,27 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 0 4px;
+      padding: 0 2px;
       min-width: 0;
     }
+
+    /* ★ 改善：文字切れを起こさずスッキリ収まるスマートバッジ */
     #status-text {
-      width: 100%;
-      max-width: 240px;
+      width: auto;
+      max-width: 100%;
       text-align: center;
       background: #0f172a;
       color: #38bdf8;
-      font-size: 12.5px;
+      font-size: 11.5px;
       font-weight: 900;
-      padding: 5px 12px;
+      padding: 5px 10px;
       border-radius: 20px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.15) inset;
       white-space: nowrap;
       overflow: hidden;
-      text-overflow: clip;
+      text-overflow: ellipsis;
       transition: all 0.25s ease-out;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.2px;
     }
     #status-text.is-hearing {
       background: #0284c7 !important;
@@ -236,7 +239,7 @@
       border-radius: 4px;
     }
 
-    /* ★ 提案③：過去を読んでいる時だけひょっこり出る「🐾 最新へ」肉球ボタン */
+    /* 過去ログ読書時の「🐾 最新へ」肉球ボタン */
     #btn-scroll-bottom {
       position: absolute;
       right: 14px;
@@ -414,7 +417,7 @@
       pointer-events: none;
     }
 
-    /* 猫らしい空中ピョン着地バウンド */
+    /* 空中ピョン着地バウンド */
     .cat-stage-flip {
       animation: catFlipLanding 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
     }
@@ -426,7 +429,7 @@
       100% { transform: translateY(0) scale(1); }
     }
 
-    /* ★ 提案②：空中くるりん着地時の「🐾 キラリ足跡エフェクト」 */
+    /* 空中くるりん着地時の「🐾 キラリ足跡エフェクト」 */
     .paw-landing-sparkle {
       position: absolute;
       bottom: 20px;
@@ -560,7 +563,7 @@
     }
     #idea-bulb.active { opacity: 1; transform: scale(1.2) translateY(0); }
 
-    /* 砂時計＆キッチンタイマーウィジェット（おやつボタンの真上・つら合わせ） */
+    /* 砂時計＆キッチンタイマーウィジェット */
     #kitchen-timer-widget {
       position: absolute;
       left: 12px;
@@ -1012,6 +1015,7 @@
 
     /* ==========================================================================
        ★ 横向きモード（Landscape）最適化スタイル
+       【左下角丸の追加 ＆ 四隅の完全対称化】
        ========================================================================== */
     @media (orientation: landscape) and (max-height: 520px) {
       body {
@@ -1023,17 +1027,22 @@
         justify-content: space-between;
         padding: env(safe-area-inset-top, 6px) env(safe-area-inset-right, 12px) env(safe-area-inset-bottom, 6px) env(safe-area-inset-left, 12px);
         gap: 12px;
+        /* 四隅を完全対称に丸く整列 */
         border-top-left-radius: 24px;
         border-top-right-radius: 24px;
+        border-bottom-left-radius: 24px;
+        border-bottom-right-radius: 24px;
       }
 
-      /* 左列：情報＆会話エリア（縦に広々！） */
+      /* 左列：情報＆会話エリア（左下も美しくフィット） */
       .app-col-left {
         flex: 1.15;
         height: 100%;
         display: flex;
         flex-direction: column;
         min-width: 0;
+        border-bottom-left-radius: 20px;
+        overflow: hidden;
       }
       .top-header {
         margin-bottom: 4px;
@@ -1437,20 +1446,30 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .btn-force-refresh {
+    /* ★ 改善：怖くない優しいリロードボタン ＆ 安心キャプション */
+    .btn-safe-reload {
       width: 100%;
-      padding: 9px;
-      background: #f1f5f9;
-      color: #475569;
-      border: 1px dashed #cbd5e1;
-      border-radius: 10px;
-      font-size: 11.5px;
-      font-weight: bold;
+      padding: 10px;
+      background: #f8fafc;
+      color: #334155;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 800;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
+      transition: background 0.15s;
+    }
+    .btn-safe-reload:active { background: #e2e8f0; }
+    .safe-reload-note {
+      font-size: 10.5px;
+      color: #166534;
+      text-align: center;
+      margin-top: 4px;
+      font-weight: 700;
     }
 
     /* 6. 本型絵日記アルバム */
@@ -1822,7 +1841,7 @@
       <!-- 2. 会話タイムライン -->
       <div id="chat-timeline"></div>
 
-      <!-- ★ 提案③：過去ログ読書時に最新へジャンプする可愛い肉球ボタン -->
+      <!-- 過去ログ読書時に最新へジャンプする可愛い肉球ボタン -->
       <button type="button" id="btn-scroll-bottom" title="最新のメッセージへジャンプするニャ！">
         <span>🐾</span><span>最新へ</span>
       </button>
@@ -1835,7 +1854,7 @@
         <div class="cat-ground-shadow"></div>
         <div id="idea-bulb">💡</div>
 
-        <!-- ★ 提案②：空中くるりん着地時のキラリ足跡エフェクト -->
+        <!-- 空中くるりん着地時のキラリ足跡エフェクト -->
         <div class="paw-landing-sparkle" id="paw-landing-sparkle">🐾✨</div>
 
         <!-- 変身の煙（モクモクパフ）SVG -->
@@ -2174,7 +2193,7 @@
         <div class="diag-header-actions">
           <button type="button" class="diag-act-btn" id="diag-test-models-btn" title="全モデルの導通を今すぐテスト">⚡ モデル検証</button>
           <button type="button" class="diag-act-btn" id="diag-copy-evidence-btn" title="ログをクリップボードにコピー">📋 ログコピー</button>
-          <button type="button" class="diag-act-btn" id="diag-force-reload-btn" title="キャッシュを消去して再読み込み">🔄 強制更新</button>
+          <button type="button" class="diag-act-btn" id="diag-force-reload-btn" title="キャッシュを消去して再読み込み">🔄 画面リロード</button>
           <button type="button" class="diag-act-btn" id="diag-close-btn">✕</button>
         </div>
       </div>
@@ -2232,7 +2251,7 @@
     </div>
   </div>
 
-  <!-- 設定モーダル -->
+  <!-- 設定モーダル（お掃除完了・楽しい設定だけが美しく並ぶ画面） -->
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal-card">
       <h3>
@@ -2262,7 +2281,7 @@
           <div>お家にいる時は「お家でまったりしてるニャン🐾」と正確に答え、お外にいる時だけ「〇〇町をお散歩中ニャ！」と答える賢いセンサーを搭載したニャ！</div>
 
           <div class="manual-sec-title">📷 写真を見せる ＆ 思い出写真</div>
-          <div>下の「📷 写真」ボタンを押すと、スマホのカメラで撮った写真やアルバムの写真をクロちゃんに見せられるニャ！写真について楽しくおしゃべりできて、その日の絵日記に自動で写真が飾られるニャン♪</div>
+          <div>下の「📷 写真」ボタンを押すと、スマホのカメラで撮った写真やアルバムの写真をクロちゃんに見せられるニャ！今日撮った写真の中から、日記の内容に一番ぴったりのベストショットをAIが選んで絵日記に飾るニャン♪</div>
 
           <div class="manual-sec-title">📖 絵日記の仕様と生活リズム（午前4時切り替え・自動補完）</div>
           <div>
@@ -2367,15 +2386,6 @@
       </div>
 
       <div class="form-group">
-        <label>🏠 拠点・自宅のGPS座標 / 住所（在宅判定に使用）:</label>
-        <input type="text" id="home-coords-input" placeholder="例: 35.7582, 139.4678 または 東京都東村山市本町1丁目">
-        <div class="home-coord-row">
-          <button type="button" class="btn-coord-action" id="btn-get-current-home">📍 現在地を自宅にセット</button>
-          <button type="button" class="btn-copy-home-coords">📋 座標をコピー</button>
-        </div>
-      </div>
-
-      <div class="form-group">
         <label>ニュース・お店の紹介件数:</label>
         <div style="display:flex; gap:8px;">
           <select id="news-count-select" style="flex:1;">
@@ -2402,7 +2412,7 @@
         <div id="version-history-container"></div>
       </div>
 
-      <!-- ▼ 第4ブロック：高度な接続・システム管理 -->
+      <!-- ▼ 第4ブロック：高度な接続・システム保守（暗号座標と再読み込みはここにスッキリ格納！） -->
       <details class="secure-details">
         <summary class="secure-summary">
           <span>🔒 外部連携APIキー設定（Google AI / VoiceVox）</span>
@@ -2422,12 +2432,25 @@
 
       <details class="secure-details">
         <summary class="secure-summary">
-          <span>🛠️ システム保守・トラブルシューティング</span>
+          <span>🛠️ 高度なシステム設定 ＆ 拠点位置管理</span>
           <span>▼</span>
         </summary>
         <div class="secure-content">
-          <button type="button" class="btn-adjust-open" style="background:#0f172a;color:#38bdf8;border-color:#334155;" id="open-diag-modal-btn">🩺 システム診断モニタを開く</button>
-          <button type="button" class="btn-force-refresh" id="force-refresh-btn">🔄 アプリプログラムを強制更新（最新版取得）</button>
+          <!-- ★ お掃除移設：普段使わないGPS座標はここにスッキリ格納 -->
+          <div class="form-group" style="margin-bottom:8px;">
+            <label>🏠 拠点・自宅のGPS座標 / 住所（在宅センサー用）:</label>
+            <input type="text" id="home-coords-input" placeholder="例: 35.7582, 139.4678 または 東京都東村山市本町1丁目">
+            <div class="home-coord-row">
+              <button type="button" class="btn-coord-action" id="btn-get-current-home">📍 現在地を自宅にセット</button>
+              <button type="button" class="btn-copy-home-coords">📋 座標をコピー</button>
+            </div>
+          </div>
+
+          <button type="button" class="btn-adjust-open" style="background:#0f172a;color:#38bdf8;border-color:#334155;margin-top:6px;" id="open-diag-modal-btn">🩺 システム診断モニタを開く</button>
+          
+          <!-- ★ 改善：怖くない優しい画面リロードボタン ＆ 安心注記 -->
+          <button type="button" class="btn-safe-reload" id="force-refresh-btn" style="margin-top:8px;">🔄 画面を最新版に更新する（再読み込み）</button>
+          <div class="safe-reload-note">※日記や記憶データは消えずに安全にキープされます</div>
         </div>
       </details>
 
@@ -2446,4 +2469,4 @@
 </body>
 </html>
 
-
+🐾

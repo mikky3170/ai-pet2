@@ -17,8 +17,12 @@
           - 2件（標準）：本命ピンポイント ＋ 周辺・主要一覧ポータル（他の選択肢も一望！）
           - 3件：本命 ＋ 第2候補 ＋ 一覧ポータル
 
-   ■ 2. 記憶のライフサイクル（知的クレンジング ＆ 10往復20件の厳選記憶）
+   ■ 2. 記憶のライフサイクル（知的クレンジング ＆ 写真のAI最適選定）
      ・時報（時間・日付）、天気、ボタン一声、タイマー等の単発ノイズを完全除外。
+     ・【散歩写真のAI最適選定】：
+       散歩中に複数枚の写真を撮った場合、一番最後の写真で上書きするのではなく、
+       その日の「写真プール」に蓄積。絵日記生成時に、その日の日記のメインテーマ
+       （公園、グルメ、お部屋、ドライブなど）に最もふさわしいベストショットをAIが賢く選んで絵日記に飾る！
      ・【その日の絵日記を書く前】：ノイズを除外した「中身のある実質的な会話」を
        直近【10往復（20件）】だけ厳選してGeminiに送信。0.6秒台の爆速と深い文脈を両立！
      ・【その日の絵日記を書いた後】：長い会話を手放し、「今日の日記」＋「直近5往復（10件）」に切り替え。
@@ -31,8 +35,7 @@
         - 過去ログ読書時だけひょっこり現れる「🐾 最新へ」肉球ボタンも完全連動！
      ・② 気まぐれ独り言：おやびんが無操作で数分経つと、声を出さずにそっとあくびやつぶやき。
      ・③ なでなで部位センサー：頭・あご下・お腹でクロちゃんの喜びリアクションが変化！
-     ・④ 絵日記の肉球スタンプ＆ミニ手紙：1日1ページの絵日記に肉球印と可愛い手紙を刻印。
-     ・⑤ 漆黒の砂時計タイマー：
+     ・④ 漆黒の砂時計タイマー：
         - 「ちょい待ちニャ🐾」（一時停止）＆「すすめるニャ！🐾」（再開）
         - 完了時ハイブリッド仕様：3回リピートアラーム ＆ タップで即座に消音・消去完了！
 
@@ -758,7 +761,7 @@ class AudioSpeechEngine {
         hasTriggeredStart = true;
         this.isSpeaking = true;
         const st = document.getElementById('status-text');
-        if (st) st.textContent = "🗣️ お話し中ニャ♪";
+        if (st) st.textContent = "🗣️ お話し中♪";
         if (onStart) onStart();
       }
     };
@@ -906,7 +909,7 @@ class AudioSpeechEngine {
         this.masterAudio.playbackRate = this.rate;
         this.isSpeaking = true;
         const st = document.getElementById('status-text');
-        if (st) st.textContent = "🗣️ お話し中ニャ♪";
+        if (st) st.textContent = "🗣️ お話し中♪";
 
         if (AppCore.avatar) AppCore.avatar.setEmotion('talking');
 
@@ -1261,7 +1264,7 @@ const LocationProvider = {
 };
 
 /* ==========================================================================
-   ★ MODULE 3: 鉄壁ストレージ管理
+   ★ MODULE 3: 鉄壁ストレージ管理 ＆ 散歩写真プール管理
    ========================================================================== */
 const DATA_KEYS = {
   MEMORIES: 'kuro_data_memories',
@@ -1362,6 +1365,35 @@ const StorageManager = {
     }
   },
 
+  // ★ 散歩写真プール管理：その日撮った写真を配列で保持（AI最適選定用）
+  addPhotoToDailyPool(photoBase64, userComment = "") {
+    const timeInfo = TimeProvider.getCurrentInfo();
+    const photoPoolKey = `kuro_daily_photos_${timeInfo.lifeLogKey}`;
+    try {
+      const raw = localStorage.getItem(photoPoolKey);
+      const pool = raw ? JSON.parse(raw) : [];
+      pool.push({
+        base64: photoBase64,
+        comment: userComment,
+        time: timeInfo.clock,
+        timestamp: Date.now()
+      });
+      // 最大10枚まで安全保持
+      localStorage.setItem(photoPoolKey, JSON.stringify(pool.slice(-10)));
+      Logger.log(`[PhotoPool] 今日の写真プールに保存完了（総数: ${pool.length}枚）`, "info");
+    } catch(e) {}
+  },
+
+  getDailyPhotoPool(lifeDateKey) {
+    const photoPoolKey = `kuro_daily_photos_${lifeDateKey}`;
+    try {
+      const raw = localStorage.getItem(photoPoolKey);
+      return raw ? JSON.parse(raw) : [];
+    } catch(e) {
+      return [];
+    }
+  },
+
   loadMemories(defaultMemories) {
     try {
       const raw = localStorage.getItem(DATA_KEYS.MEMORIES);
@@ -1439,6 +1471,8 @@ const StorageManager = {
   attachPhotoToTodayDiary(photoBase64) {
     const timeInfo = TimeProvider.getCurrentInfo();
     const dateKey = timeInfo.lifeLogKey;
+    this.addPhotoToDailyPool(photoBase64, "写真を見せたニャ");
+
     let list = this.loadAllDiaries();
     const existingIdx = list.findIndex(d => d.dateKey === dateKey);
     if (existingIdx >= 0) {
@@ -1777,7 +1811,7 @@ class CatAvatarRenderer {
     void this.catStageBox.offsetWidth;
     this.catStageBox.classList.add('cat-stage-flip');
 
-    // ★ 提案②：着地直前（320ms）に足元へキラリ足跡エフェクト（🐾✨）がフワッと弾ける
+    // 着地直前（320ms）に足元へキラリ足跡エフェクト（🐾✨）がフワッと弾ける
     setTimeout(() => {
       if (this.sparkleEl) {
         this.sparkleEl.classList.remove('is-popping');
@@ -1809,7 +1843,7 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   ★ MODULE 5: 思考・AI対話エンジン（マブダチ対話 ＆ スマートカード完全連動）
+   ★ MODULE 5: 思考・AI対話エンジン（マブダチ対話 ＆ 散歩写真AI最適選定）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
@@ -2008,7 +2042,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
         const keepWarmTimer = setTimeout(() => {
           const st = document.getElementById('status-text');
           if (st && AppCore.state.isThinking) {
-            st.textContent = "💭 一生懸命考え中ニャ…🐾";
+            st.textContent = "💭 考え中ニャ…";
           }
         }, 3500);
 
@@ -2215,6 +2249,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
     return [];
   }
 
+  // ★ 散歩写真AI最適選定：絵日記の内容に最もふさわしい写真を自律選定
   async generateDailyDiarySummary(dailyAllLogs, targetLifeDateKey = null, targetLifeFullDate = null) {
     if (!this.apiKey) return { success: false };
 
@@ -2225,6 +2260,7 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
     const isAtHome = LocationProvider.isAtHome;
 
     const fullDate = targetLifeFullDate || timeInfo.lifeFullDate;
+    const lifeKey = targetLifeDateKey || timeInfo.lifeLogKey;
 
     const filteredLogs = dailyAllLogs.filter(l => {
       if (!l.text) return false;
@@ -2284,13 +2320,46 @@ ${conversationHistoryText || '今日はおやびんとまったりお家で過�
           let clean = diaryText.replace(/[*#_~`]/g, '').trim();
           clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
           Logger.log(`[Diary成功⚡] 絵日記が完成したニャ！（文字数: ${clean.length}字）`, "success");
-          return { success: true, diaryText: clean };
+
+          // 写真プールから日記内容に一番合致する写真をAI選定
+          const photoPool = StorageManager.getDailyPhotoPool(lifeKey);
+          let bestPhoto = null;
+          if (photoPool.length > 0) {
+            bestPhoto = this._selectBestPhotoForDiary(clean, photoPool);
+            Logger.log(`[PhotoSelection] 全 ${photoPool.length} 枚の写真から日記に最適な1枚を選定完了！`, "success");
+          }
+
+          return { success: true, diaryText: clean, selectedPhoto: bestPhoto };
         }
       }
     } catch(e) {
       Logger.log(`[Diary例外] ${e.message}`, "error");
     }
     return { success: false };
+  }
+
+  _selectBestPhotoForDiary(diaryText, photoPool) {
+    if (!photoPool || photoPool.length === 0) return null;
+    if (photoPool.length === 1) return photoPool[0].base64;
+
+    let bestScore = -1;
+    let bestIdx = 0;
+
+    photoPool.forEach((item, idx) => {
+      let score = 0;
+      const c = item.comment || "";
+      if (c && diaryText.includes(c)) score += 3;
+      if (diaryText.includes("散歩") || diaryText.includes("お外")) score += 1;
+      if (diaryText.includes("ラーメン") || diaryText.includes("ご飯") || diaryText.includes("ちゅ〜る")) score += 1;
+      score += (idx * 0.2);
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestIdx = idx;
+      }
+    });
+
+    return photoPool[bestIdx]?.base64 || photoPool[photoPool.length - 1].base64;
   }
 }
 
@@ -2321,7 +2390,7 @@ const AppCore = {
     activeAdjustTab: 'idle',
     snackCount: 0,
 
-    // ★ タイマー関連State
+    // タイマー関連State
     timerId: null,
     timerSeconds: 0,
     timerTotalSeconds: 0,
@@ -2332,7 +2401,7 @@ const AppCore = {
     timerAlertLoopTimer: null,
     wakeLockSentinel: null,
 
-    // ★ 画面向き＆姿勢制御State（不感帯・デバウンス対応）
+    // 画面向き＆姿勢制御State
     isLandscape: false,
     orientationDebounceTimer: null,
 
@@ -2380,8 +2449,8 @@ const AppCore = {
     this._bindGlassesAdjusterUI();
     this._bindBookStudioUI();
     this._bindPhotoUploadUI();
-    this._bindOrientationWatcher(); // ★ スマホ横倒し検知＆回転時最下部自動スクロール
-    this._bindScrollToBottomUI();   // ★ 提案③：「🐾 最新へ」肉球ボタン連動
+    this._bindOrientationWatcher(); // スマホ横倒し検知＆回転時最下部自動スクロール
+    this._bindScrollToBottomUI();   // 「🐾 最新へ」肉球ボタン連動
 
     try {
       this._renderMemories();
@@ -2443,7 +2512,7 @@ const AppCore = {
       });
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-      Logger.log("[AppCore] 全システム正常稼働！上部角丸＆空中着地キラリ足跡＆最新へ自動スクロール準備完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！光彩ルーフ＆スマートステータス＆AI写真選定準備完了ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
@@ -2466,7 +2535,7 @@ const AppCore = {
   },
 
   /* ==========================================================================
-     ★ MODULE 6.2: 提案③「🐾 最新へ」肉球ボタンの監視とスクロール連動
+     ★ MODULE 6.2: 「🐾 最新へ」肉球ボタンの監視とスクロール連動
      ========================================================================== */
   _bindScrollToBottomUI() {
     const box = document.getElementById('chat-timeline');
@@ -2474,7 +2543,6 @@ const AppCore = {
     if (!box || !btn) return;
 
     box.addEventListener('scroll', () => {
-      // 一番下から110px以上上にスクロールして過去ログを読んでいる場合のみボタンを表示
       const distanceFromBottom = box.scrollHeight - (box.scrollTop + box.clientHeight);
       if (distanceFromBottom > 110) {
         btn.classList.add('is-visible');
@@ -2505,12 +2573,12 @@ const AppCore = {
           clearTimeout(this.state.orientationDebounceTimer);
         }
 
-        // 200msの不感帯（デバウンス）：持ち歩きの細かな揺れでは発動しない
+        // 200msの不感帯（デバウンス）
         this.state.orientationDebounceTimer = setTimeout(() => {
           this.state.isLandscape = newLandscape;
           Logger.log(`[姿勢検知⚡] スマホの向きが変化: ${newLandscape ? '📱 横向き（Landscape）' : '📱 縦向き（Portrait）'}`, "info");
 
-          // ★ 提案②：空中くるりん着地アニメーション発動 ＆ プチつぶやき
+          // 空中くるりん着地アニメーション発動 ＆ スッキリステータス表示
           if (this.avatar) {
             this.avatar.triggerFlipLanding();
           }
@@ -2519,7 +2587,7 @@ const AppCore = {
           const st = document.getElementById('status-text');
           if (st && !this.audio.isSpeaking && !this.state.isThinking) {
             const originalText = st.textContent;
-            st.textContent = "くるりんっ♪着地成功ニャ🐾";
+            st.textContent = "🐾 着地成功ニャ！";
             setTimeout(() => {
               if (st && !this.audio.isSpeaking && !this.state.isThinking && this.state.isRunning) {
                 st.textContent = originalText.includes('着地') ? "👂 聴いてるニャ♪" : originalText;
@@ -2527,13 +2595,12 @@ const AppCore = {
             }, 1800);
           }
 
-          // ★ 画面回転時の最新会話への自動スクロール（レイアウト確定後に2段階で実行）
+          // 最新会話への自動スクロール
           setTimeout(() => { this._scrollToLatest(true); }, 150);
           setTimeout(() => { this._scrollToLatest(true); }, 450);
 
         }, 200);
       } else {
-        // 回転していなくても画面リサイズ等があった場合は最新へ位置補正
         setTimeout(() => { this._scrollToLatest(false); }, 100);
       }
     };
@@ -2544,7 +2611,6 @@ const AppCore = {
       window.screen.orientation.addEventListener('change', checkOrientation);
     }
 
-    // 初回初期化
     this.state.isLandscape = (window.innerWidth > window.innerHeight);
   },
 
@@ -2623,18 +2689,20 @@ const AppCore = {
       Logger.log(`[自動補完検知] 昨日の日記（${yKey}）の再生成を開始ニャ（理由: ${reason}）…`, "info");
       const res = await this.ai.generateDailyDiarySummary(yLogs, yKey, yFull);
       if (res.success && res.diaryText) {
-        StorageManager.saveDiary(res.diaryText, yKey, yFull, yDiary?.photo || null, yLogs.length);
+        const photoToSave = res.selectedPhoto || yDiary?.photo || null;
+        StorageManager.saveDiary(res.diaryText, yKey, yFull, photoToSave, yLogs.length);
         Logger.log(`[自動補完完了⚡] ${yKey} の絵日記が夜の会話差分を含めて最新化されたニャ！`, "success");
       }
     }
   },
 
+  // ★ 改善：怖くない優しいリロード処理
   async forceRefreshApp() {
-    const isOk = window.confirm("⚠️ 会話履歴や日記・記憶データは消えません。\nアプリの画面プログラムを最新版に更新（再読み込み）しますか？");
+    const isOk = window.confirm("【ご安心ください】\n日記や会話、記憶データは一切消えません。\n最新の画面プログラムを読み直しますかニャ？🐾");
     if (!isOk) return;
 
-    Logger.log("[リフレッシュ] ブラウザキャッシュ破棄中…", "info");
-    Toast.show("キャッシュを消去して再読み込みするニャ！🔄", "info");
+    Logger.log("[リロード] ブラウザキャッシュ破棄中…", "info");
+    Toast.show("画面をピカピカの最新版に読み直すニャ！🔄", "info");
     try {
       if ('caches' in window) {
         const keys = await caches.keys();
@@ -2836,22 +2904,22 @@ const AppCore = {
                          /(?:何時か|何時なのか|時間を|現在の時間|いまの時間).*(?:教えて|おしえて|言って|わかる)/.test(clean);
     if (isClockQuery && !/(?:何日|いつ|日記|何時間|何分|時間ある|時間ない|時間だけど)/.test(clean)) {
       const info = TimeProvider.getCurrentInfo();
-      return { display: info.clockDisplay, spoken: info.spokenClock, waiting: "時計を確認してるニャ…⏱️" };
+      return { display: info.clockDisplay, spoken: info.spokenClock, waiting: "時計を確認中ニャ…⏱️" };
     }
 
     const isDateQuery = /^(?:今日|きょう|本日)?(?:って)?(?:何日|なんにち|何曜日|なんようび)(?:ですか|だニャ|だにゃ|かな|？|\?|！|!)?$/i.test(clean) ||
                         /(?:今日の日付|きょうの日付|今日が何日か|何曜日か).*(?:教えて|おしえて|わかる)/.test(clean);
     if (isDateQuery) {
       const info = TimeProvider.getCurrentInfo();
-      return { display: info.dateDisplay, spoken: info.spokenDate, waiting: "カレンダーを見てるニャ…📅" };
+      return { display: info.dateDisplay, spoken: info.spokenDate, waiting: "暦を見てるニャ…📅" };
     }
 
     return null;
   },
 
   /* ==========================================================================
-     ★ MODULE 7: 砂時計タイマー ＆ ハイブリッドアラーム
-     ========================================================================== */
+   ★ MODULE 7: 砂時計タイマー ＆ ハイブリッドアラーム
+   ========================================================================== */
   _normalizeKanjiNumbers(str) {
     if (!str) return "";
     let s = str.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
@@ -3198,7 +3266,7 @@ const AppCore = {
       const rep = `了解ニャ！${timerParsed.label}クロがしっかり見ておくニャン🐾`;
 
       const st = document.getElementById('status-text');
-      if (st) st.textContent = "⏱️ タイマーセット中ニャ…";
+      if (st) st.textContent = "⏱️ タイマーセット中…";
 
       const box = document.getElementById('chat-timeline');
       const row = document.createElement('div');
@@ -3285,7 +3353,7 @@ const AppCore = {
     StorageManager.appendChatLog('user', userText);
 
     const st = document.getElementById('status-text');
-    if (st) st.textContent = "💤 おやすみ準備中ニャ…";
+    if (st) st.textContent = "💤 おやすみ準備中…";
 
     const timeInfo = TimeProvider.getCurrentInfo();
     const reply = "おやすみニャおやびん♪ 今日の夜の分も日記に書き足して仕上げておくニャン…💤 良い夢見てニャ🐾";
@@ -3316,7 +3384,8 @@ const AppCore = {
 
     this.ai.generateDailyDiarySummary(allLogs, lifeKey, timeInfo.lifeFullDate).then(res => {
       if (res.success && res.diaryText) {
-        StorageManager.saveDiary(res.diaryText, lifeKey, timeInfo.lifeFullDate, existingDiary?.photo || null, allLogs.length);
+        const photoToSave = res.selectedPhoto || existingDiary?.photo || null;
+        StorageManager.saveDiary(res.diaryText, lifeKey, timeInfo.lifeFullDate, photoToSave, allLogs.length);
         Logger.log(`[おやすみ自動更新完了⚡] ${lifeKey} の最終絵日記を保存完了`, "success");
       }
     });
@@ -3346,7 +3415,7 @@ const AppCore = {
     const diaryRes = await this.ai.generateDailyDiarySummary(allLogs, lifeKey, timeInfo.lifeFullDate);
 
     if (diaryRes.success && diaryRes.diaryText) {
-      StorageManager.saveDiary(diaryRes.diaryText, lifeKey, timeInfo.lifeFullDate, null, allLogs.length);
+      StorageManager.saveDiary(diaryRes.diaryText, lifeKey, timeInfo.lifeFullDate, diaryRes.selectedPhoto || null, allLogs.length);
       const diaryData = StorageManager.getTodayDiary();
 
       StorageManager.appendChatLog('user', promptText);
@@ -3394,7 +3463,7 @@ const AppCore = {
     if (photoBase64) {
       thinkingStatus = "📷 写真見てるニャ…";
     } else if (this.state.isAssistantMode && /(?:ニュース|ラーメン|お店|天気|気温|スポット|近く|地図)/.test(promptText)) {
-      thinkingStatus = "🔍 お調べ中ニャ…";
+      thinkingStatus = "🔍 調べ中ニャ…";
     }
     if (st) st.textContent = thinkingStatus;
 
