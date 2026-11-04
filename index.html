@@ -271,14 +271,15 @@
     }
     .model-badge.lite { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
 
+    /* ★ 最新セリフの下部見切れを完全解消する下部48pxパディング */
     #chat-timeline {
       flex: 1;
       width: 100%;
       overflow-y: auto;
-      padding: 4px 6px 12px 6px;
+      padding: 6px 8px 48px 8px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
       scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
       z-index: 10;
@@ -348,15 +349,17 @@
       object-fit: cover;
     }
 
+    /* ★ 最新のセリフが下端で欠けないよう余白と行間を最適化 */
     .chat-bubble {
       max-width: 86%;
-      padding: 9px 14px;
+      padding: 10px 14px;
       border-radius: 18px;
       font-size: 13.5px;
-      line-height: 1.5;
+      line-height: 1.55;
       word-break: break-word;
       box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
       transition: all 0.2s ease-out;
+      margin-bottom: 2px;
     }
     .chat-row.user .chat-bubble { background: #0284c7; color: #ffffff; border-bottom-right-radius: 4px; }
     .chat-row.model .chat-bubble { background: #ffffff; color: #2d3748; border: 1.5px solid #fbcfe8; border-bottom-left-radius: 4px; }
@@ -368,6 +371,7 @@
       font-weight: 500;
     }
 
+    /* ★ ミニ絵日記カード＆クロのひとことメッセージ完全復活スタイル */
     .timeline-diary-card {
       width: 95%;
       max-width: 420px;
@@ -377,9 +381,10 @@
       padding: 12px 14px;
       box-shadow: 0 4px 14px rgba(234, 88, 12, 0.1);
       margin-top: 6px;
+      margin-bottom: 4px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 7px;
       animation: fadeIn 0.3s ease-out;
     }
     .timeline-diary-header {
@@ -414,6 +419,31 @@
       color: #431407;
       word-break: break-word;
       white-space: pre-wrap;
+    }
+    /* 復活したクロのひとことメッセージ枠 */
+    .timeline-diary-comment-box {
+      background: #fdf2f8;
+      border: 1.2px solid #fbcfe8;
+      border-radius: 12px;
+      padding: 7px 10px;
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .timeline-diary-comment-label {
+      font-size: 10.5px;
+      font-weight: 900;
+      color: #db2777;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .timeline-diary-comment-text {
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: #9d174d;
+      font-weight: 700;
     }
 
     .action-card-box { margin-top: 6px; display: flex; flex-direction: column; gap: 6px; max-width: 92%; }
@@ -535,21 +565,6 @@
       100% { opacity: 0; transform: translateX(-50%) scale(1.4) translateY(-40px); }
     }
 
-    .ui-dodge-away {
-      opacity: 0 !important;
-      transform: scale(0.4) translateY(20px) !important;
-      pointer-events: none !important;
-      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    }
-    .ui-pop-in {
-      animation: uiPopSpring 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    }
-    @keyframes uiPopSpring {
-      0% { opacity: 0; transform: scale(0.4) translateY(20px); }
-      70% { opacity: 1; transform: scale(1.08) translateY(-3px); }
-      100% { opacity: 1; transform: scale(1) translateY(0); }
-    }
-
     .pet-avatar-wrapper.is-idling #cat-stage-box:not(.cat-stage-flip) { animation: catStageBreathe 4.8s ease-in-out infinite; }
     @keyframes catStageBreathe {
       0%, 100% { transform: scale(1, 1) translateY(0); }
@@ -650,7 +665,6 @@
     }
     .cat-frame.active { opacity: 1; pointer-events: none; }
 
-    /* ★ JPGとPNGの合成自動切り替え */
     .cat-avatar-img {
       position: absolute;
       bottom: 0;
@@ -659,13 +673,12 @@
       object-fit: contain;
       object-position: bottom center;
       background: transparent !important;
-      mix-blend-mode: multiply; /* デフォルトのJPG用（白背景を透かす） */
+      mix-blend-mode: multiply;
       display: block;
       pointer-events: none;
       border: none !important;
       box-shadow: none !important;
     }
-    /* 透過PNGが読み込まれた時は乗算を解除してクリアな発色を保証 */
     .cat-avatar-img.is-png {
       mix-blend-mode: normal !important;
     }
@@ -680,9 +693,7 @@
       display: none;
       transform-origin: bottom center;
     }
-    .pet-avatar-wrapper.is-real-mode .real-eyelid-unit {
-      display: block;
-    }
+    .pet-avatar-wrapper.is-real-mode .real-eyelid-unit { display: block; }
 
     .real-eyelid {
       position: absolute;
@@ -1199,6 +1210,7 @@
       pointer-events: none;
     }
 
+    /* ★ 横画面時の耳の見切れを完全に解消する最適化CSS */
     @media (orientation: landscape) {
       body { padding: 0; }
       #pet-container {
@@ -1227,7 +1239,7 @@
       }
       #chat-timeline {
         flex: 1;
-        padding-bottom: 6px;
+        padding-bottom: 24px;
       }
 
       .app-col-right {
@@ -1250,10 +1262,11 @@
         justify-content: flex-end;
       }
 
+      /* ★ お耳が上の青い枠を突き抜けないよう、スケールを0.82倍にジャストフィット調整 */
       #cat-stage-box {
         width: 320px !important;
         height: 310px !important;
-        transform: scale(min(calc((100vh - 84px) / 310), 0.96));
+        transform: scale(min(calc((100vh - 96px) / 310), 0.82));
         transform-origin: bottom center;
       }
 
@@ -1354,10 +1367,6 @@
       background: #ffffff;
     }
 
-    /* ==========================================================================
-       ★ 脱・OS標準ドラムロール！完全オリジナル・ビジュアル設定UI
-       ========================================================================== */
-    /* 1. カラーパレット選択カード（2×2グリッド） */
     .theme-palette-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -1414,7 +1423,6 @@
       white-space: nowrap;
     }
 
-    /* 2. カプセル型セグメントボタン（iPhone風） */
     .segment-capsule-row {
       display: flex;
       background: #f1f5f9;
@@ -1450,7 +1458,6 @@
     .segment-btn.is-active.pink { color: #db2777; }
     .segment-btn.is-active.blue { color: #0284c7; }
 
-    /* 3. 洗練された声選択チップリスト */
     .voice-chip-container {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -1479,13 +1486,6 @@
       font-weight: 900;
       box-shadow: 0 2px 8px rgba(244, 114, 182, 0.2);
     }
-
-    .input-error-shake {
-      border-color: #ef4444 !important;
-      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
-      animation: shakeInput 0.35s ease-in-out;
-    }
-    @keyframes shakeInput { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 
     .manual-details {
       background: #f8fafc;
@@ -1737,6 +1737,7 @@
     }
     .btn-clear-timeline:active { background: #e2e8f0; }
 
+    /* 記憶帳のインライン編集・修正機能スタイル */
     .memory-list {
       background: #f8fafc;
       border-radius: 14px;
@@ -1791,15 +1792,6 @@
     }
     .btn-save.is-saving { background: #475569; pointer-events: none; }
     .btn-save.is-success { background: #16a34a; }
-    .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2.5px solid rgba(255, 255, 255, 0.3);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
 
     .btn-safe-reload {
       width: 100%;
@@ -1826,7 +1818,6 @@
       font-weight: 700;
     }
 
-    /* ▼ 絵日記アルバム */
     #book-studio-modal {
       position: fixed;
       inset: 0;
@@ -1899,18 +1890,6 @@
       position: relative;
       min-height: 0;
     }
-    .book-page-ribbon {
-      position: absolute;
-      top: -2px;
-      right: 18px;
-      background: #f472b6;
-      color: #ffffff;
-      padding: 3px 10px;
-      border-bottom-left-radius: 8px;
-      border-bottom-right-radius: 8px;
-      font-size: 10.5px;
-      font-weight: 900;
-    }
     .book-page-header {
       display: flex;
       justify-content: space-between;
@@ -1957,10 +1936,6 @@
       box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35);
       animation: pulseReading 1.5s infinite;
     }
-    @keyframes pulseReading {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.88; transform: scale(0.98); }
-    }
 
     .book-btn-del-entry {
       background: #fee2e2;
@@ -1973,7 +1948,6 @@
       font-weight: 800;
     }
 
-    /* 左右2分割フォトブロック */
     .diary-photo-duo-container {
       width: 100%;
       height: 146px;
@@ -2019,28 +1993,6 @@
       display: flex;
       align-items: center;
       gap: 2px;
-    }
-    .book-photo-placeholder {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
-      color: #ea580c;
-      font-size: 11.5px;
-      font-weight: 800;
-    }
-    .book-photo-remove-btn {
-      position: absolute;
-      top: 5px;
-      right: 5px;
-      background: rgba(0, 0, 0, 0.65);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      padding: 3px 6px;
-      font-size: 10px;
-      cursor: pointer;
-      z-index: 10;
     }
 
     .photo-duo-right {
@@ -2130,14 +2082,7 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
-      min-height: 120px;
-    }
-    .book-textarea-label {
-      font-size: 11.5px;
-      font-weight: 800;
-      color: #4b5563;
-      display: flex;
-      justify-content: space-between;
+      min-height: 110px;
     }
     .book-diary-textarea {
       flex: 1;
@@ -2152,7 +2097,7 @@
       resize: none;
       outline: none;
       background: #ffffff;
-      min-height: 100px;
+      min-height: 90px;
     }
     .book-diary-textarea:focus { border-color: #f97316; }
 
@@ -2439,7 +2384,6 @@
         </svg>
 
         <div id="cat-stage-box">
-          <!-- ★ PNG優先＆JPG安全自動フォールバック画像ユニット -->
           <div class="cat-frame active" id="frame-idle">
             <img src="idle.png" onerror="if(this.src.endsWith('.png')){this.src='idle.jpg';this.classList.remove('is-png');}" onload="if(this.src.endsWith('.png')){this.classList.add('is-png');}" alt="待機中" class="cat-avatar-img" id="img-idle">
             <div class="real-eyelid-unit" id="eyelid-unit-idle">
@@ -2868,7 +2812,6 @@
         </div>
       </details>
 
-      <!-- ★ 1. ビジュアル・カラーパレット選択（OSドラムロール撤廃！） -->
       <div class="setting-section-header">🎨 お部屋のカラーテーマ</div>
       <div class="form-group">
         <div class="theme-palette-grid" id="theme-palette-grid">
@@ -2903,7 +2846,6 @@
         </div>
       </div>
 
-      <!-- ★ 2. クロちゃんの声と見た目（洗練されたチップUI） -->
       <div class="setting-section-header">🐾 クロちゃんの声と見た目</div>
 
       <div class="form-group">
@@ -2926,7 +2868,6 @@
         <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.05" value="1.05">
       </div>
 
-      <!-- ★ 3. ボタン操作時のクロの一声（カプセル型セグメントボタン） -->
       <div class="form-group">
         <label>ボタン操作時の一声ボイス:</label>
         <div class="segment-capsule-row" id="feedback-segment-group">
@@ -2935,7 +2876,6 @@
         </div>
       </div>
 
-      <!-- ★ 4. タイマーアラーム音（カプセル型セグメントボタン） -->
       <div class="form-group">
         <label>タイマー完了アラーム音:</label>
         <div class="segment-capsule-row" id="timer-sound-segment-group" style="margin-bottom:6px;">
@@ -2945,7 +2885,6 @@
         <button type="button" class="btn-voice-test" id="test-timer-sound-btn" style="border-color:#f59e0b;color:#d97706;background:#fffbeb;">🔊 アラーム音を試聴するニャ</button>
       </div>
 
-      <!-- ★ 5. おてつだいモード装備（カプセル型セグメントボタン） -->
       <div class="form-group">
         <label>おてつだいモードの装備スタイル:</label>
         <div class="segment-capsule-row" id="acc-style-segment-group">
@@ -3009,7 +2948,6 @@
         </div>
       </div>
 
-      <!-- ★ 6. 案内件数選択（カプセル型セグメントボタン） -->
       <div class="form-group">
         <label>ニュース紹介件数:</label>
         <div class="segment-capsule-row" id="news-count-segment-group">
@@ -3066,7 +3004,7 @@
             <input type="text" id="home-coords-input" placeholder="例: 35.7582, 139.4678 または 東京都東村山市本町1丁目">
             <div class="home-coord-row">
               <button type="button" class="btn-coord-action" id="btn-get-current-home">📍 現在地を自宅にセット</button>
-              <button type="button" class="btn-copy-home-coords">📋 座標をコピー</button>
+              <button type="button" class="btn-coord-action" id="btn-copy-home-coords">📋 座標をコピー</button>
             </div>
           </div>
 
@@ -3120,3 +3058,5 @@
   <script src="app.js"></script>
 </body>
 </html>
+
+
