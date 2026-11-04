@@ -1,5 +1,6 @@
+
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-theme="normal">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -18,7 +19,11 @@
   <meta name="theme-color" content="#090d16" media="(prefers-color-scheme: dark)">
 
   <style>
-    :root {
+    /* ==========================================================================
+       4大テーマ定義（ノーマル / ダーク / ライト / ポップ）
+       ========================================================================== */
+    /* 1. ノーマルテーマ（OS自動連動・現在のデザインそのもの） */
+    :root, [data-theme="normal"] {
       --primary-color: #f472b6;
       --secondary-color: #38bdf8;
       --bubble-bg: rgba(255, 255, 255, 0.98);
@@ -32,18 +37,60 @@
         inset 0 0 14px rgba(244, 114, 182, 0.55),
         inset 0 0 0 2.5px rgba(244, 114, 182, 0.8),
         0 8px 30px rgba(244, 114, 182, 0.25);
+      --stage-rug: radial-gradient(ellipse at center, rgba(244, 114, 182, 0.18) 0%, rgba(255, 255, 255, 0) 72%);
     }
 
     @media (prefers-color-scheme: dark) {
-      :root {
+      [data-theme="normal"] {
         --outer-bg: #090d16;
+        --container-bg: #0f172a;
         --roof-border-color: #f472b6;
         --roof-glow: 
           inset 0 2px 0 0 rgba(255, 255, 255, 0.35),
           inset 0 0 16px rgba(56, 189, 248, 0.45),
           inset 0 0 0 2.5px rgba(244, 114, 182, 0.7),
           0 8px 30px rgba(0, 0, 0, 0.6);
+        --stage-rug: radial-gradient(ellipse at center, rgba(56, 189, 248, 0.22) 0%, rgba(15, 23, 42, 0) 72%);
       }
+    }
+
+    /* 2. ダークテーマ（常時シックな漆黒ナイトモード） */
+    [data-theme="dark"] {
+      --outer-bg: #030712;
+      --container-bg: #0b1120;
+      --roof-border-color: #38bdf8;
+      --roof-glow: 
+        inset 0 2px 0 0 rgba(255, 255, 255, 0.25),
+        inset 0 0 16px rgba(56, 189, 248, 0.6),
+        inset 0 0 0 2.5px rgba(56, 189, 248, 0.8),
+        0 8px 30px rgba(0, 0, 0, 0.85);
+      --stage-rug: radial-gradient(ellipse at center, rgba(56, 189, 248, 0.28) 0%, rgba(11, 17, 32, 0) 72%);
+    }
+
+    /* 3. ライトテーマ（常時クッキリ明るいピュアホワイトモード） */
+    [data-theme="light"] {
+      --outer-bg: #e2e8f0;
+      --container-bg: #ffffff;
+      --roof-border-color: #0284c7;
+      --roof-glow: 
+        inset 0 3px 0 0 rgba(255, 255, 255, 0.95),
+        inset 0 0 14px rgba(2, 132, 199, 0.45),
+        inset 0 0 0 2.5px rgba(2, 132, 199, 0.75),
+        0 8px 26px rgba(2, 132, 199, 0.2);
+      --stage-rug: radial-gradient(ellipse at center, rgba(2, 132, 199, 0.15) 0%, rgba(255, 255, 255, 0) 72%);
+    }
+
+    /* 4. ポップテーマ（ミルキーキャンディ＆パステルモード） */
+    [data-theme="pop"] {
+      --outer-bg: #fed7aa;
+      --container-bg: #fffdf5;
+      --roof-border-color: #fb923c;
+      --roof-glow: 
+        inset 0 3px 0 0 rgba(255, 255, 255, 0.98),
+        inset 0 0 16px rgba(251, 146, 60, 0.55),
+        inset 0 0 0 3px rgba(244, 114, 182, 0.85),
+        0 10px 32px rgba(249, 115, 22, 0.25);
+      --stage-rug: radial-gradient(ellipse at center, rgba(254, 215, 170, 0.45) 0%, rgba(255, 253, 245, 0) 72%);
     }
 
     * {
@@ -408,6 +455,19 @@
       background: transparent;
     }
 
+    /* 四角い写真が暗い背景でも浮き出ない「ふんわりラグマットステージ」 */
+    .cat-stage-rug {
+      position: absolute;
+      bottom: 0px;
+      width: 280px;
+      height: 90px;
+      background: var(--stage-rug);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 2;
+      transition: background 0.3s ease-out;
+    }
+
     #cat-stage-box {
       position: relative;
       width: 320px;
@@ -420,6 +480,7 @@
       background: transparent;
       pointer-events: none;
       flex-shrink: 0;
+      z-index: 5;
     }
 
     .cat-stage-flip {
@@ -944,10 +1005,10 @@
       bottom: 4px;
       width: 240px;
       height: 22px;
-      background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.25) 0%, rgba(0, 0, 0, 0) 75%);
+      background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0) 75%);
       border-radius: 50%;
       pointer-events: none;
-      z-index: 1;
+      z-index: 3;
     }
 
     .btn-transform-floating {
@@ -1467,15 +1528,9 @@
       height: 100%;
       transition: width 0.35s ease-out;
     }
-    .storage-seg.seg-photo {
-      background: linear-gradient(90deg, #f97316, #fb923c);
-    }
-    .storage-seg.seg-chat {
-      background: linear-gradient(90deg, #0284c7, #38bdf8);
-    }
-    .storage-seg.seg-meta {
-      background: linear-gradient(90deg, #10b981, #34d399);
-    }
+    .storage-seg.seg-photo { background: linear-gradient(90deg, #f97316, #fb923c); }
+    .storage-seg.seg-chat { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+    .storage-seg.seg-meta { background: linear-gradient(90deg, #10b981, #34d399); }
 
     .storage-monitor-footer {
       font-size: 10.5px;
@@ -1645,7 +1700,7 @@
       font-weight: 700;
     }
 
-    /* ▼ 絵日記アルバム（左右2分割フォトブロック ＆ スナップ個別削除機能） */
+    /* ▼ 絵日記アルバム（左右2分割フォトブロック ＆ スナップ上下2段横スクロール） */
     #book-studio-modal {
       position: fixed;
       inset: 0;
@@ -1792,10 +1847,10 @@
       font-weight: 800;
     }
 
-    /* ★ 左右2分割フォトブロック（縦横比完全ロック＆独立スクロール） */
+    /* ★ 左右2分割フォトブロック（縦横比完全ロック ＆ スナップ上下2段横スクロール） */
     .diary-photo-duo-container {
       width: 100%;
-      height: 145px;
+      height: 146px;
       display: flex;
       gap: 10px;
       flex-shrink: 0;
@@ -1803,7 +1858,7 @@
 
     /* 左列：メイン写真フレーム（比率維持＆拡大ヒント） */
     .photo-duo-left {
-      flex: 1.15;
+      flex: 1.1;
       height: 100%;
       border: 2px dashed #fed7aa;
       border-radius: 14px;
@@ -1865,9 +1920,9 @@
       z-index: 10;
     }
 
-    /* 右列：思い出スナッププール（2列ミニグリッド・個別削除対応） */
+    /* 右列：思い出スナッププール（上下2段 × 横スクロールカルーセル） */
     .photo-duo-right {
-      flex: 0.95;
+      flex: 1.1;
       height: 100%;
       background: #fffaf5;
       border: 1px dashed #fed7aa;
@@ -1889,28 +1944,35 @@
       flex-shrink: 0;
       padding: 0 2px;
     }
-    .duo-right-grid {
+    .duo-right-grid-horizontal {
       flex: 1;
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 6px;
-      overflow-y: auto;
-      padding-right: 2px;
+      grid-template-rows: repeat(2, 1fr);
+      grid-auto-flow: column;
+      grid-auto-columns: 56px;
+      gap: 5px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding-bottom: 2px;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
     }
-    .duo-right-grid::-webkit-scrollbar { width: 3px; }
-    .duo-right-grid::-webkit-scrollbar-thumb { background: #fdba74; border-radius: 3px; }
+    .duo-right-grid-horizontal::-webkit-scrollbar { height: 4px; }
+    .duo-right-grid-horizontal::-webkit-scrollbar-thumb { background: #fdba74; border-radius: 4px; }
 
     .snap-grid-item {
-      aspect-ratio: 1;
+      width: 56px;
+      height: 56px;
       border-radius: 8px;
       border: 1.5px solid #fed7aa;
       overflow: hidden;
       cursor: pointer;
       position: relative;
       background: #ffffff;
+      flex-shrink: 0;
       transition: transform 0.15s, border-color 0.15s;
     }
-    .snap-grid-item:active { transform: scale(0.94); }
+    .snap-grid-item:active { transform: scale(0.93); }
     .snap-grid-item.is-selected {
       border: 2px solid #f472b6;
       box-shadow: 0 0 8px rgba(244, 114, 182, 0.6);
@@ -1929,8 +1991,8 @@
       color: #ffffff;
       border: none;
       border-radius: 50%;
-      width: 17px;
-      height: 17px;
+      width: 16px;
+      height: 16px;
       font-size: 9px;
       display: flex;
       align-items: center;
@@ -1973,35 +2035,38 @@
     }
     .book-diary-textarea:focus { border-color: #f97316; }
 
-    /* 最下部フッターバー（左：ページ送り / 右：保存閉じる） */
+    /* ★ 最下部フッターバー（改行完全防止の1行スリム化） */
     .studio-footer-bar {
       background: #ffffff;
-      padding: 9px 14px;
+      padding: 8px 12px;
       border-top: 1.5px solid #fed7aa;
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 8px;
       flex-shrink: 0;
+      white-space: nowrap;
     }
     .footer-pager-group {
       display: flex;
       align-items: center;
       gap: 6px;
+      flex-shrink: 0;
     }
     .btn-pager {
       background: #ffedd5;
       border: 1.5px solid #ea580c;
       color: #c2410c;
       border-radius: 10px;
-      padding: 6px 11px;
+      padding: 6px 10px;
       font-size: 11.5px;
       font-weight: 900;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 3px;
+      gap: 2px;
       transition: background 0.15s;
+      flex-shrink: 0;
     }
     .btn-pager:disabled {
       opacity: 0.35;
@@ -2011,15 +2076,18 @@
       color: #94a3b8;
     }
     .pager-page-info {
-      font-size: 11.5px;
+      font-size: 12px;
       font-weight: 900;
       color: #9a3412;
       padding: 0 4px;
       white-space: nowrap;
+      flex-shrink: 0;
+      min-width: 60px;
+      text-align: center;
     }
 
     .btn-studio-save-exit {
-      padding: 8px 16px;
+      padding: 7px 14px;
       background: linear-gradient(135deg, #10b981, #059669);
       color: white;
       border: none;
@@ -2031,6 +2099,7 @@
       align-items: center;
       gap: 4px;
       box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+      flex-shrink: 0;
     }
     .btn-diary-close {
       background: #7c2d12;
@@ -2218,6 +2287,8 @@
     <!-- ▼ 右列：クロちゃんステージ ＆ 操作バー -->
     <div class="app-col-right">
       <div class="pet-avatar-wrapper is-idling pose-idle-active" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
+        <!-- 四角い写真でも暗い背景に溶け込むステージラグマット -->
+        <div class="cat-stage-rug"></div>
         <div class="cat-ground-shadow"></div>
         <div id="idea-bulb">💡</div>
 
@@ -2522,7 +2593,7 @@
     </div>
   </div>
 
-  <!-- ▼ 絵日記アルバムモーダル（左右2分割フォトブロック ＆ スナップ個別削除機能） -->
+  <!-- ▼ 絵日記アルバムモーダル（左右2分割フォトブロック ＆ スナップ上下2段横スクロール） -->
   <div id="book-studio-modal">
     <div class="book-studio-window">
       <div class="studio-top-bar">
@@ -2539,14 +2610,14 @@
         </div>
       </div>
 
-      <!-- 最下部フッターバー（左：ページ送り / 右：保存して閉じる） -->
+      <!-- ★ 最下部フッターバー（改行完全防止の1行スリム化） -->
       <div class="studio-footer-bar">
         <div class="footer-pager-group">
           <button type="button" class="btn-pager" id="btn-studio-prev-page">◀ 前の日</button>
           <span class="pager-page-info" id="studio-page-indicator">1 / 1 日目</span>
           <button type="button" class="btn-pager" id="btn-studio-next-page">次の日 ▶</button>
         </div>
-        <button type="button" class="btn-studio-save-exit" id="btn-studio-save-exit">💾 保存して閉じる</button>
+        <button type="button" class="btn-studio-save-exit" id="btn-studio-save-exit">💾 保存</button>
       </div>
     </div>
   </div>
@@ -2645,6 +2716,9 @@
           ・<b>🐾 なかよし</b>：のんびり雑談やお遊びをする通常モードニャ（日記の思い出の中心になります♪）。<br>
           ・<b>👓 おてつだい</b>：博士帽とメガネを装着！ネット検索して「近くのラーメン屋」や「最新ニュース」をGoogleマップ付きで案内するニャ！（※機械的なニュース一覧や店舗リストは日記から自動除外され、おやびんの気分や会話の思い出として優しく記録されます）。</div>
 
+          <div class="manual-sec-title">🎨 4大背景テーマ</div>
+          <div>設定画面から【ノーマル（自動）】【ダーク】【ライト】【ポップ】をお好みで選べるニャ！気分に合わせて模様替えしてニャン🐾</div>
+
           <div class="manual-sec-title">📱 画面の向きと空中くるりん着地</div>
           <div>スマホやタブレットを横向きに寝かせると、ボタンがサッと道をあけて、クロちゃんが空中で身をひるがえして「くるりんっ♪トンッ！」と華麗に着地するニャ！足元にキラキラ肉球が弾けて、最新のお話しへ自動でシュッと移動するニャン🐾（歩行中のちょっとした揺れでは動かない安心安全設計ニャ！）</div>
 
@@ -2653,8 +2727,8 @@
 
           <div class="manual-sec-title">📷 写真を見せる ＆ 思い出写真（12枚上限と個別整理）</div>
           <div>下の「📷 写真」ボタンを押すと、スマホのカメラで撮った写真やアルバムの写真をクロちゃんに見せられるニャ！今日撮った写真の中から、日記の内容に一番ぴったりのベストショットをAIが選んで絵日記に飾るニャン♪<br>
-          ・<b>左右2分割アルバム</b>：日記帳を開くと、左にメイン写真、右側に今日撮ったスナップ写真（最大12枚）が並びます。タップでメイン写真へワンタップ切替、または全画面拡大ができます。<br>
-          ・<b>💡 写真の個別整理</b>：スナップ写真の右上の【🗑️】ボタンを押すと、失敗した写真や不要な写真だけを選んで1枚ずつ削除できます。もし12枚いっぱいになっても、いらない写真を削除すれば新しい写真の枠をいつでも空けられますニャ！</div>
+          ・<b>左右2分割アルバム</b>：日記帳を開くと、左にメイン写真、右側に今日撮ったスナップ写真（最大12枚）が上下2段の横スクロールで並びます。タップでメイン写真へワンタップ切替、または全画面拡大ができます。<br>
+          ・<b>💡 写真の個別整理</b>：スナップ写真の右上の【✕】ボタンを押すと、失敗した写真や不要な写真だけを選んで1枚ずつ削除できます。もし12枚いっぱいになっても、いらない写真を削除すれば新しい写真の枠をいつでも空けられますニャ！</div>
 
           <div class="manual-sec-title">📖 絵日記の仕様と生活リズム（午前4時切り替え・自動補完）</div>
           <div>
@@ -2673,6 +2747,18 @@
           </div>
         </div>
       </details>
+
+      <div class="setting-section-header">🎨 画面の背景テーマ</div>
+
+      <div class="form-group">
+        <label>お好みのカラーテーマ:</label>
+        <select id="app-theme-select">
+          <option value="normal" selected>🌿 ノーマル（自動連動・現在のスタイル）</option>
+          <option value="dark">🌙 ダーク（シックな漆黒ナイトモード）</option>
+          <option value="light">☀️ ライト（明るいピュアホワイトモード）</option>
+          <option value="pop">🎨 ポップ（ミルキーパステルキャンディ）</option>
+        </select>
+      </div>
 
       <div class="setting-section-header">🐾 クロちゃんの声と見た目</div>
 
@@ -2755,7 +2841,7 @@
           <input type="file" id="file-input-restore" accept=".json" style="display:none;">
         </div>
 
-        <!-- iPhone風マルチカラー・ストレージ使用量モニター（旧スリム化ボタンは綺麗に撤去） -->
+        <!-- iPhone風マルチカラー・ストレージ使用量モニター -->
         <div class="storage-monitor-box">
           <div class="storage-monitor-header">
             <span>📊 ストレージ使用量（思い出の引き出し）:</span>
@@ -2889,4 +2975,5 @@
   <script src="app.js"></script>
 </body>
 </html>
+
 

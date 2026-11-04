@@ -1589,7 +1589,7 @@ const StorageManager = {
     }
   },
 
-  /* ★ 新設：日別写真プールから指定したスナップ写真を1枚安全削除 */
+  /* 日別写真プールから指定したスナップ写真を1枚安全削除 */
   removePhotoFromDailyPool(lifeDateKey, photoIndex) {
     const photoPoolKey = `kuro_daily_photos_${lifeDateKey}`;
     try {
@@ -1801,6 +1801,7 @@ const StorageManager = {
         voiceRate: localStorage.getItem('kuro_rate') || '1.05',
         buttonFeedback: localStorage.getItem('kuro_button_feedback') || 'voice',
         timerSound: localStorage.getItem('kuro_timer_sound') || 'bell',
+        theme: localStorage.getItem('kuro_theme') || 'normal',
         newsCount: localStorage.getItem('kuro_news_count') || '2',
         spotCount: localStorage.getItem('kuro_spot_count') || '2',
         homeCoords: localStorage.getItem('kuro_home_coords') || '',
@@ -1873,6 +1874,10 @@ const StorageManager = {
       if (s.voiceRate) localStorage.setItem('kuro_rate', s.voiceRate);
       if (s.buttonFeedback) localStorage.setItem('kuro_button_feedback', s.buttonFeedback);
       if (s.timerSound) localStorage.setItem('kuro_timer_sound', s.timerSound);
+      if (s.theme) {
+        localStorage.setItem('kuro_theme', s.theme);
+        AppCore.applyTheme(s.theme);
+      }
       if (s.newsCount) localStorage.setItem('kuro_news_count', s.newsCount);
       if (s.spotCount) localStorage.setItem('kuro_spot_count', s.spotCount);
       if (s.homeCoords) localStorage.setItem('kuro_home_coords', s.homeCoords);
@@ -1881,7 +1886,6 @@ const StorageManager = {
       if (s.eyelidCoords) this.saveEyelidCoords(s.eyelidCoords);
     }
 
-    // 復元時にバックグラウンドで自動的に写真の再圧縮と古いプールのクレンジングを実施
     this.purgeAndCompressAllPhotos().catch(() => {});
     Logger.log("[完全データ復元完了] ファイルから写真プール・全会話を復元しました", "success");
     return true;
@@ -2399,7 +2403,6 @@ ${pastMemoryDiary ? `【★おやびんとの昔の思い出（${pastMemoryDiary
         });
 
         if (!res.ok && isAssistant) {
-          const errDetail = await res.text().catch(() => "");
           Logger.log(`[Tools安全フォールバック] モデル「${cleanModel}」HTTP ${res.status}: toolsを除外して再試行`, "warn");
           delete bodyPayload.tools;
           delete bodyPayload.toolConfig;
@@ -2758,6 +2761,14 @@ const AppCore = {
     return localStorage.getItem('kuro_timer_sound') || 'bell';
   },
 
+  applyTheme(theme) {
+    const validThemes = ['normal', 'dark', 'light', 'pop'];
+    const chosen = validThemes.includes(theme) ? theme : 'normal';
+    document.documentElement.setAttribute('data-theme', chosen);
+    localStorage.setItem('kuro_theme', chosen);
+    Logger.log(`[Theme] テーマ「${chosen}」を適用しました`, "info");
+  },
+
   async init() {
     try {
       this.avatar = new CatAvatarRenderer();
@@ -2771,6 +2782,12 @@ const AppCore = {
       this.state.isAssistantMode = localStorage.getItem('kuro_mode') === 'assistant';
       this._updateModeUI(false);
       this._setupAudioCallbacks();
+
+      const savedTheme = localStorage.getItem('kuro_theme') || 'normal';
+      this.applyTheme(savedTheme);
+      const themeSelect = document.getElementById('app-theme-select');
+      if (themeSelect) themeSelect.value = savedTheme;
+
     } catch(e) {
       Logger.log(`[State初期化警告] ${e.message}`, "warn");
     }
@@ -2846,7 +2863,7 @@ const AppCore = {
       });
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-      Logger.log("[AppCore] 全システム正常稼働！左右2分割アルバム＆13枚目警告アドバイス稼働中ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！左右2分割アルバム＆上下2段横スクロールスナップ稼働中ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
@@ -3231,7 +3248,6 @@ const AppCore = {
     this._scrollToLatest(true);
   },
 
-  /* ★ 新設：13枚目撮影時の親切アドバイス付き削除警告ガード */
   _bindPhotoUploadUI() {
     const photoInput = document.getElementById('camera-photo-input');
     const photoBtn = document.getElementById('photo-action-btn');
@@ -3251,7 +3267,7 @@ const AppCore = {
             "きょうのお写真はすでに上限の12枚に達しています。\n" +
             "このまま保存すると、一番古いお写真（1枚目）が自動で削除されて新しい写真と入れ替わりますニャ。\n\n" +
             "💡 クロちゃんからのアドバイス：\n" +
-            "一旦キャンセルして、画面の上の『📖 日記帳』を開くと、途中で撮ったブレた写真やいらない写真を【🗑️ 削除】して空き枠を作ることができますニャ！\n\n" +
+            "一旦キャンセルして、画面の上の『📖 日記帳』を開くと、途中で撮ったブレた写真やいらない写真を【✕】で削除して空き枠を作ることができますニャ！\n\n" +
             "一番古い写真と入れ替えて、このまま撮影・選択を続けますかニャ？"
           );
 
@@ -4051,7 +4067,7 @@ const AppCore = {
     }
   },
 
-  /* 日記帳アルバムのバインド（左右2分割フォトブロック ＆ スナップ個別削除対応） */
+  /* 日記帳アルバムのバインド（左右2分割フォトブロック ＆ スナップ上下2段横スクロール対応） */
   _bindBookStudioUI() {
     const modal = document.getElementById('book-studio-modal');
     const topDiaryBtn = document.getElementById('top-diary-btn');
@@ -4125,7 +4141,7 @@ const AppCore = {
     modal.classList.add('is-open');
   },
 
-  /* ★ 日記帳ページのレンダリング（左右2分割フォトブロック ＆ スナップ個別削除機能） */
+  /* 日記帳ページのレンダリング（上下2段横スクロールカルーセル ＆ 1行フッター） */
   _renderStudioDiaryPage() {
     const pageContainer = document.getElementById('studio-diary-single-page');
     const pageIndicator = document.getElementById('studio-page-indicator');
@@ -4151,7 +4167,8 @@ const AppCore = {
     const curIdx = this.state.studioDiaryPageIdx;
     const diary = diaries[curIdx];
 
-    if (pageIndicator) pageIndicator.textContent = `${curIdx + 1} / ${diaries.length} 日目（${curIdx === 0 ? '最新' : diary.fullDate}）`;
+    // ★ 日付を削り、数字のみ（1 / 5 日目）で改行完全防止
+    if (pageIndicator) pageIndicator.textContent = `${curIdx + 1} / ${diaries.length} 日目`;
     if (btnPrev) btnPrev.disabled = (curIdx >= diaries.length - 1);
     if (btnNext) btnNext.disabled = (curIdx <= 0);
 
@@ -4195,13 +4212,13 @@ const AppCore = {
           </div>
         </div>
 
-        <!-- ★ 左右2分割フォトブロック（縦横比完全ロック＆独立スクロール） -->
+        <!-- ★ 左右2分割フォトブロック（縦横比完全ロック ＆ スナップ上下2段横スクロール） -->
         <div class="diary-photo-duo-container">
           <!-- 左列：メイン写真フレーム -->
           <div class="photo-duo-left" id="book-photo-box" title="タップで全画面拡大表示するニャ！">
             ${diary.photo 
               ? `<img src="${diary.photo}" alt="散歩写真" class="book-photo-img" id="book-main-img-view">
-                 <span class="book-photo-zoom-hint">🔍 タップで拡大</span>
+                 <span class="book-photo-zoom-hint">🔍 拡大</span>
                  <button type="button" class="book-photo-remove-btn" id="btn-remove-photo">✕ 外す</button>`
               : `<div class="book-photo-placeholder">
                    <span style="font-size:20px;">🐾</span>
@@ -4211,13 +4228,13 @@ const AppCore = {
             }
           </div>
 
-          <!-- 右列：思い出スナッププール（2列ミニグリッド・個別削除対応） -->
+          <!-- 右列：思い出スナッププール（上下2段 × 横スクロールカルーセル・個別削除対応） -->
           <div class="photo-duo-right">
             <div class="duo-right-header">
-              <span>📷 スナップ（全${photoPool.length}枚）</span>
-              <span style="font-size:9.5px;color:#9a3412;">💡🗑️で整理</span>
+              <span>📷 スナップ一覧（${photoPool.length}枚）</span>
+              <span style="font-size:9.5px;color:#9a3412;">✕で削除</span>
             </div>
-            <div class="duo-right-grid">
+            <div class="duo-right-grid-horizontal">
               ${photoPool.map((p, pIdx) => {
                 const isSelected = (diary.photo && diary.photo === p.base64);
                 return `
@@ -4227,12 +4244,12 @@ const AppCore = {
                   </div>
                 `;
               }).join('')}
-              ${photoPool.length === 0 ? '<div style="grid-column:span 2;text-align:center;color:#94a3b8;font-size:10px;padding:20px 0;">写真なし</div>' : ''}
+              ${photoPool.length === 0 ? '<div style="align-self:center;text-align:center;color:#94a3b8;font-size:10px;padding:20px 10px;">写真なし</div>' : ''}
             </div>
           </div>
         </div>
 
-        <!-- 日記本文入力エリア（広々伸びる） -->
+        <!-- 日記本文入力エリア -->
         <div class="book-content-box">
           <div class="book-textarea-label">
             <span>✍️ クロの日記本文（直接編集もできます）:</span>
@@ -4275,7 +4292,7 @@ const AppCore = {
       };
     });
 
-    // スナップ個別削除ボタンの処理
+    // スナップ個別削除ボタンの処理（安全確認メッセージ付き）
     pageContainer.querySelectorAll('.btn-snap-del').forEach(delBtn => {
       delBtn.onclick = (e) => {
         e.stopPropagation();
@@ -4585,6 +4602,17 @@ const AppCore = {
     if (btnForce) btnForce.onclick = forceReload;
     if (btnDiagForce) btnDiagForce.onclick = forceReload;
 
+    // ★ 4大背景テーマ切り替えのバインド
+    const themeSelect = document.getElementById('app-theme-select');
+    if (themeSelect) {
+      themeSelect.onchange = (e) => {
+        const newTheme = e.target.value;
+        this.applyTheme(newTheme);
+        this.audio.playEffect('aizuchi');
+        Toast.show(`カラーテーマを「${newTheme}」に変更したニャ！🎨✨`, "success");
+      };
+    }
+
     const btnDownloadBackup = document.getElementById('btn-download-backup');
     if (btnDownloadBackup) {
       btnDownloadBackup.onclick = () => {
@@ -4619,6 +4647,11 @@ const AppCore = {
             const savedTimerSound = localStorage.getItem('kuro_timer_sound') || 'bell';
             const tsSelect = document.getElementById('timer-sound-select');
             if (tsSelect) tsSelect.value = savedTimerSound;
+
+            const savedTheme = localStorage.getItem('kuro_theme') || 'normal';
+            this.applyTheme(savedTheme);
+            const tsTheme = document.getElementById('app-theme-select');
+            if (tsTheme) tsTheme.value = savedTheme;
 
             if (this.avatar) {
               this.avatar.glassesCoords = StorageManager.loadGlassesCoords();
@@ -4968,6 +5001,7 @@ const AppCore = {
         const hc = document.getElementById('home-coords-input');
         const fb = document.getElementById('button-feedback-select');
         const ts = document.getElementById('timer-sound-select');
+        const th = document.getElementById('app-theme-select');
 
         if (ak) ak.value = this.ai.apiKey;
         if (vk) vk.value = localStorage.getItem('kuro_voicevox_key') || '';
@@ -4978,6 +5012,7 @@ const AppCore = {
         if (hc) hc.value = localStorage.getItem('kuro_home_coords') || '';
         if (fb) fb.value = localStorage.getItem('kuro_button_feedback') || 'voice';
         if (ts) ts.value = this.getTimerSound();
+        if (th) th.value = localStorage.getItem('kuro_theme') || 'normal';
 
         this._renderMemories();
         this._updateStorageMonitorUI();
@@ -5025,6 +5060,7 @@ const AppCore = {
         const newRate = parseFloat(document.getElementById('voice-rate')?.value || '1.05');
         const newFeedback = document.getElementById('button-feedback-select')?.value || 'voice';
         const newTimerSound = document.getElementById('timer-sound-select')?.value || 'bell';
+        const newTheme = document.getElementById('app-theme-select')?.value || 'normal';
         const newNews = document.getElementById('news-count-select')?.value || '2';
         const newSpot = document.getElementById('spot-count-select')?.value || '2';
         const newHome = document.getElementById('home-coords-input')?.value.trim() || '';
@@ -5078,6 +5114,7 @@ const AppCore = {
         localStorage.setItem('kuro_spot_count', newSpot);
         localStorage.setItem('kuro_home_coords', newHome);
 
+        this.applyTheme(newTheme);
         this.audio.setRate(newRate);
         if (this.avatar) this.avatar.applyAccessoryStyle(newAccStyle);
 

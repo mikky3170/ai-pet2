@@ -3,11 +3,11 @@
    - バージョン管理ルール完全準拠（大幅刷新:〇 / 機能追加:● / 修正:◎）
    - 更新履歴は最大10件まで自動保持（11件目で最古を自動破棄）
    - システム指示（System Instructions）の日付基準に100%連動
-   - 今後のバージョン更新時は、このファイルのみの出力・更新で完結します
+   - アプリ本体（index.html）およびアルバムビューワー（viewer.html）のバージョン完全同期
    ========================================================================== */
 
 const VersionManager = {
-  // 現在の正式システムバージョン（スナップ個別削除＆左右2分割フォトブロック新設により●を更新: V.1.10.0）
+  // 現在の正式システムバージョン（V.1.10.0）
   current: "V.1.10.0",
 
   // バージョン更新履歴（最新順・最大10件保持）
@@ -16,7 +16,7 @@ const VersionManager = {
       version: "V.1.10.0",
       date: "2026/11/04",
       type: "feature",   // 機能追加（●更新）
-      changes: "絵日記＆ビューワーの写真エリアを「左：メイン写真 ＋ 右：スナップ一覧」の左右2分割フォトブロック（縦横比完全ロック）へ刷新。スナップ写真プール（1〜12枚）の個別ゴミ箱削除機能の新設。13枚目撮影時の親切アドバイス付き削除警告ダイアログ（キャンセル可能）の新設。設定画面の旧重複写真スリム化ボタン撤去。viewer.html を「思い出アルバム ＆ バックアップ ビューワー＆エディター」へ進化（日記本文の編集、不要スナップの個別削除、編集済み完全互換JSONの安全再保存機能）。"
+      changes: "絵日記＆ビューワーの写真エリアを「左：メイン写真 ＋ 右：スナップ一覧」の左右2分割フォトブロック（縦横比完全ロック・上下2段横スクロール快適カルーセル）へ刷新。スナップ写真プール（1〜12枚）の個別ゴミ箱削除機能の新設。13枚目撮影時の親切アドバイス付き削除警告ダイアログ（キャンセル可能）の新設。設定画面の旧重複写真スリム化ボタン撤去。viewer.html を「思い出アルバム ＆ バックアップ ビューワー＆エディター」へ進化（日記本文の編集、不要スナップの個別削除、編集済み完全互換JSONの安全再保存機能）。4大カラーテーマ（ノーマル/ダーク/ライト/ポップ）切り替え機能の実装。"
     },
     {
       version: "V.1.9.0",
@@ -84,9 +84,13 @@ const VersionManager = {
     const ver = this.current;
 
     // 1. ブラウザタイトル
-    document.title = `AIペット クロちゃん🐾 ${ver}`;
+    if (document.title.includes("ビューワー") || document.title.includes("思い出アルバム")) {
+      document.title = `クロちゃんの思い出アルバム ＆ バックアップ ビューワー＆エディター🐾 ${ver}`;
+    } else {
+      document.title = `AIペット クロちゃん🐾 ${ver}`;
+    }
 
-    // 2. 画面最下部の極小タグ
+    // 2. 画面最下部の極小タグ（アプリ側）
     const bottomTag = document.querySelector('.app-version-tag');
     if (bottomTag) bottomTag.textContent = `🐾 クロちゃん ${ver}`;
 
@@ -98,7 +102,13 @@ const VersionManager = {
     const diagTitle = document.getElementById('diag-header-title');
     if (diagTitle) diagTitle.textContent = `🩺 システム診断モニタ (${ver})`;
 
-    // 5. 設定画面内の更新履歴一覧の自動描画（最大10件）
+    // 5. ビューワー側のヘッダーバッジ
+    const viewerBadge = document.getElementById('header-pkg-version');
+    if (viewerBadge && !viewerBadge.textContent.includes("バックアップ")) {
+      viewerBadge.textContent = `${ver} 対応`;
+    }
+
+    // 6. 設定画面内の更新履歴一覧の自動描画（最大10件）
     const historyContainer = document.getElementById('version-history-container');
     if (historyContainer) {
       historyContainer.innerHTML = this.getHistory().map(h => `
