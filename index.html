@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja" data-theme="normal">
 <head>
@@ -15,14 +14,14 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="クロちゃん🐾">
-  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#090d16" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#ffffff">
 
   <style>
     /* ==========================================================================
-       4大テーマ定義（ノーマル / ダーク / ライト / ポップ）
+       新・4大テーマ定義（ノーマル / ナイトダーク / フォレストミント / キャンディポップ）
+       ※OSのダークモード設定に関わらず、ユーザーが選んだテーマを常時100%美しく固定表示
        ========================================================================== */
-    /* 1. ノーマルテーマ（OS自動連動・現在のデザインそのもの） */
+    /* 1. ノーマルテーマ（元祖・常時ピュアホワイト＆ピンク屋根） */
     :root, [data-theme="normal"] {
       --primary-color: #f472b6;
       --secondary-color: #38bdf8;
@@ -40,22 +39,13 @@
       --stage-rug: radial-gradient(ellipse at center, rgba(244, 114, 182, 0.18) 0%, rgba(255, 255, 255, 0) 72%);
     }
 
-    @media (prefers-color-scheme: dark) {
-      [data-theme="normal"] {
-        --outer-bg: #090d16;
-        --container-bg: #0f172a;
-        --roof-border-color: #f472b6;
-        --roof-glow: 
-          inset 0 2px 0 0 rgba(255, 255, 255, 0.35),
-          inset 0 0 16px rgba(56, 189, 248, 0.45),
-          inset 0 0 0 2.5px rgba(244, 114, 182, 0.7),
-          0 8px 30px rgba(0, 0, 0, 0.6);
-        --stage-rug: radial-gradient(ellipse at center, rgba(56, 189, 248, 0.22) 0%, rgba(15, 23, 42, 0) 72%);
-      }
-    }
-
-    /* 2. ダークテーマ（常時シックな漆黒ナイトモード） */
+    /* 2. ナイトダークテーマ（常時シックな漆黒＆ディープネイビー） */
     [data-theme="dark"] {
+      --primary-color: #38bdf8;
+      --secondary-color: #818cf8;
+      --bubble-bg: rgba(30, 41, 59, 0.95);
+      --text-color: #f8fafc;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
       --outer-bg: #030712;
       --container-bg: #0b1120;
       --roof-border-color: #38bdf8;
@@ -67,21 +57,31 @@
       --stage-rug: radial-gradient(ellipse at center, rgba(56, 189, 248, 0.28) 0%, rgba(11, 17, 32, 0) 72%);
     }
 
-    /* 3. ライトテーマ（常時クッキリ明るいピュアホワイトモード） */
-    [data-theme="light"] {
-      --outer-bg: #e2e8f0;
-      --container-bg: #ffffff;
-      --roof-border-color: #0284c7;
+    /* 3. フォレストミントテーマ（クロちゃんの緑の瞳とおそろいの北欧癒やしカラー） */
+    [data-theme="mint"] {
+      --primary-color: #10b981;
+      --secondary-color: #06b6d4;
+      --bubble-bg: rgba(255, 255, 255, 0.98);
+      --text-color: #064e3b;
+      --shadow: 0 10px 25px rgba(16, 185, 129, 0.1);
+      --outer-bg: #c7eed8;
+      --container-bg: #f4fbf7;
+      --roof-border-color: #10b981;
       --roof-glow: 
         inset 0 3px 0 0 rgba(255, 255, 255, 0.95),
-        inset 0 0 14px rgba(2, 132, 199, 0.45),
-        inset 0 0 0 2.5px rgba(2, 132, 199, 0.75),
-        0 8px 26px rgba(2, 132, 199, 0.2);
-      --stage-rug: radial-gradient(ellipse at center, rgba(2, 132, 199, 0.15) 0%, rgba(255, 255, 255, 0) 72%);
+        inset 0 0 14px rgba(16, 185, 129, 0.5),
+        inset 0 0 0 2.5px rgba(16, 185, 129, 0.8),
+        0 8px 28px rgba(16, 185, 129, 0.22);
+      --stage-rug: radial-gradient(ellipse at center, rgba(16, 185, 129, 0.18) 0%, rgba(244, 251, 247, 0) 72%);
     }
 
-    /* 4. ポップテーマ（ミルキーキャンディ＆パステルモード） */
+    /* 4. キャンディポップテーマ（ミルキーアプリコット＆パステルビタミンカラー） */
     [data-theme="pop"] {
+      --primary-color: #fb923c;
+      --secondary-color: #f472b6;
+      --bubble-bg: rgba(255, 255, 255, 0.98);
+      --text-color: #431407;
+      --shadow: 0 10px 25px rgba(249, 115, 22, 0.12);
       --outer-bg: #fed7aa;
       --container-bg: #fffdf5;
       --roof-border-color: #fb923c;
@@ -455,7 +455,6 @@
       background: transparent;
     }
 
-    /* 四角い写真が暗い背景でも浮き出ない「ふんわりラグマットステージ」 */
     .cat-stage-rug {
       position: absolute;
       bottom: 0px;
@@ -595,9 +594,7 @@
       gap: 2px;
       transition: opacity 0.4s ease-out;
     }
-    .pet-avatar-wrapper.is-sleeping #sleep-zzz-bubble {
-      opacity: 1;
-    }
+    .pet-avatar-wrapper.is-sleeping #sleep-zzz-bubble { opacity: 1; }
     .zzz-item {
       font-weight: 900;
       color: #38bdf8;
@@ -653,6 +650,7 @@
     }
     .cat-frame.active { opacity: 1; pointer-events: none; }
 
+    /* ★ JPGとPNGの合成自動切り替え */
     .cat-avatar-img {
       position: absolute;
       bottom: 0;
@@ -661,11 +659,15 @@
       object-fit: contain;
       object-position: bottom center;
       background: transparent !important;
-      mix-blend-mode: multiply;
+      mix-blend-mode: multiply; /* デフォルトのJPG用（白背景を透かす） */
       display: block;
       pointer-events: none;
       border: none !important;
       box-shadow: none !important;
+    }
+    /* 透過PNGが読み込まれた時は乗算を解除してクリアな発色を保証 */
+    .cat-avatar-img.is-png {
+      mix-blend-mode: normal !important;
     }
 
     .real-eyelid-unit {
@@ -1336,8 +1338,8 @@
     }
 
     .form-group { margin-bottom: 12px; }
-    .form-group label { display: flex; justify-content: space-between; font-size: 11.5px; font-weight: bold; color: #475569; margin-bottom: 5px; }
-    .form-group input, .form-group select {
+    .form-group label { display: flex; justify-content: space-between; font-size: 11.5px; font-weight: bold; color: #475569; margin-bottom: 6px; }
+    .form-group input {
       width: 100%;
       padding: 9px 12px;
       border: 1px solid #cbd5e1;
@@ -1347,9 +1349,135 @@
       transition: border-color 0.2s, box-shadow 0.2s;
       background: #f8fafc;
     }
-    .form-group input:focus, .form-group select:focus {
+    .form-group input:focus {
       border-color: #38bdf8;
       background: #ffffff;
+    }
+
+    /* ==========================================================================
+       ★ 脱・OS標準ドラムロール！完全オリジナル・ビジュアル設定UI
+       ========================================================================== */
+    /* 1. カラーパレット選択カード（2×2グリッド） */
+    .theme-palette-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      width: 100%;
+    }
+    .theme-card-btn {
+      background: #f8fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 9px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+    }
+    .theme-card-btn:active { transform: scale(0.96); }
+    .theme-card-btn.is-active {
+      border-color: #f472b6;
+      background: #fff5f8;
+      box-shadow: 0 4px 12px rgba(244, 114, 182, 0.2);
+    }
+    .theme-swatch-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+      flex-shrink: 0;
+    }
+    .swatch-normal { background: linear-gradient(135deg, #f472b6 50%, #ffffff 50%); }
+    .swatch-dark { background: linear-gradient(135deg, #0b1120 50%, #38bdf8 50%); }
+    .swatch-mint { background: linear-gradient(135deg, #10b981 50%, #c7eed8 50%); }
+    .swatch-pop { background: linear-gradient(135deg, #fb923c 50%, #fed7aa 50%); }
+
+    .theme-card-info {
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+      overflow: hidden;
+    }
+    .theme-card-title {
+      font-size: 11.5px;
+      font-weight: 900;
+      color: #1e293b;
+      white-space: nowrap;
+    }
+    .theme-card-sub {
+      font-size: 9.5px;
+      color: #64748b;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    /* 2. カプセル型セグメントボタン（iPhone風） */
+    .segment-capsule-row {
+      display: flex;
+      background: #f1f5f9;
+      border-radius: 12px;
+      padding: 3px;
+      gap: 3px;
+      width: 100%;
+    }
+    .segment-btn {
+      flex: 1;
+      padding: 7px 4px;
+      border: none;
+      background: transparent;
+      border-radius: 9px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #64748b;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.18s;
+      white-space: nowrap;
+    }
+    .segment-btn:active { transform: scale(0.96); }
+    .segment-btn.is-active {
+      background: #ffffff;
+      color: #0f172a;
+      font-weight: 900;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+    .segment-btn.is-active.pink { color: #db2777; }
+    .segment-btn.is-active.blue { color: #0284c7; }
+
+    /* 3. 洗練された声選択チップリスト */
+    .voice-chip-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .voice-chip-btn {
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 11px;
+      padding: 6px 8px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #334155;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.15s;
+    }
+    .voice-chip-btn:active { transform: scale(0.95); }
+    .voice-chip-btn.is-active {
+      background: #fdf2f8;
+      border-color: #f472b6;
+      color: #db2777;
+      font-weight: 900;
+      box-shadow: 0 2px 8px rgba(244, 114, 182, 0.2);
     }
 
     .input-error-shake {
@@ -1495,7 +1623,6 @@
     }
     .btn-pc-sync:active { background: #dcfce7; }
 
-    /* iPhone風マルチカラー・ストレージ使用量モニター */
     .storage-monitor-box {
       background: #ffffff;
       border: 1.5px solid #bbf7d0;
@@ -1572,9 +1699,8 @@
       white-space: nowrap;
     }
 
-    .voice-control-row { display: flex; gap: 8px; align-items: center; }
-    .voice-select-box { flex: 1; padding: 8px 10px; border: 1.5px solid #fbcfe8; background: #fff5f8; border-radius: 12px; color: #831843; font-weight: bold; font-size: 12px; }
-    .btn-voice-test { padding: 8px 12px; background: #fdf2f8; border: 1.5px solid #f472b6; color: #db2777; border-radius: 12px; font-weight: 800; font-size: 11.5px; cursor: pointer; flex-shrink: 0; }
+    .voice-control-row { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+    .btn-voice-test { width: 100%; padding: 8px 12px; background: #fdf2f8; border: 1.5px solid #f472b6; color: #db2777; border-radius: 12px; font-weight: 800; font-size: 11.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; }
 
     .btn-adjust-open {
       width: 100%;
@@ -1700,7 +1826,7 @@
       font-weight: 700;
     }
 
-    /* ▼ 絵日記アルバム（左右2分割フォトブロック ＆ スナップ上下2段横スクロール） */
+    /* ▼ 絵日記アルバム */
     #book-studio-modal {
       position: fixed;
       inset: 0;
@@ -1847,7 +1973,7 @@
       font-weight: 800;
     }
 
-    /* ★ 左右2分割フォトブロック（縦横比完全ロック ＆ スナップ上下2段横スクロール） */
+    /* 左右2分割フォトブロック */
     .diary-photo-duo-container {
       width: 100%;
       height: 146px;
@@ -1856,7 +1982,6 @@
       flex-shrink: 0;
     }
 
-    /* 左列：メイン写真フレーム（比率維持＆拡大ヒント） */
     .photo-duo-left {
       flex: 1.1;
       height: 100%;
@@ -1878,9 +2003,7 @@
       display: block;
       transition: transform 0.2s ease-out;
     }
-    .photo-duo-left:hover .book-photo-img {
-      transform: scale(1.02);
-    }
+    .photo-duo-left:hover .book-photo-img { transform: scale(1.02); }
     .book-photo-zoom-hint {
       position: absolute;
       bottom: 5px;
@@ -1920,7 +2043,6 @@
       z-index: 10;
     }
 
-    /* 右列：思い出スナッププール（上下2段 × 横スクロールカルーセル） */
     .photo-duo-right {
       flex: 1.1;
       height: 100%;
@@ -2003,7 +2125,6 @@
     }
     .btn-snap-del:hover { background: #ef4444; }
 
-    /* 日記本文エリア：広々伸びる可変エリア */
     .book-content-box {
       flex: 1;
       display: flex;
@@ -2035,7 +2156,6 @@
     }
     .book-diary-textarea:focus { border-color: #f97316; }
 
-    /* ★ 最下部フッターバー（改行完全防止の1行スリム化） */
     .studio-footer-bar {
       background: #ffffff;
       padding: 8px 12px;
@@ -2116,7 +2236,6 @@
       justify-content: center;
     }
 
-    /* ▼ 写真フルサイズ拡大表示モーダル */
     #photo-lightbox-modal {
       position: fixed;
       inset: 0;
@@ -2241,6 +2360,8 @@
       object-position: bottom center;
       pointer-events: none;
     }
+    .adjust-cat-img.is-png { mix-blend-mode: normal !important; }
+
     .adjust-controls-box { width: 100%; max-width: 420px; background: #1e293b; border-radius: 20px; padding: 12px 16px; color: #e2e8f0; display: flex; flex-direction: column; gap: 8px; }
     .adjust-row { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: bold; }
     .adjust-row span:first-child { width: 68px; flex-shrink: 0; }
@@ -2287,7 +2408,6 @@
     <!-- ▼ 右列：クロちゃんステージ ＆ 操作バー -->
     <div class="app-col-right">
       <div class="pet-avatar-wrapper is-idling pose-idle-active" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
-        <!-- 四角い写真でも暗い背景に溶け込むステージラグマット -->
         <div class="cat-stage-rug"></div>
         <div class="cat-ground-shadow"></div>
         <div id="idea-bulb">💡</div>
@@ -2319,8 +2439,9 @@
         </svg>
 
         <div id="cat-stage-box">
+          <!-- ★ PNG優先＆JPG安全自動フォールバック画像ユニット -->
           <div class="cat-frame active" id="frame-idle">
-            <img src="idle.jpg" alt="待機中" class="cat-avatar-img" id="img-idle">
+            <img src="idle.png" onerror="if(this.src.endsWith('.png')){this.src='idle.jpg';this.classList.remove('is-png');}" onload="if(this.src.endsWith('.png')){this.classList.add('is-png');}" alt="待機中" class="cat-avatar-img" id="img-idle">
             <div class="real-eyelid-unit" id="eyelid-unit-idle">
               <div class="real-eyelid eye-left" id="eye-left-idle"></div>
               <div class="real-eyelid eye-right" id="eye-right-idle"></div>
@@ -2328,15 +2449,15 @@
             <div class="accessory-layer" id="acc-idle"></div>
           </div>
           <div class="cat-frame" id="frame-talking">
-            <img src="talking.jpg" alt="お話し中" class="cat-avatar-img" id="img-talking">
+            <img src="talking.png" onerror="if(this.src.endsWith('.png')){this.src='talking.jpg';this.classList.remove('is-png');}" onload="if(this.src.endsWith('.png')){this.classList.add('is-png');}" alt="お話し中" class="cat-avatar-img" id="img-talking">
             <div class="accessory-layer" id="acc-talking"></div>
           </div>
           <div class="cat-frame" id="frame-thinking">
-            <img src="thinking.jpg" alt="考え中" class="cat-avatar-img" id="img-thinking">
+            <img src="thinking.png" onerror="if(this.src.endsWith('.png')){this.src='thinking.jpg';this.classList.remove('is-png');}" onload="if(this.src.endsWith('.png')){this.classList.add('is-png');}" alt="考え中" class="cat-avatar-img" id="img-thinking">
             <div class="accessory-layer" id="acc-thinking"></div>
           </div>
           <div class="cat-frame" id="frame-happy">
-            <img src="happy.jpg" alt="大喜び" class="cat-avatar-img" id="img-happy">
+            <img src="happy.png" onerror="if(this.src.endsWith('.png')){this.src='happy.jpg';this.classList.remove('is-png');}" onload="if(this.src.endsWith('.png')){this.classList.add('is-png');}" alt="大喜び" class="cat-avatar-img" id="img-happy">
             <div class="accessory-layer" id="acc-happy"></div>
           </div>
 
@@ -2593,7 +2714,7 @@
     </div>
   </div>
 
-  <!-- ▼ 絵日記アルバムモーダル（左右2分割フォトブロック ＆ スナップ上下2段横スクロール） -->
+  <!-- ▼ 絵日記アルバムモーダル -->
   <div id="book-studio-modal">
     <div class="book-studio-window">
       <div class="studio-top-bar">
@@ -2610,7 +2731,6 @@
         </div>
       </div>
 
-      <!-- ★ 最下部フッターバー（改行完全防止の1行スリム化） -->
       <div class="studio-footer-bar">
         <div class="footer-pager-group">
           <button type="button" class="btn-pager" id="btn-studio-prev-page">◀ 前の日</button>
@@ -2662,7 +2782,7 @@
     </div>
 
     <div class="adjust-preview-stage" id="adjust-preview-stage">
-      <img src="idle.jpg" class="adjust-cat-img" id="adjust-cat-img" alt="調整対象">
+      <img src="idle.png" onerror="if(this.src.endsWith('.png')){this.src='idle.jpg';this.classList.remove('is-png');}" onload="if(this.src.endsWith('.png')){this.classList.add('is-png');}" class="adjust-cat-img" id="adjust-cat-img" alt="調整対象">
       <div class="accessory-layer" id="adjust-glasses-overlay" style="display:block; bottom:120px; left:50%; transform:translateX(-50%);"></div>
     </div>
 
@@ -2716,8 +2836,8 @@
           ・<b>🐾 なかよし</b>：のんびり雑談やお遊びをする通常モードニャ（日記の思い出の中心になります♪）。<br>
           ・<b>👓 おてつだい</b>：博士帽とメガネを装着！ネット検索して「近くのラーメン屋」や「最新ニュース」をGoogleマップ付きで案内するニャ！（※機械的なニュース一覧や店舗リストは日記から自動除外され、おやびんの気分や会話の思い出として優しく記録されます）。</div>
 
-          <div class="manual-sec-title">🎨 4大背景テーマ</div>
-          <div>設定画面から【ノーマル（自動）】【ダーク】【ライト】【ポップ】をお好みで選べるニャ！気分に合わせて模様替えしてニャン🐾</div>
+          <div class="manual-sec-title">🎨 新・4大背景テーマ</div>
+          <div>設定画面から【🌸 ノーマル（元祖ピンク）】【🌙 ナイトダーク】【🍃 フォレストミント】【🍊 キャンディポップ】をお好みで選べるニャ！気分に合わせて着せ替えしてニャン🐾</div>
 
           <div class="manual-sec-title">📱 画面の向きと空中くるりん着地</div>
           <div>スマホやタブレットを横向きに寝かせると、ボタンがサッと道をあけて、クロちゃんが空中で身をひるがえして「くるりんっ♪トンッ！」と華麗に着地するニャ！足元にキラキラ肉球が弾けて、最新のお話しへ自動でシュッと移動するニャン🐾（歩行中のちょっとした揺れでは動かない安心安全設計ニャ！）</div>
@@ -2748,35 +2868,57 @@
         </div>
       </details>
 
-      <div class="setting-section-header">🎨 画面の背景テーマ</div>
-
+      <!-- ★ 1. ビジュアル・カラーパレット選択（OSドラムロール撤廃！） -->
+      <div class="setting-section-header">🎨 お部屋のカラーテーマ</div>
       <div class="form-group">
-        <label>お好みのカラーテーマ:</label>
-        <select id="app-theme-select">
-          <option value="normal" selected>🌿 ノーマル（自動連動・現在のスタイル）</option>
-          <option value="dark">🌙 ダーク（シックな漆黒ナイトモード）</option>
-          <option value="light">☀️ ライト（明るいピュアホワイトモード）</option>
-          <option value="pop">🎨 ポップ（ミルキーパステルキャンディ）</option>
-        </select>
+        <div class="theme-palette-grid" id="theme-palette-grid">
+          <button type="button" class="theme-card-btn is-active" data-theme-val="normal">
+            <span class="theme-swatch-dot swatch-normal"></span>
+            <div class="theme-card-info">
+              <span class="theme-card-title">🌸 ノーマル</span>
+              <span class="theme-card-sub">元祖ピンク＆ホワイト</span>
+            </div>
+          </button>
+          <button type="button" class="theme-card-btn" data-theme-val="dark">
+            <span class="theme-swatch-dot swatch-dark"></span>
+            <div class="theme-card-info">
+              <span class="theme-card-title">🌙 ナイトダーク</span>
+              <span class="theme-card-sub">シックな漆黒モード</span>
+            </div>
+          </button>
+          <button type="button" class="theme-card-btn" data-theme-val="mint">
+            <span class="theme-swatch-dot swatch-mint"></span>
+            <div class="theme-card-info">
+              <span class="theme-card-title">🍃 フォレスト</span>
+              <span class="theme-card-sub">瞳とおそろいミント</span>
+            </div>
+          </button>
+          <button type="button" class="theme-card-btn" data-theme-val="pop">
+            <span class="theme-swatch-dot swatch-pop"></span>
+            <div class="theme-card-info">
+              <span class="theme-card-title">🍊 キャンディ</span>
+              <span class="theme-card-sub">パステルビタミン</span>
+            </div>
+          </button>
+        </div>
       </div>
 
+      <!-- ★ 2. クロちゃんの声と見た目（洗練されたチップUI） -->
       <div class="setting-section-header">🐾 クロちゃんの声と見た目</div>
 
       <div class="form-group">
         <label>クロの肉声ボイス（VOICEVOX）:</label>
-        <div class="voice-control-row">
-          <select id="voice-speaker-select" class="voice-select-box">
-            <option value="10" selected>🌟 雨晴はう（ノーマル）【推奨・子猫声】</option>
-            <option value="0">🌸 四国めたん（あまあま）</option>
-            <option value="3">🌱 ずんだもん（ノーマル）</option>
-            <option value="58">🐱 猫使ビィ（ノーマル）</option>
-            <option value="20">🍡 もち子さん（ノーマル）</option>
-            <option value="23">❄️ WhiteCUL（ノーマル）</option>
-            <option value="43">🌸 櫻歌ミコ（ノーマル）</option>
-            <option value="75">🤖 Voidoll（ノーマル）</option>
-          </select>
-          <button type="button" class="btn-voice-test" id="test-voice-btn">🔊 テスト</button>
+        <div class="voice-chip-container" id="voice-chip-container">
+          <button type="button" class="voice-chip-btn is-active" data-voice-id="10">🌟 雨晴はう<span>子猫声</span></button>
+          <button type="button" class="voice-chip-btn" data-voice-id="3">🌱 ずんだもん<span>元気</span></button>
+          <button type="button" class="voice-chip-btn" data-voice-id="0">🌸 四国めたん<span>あまあま</span></button>
+          <button type="button" class="voice-chip-btn" data-voice-id="58">🐱 猫使ビィ<span>小悪魔</span></button>
+          <button type="button" class="voice-chip-btn" data-voice-id="20">🍡 もち子さん<span>癒やし</span></button>
+          <button type="button" class="voice-chip-btn" data-voice-id="23">❄️ WhiteCUL<span>クール</span></button>
+          <button type="button" class="voice-chip-btn" data-voice-id="43">🌸 櫻歌ミコ<span>ロリ</span></button>
+          <button type="button" class="voice-chip-btn" data-voice-id="75">🤖 Voidoll<span>ロボ</span></button>
         </div>
+        <button type="button" class="btn-voice-test" id="test-voice-btn">🔊 いま選んだ声でテスト再生ニャ！</button>
       </div>
 
       <div class="form-group">
@@ -2784,32 +2926,33 @@
         <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.05" value="1.05">
       </div>
 
+      <!-- ★ 3. ボタン操作時のクロの一声（カプセル型セグメントボタン） -->
       <div class="form-group">
-        <label>ボタン操作時のクロの一声ボイス:</label>
-        <select id="button-feedback-select">
-          <option value="voice" selected>🔊 ひとこと喋る（「おまかせニャ！」「あそぶニャ♪」）</option>
-          <option value="mute">🔇 消音（効果音のみ・静かモード）</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label>タイマー完了アラーム音:</label>
-        <div class="voice-control-row">
-          <select id="timer-sound-select" class="voice-select-box" style="border-color:#fed7aa;background:#fffdfa;color:#9a3412;">
-            <option value="bell" selected>🔔 華やかベルチャイム（チリリン♪ チリリン♪）</option>
-            <option value="alarm">⏰ デジタルアラーム（ピピピッ！ピピピッ！）</option>
-          </select>
-          <button type="button" class="btn-voice-test" id="test-timer-sound-btn" style="border-color:#f59e0b;color:#d97706;background:#fffbeb;">🔊 テスト</button>
+        <label>ボタン操作時の一声ボイス:</label>
+        <div class="segment-capsule-row" id="feedback-segment-group">
+          <button type="button" class="segment-btn is-active pink" data-feedback-val="voice">🔊 元気に喋る（おまかせニャ！）</button>
+          <button type="button" class="segment-btn" data-feedback-val="mute">🔇 消音（効果音のみ・静か）</button>
         </div>
       </div>
 
+      <!-- ★ 4. タイマーアラーム音（カプセル型セグメントボタン） -->
+      <div class="form-group">
+        <label>タイマー完了アラーム音:</label>
+        <div class="segment-capsule-row" id="timer-sound-segment-group" style="margin-bottom:6px;">
+          <button type="button" class="segment-btn is-active blue" data-timer-sound-val="bell">🔔 華やかベルチャイム</button>
+          <button type="button" class="segment-btn" data-timer-sound-val="alarm">⏰ デジタルアラーム</button>
+        </div>
+        <button type="button" class="btn-voice-test" id="test-timer-sound-btn" style="border-color:#f59e0b;color:#d97706;background:#fffbeb;">🔊 アラーム音を試聴するニャ</button>
+      </div>
+
+      <!-- ★ 5. おてつだいモード装備（カプセル型セグメントボタン） -->
       <div class="form-group">
         <label>おてつだいモードの装備スタイル:</label>
-        <select id="accessory-style-select">
-          <option value="both" selected>🎓👓 博士帽 ＋ 丸メガネ（天才フル装備！）</option>
-          <option value="hat">🎓 博士帽のみ</option>
-          <option value="glasses">👓 白黒ストライプ丸メガネのみ</option>
-        </select>
+        <div class="segment-capsule-row" id="acc-style-segment-group">
+          <button type="button" class="segment-btn is-active pink" data-acc-style-val="both">🎓👓 フル装備</button>
+          <button type="button" class="segment-btn" data-acc-style-val="hat">🎓 帽子のみ</button>
+          <button type="button" class="segment-btn" data-acc-style-val="glasses">👓 メガネのみ</button>
+        </div>
       </div>
 
       <div class="form-group">
@@ -2841,7 +2984,6 @@
           <input type="file" id="file-input-restore" accept=".json" style="display:none;">
         </div>
 
-        <!-- iPhone風マルチカラー・ストレージ使用量モニター -->
         <div class="storage-monitor-box">
           <div class="storage-monitor-header">
             <span>📊 ストレージ使用量（思い出の引き出し）:</span>
@@ -2867,19 +3009,22 @@
         </div>
       </div>
 
+      <!-- ★ 6. 案内件数選択（カプセル型セグメントボタン） -->
       <div class="form-group">
-        <label>ニュース・お店の紹介件数:</label>
-        <div style="display:flex; gap:8px;">
-          <select id="news-count-select" style="flex:1;">
-            <option value="1">ニュース: 1件</option>
-            <option value="2" selected>ニュース: 2件【標準】</option>
-            <option value="3">ニュース: 3件</option>
-          </select>
-          <select id="spot-count-select" style="flex:1;">
-            <option value="1">お店: 1件</option>
-            <option value="2" selected>お店: 2件【標準】</option>
-            <option value="3">お店: 3件</option>
-          </select>
+        <label>ニュース紹介件数:</label>
+        <div class="segment-capsule-row" id="news-count-segment-group">
+          <button type="button" class="segment-btn" data-count-val="1">1件</button>
+          <button type="button" class="segment-btn is-active blue" data-count-val="2">2件（標準）</button>
+          <button type="button" class="segment-btn" data-count-val="3">3件</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>お店紹介件数:</label>
+        <div class="segment-capsule-row" id="spot-count-segment-group">
+          <button type="button" class="segment-btn" data-count-val="1">1件</button>
+          <button type="button" class="segment-btn is-active blue" data-count-val="2">2件（標準）</button>
+          <button type="button" class="segment-btn" data-count-val="3">3件</button>
         </div>
       </div>
 
@@ -2975,5 +3120,3 @@
   <script src="app.js"></script>
 </body>
 </html>
-
-
