@@ -1,9 +1,12 @@
+
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆中央司令塔（app.js Part 1/2）
    - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
-   - 【音響完全修復】LFO振幅変調（24Hz）による極上リアル喉鳴らしゴロゴロ音
-   - 【データ完全救出】過去日記の本文末尾から「クロのひとこと」を無条件抽出復元
-   - 診断モニターへの心拍テレメトリーログ完全直結
+   - 【音響完全修復】スマホ・PC両方で綺麗に響く元祖リアル喉鳴らしゴロゴロ音（160Hz〜220Hzパルス変調）
+   - 【自声エコー誤判定根絶】「おまかせ」等のユーザー発言が除外されるバグを完全解消
+   - 【データ完全救出】過去の日記コメント（kuroComment / comment / oneWord）を最優先で100%復元
+   - 【写真仕様同期】日記にメイン写真がある場合、スナップ一覧（1枚目）として完全自動同期
+   - 【ストレージ内訳修復】日記内の写真容量を正確に分離し、写真・会話・記憶設定の実態数値を測定
    ※このPart 1は StorageManager の閉じカッコ（};）まで綺麗に完結しています。
    ========================================================================== */
 
@@ -217,34 +220,40 @@ class AudioSpeechEngine {
       noise.start(now); noise.stop(now + 0.35);
 
     } else if (type === 'purr') {
-      /* ★【音響完全修復】猫特有の24Hz振幅変調（LFOトレモロ）による本物の喉鳴らしゴロゴロ音 */
+      /* ★【音響完全修復】スマホ・PC両方で愛らしく綺麗に鳴り響く元祖ゴロゴロ音（160Hz〜220Hz温もりパルス） */
       const osc = ctx.createOscillator();
       const oscGain = ctx.createGain();
       const lfo = ctx.createOscillator();
       const lfoGain = ctx.createGain();
-      const masterGain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
 
-      // メインの喉鳴り低音（76Hz三角波）
+      // 小型スピーカーでも明瞭に聴こえる温かい三角波（165Hz）
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(76, now);
+      osc.frequency.setValueAtTime(165, now);
+      osc.frequency.linearRampToValueAtTime(150, now + 0.4);
+      osc.frequency.linearRampToValueAtTime(175, now + 0.85);
 
-      // 猫の呼吸・喉の毎秒24回の連続振動パルス（LFO）
+      // 猫の喉の連続ゴロゴロパルス（毎秒22回）
       lfo.type = 'sine';
-      lfo.frequency.setValueAtTime(24, now);
+      lfo.frequency.setValueAtTime(22, now);
 
-      // LFOで音量をブルブルと震わせる（振幅変調）
-      lfoGain.gain.setValueAtTime(0.24, now);
+      // LFOで音量をリズミカルに震わせる
+      lfoGain.gain.setValueAtTime(0.35, now);
       lfo.connect(lfoGain);
       lfoGain.connect(oscGain.gain);
 
-      // メインゲインの滑らかな立ち上がりと減衰
-      masterGain.gain.setValueAtTime(0.02, now);
-      masterGain.gain.linearRampToValueAtTime(0.38, now + 0.1);
-      masterGain.gain.exponentialRampToValueAtTime(0.001, now + 0.95);
+      // 耳に優しいローパスフィルター
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(480, now);
 
-      osc.connect(oscGain);
-      oscGain.connect(masterGain);
-      masterGain.connect(ctx.destination);
+      // 全体の立ち上がりと自然なフェードアウト
+      oscGain.gain.setValueAtTime(0.05, now);
+      oscGain.gain.linearRampToValueAtTime(0.42, now + 0.12);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.95);
+
+      osc.connect(filter);
+      filter.connect(oscGain);
+      oscGain.connect(ctx.destination);
 
       osc.start(now);
       lfo.start(now);
@@ -252,7 +261,7 @@ class AudioSpeechEngine {
       lfo.stop(now + 0.96);
 
       if ('vibrate' in navigator) try { navigator.vibrate([40, 50, 40]); } catch(e) {}
-      Logger.log(`[Sound] 😻 極上リアル喉鳴らしゴロゴロ音発音`, "info");
+      Logger.log(`[Sound] 😻 元祖リアル喉鳴らしゴロゴロ音発音`, "info");
 
     } else if (type === 'snack') {
       [0, 0.15, 0.3].forEach(d => {
@@ -430,11 +439,13 @@ class AudioSpeechEngine {
     return blobUrl;
   }
 
+  /* ★【重要バグ根絶】ユーザーが「おまかせで探して」と言った時に誤って除外されない厳密判定 */
   _isSelfEcho(text) {
     if (!text) return true;
     const normalized = text.replace(/[\s、。！？ニャンニャ]/g, '');
     if (normalized.length < 2) return true;
-    if (/^(?:おまかせ|あそぶ|バッチリ|はーい|ちょい待ち|すすめる)/.test(normalized)) return true;
+    // クロちゃん特有の語尾を持つ完全なシステム発声のみを除外（「おまかせ」等のユーザー発言は通す！）
+    if (/^(?:おまかせニャ|あそぶニャ|バッチリニャ|はーい|ちょい待ちニャ|すすめるニャ)/.test(text.trim())) return true;
     for (const spoken of this.recentSpokenTexts) {
       if (spoken.replace(/[\s、。！？ニャンニャ]/g, '') === normalized) return true;
     }
@@ -704,7 +715,7 @@ const LocationProvider = {
 };
 
 /* ==========================================================================
-   MODULE 3: ストレージ管理 ＆ 過去コメント無条件完全救出
+   MODULE 3: ストレージ管理 ＆ 過去コメント・写真同期エンジン
    ========================================================================== */
 const DATA_KEYS = {
   MEMORIES: 'kuro_data_memories',
@@ -721,6 +732,7 @@ const StorageManager = {
   },
   defaultEyelidCoords: { y: 172, x: 0, gap: 28, size: 16 },
 
+  /* ★【ストレージ内訳完全修復】日記内の写真容量を正確に分離・測定するエンジン */
   getStorageUsage() {
     let totalBytes = 0, photoBytes = 0, chatBytes = 0, metaBytes = 0;
     try {
@@ -729,19 +741,42 @@ const StorageManager = {
         const val = localStorage[k];
         const bytes = (val.length + k.length) * 2;
         totalBytes += bytes;
-        if (k.startsWith('kuro_daily_photos_')) photoBytes += bytes;
-        else if (k.startsWith('kuro_daily_logs_') || k === DATA_KEYS.RECENT_LOGS) chatBytes += bytes;
-        else metaBytes += bytes;
+
+        if (k.startsWith('kuro_daily_photos_')) {
+          photoBytes += bytes;
+        } else if (k === DATA_KEYS.DIARIES) {
+          // 日記データの中から写真（photoBase64）のサイズを正確に抽出し写真容量に加算
+          try {
+            const diaries = JSON.parse(val) || [];
+            let diaryPhotoBytes = 0;
+            diaries.forEach(d => {
+              if (d && d.photo && typeof d.photo === 'string') {
+                diaryPhotoBytes += (d.photo.length * 2);
+              }
+            });
+            photoBytes += diaryPhotoBytes;
+            metaBytes += Math.max(0, bytes - diaryPhotoBytes);
+          } catch(e) {
+            metaBytes += bytes;
+          }
+        } else if (k.startsWith('kuro_daily_logs_') || k === DATA_KEYS.RECENT_LOGS) {
+          chatBytes += bytes;
+        } else {
+          metaBytes += bytes;
+        }
       }
     } catch(e) {}
+
     const toMB = (b) => parseFloat((b / (1024 * 1024)).toFixed(2));
     const usedMB = toMB(totalBytes);
-    const percent = Math.min(100, Math.round((totalBytes / (5 * 1024 * 1024)) * 100));
+    const limitMB = 5.0;
+    const percent = Math.min(100, Math.round((totalBytes / (limitMB * 1024 * 1024)) * 100));
+
     return {
-      usedMB, limitMB: 5.0, percent,
-      photoMB: toMB(photoBytes), photoPct: Math.min(100, Math.round((photoBytes / (5 * 1024 * 1024)) * 100)),
-      chatMB: toMB(chatBytes), chatPct: Math.min(100, Math.round((chatBytes / (5 * 1024 * 1024)) * 100)),
-      metaMB: toMB(metaBytes), metaPct: Math.min(100, Math.round((metaBytes / (5 * 1024 * 1024)) * 100)),
+      usedMB, limitMB, percent,
+      photoMB: toMB(photoBytes), photoPct: Math.min(100, Math.round((photoBytes / (limitMB * 1024 * 1024)) * 100)),
+      chatMB: toMB(chatBytes), chatPct: Math.min(100, Math.round((chatBytes / (limitMB * 1024 * 1024)) * 100)),
+      metaMB: toMB(metaBytes), metaPct: Math.min(100, Math.round((metaBytes / (limitMB * 1024 * 1024)) * 100)),
       isWarning: percent >= 75, isDanger: percent >= 90
     };
   },
@@ -804,6 +839,8 @@ const StorageManager = {
       if (photoIndex < 0 || photoIndex >= pool.length) return false;
       const del = pool.splice(photoIndex, 1)[0];
       localStorage.setItem(key, JSON.stringify(pool));
+
+      // 日記データ側のメイン写真との整合性を即時同期
       const diaries = this.loadAllDiaries();
       const target = diaries.find(d => d.dateKey === lifeDateKey);
       if (target && target.photo === del.base64) {
@@ -814,8 +851,21 @@ const StorageManager = {
     } catch(e) { return false; }
   },
 
+  /* ★【仕様完全修復】日記に写真がある場合、スナップ一覧（1枚目）として完全自動同期 */
   getDailyPhotoPool(lifeDateKey) {
-    try { return JSON.parse(localStorage.getItem(`kuro_daily_photos_${lifeDateKey}`)) || []; } catch(e) { return []; }
+    try {
+      let pool = JSON.parse(localStorage.getItem(`kuro_daily_photos_${lifeDateKey}`)) || [];
+      if (pool.length === 0) {
+        // プールが空でも日記にメイン写真があればスナップ一覧として自動同期！
+        const diaries = this.loadAllDiaries();
+        const d = diaries.find(item => item.dateKey === lifeDateKey);
+        if (d && d.photo) {
+          pool = [{ base64: d.photo, comment: "メイン写真", time: "12:00", timestamp: d.timestamp || Date.now() }];
+          localStorage.setItem(`kuro_daily_photos_${lifeDateKey}`, JSON.stringify(pool));
+        }
+      }
+      return pool;
+    } catch(e) { return []; }
   },
 
   loadMemories(defaultMemories) {
@@ -828,19 +878,25 @@ const StorageManager = {
   },
   saveMemories(m) { localStorage.setItem(DATA_KEYS.MEMORIES, JSON.stringify(m)); },
 
-  /* ★【重要バグ根絶】本文末尾にある本物のオリジナルメッセージを無条件で確実に抽出復元するエンジン */
+  /* ★【データ完全救出】過去の固有コメント（kuroComment / comment / oneWord）を最優先で100%復元 */
   loadAllDiaries() {
     try {
       const list = JSON.parse(localStorage.getItem(DATA_KEYS.DIARIES)) || [];
       return list.map(d => {
+        // 1. 元々の固有キーにデータが存在する場合は絶対にそれを最優先で維持！
+        let originalComment = d.kuroComment || d.comment || d.oneWord || null;
+
+        // 2. 本文末尾に「【クロのひとこと：〜】」が含まれていれば抽出救出
         if (d.content) {
-          // 本文の中に「【クロのひとこと：〜】」が含まれていれば、引き出しの状態に関わらず無条件で抽出復元
           const match = d.content.match(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?)\s*([^\n]+)/);
           if (match) {
-            d.kuroComment = match[1].trim(); // 本文の本物メッセージで必ず上書き復元！
+            if (!originalComment) originalComment = match[1].trim();
             d.content = d.content.replace(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?)\s*[^\n]+$/, '').trim();
           }
         }
+
+        // 3. 元の固有データを100%復元（ダミー文字列での上書きを完全禁止！）
+        d.kuroComment = originalComment || "";
         return d;
       });
     } catch(e) { return []; }
@@ -856,26 +912,32 @@ const StorageManager = {
     let cleanContent = AppCore.audio.cleanEndingNenyan(entryText);
     let extractedComment = kuroComment;
 
-    // 本文からひとことの抽出を徹底
+    // 本文末尾からのひとこと抽出
     const match = cleanContent.match(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?)\s*([^\n]+)/);
     if (match) {
       if (!extractedComment) extractedComment = match[1].trim();
       cleanContent = cleanContent.replace(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?)\s*[^\n]+$/, '').trim();
     }
 
+    let list = this.loadAllDiaries();
+    const idx = list.findIndex(d => d.dateKey === dateKey);
+
+    // 既存の日記があれば、元々の一言を最優先で維持！
+    if (idx >= 0 && !extractedComment) {
+      extractedComment = list[idx].kuroComment || "";
+    }
+
     const diaryData = {
       dateKey, fullDate,
       weather: LocationProvider.weather, temperature: LocationProvider.temperature,
       content: cleanContent,
-      kuroComment: extractedComment || "今日もおやびんと一緒で最高に幸せな一日だったニャン♡🐾",
-      photo: photoData || null, timestamp: Date.now(),
+      kuroComment: extractedComment || "",
+      photo: photoData || (idx >= 0 ? list[idx].photo : null) || null,
+      timestamp: Date.now(),
       logCountAtSave: (currentLogCount !== null) ? currentLogCount : this.getDailyLogs(dateKey).length
     };
-    let list = this.loadAllDiaries();
-    const idx = list.findIndex(d => d.dateKey === dateKey);
+
     if (idx >= 0) {
-      if (!photoData && list[idx].photo) diaryData.photo = list[idx].photo;
-      if (!extractedComment && list[idx].kuroComment) diaryData.kuroComment = list[idx].kuroComment;
       list[idx] = diaryData;
     } else {
       list.unshift(diaryData);
@@ -890,8 +952,12 @@ const StorageManager = {
     this.addPhotoToDailyPool(photoBase64, "写真を見せたニャ");
     let list = this.loadAllDiaries();
     const idx = list.findIndex(d => d.dateKey === timeInfo.lifeLogKey);
-    if (idx >= 0) { list[idx].photo = photoBase64; this.saveAllDiaries(list); }
-    else { this.saveDiary("今日はおやびんと写真を見せ合って楽しかったニャン♪", timeInfo.lifeLogKey, timeInfo.lifeFullDate, photoBase64); }
+    if (idx >= 0) {
+      list[idx].photo = photoBase64;
+      this.saveAllDiaries(list);
+    } else {
+      this.saveDiary("今日はおやびんと写真を見せ合って楽しかったニャン♪", timeInfo.lifeLogKey, timeInfo.lifeFullDate, photoBase64);
+    }
   },
 
   getTodayDiary() {
@@ -956,16 +1022,17 @@ const StorageManager = {
     if (Array.isArray(data.memories)) this.saveMemories(data.memories);
     if (Array.isArray(data.diaries)) {
       const enrichedDiaries = data.diaries.map(d => {
+        let comment = d.kuroComment || d.comment || d.oneWord || "";
         if (d.content) {
           const match = d.content.match(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?)\s*([^\n]+)/);
           if (match) {
-            d.kuroComment = match[1].trim();
+            if (!comment) comment = match[1].trim();
             d.content = d.content.replace(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?)\s*[^\n]+$/, '').trim();
           }
         }
         return {
           ...d,
-          kuroComment: d.kuroComment || "今日もおやびんと一緒で最高に幸せな一日だったニャン♡🐾"
+          kuroComment: comment
         };
       });
       this.saveAllDiaries(enrichedDiaries);
@@ -1013,13 +1080,11 @@ const StorageManager = {
 
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆中央司令塔（app.js Part 2/2）
-   - キャラクター描画＆お休み中の「目を瞑る居眠り」完全復元
-   - タイマー3回鳴動＆タップ消去のオリジナル仕様復元
-   - 設定保存時APIキー検証（OK時静かに保存・エラー時のみ警告）
-   - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
-   - 診断モニターへのAI・通信・エラーリアルタイム完全出力
-   - 【全点検反映】対話絞り込みラリー、会話記憶昼40件/夜20件、なでなで3部位センサー、
-     写真ログ二重保存防止、アルバム朗読多重登録根絶、ストレージ実数値、リセットボタン完備
+   - 【機能完全修復】お手伝いモードの案内リンクカード（Googleマップ・ニュース）即時同期描画
+   - 【ゾンビタイマー根絶】ウィジェット消去時・ストップ時にチャイムの背後鳴動を物理的に完全停止
+   - 【アルバム削除整合】モーダル内スナップ削除時のメモリ即時同期により写真復活を根絶
+   - 【Gemini安全網】固定2モデル（3.5-flash-lite / flash-lite-latest）の厳密タイムアウト監視
+   - キャラクター描画＆お休み中の「目を瞑る居眠り」完全維持
    ========================================================================== */
 
 /* ==========================================================================
@@ -1255,19 +1320,19 @@ class AIThoughtEngine {
       if (!item || !item.text) return false;
       const t = item.text.trim();
       if (t.length <= 2 && /^(?:来た|うん|ああ|はい|おー|えっ|ニャ|にゃ)$/.test(t)) return false;
-      if (/^(?:おまかせ|あそぶ|バッチリ|はーい|はい|起きたニャ|お昼寝するニャ|今日の日記を書き込みましたニャン)/.test(t)) return false;
+      if (/^(?:おまかせニャ|あそぶニャ|バッチリニャ|はーい|はい|起きたニャ|お昼寝するニャ|今日の日記を書き込みましたニャン)/.test(t)) return false;
       if (/(?:いま何時|今何時|今日何日|きょう何日|天気どんな感じ)/.test(t)) return false;
       if (t.startsWith('http') || t.includes('Googleマップで見る')) return false;
       return true;
     });
   }
 
-  /* ★【観点25】会話記憶の動的枠数（日中20往復40件／夜間10往復20件）完全復元 */
+  /* 会話記憶の動的枠数（日中40件／夜間20件） */
   _buildContentsPayload(rawLogs, currentPrompt, photoBase64 = null) {
     const contents = [];
     let lastRole = null;
     const timeInfo = TimeProvider.getCurrentInfo();
-    const historyLimit = timeInfo.isLateNight ? 20 : 40; // 深夜は20件、日中はたっぷり40件！
+    const historyLimit = timeInfo.isLateNight ? 20 : 40;
     const targetHistoryLogs = this._filterMeaningfulLogs(rawLogs).slice(-historyLimit);
 
     for (const item of targetHistoryLogs) {
@@ -1317,7 +1382,6 @@ class AIThoughtEngine {
     const recentDiaries = StorageManager.getRecentDiariesSummary(3);
     const pastMemoryDiary = StorageManager.findRelevantPastDiary(promptText);
 
-    /* ★【対話完全修復】おてつだいモード：好物を振る会話絞り込みラリープロンプト */
     const modeInstruction = isAssistant ? `
 【★モード：👓 おてつだいモード（おやびんの世界一のマブダチ＆天才案内役）】
 ・おやびんの大好物（ラーメン、餃子、焼肉、ホルモン、お寿司、麻婆豆腐）を熟知しています。
@@ -1358,10 +1422,11 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
       const t0 = performance.now();
       Logger.log(`[AI] リクエスト送信 ➔ ${cleanModel}`, "info");
 
-      try {
-        const fetchController = new AbortController();
-        const timeoutTimer = setTimeout(() => fetchController.abort(), 20000);
+      /* ★【Gemini安全網】リトライ時も含め厳密な20秒タイムアウト監視 */
+      let fetchController = new AbortController();
+      let timeoutTimer = setTimeout(() => fetchController.abort(), 20000);
 
+      try {
         const bodyPayload = {
           system_instruction: { parts: [{ text: systemPrompt }] },
           contents: contents,
@@ -1381,7 +1446,12 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
           signal: fetchController.signal
         });
 
+        // ツール指定でエラーになった場合のフォールバック（再試行タイマーを独立再設定）
         if (!res.ok && isAssistant) {
+          clearTimeout(timeoutTimer);
+          fetchController = new AbortController();
+          timeoutTimer = setTimeout(() => fetchController.abort(), 20000);
+
           delete bodyPayload.tools;
           delete bodyPayload.toolConfig;
           res = await fetch(endpoint, {
@@ -1421,13 +1491,14 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
           }
 
           const textPart = parts.find(p => p.text);
-          if (textPart?.text) replyText = textPart.text;
+          if (textPart?.text && !replyText) replyText = textPart.text;
 
           if (replyText) {
             let clean = replyText.replace(/<!--[\s\S]*?-->/g, '').replace(/[*#_~`]/g, '').trim();
             clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
             clean = AppCore.audio.cleanEndingNenyan(clean);
 
+            // セリフまたはプロンプトからの自動カード検出（自然言語応答時の安全網）
             if (isAssistant && cards.length === 0) {
               const fallbackCards = this._detectCardsFromKuroSpeech(clean, promptText);
               if (fallbackCards.length > 0) cards = fallbackCards;
@@ -1436,13 +1507,14 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
             const badge = document.getElementById('model-badge');
             if (badge) badge.textContent = `🐾 ${cleanModel.replace('gemini-', '')}`;
 
-            Logger.log(`[AI] ✅ 応答受信成功 (${ms}ms) [${cleanModel}]`, "success");
+            Logger.log(`[AI] ✅ 応答受信成功 (${ms}ms) [${cleanModel}] (カード:${cards.length}件)`, "success");
             return { success: true, text: clean, groundingCards: cards };
           }
         } else {
           Logger.log(`[AI] ⚠️ HTTP ${res.status} [${cleanModel}] (${ms}ms)`, "warn");
         }
       } catch (err) {
+        clearTimeout(timeoutTimer);
         const ms = Math.round(performance.now() - t0);
         Logger.log(`[AI] ❌ エラー [${cleanModel}]: ${err.message} (${ms}ms)`, "error");
       }
@@ -1523,13 +1595,15 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
 
   _detectCardsFromKuroSpeech(speechText, userPrompt) {
     const combined = `${speechText} ${userPrompt}`;
-    if (/(?:地図|マップ|場所|案内する)/.test(speechText) || /(?:地図.*教えて|場所.*教えて)/.test(userPrompt)) {
-      const match = combined.match(/(?:炭火ホルモン\s*丸川|丸川|餃子の満洲|ラーメン|ホルモン|餃子|寿司)/);
-      const spot = match ? match[0] : "おすすめグルメ";
+    // お店・グルメ関連の絞り込み判定
+    if (/(?:地図|マップ|場所|案内する|見つけてきた|探してきた|おすすめ)/.test(speechText) || /(?:ラーメン|餃子|焼肉|ホルモン|寿司|麻婆豆腐|カレー|うどん|カフェ|店|マップ|地図)/.test(userPrompt)) {
+      const match = combined.match(/(?:炭火ホルモン\s*丸川|丸川|餃子の満洲|ラーメン|ホルモン|餃子|焼肉|寿司|麻婆豆腐|カレー|うどん|カフェ)/);
+      const spot = match ? match[0] : (combined.includes('おまかせ') ? "人気グルメ" : "おすすめのお店");
       return this._createSmartMapCards(spot, LocationProvider.cityArea);
     }
-    if (/(?:ニュース.*チェック|話題のニュース)/.test(speechText) || /(?:ニュース.*教えて)/.test(userPrompt)) {
-      const match = combined.match(/(?:大谷翔平|プロ野球|天気|東村山)/);
+    // ニュース関連の絞り込み判定
+    if (/(?:ニュース.*チェック|話題のニュース|速報)/.test(speechText) || /(?:ニュース|大谷|話題|天気|情報)/.test(userPrompt)) {
+      const match = combined.match(/(?:大谷翔平|プロ野球|天気|東村山|政治|経済)/);
       const topic = match ? match[0] : "最新ニュース";
       return this._createSmartNewsCards(topic);
     }
@@ -1578,7 +1652,7 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
           clean = AppCore.audio.cleanEndingNenyan(clean);
 
           let content = clean;
-          let kuroComment = "今日もおやびんと一緒で最高に幸せな一日だったニャン♡🐾";
+          let kuroComment = "";
           const match = clean.match(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?)\s*([^\n]+)/);
           if (match) {
             kuroComment = match[1].trim();
@@ -1615,6 +1689,7 @@ const AppCore = {
     isRunning: true, isThinking: false, isProcessingInput: false, isDiaryProcessing: false,
     isAssistantMode: false, editingMemoryIdx: null, activeAdjustTab: 'idle', snackCount: 0,
     timerId: null, timerSeconds: 0, timerLabel: "", isTimerPaused: false, isTimerCompleted: false,
+    chimeTimerId: null, // ★ ゾンビタイマー根絶用インターバルID
     wakeLockSentinel: null, isLandscape: false,
     studioDiaries: [], studioDiaryPageIdx: 0, isDiaryReading: false,
     idleSoliloquyTimer: null, lastActivityTime: Date.now()
@@ -1687,10 +1762,10 @@ const AppCore = {
     this._startIdleSoliloquyWatcher();
 
     setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-    Logger.log("[AppCore] 全システム正常稼働！全29観点完全適合ニャ🐾", "success");
+    Logger.log("[AppCore] 全システム正常稼働！全バグ根絶・健全稼働中ニャ🐾", "success");
   },
 
-  /* ★【観点24】ストレージモニター内訳実数値のリアルタイム反映完全修復 */
+  /* ★【ストレージ内訳実数値のリアルタイム反映】 */
   _updateStorageMonitorUI() {
     const u = StorageManager.getStorageUsage();
     const usageEl = document.getElementById('storage-usage-text');
@@ -1721,9 +1796,9 @@ const AppCore = {
     if (!box) return;
     setTimeout(() => {
       try {
-        box.scrollTo({ top: box.scrollHeight + 120, behavior: smooth ? 'smooth' : 'auto' });
+        box.scrollTo({ top: box.scrollHeight + 140, behavior: smooth ? 'smooth' : 'auto' });
       } catch(e) {
-        box.scrollTop = box.scrollHeight + 120;
+        box.scrollTop = box.scrollHeight + 140;
       }
     }, 50);
   },
@@ -1774,7 +1849,7 @@ const AppCore = {
           setTimeout(() => { if (!this.audio.isSpeaking) this.avatar.setEmotion('idle'); }, 2000);
         }
       }
-    }, 2000);
+    }, 5000);
   },
 
   resetActivityTimer() { this.state.lastActivityTime = Date.now(); },
@@ -1885,7 +1960,7 @@ const AppCore = {
     b.textContent = this.audio.cleanEndingNenyan(text);
     row.appendChild(b);
 
-    if (cards.length > 0) {
+    if (cards && cards.length > 0) {
       const cardBox = document.createElement('div');
       cardBox.className = 'action-card-box';
       cards.forEach(c => {
@@ -1915,10 +1990,12 @@ const AppCore = {
       <div class="timeline-diary-meta"><span>🌤️ 天気: ${diaryData.weather}</span><span>🌡️ 気温: ${diaryData.temperature}℃</span></div>
       ${diaryData.photo ? `<div class="timeline-diary-photo"><img src="${diaryData.photo}" alt="写真" id="card-diary-img-${diaryData.dateKey}"></div>` : ''}
       <div class="timeline-diary-body">${diaryData.content}</div>
-      <div class="timeline-diary-comment-box">
-        <span class="timeline-diary-comment-label">🐾 クロのひとこと:</span>
-        <span class="timeline-diary-comment-text">${diaryData.kuroComment || "今日もおやびんと一緒で最高に幸せな一日だったニャン♡🐾"}</span>
-      </div>
+      ${diaryData.kuroComment ? `
+        <div class="timeline-diary-comment-box">
+          <span class="timeline-diary-comment-label">🐾 クロのひとこと:</span>
+          <span class="timeline-diary-comment-text">${diaryData.kuroComment}</span>
+        </div>
+      ` : ''}
     `;
     if (diaryData.photo) {
       card.querySelector(`#card-diary-img-${diaryData.dateKey}`)?.addEventListener('click', () => {
@@ -1930,7 +2007,6 @@ const AppCore = {
     this._scrollToLatest(true);
   },
 
-  /* ★【観点27】写真アップロード時の会話ログ二重保存バグ根絶 */
   _bindPhotoUploadUI() {
     const photoInput = document.getElementById('camera-photo-input');
     const photoBtn = document.getElementById('photo-action-btn');
@@ -1978,7 +2054,6 @@ const AppCore = {
       this._updateStorageMonitorUI();
 
       this.audio.playImmediateFiller('search');
-      // ここで写真ログの二重保存を防ぐフラグ付き呼び出し
       this.executeThought("この写真を見て感想やお話しを聞かせてニャ！", compressedBase64, true);
       photoInput.value = '';
     };
@@ -2022,12 +2097,16 @@ const AppCore = {
         if (icon) icon.textContent = '🔔';
         if (disp) disp.textContent = '00:00 🔔';
 
+        /* ★【ゾンビタイマー根絶】チャイムのインターバルIDを確実に中央管理 */
         let chimeCount = 0;
         this.audio.playEffect(this.getTimerSound());
         chimeCount++;
-        const chimeInterval = setInterval(() => {
+
+        if (this.state.chimeTimerId) clearInterval(this.state.chimeTimerId);
+        this.state.chimeTimerId = setInterval(() => {
           if (chimeCount >= 3 || !this.state.isTimerCompleted) {
-            clearInterval(chimeInterval);
+            clearInterval(this.state.chimeTimerId);
+            this.state.chimeTimerId = null;
             return;
           }
           this.audio.playEffect(this.getTimerSound());
@@ -2043,8 +2122,10 @@ const AppCore = {
     }, 1000);
   },
 
+  /* ★【ゾンビタイマー完全停止】 */
   cancelKitchenTimer(manual = false) {
     if (this.state.timerId) { clearInterval(this.state.timerId); this.state.timerId = null; }
+    if (this.state.chimeTimerId) { clearInterval(this.state.chimeTimerId); this.state.chimeTimerId = null; }
     if (this.state.wakeLockSentinel) { this.state.wakeLockSentinel.release(); this.state.wakeLockSentinel = null; }
     this.state.isTimerCompleted = false;
     const widget = document.getElementById('kitchen-timer-widget');
@@ -2184,6 +2265,7 @@ const AppCore = {
     this.executeThought(text);
   },
 
+  /* ★【機能完全修復】案内カード（Googleマップ・ニュース）の即時同期描画 */
   async executeThought(promptText, photoBase64 = null, isPhotoAlreadyLogged = false) {
     this.state.isThinking = true;
     if (this.avatar) this.avatar.setEmotion('thinking');
@@ -2195,14 +2277,32 @@ const AppCore = {
     const res = await this.ai.generateReply(promptText, rawLogs, CHARACTER_CONFIG, this.memories, photoBase64);
 
     if (res.success && res.text) {
-      // 写真アップロード時にすでにログ保存されている場合は二重記録を完全防止！
       if (!isPhotoAlreadyLogged) {
         StorageManager.appendChatLog('user', promptText);
       }
       StorageManager.appendChatLog('model', res.text);
 
       this.audio.speak(res.text, null, () => {
-        if (bubble) bubble.textContent = res.text;
+        if (bubble) {
+          bubble.textContent = res.text;
+
+          // ★【修復の核心】AIから返ってきたカードをメッセージ行へ即座に描画・挿入！
+          if (res.groundingCards && res.groundingCards.length > 0) {
+            const parentRow = bubble.closest('.chat-row');
+            if (parentRow && !parentRow.querySelector('.action-card-box')) {
+              const cardBox = document.createElement('div');
+              cardBox.className = 'action-card-box';
+              res.groundingCards.forEach(c => {
+                const a = document.createElement('a');
+                a.className = `link-action-card ${c.type}-card`;
+                a.href = c.url; a.target = '_blank';
+                a.innerHTML = `<span class="card-icon">${c.icon}</span><span class="card-title-text">${c.title}</span><span class="card-arrow">➔</span>`;
+                cardBox.appendChild(a);
+              });
+              parentRow.appendChild(cardBox);
+            }
+          }
+        }
         if (this.avatar) this.avatar.setEmotion('talking');
         this._scrollToLatest(true);
       }, () => {
@@ -2271,7 +2371,6 @@ const AppCore = {
     }
   },
 
-  /* ★【観点28】朗読ボタンのイベント登録を1回のみに固定し多重登録リークを根絶 */
   _bindBookStudioUI() {
     const modal = document.getElementById('book-studio-modal');
     document.getElementById('top-diary-btn')?.addEventListener('click', () => {
@@ -2304,7 +2403,6 @@ const AppCore = {
       if (this.state.isRunning) this.audio.startListening();
     });
 
-    // 朗読ボタンのリスナーはここで1度だけ登録する！
     document.addEventListener('click', (e) => {
       if (e.target && e.target.id === 'btn-read-diary-aloud') {
         const cur = this.state.studioDiaries[this.state.studioDiaryPageIdx];
@@ -2378,7 +2476,7 @@ const AppCore = {
         </div>
         <div class="studio-diary-comment-box">
           <span class="studio-diary-comment-label">🐾 クロのひとこと:</span>
-          <textarea class="studio-diary-comment-textarea" id="studio-diary-comment" rows="2">${cur.kuroComment || "今日もおやびんと一緒で最高に幸せな一日だったニャン♡🐾"}</textarea>
+          <textarea class="studio-diary-comment-textarea" id="studio-diary-comment" rows="2" placeholder="おやびんへの一言メッセージニャ🐾">${cur.kuroComment || ""}</textarea>
         </div>
       </div>
     `;
@@ -2402,11 +2500,18 @@ const AppCore = {
       };
     });
 
+    /* ★【写真削除のデータ整合性保証】メモリデータも即時同期して復活を根絶 */
     pageContainer.querySelectorAll('.btn-snap-del').forEach(btn => {
       btn.onclick = (e) => {
         e.stopPropagation();
         if (window.confirm("この写真を削除しますかニャ？")) {
-          StorageManager.removePhotoFromDailyPool(cur.dateKey, parseInt(btn.dataset.del, 10));
+          const delIdx = parseInt(btn.dataset.del, 10);
+          const delPhotoBase64 = photoPool[delIdx]?.base64;
+          StorageManager.removePhotoFromDailyPool(cur.dateKey, delIdx);
+          if (cur.photo === delPhotoBase64) {
+            const updatedPool = StorageManager.getDailyPhotoPool(cur.dateKey);
+            cur.photo = updatedPool.length > 0 ? updatedPool[0].base64 : null;
+          }
           this._renderStudioDiaryPage();
         }
       };
@@ -2418,7 +2523,6 @@ const AppCore = {
     if (btn) btn.textContent = reading ? "🛑 朗読ストップ" : "🔊 クロが読むニャ♪";
   },
 
-  /* ★【観点29】設定モーダルのセグメントボタン未設定時フォールバック点灯 */
   _bindCustomSettingsUI() {
     document.querySelectorAll('.theme-card-btn').forEach(btn => {
       btn.onclick = () => {
@@ -2733,7 +2837,7 @@ const AppCore = {
       this._updateModeUI(true);
     });
 
-    /* ★【観点28】ストップボタン押下時にアルバム朗読状態も確実にリセット */
+    /* ★【ストップボタン押下時にゾンビタイマー・朗読も完全即時停止】 */
     document.getElementById('stop-action-btn')?.addEventListener('click', () => {
       this.cancelKitchenTimer(false);
       this.audio.stopReadingAloud();
@@ -2780,7 +2884,7 @@ const AppCore = {
       }
     });
 
-    /* ★【観点26】なでなで部位センサー（お耳・あたま・あご）タップ位置検知完全復元 */
+    /* ★【なでなで部位センサー（お耳・あたま・あご）】 */
     document.getElementById('avatar-wrapper')?.addEventListener('click', (e) => {
       if (e.target.closest('#transform-btn') || e.target.closest('#snack-btn') || e.target.closest('#photo-action-btn') || e.target.closest('#kitchen-timer-widget')) return;
       this.resetActivityTimer();
@@ -2832,7 +2936,6 @@ const AppCore = {
       const currentSpeaker = localStorage.getItem('kuro_voice_speaker_id') || '10';
       document.querySelectorAll('.voice-chip-btn').forEach(btn => btn.classList.toggle('is-active', btn.dataset.voiceId === currentSpeaker));
 
-      /* ★【観点29】未保存時デフォルトフォールバック点灯処理 */
       const syncSegment = (groupId, key, defaultVal, activeClass) => {
         const val = localStorage.getItem(key) || defaultVal;
         const container = document.getElementById(groupId);
@@ -2942,5 +3045,4 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
-
 
