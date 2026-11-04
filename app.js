@@ -1,9 +1,9 @@
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆中央司令塔（app.js Part 1/2）
    - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
+   - 診断モニターへの心拍テレメトリーログ完全直結
    - JSONデータ安心バックアップ＆復元（旧互換性保持＆5MB容量パンク自動防止）
-   - ミニ絵日記フッター「🐾 クロのひとこと」完全連携
-   - 透過PNG優先＆JPG自動フォールバック
+   - 絵日記アルバム「🐾 クロのひとこと」完全連携
    ========================================================================== */
 
 /* ★ Gemini連携モデル完全固定定数（追加・変更・自動並び替えを物理的に完全禁止） */
@@ -123,7 +123,7 @@ const TimeProvider = {
 };
 
 /* ==========================================================================
-   MODULE 1: 音声合成＆音声認識エンジン（同期・即時性最優先）
+   MODULE 1: 音声合成＆音声認識エンジン（同期・診断テレメトリー直結）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -323,9 +323,13 @@ class AudioSpeechEngine {
     }
   }
 
+  /* ★ VOICEVOX生成＆診断ログ完全記録 */
   async _getVoicevoxBlobUrl(text, speakerId) {
     const key = `${speakerId}_${text}`;
-    if (this.blobUrlCache.has(key)) return this.blobUrlCache.get(key);
+    if (this.blobUrlCache.has(key)) {
+      Logger.log(`[TTS] キャッシュヒット: 「${text.substring(0, 15)}…」`, "info");
+      return this.blobUrlCache.get(key);
+    }
     if (this.fixedPhraseMap.has(key)) return this.fixedPhraseMap.get(key);
 
     if (this.currentAbortController) this.currentAbortController.abort();
@@ -337,14 +341,22 @@ class AudioSpeechEngine {
     if (elapsed < 1500) await new Promise(r => setTimeout(r, 1500 - elapsed));
     this.lastVoicevoxRequestTime = Date.now();
 
+    const t0 = performance.now();
     const vvKey = (localStorage.getItem('kuro_voicevox_key') || '').trim();
     let initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodeURIComponent(text)}&speaker=${speakerId}`;
     if (vvKey) initUrl += `&key=${encodeURIComponent(vvKey)}`;
 
+    Logger.log(`[TTS] 音声生成開始 (話者:${speakerId}): 「${text.substring(0, 16)}…」`, "info");
     const initRes = await fetch(initUrl, { signal });
-    if (!initRes.ok) throw new Error(`HTTPエラー ${initRes.status}`);
+    if (!initRes.ok) {
+      Logger.log(`[TTS] HTTPエラー ${initRes.status}`, "error");
+      throw new Error(`HTTPエラー ${initRes.status}`);
+    }
     const initData = await initRes.json();
-    if (initData.isAudioError) throw new Error("VOICEVOX生成エラー");
+    if (initData.isAudioError) {
+      Logger.log(`[TTS] VOICEVOX生成エラー`, "error");
+      throw new Error("VOICEVOX生成エラー");
+    }
 
     let directUrl = initData.mp3StreamingUrl || initData.mp3DownloadUrl;
     if (!directUrl && initData.audioStatusUrl) {
@@ -358,12 +370,17 @@ class AudioSpeechEngine {
         }
       }
     }
-    if (!directUrl) throw new Error("音声タイムアウト");
+    if (!directUrl) {
+      Logger.log(`[TTS] 音声生成タイムアウト`, "error");
+      throw new Error("音声タイムアウト");
+    }
 
     const aRes = await fetch(directUrl, { signal });
     const blob = await aRes.blob();
     const blobUrl = URL.createObjectURL(blob);
     this.blobUrlCache.set(key, blobUrl);
+    const ms = Math.round(performance.now() - t0);
+    Logger.log(`[TTS] ✅ 音声取得完了 (${ms}ms)`, "success");
     return blobUrl;
   }
 
@@ -416,7 +433,8 @@ class AudioSpeechEngine {
           }
         }, cooldownMs);
       };
-      this.masterAudio.onerror = () => {
+      this.masterAudio.onerror = (e) => {
+        Logger.log(`[Audio] 再生エラー発生`, "error");
         this.isSpeaking = false; if (onStart) onStart(); if (onEnd) onEnd();
         setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, cooldownMs);
       };
@@ -432,6 +450,7 @@ class AudioSpeechEngine {
     this.isReadingAloud = true;
     this.readingAbortController = new AbortController();
     const speakerId = (speakerIdOverride !== null) ? speakerIdOverride : AppCore.getSpeakerId();
+    Logger.log(`[Diary] 朗読モード開始`, "info");
 
     const sentences = this.cleanEndingNenyan(diaryContentOnly)
       .split(/([。！？!\?\n]+)/)
@@ -480,9 +499,13 @@ class AudioSpeechEngine {
     this.fillerAudio.pause(); this.fillerAudio.currentTime = 0;
   }
 
+  /* ★ 音声認識と診断ログ直結 */
   _setupRecognition() {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRec) return;
+    if (!SpeechRec) {
+      Logger.log(`[Mic] ⚠️ Web Speech API非対応ブラウザです`, "warn");
+      return;
+    }
     this.recognition = new SpeechRec();
     this.recognition.lang = 'ja-JP';
     this.recognition.continuous = true;
@@ -490,6 +513,7 @@ class AudioSpeechEngine {
 
     this.recognition.onstart = () => {
       this.isListening = true; this.isStarting = false;
+      Logger.log(`[Mic] 👂 マイク待機開始`, "info");
       if (this.onListeningStatus) this.onListeningStatus(true);
     };
     this.recognition.onresult = (event) => {
@@ -498,16 +522,22 @@ class AudioSpeechEngine {
       const resultText = event.results[lastIdx]?.[0]?.transcript?.trim() || '';
       if (!resultText) return;
 
+      Logger.log(`[Mic] 🎤 音声認識：「${resultText}」`, "info");
+
       if (/(?:ストップ|やめて|とまって|止めて)/.test(resultText)) {
         this.stopReadingAloud(); this.stopSpeaking();
         if (this.onBargeIn) this.onBargeIn();
         return;
       }
-      if (this._isSelfEcho(resultText)) return;
+      if (this._isSelfEcho(resultText)) {
+        Logger.log(`[Mic] 自声エコー除外: 「${resultText}」`, "info");
+        return;
+      }
       if (this.onSpeechFinal) this.onSpeechFinal(resultText);
     };
     this.recognition.onerror = (e) => {
       this.isStarting = false; this.lastMicErrorTime = Date.now();
+      Logger.log(`[Mic] エラー: ${e.error}`, "warn");
       if (e.error === 'not-allowed') this.isListening = false;
     };
     this.recognition.onend = () => {
@@ -535,7 +565,7 @@ class AudioSpeechEngine {
 }
 
 /* ==========================================================================
-   MODULE 2: オンデマンドGPS ＆ 在宅センサー
+   MODULE 2: オンデマンドGPS ＆ 在宅センサー（診断ログ記録）
    ========================================================================== */
 const LocationProvider = {
   lat: null, lon: null, homeLat: null, homeLon: null,
@@ -572,7 +602,9 @@ const LocationProvider = {
 
   _checkHomeProximity() {
     if (this.homeLat !== null && this.homeLon !== null && this.lat !== null && this.lon !== null) {
-      this.isAtHome = (this.calcDistanceMeters(this.lat, this.lon, this.homeLat, this.homeLon) <= 150);
+      const dist = this.calcDistanceMeters(this.lat, this.lon, this.homeLat, this.homeLon);
+      this.isAtHome = (dist <= 150);
+      Logger.log(`[GPS] 拠点照合: 距離=${dist}m ➔ ${this.isAtHome ? '🏠 お家' : '🐾 お外'}`, "info");
     } else {
       this.isAtHome = true;
     }
@@ -604,6 +636,7 @@ const LocationProvider = {
           this.temperature = Math.round(data.current_weather.temperature);
           const c = data.current_weather.weathercode || 0;
           this.weather = (c <= 1) ? "快晴" : (c <= 3 ? "くもり" : (c >= 71 ? "雪" : "雨"));
+          Logger.log(`[Weather] 🌤️ 天気取得: ${this.weather} (${this.temperature}℃)`, "info");
         }
       }
     } catch(e) {}
@@ -715,6 +748,7 @@ const StorageManager = {
       let pool = JSON.parse(localStorage.getItem(key) || '[]');
       pool.push({ base64: photoBase64, comment: userComment, time: timeInfo.clock, timestamp: Date.now() });
       localStorage.setItem(key, JSON.stringify(pool.slice(-12)));
+      Logger.log(`[Storage] 写真保存完了 (本日:${pool.length}枚)`, "info");
     } catch(e) {}
   },
 
@@ -777,6 +811,7 @@ const StorageManager = {
       list.unshift(diaryData);
     }
     this.saveAllDiaries(list);
+    Logger.log(`[Diary] 📖 絵日記保存完了: ${fullDate}`, "success");
     return true;
   },
 
@@ -801,7 +836,7 @@ const StorageManager = {
     return list.length > 1 ? list[1] : null;
   },
 
-  /* ★ JSONバックアップ完全書き出し（エクスポート） */
+  /* ★ JSONバックアップ完全書き出し */
   downloadDataPackage() {
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
@@ -843,16 +878,15 @@ const StorageManager = {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    Logger.log(`[Backup] データ書き出し完了`, "success");
   },
 
   /* ★ JSONバックアップ読み込み＆復元（旧互換＆5MB容量パンク自動保護装置） */
   importAndReplaceDataPackage(data) {
     if (!data || typeof data !== 'object') throw new Error("無効なバックアップデータです。");
 
-    // 1. 最重要：記憶帳と絵日記を確実に保存
     if (Array.isArray(data.memories)) this.saveMemories(data.memories);
     if (Array.isArray(data.diaries)) {
-      // 過去データにkuroCommentが無い場合のフォールバック補完
       const enrichedDiaries = data.diaries.map(d => ({
         ...d,
         kuroComment: d.kuroComment || "今日もおやびんと一緒で最高に幸せな一日だったニャン♡🐾"
@@ -863,7 +897,6 @@ const StorageManager = {
       localStorage.setItem(DATA_KEYS.RECENT_LOGS, JSON.stringify(data.recentLogs.slice(-30)));
     }
 
-    // 2. 設定値の復元
     if (data.settings && typeof data.settings === 'object') {
       const s = data.settings;
       if (s.speakerId) localStorage.setItem('kuro_voice_speaker_id', s.speakerId);
@@ -879,7 +912,6 @@ const StorageManager = {
       if (s.eyelidCoords) this.saveEyelidCoords(s.eyelidCoords);
     }
 
-    // 3. チャットログと写真プールを安全復元（QuotaExceededErrorを自動キャッチ＆防護）
     if (data.dailyChatLogs) {
       for (let k in data.dailyChatLogs) {
         try { localStorage.setItem(k, JSON.stringify(data.dailyChatLogs[k])); } catch(e) {}
@@ -890,7 +922,6 @@ const StorageManager = {
         try {
           localStorage.setItem(k, JSON.stringify(data.dailyPhotoPools[k]));
         } catch(quotaErr) {
-          // 容量がいっぱいの場合は、古いプールから写真を半分に間引いて安全に書き込む
           try {
             const trimmed = (data.dailyPhotoPools[k] || []).slice(-4);
             localStorage.setItem(k, JSON.stringify(trimmed));
@@ -898,6 +929,7 @@ const StorageManager = {
         }
       }
     }
+    Logger.log(`[Backup] データ読み込み＆安全復元完了`, "success");
     return true;
   }
 };
@@ -906,8 +938,8 @@ const StorageManager = {
    AIペット クロちゃん🐾 対話エンジン＆中央司令塔（app.js Part 2/2）
    - キャラクター描画＆アニメーション連携
    - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
-   - 最新セリフ下端見切れ解消スクロール補正
-   - 記憶帳インライン編集・座標コピー・診断モデル検証・タイマーリピート完全実装
+   - 診断モニターへのAI・通信・エラーリアルタイム完全出力
+   - アルバム「クロのひとこと」編集枠＆座標コピーボタン完全接続
    ========================================================================== */
 
 /* ==========================================================================
@@ -1131,7 +1163,7 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   MODULE 5: Gemini AI思考エンジン（Liteモデル完全固定）
+   MODULE 5: Gemini AI思考エンジン（Liteモデル完全固定＆診断ログ直結）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
@@ -1187,7 +1219,10 @@ class AIThoughtEngine {
   }
 
   async generateReply(promptText, rawLogs, character, memories, photoBase64 = null) {
-    if (!this.apiKey) return { success: false, error: "NO_API_KEY" };
+    if (!this.apiKey) {
+      Logger.log(`[AI] ⚠️ APIキーが未設定です`, "error");
+      return { success: false, error: "NO_API_KEY" };
+    }
 
     const timeInfo = TimeProvider.getCurrentInfo();
     const weather = LocationProvider.weather;
@@ -1233,6 +1268,9 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
 
     for (const model of FIXED_LITE_MODELS) {
       const cleanModel = model.replace(/^models\//, '');
+      const t0 = performance.now();
+      Logger.log(`[AI] リクエスト送信 ➔ ${cleanModel}`, "info");
+
       try {
         const fetchController = new AbortController();
         const timeoutTimer = setTimeout(() => fetchController.abort(), 20000);
@@ -1268,6 +1306,7 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
         }
 
         clearTimeout(timeoutTimer);
+        const ms = Math.round(performance.now() - t0);
 
         if (res.ok) {
           const data = await res.json();
@@ -1283,10 +1322,12 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
             if (callInfo.name === "searchMapPlaces") {
               const spot = args.spotName || "美味しいお店";
               const area = args.area || townArea || "東村山市";
+              Logger.log(`[Tool] 📍 マップ検索実行: ${spot} (${area})`, "info");
               cards = this._createSmartMapCards(spot, area);
               replyText = `おやびん、${spot}の場所を地図で見つけてきたニャ！ここから確認してニャン🐾`;
             } else if (callInfo.name === "searchLatestNews") {
               const topic = args.topic || "最新ニュース";
+              Logger.log(`[Tool] 📰 ニュース検索実行: ${topic}`, "info");
               cards = this._createSmartNewsCards(topic);
               replyText = `おやびん、${topic}の最新ニュースをチェックしたニャ！見てみてニャン📰🐾`;
             }
@@ -1308,11 +1349,18 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
             const badge = document.getElementById('model-badge');
             if (badge) badge.textContent = `🐾 ${cleanModel.replace('gemini-', '')}`;
 
+            Logger.log(`[AI] ✅ 応答受信成功 (${ms}ms) [${cleanModel}]`, "success");
             return { success: true, text: clean, groundingCards: cards };
           }
+        } else {
+          Logger.log(`[AI] ⚠️ HTTP ${res.status} [${cleanModel}] (${ms}ms)`, "warn");
         }
-      } catch (err) {}
+      } catch (err) {
+        const ms = Math.round(performance.now() - t0);
+        Logger.log(`[AI] ❌ エラー [${cleanModel}]: ${err.message} (${ms}ms)`, "error");
+      }
     }
+    Logger.log(`[AI] ❌ 全Liteモデル失敗`, "error");
     return { success: false, error: "ALL_LITE_MODELS_FAILED" };
   }
 
@@ -1419,7 +1467,6 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
           clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
           clean = AppCore.audio.cleanEndingNenyan(clean);
 
-          // クロのひとことを抽出
           let content = clean;
           let kuroComment = "今日もおやびんと一緒で最高に幸せな一日だったニャン♡🐾";
           const match = clean.match(/【?クロのひとこと[:：]?】?\s*([\s\S]+)$/);
@@ -1530,7 +1577,7 @@ const AppCore = {
     this._startIdleSoliloquyWatcher();
 
     setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-    Logger.log("[AppCore] 全システム正常稼働！新4大テーマ＆高精度データ保護稼働中ニャ🐾", "success");
+    Logger.log("[AppCore] 全システム正常稼働！新4大テーマ＆診断モニタ完全直結ニャ🐾", "success");
   },
 
   _updateStorageMonitorUI() {
@@ -1739,7 +1786,7 @@ const AppCore = {
     return b;
   },
 
-  /* ★ ミニ絵日記カード（「🐾 クロのひとこと」完全復活！） */
+  /* ★ ミニ絵日記カード（「🐾 クロのひとこと」枠完全表示） */
   renderDiaryCard(diaryData) {
     const box = document.getElementById('chat-timeline');
     if (!box || !diaryData) return;
@@ -1858,7 +1905,6 @@ const AppCore = {
         if (icon) icon.textContent = '🔔';
         if (disp) disp.textContent = '00:00 🔔';
 
-        // 聞き逃し防止リピートループ開始
         this.audio.playEffect(this.getTimerSound());
         if (this.state.timerAlertLoopTimer) clearInterval(this.state.timerAlertLoopTimer);
         this.state.timerAlertLoopTimer = setInterval(() => {
@@ -1977,12 +2023,10 @@ const AppCore = {
       StorageManager.appendChatLog('model', res.text);
 
       this.audio.speak(res.text, null, () => {
-        // onStart: 音声が実際に再生され始めた瞬間にセリフを書き換えて口パク同期
         if (bubble) bubble.textContent = res.text;
         if (this.avatar) this.avatar.setEmotion('talking');
         this._scrollToLatest(true);
       }, () => {
-        // onEnd: 音声再生終了時
         if (this.avatar) this.avatar.setEmotion('idle');
         this.state.isThinking = false;
         this.state.isProcessingInput = false;
@@ -2087,6 +2131,7 @@ const AppCore = {
     document.getElementById('book-studio-modal')?.classList.add('is-open');
   },
 
+  /* ★ アルバム画面（「🐾 クロのひとこと」編集枠完全常設） */
   _renderStudioDiaryPage() {
     const pageContainer = document.getElementById('studio-diary-single-page');
     const pageIndicator = document.getElementById('studio-page-indicator');
@@ -2131,10 +2176,15 @@ const AppCore = {
         <div class="book-content-box">
           <textarea class="book-diary-textarea" id="studio-diary-text">${cur.content}</textarea>
         </div>
+        <div class="studio-diary-comment-box">
+          <span class="studio-diary-comment-label">🐾 クロのひとこと:</span>
+          <textarea class="studio-diary-comment-textarea" id="studio-diary-comment" rows="2">${cur.kuroComment || "今日もおやびんと一緒で最高に幸せな一日だったニャン♡🐾"}</textarea>
+        </div>
       </div>
     `;
 
     document.getElementById('studio-diary-text')?.addEventListener('input', (e) => { cur.content = e.target.value; });
+    document.getElementById('studio-diary-comment')?.addEventListener('input', (e) => { cur.kuroComment = e.target.value; });
     document.getElementById('book-photo-box')?.addEventListener('click', () => { if (cur.photo) this.openPhotoLightbox(cur.photo); });
     document.getElementById('btn-del-cur-diary')?.addEventListener('click', () => {
       if (window.confirm("この日の日記を削除しますかニャ？")) {
@@ -2164,13 +2214,15 @@ const AppCore = {
 
     document.getElementById('btn-read-diary-aloud')?.addEventListener('click', () => {
       if (this.state.isDiaryReading) {
-        this.audio.stopReadingAloud(); this.state.isDiaryReading = false;
+        this.audio.stopReadingAloud();
+        this.state.isDiaryReading = false;
         this._updateDiaryReadBtnUI(false);
       } else {
         this.state.isDiaryReading = true;
         this._updateDiaryReadBtnUI(true);
         this.audio.readDiarySeamless(cur.content, null, null, () => {
-          this.state.isDiaryReading = false; this._updateDiaryReadBtnUI(false);
+          this.state.isDiaryReading = false;
+          this._updateDiaryReadBtnUI(false);
         });
       }
     });
@@ -2299,7 +2351,7 @@ const AppCore = {
     };
   },
 
-  /* ★ 記憶帳（インライン編集・修正・キャンセル・保存を完全復活！） */
+  /* ★ 記憶帳（インライン編集・修正・キャンセル・保存完全実装） */
   _renderMemories() {
     const container = document.getElementById('memory-list-container');
     if (!container) return;
@@ -2310,7 +2362,6 @@ const AppCore = {
       item.className = 'memory-item';
 
       if (this.state.editingMemoryIdx === idx) {
-        // 編集モード
         item.innerHTML = `
           <div class="memory-edit-box">
             <input type="text" class="memory-edit-input" id="edit-mem-input-${idx}" value="${mem}">
@@ -2335,7 +2386,6 @@ const AppCore = {
           this._renderMemories();
         };
       } else {
-        // 通常表示モード
         item.innerHTML = `
           <div class="memory-text-view">📌 ${mem}</div>
           <div class="memory-actions">
@@ -2386,11 +2436,17 @@ const AppCore = {
       restoreInput.value = '';
     });
 
-    /* ★ 座標コピー＆現在地セットボタンの完全接続 */
-    document.querySelector('.btn-copy-home-coords')?.addEventListener('click', () => {
+    /* ★ 座標コピーボタンの完全確実な接続（getElementByIdで空振り解消） */
+    document.getElementById('btn-copy-home-coords')?.addEventListener('click', () => {
       const val = document.getElementById('home-coords-input')?.value.trim();
-      if (!val) { Toast.show("座標が入力されていませんニャ", "error"); return; }
-      navigator.clipboard.writeText(val).then(() => Toast.show("座標をコピーしたニャン！📋", "success"));
+      if (!val) {
+        Toast.show("座標が入力されていませんニャ", "error");
+        return;
+      }
+      navigator.clipboard.writeText(val).then(() => {
+        Toast.show("座標をコピーしたニャン！📋", "success");
+        Logger.log(`[Home] 座標コピー成功: ${val}`, "info");
+      });
     });
 
     document.getElementById('btn-get-current-home')?.addEventListener('click', async () => {
@@ -2403,20 +2459,21 @@ const AppCore = {
         LocationProvider.homeLon = LocationProvider.lon;
         localStorage.setItem('kuro_home_coords', val);
         Toast.show("現在地を自宅にセットしたニャン！🏠✨", "success");
+        Logger.log(`[Home] 現在地を自宅に設定: ${val}`, "success");
       } else {
         Toast.show("現在地を取得できませんでしたニャ", "error");
       }
     });
 
-    /* ★ システム診断：固定2モデルの導通テスト完全実装 */
+    /* ★ システム診断：固定2モデルへの導通テスト完全実装 */
     document.getElementById('diag-test-models-btn')?.addEventListener('click', async () => {
       const apiKey = AppCore.ai.apiKey;
       if (!apiKey) {
-        Logger.log("[診断] APIキーが未設定です", "error");
+        Logger.log("[診断] ⚠️ APIキーが未設定です。設定画面で入力してください", "error");
         Toast.show("APIキーを設定してくださいニャ", "error");
         return;
       }
-      Logger.log("--- 固定2モデル導通テスト開始 ---", "info");
+      Logger.log("=== 固定2モデル導通テスト開始 ===", "info");
       for (const model of FIXED_LITE_MODELS) {
         const t0 = performance.now();
         try {
@@ -2439,7 +2496,7 @@ const AppCore = {
           Logger.log(`❌ [${model}] 通信エラー: ${err.message} (${ms}ms)`, "error");
         }
       }
-      Logger.log("--- 導通テスト完了 ---", "info");
+      Logger.log("=== 導通テスト完了 ===", "info");
       Toast.show("モデル検証が完了したニャ！🩺", "success");
     });
 
