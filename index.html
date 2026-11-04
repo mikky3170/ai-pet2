@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja" data-theme="normal">
 <head>
@@ -244,7 +243,7 @@
       0% { transform: scale(1); filter: brightness(1); }
       100% { transform: scale(1.02); filter: brightness(1.2); }
     }
-    .is-paused-mode #status-text { background: #450a0a; color: #fca5a5; }
+    .is-paused-mode #status-text { background: #450a0a !important; color: #fca5a5 !important; }
 
     .btn-top-diary {
       background: #fdf2f8;
@@ -566,7 +565,6 @@
       100% { opacity: 0; transform: translateX(-50%) scale(1.4) translateY(-40px); }
     }
 
-    /* ★ 横画面でも縮小スケールが上書きされないアニメーション定義（耳見切れ根本解決） */
     .pet-avatar-wrapper.is-idling #cat-stage-box:not(.cat-stage-flip) { animation: catStageBreathe 4.8s ease-in-out infinite; }
     @keyframes catStageBreathe {
       0%, 100% { transform: scale(var(--cat-scale, 1), var(--cat-scale, 1)) translateY(0); }
@@ -730,7 +728,7 @@
       96%, 98% { transform: scaleY(1.05); }
     }
 
-    /* ★ お休み中にまぶたが下りて目を瞑る（閉じる）スタイル完全適用 */
+    /* ★ お休み中にまぶたが下りて目を瞑るスタイル完全適用 */
     .pet-avatar-wrapper.is-sleeping .real-eyelid {
       transform: scaleY(1.08) !important;
       animation: none !important;
@@ -1223,10 +1221,10 @@
       pointer-events: none;
     }
 
-    /* ★ 横画面時の耳の見切れを完全に解消する最適化CSS */
+    /* ★ 横画面時の最適化CSS */
     @media (orientation: landscape) {
       :root {
-        --cat-scale: 0.78; /* 横画面時はアニメーション含め全体を0.78倍に固定 */
+        --cat-scale: 0.78;
       }
       body { padding: 0; }
       #pet-container {
@@ -1833,7 +1831,7 @@
       font-weight: 700;
     }
 
-    /* ▼ 絵日記アルバム（「🐾 クロのひとこと」編集枠スタイル完備） */
+    /* ▼ 絵日記アルバム */
     #book-studio-modal {
       position: fixed;
       inset: 0;
@@ -2117,7 +2115,6 @@
     }
     .book-diary-textarea:focus { border-color: #f97316; }
 
-    /* アルバム内のクロのひとこと編集枠 */
     .studio-diary-comment-box {
       background: #fdf2f8;
       border: 1.5px solid #fbcfe8;
@@ -3107,4 +3104,5 @@
   <script src="app.js"></script>
 </body>
 </html>
+
 
