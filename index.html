@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja" data-theme="normal">
 <head>
@@ -587,6 +588,7 @@
       100% { transform: scale(calc(var(--cat-scale, 1) * 1.03)) translateY(-7px); }
     }
 
+    /* ★ お休み中の居眠りアニメーション（目を瞑る・呼吸） */
     .pet-avatar-wrapper.is-sleeping #cat-stage-box {
       animation: catStageSleep 4.0s ease-in-out infinite alternate !important;
     }
@@ -728,6 +730,7 @@
       96%, 98% { transform: scaleY(1.05); }
     }
 
+    /* ★ お休み中にまぶたが下りて目を瞑る（閉じる）スタイル完全適用 */
     .pet-avatar-wrapper.is-sleeping .real-eyelid {
       transform: scaleY(1.08) !important;
       animation: none !important;
@@ -1830,7 +1833,7 @@
       font-weight: 700;
     }
 
-    /* ▼ 絵日記アルバム（「🐾 クロのひとこと」枠対応） */
+    /* ▼ 絵日記アルバム（「🐾 クロのひとこと」編集枠スタイル完備） */
     #book-studio-modal {
       position: fixed;
       inset: 0;
@@ -2643,7 +2646,7 @@
           </svg>
         </div>
 
-        <div id="kitchen-timer-widget" title="タップで「ちょい待ち／すすめる」、長押しで停止するニャ！">
+        <div id="kitchen-timer-widget" title="タップで「ちょい待ち／すすめる」、完了時はタップで消えるニャ！">
           <div class="hourglass-box">
             <svg class="hourglass-spin-unit" viewBox="0 0 60 70">
               <rect x="10" y="4" width="40" height="6" rx="3" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
@@ -3104,5 +3107,4 @@
   <script src="app.js"></script>
 </body>
 </html>
-
 
