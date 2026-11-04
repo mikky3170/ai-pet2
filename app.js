@@ -14,6 +14,7 @@
      ・古いバックアップJSONでもエラー落ちしない下位互換回路を内蔵。
      ・スマホLocalStorage（上限5MB）を守るため、端末内には直近14日分の写真プールを保持（メイン写真は永久保持）。
      ・LocalStorageの容量をリアルタイム監視し、iPhone風の3色マルチカラーで完全可視化。
+     ・13枚目撮影時の削除警告＆日記帳整理アドバイスダイアログ、およびスナップ個別削除機能を完全実装。
 
    ■ 3. システム優先順位（絶対厳守）
      ・優先1：VOICEVOX肉声とセリフ同期、Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
@@ -1255,7 +1256,7 @@ const LocationProvider = {
 };
 
 /* ==========================================================================
-   ★ MODULE 3: 鉄壁ストレージ管理 ＆ 写真完全バックアップ＆復元（完全網羅）
+   ★ MODULE 3: 鉄壁ストレージ管理 ＆ 写真個別削除＆完全バックアップ
    ========================================================================== */
 const DATA_KEYS = {
   MEMORIES: 'kuro_data_memories',
@@ -1280,7 +1281,6 @@ const StorageManager = {
     size: 16
   },
 
-  /* ★ iPhone風マルチカラー種別ストレージ使用量計算 */
   getStorageUsage() {
     let totalBytes = 0;
     let photoBytes = 0;
@@ -1291,7 +1291,7 @@ const StorageManager = {
       for (let key in localStorage) {
         if (!localStorage.hasOwnProperty(key)) continue;
         const val = localStorage[key];
-        const bytes = (val.length + key.length) * 2; // UTF-16文字換算
+        const bytes = (val.length + key.length) * 2;
         totalBytes += bytes;
 
         if (key.startsWith('kuro_daily_photos_')) {
@@ -1350,7 +1350,6 @@ const StorageManager = {
     };
   },
 
-  /* ★ スマホ端末内5MB防護：直近14日以前の古いスナップ写真プールを自動回収（メイン写真は永久保持） */
   pruneOldPhotoPools(keepDays = 14) {
     try {
       const now = new Date();
@@ -1363,20 +1362,17 @@ const StorageManager = {
           const dateStr = key.replace('kuro_daily_photos_', '');
           if (dateStr < cutoffKey) {
             localStorage.removeItem(key);
-            Logger.log(`[AutoPrune] 14日以上前のスナップ写真プール「${key}」をスマホ容量防護のため回収しました（日記メイン写真は永久保持）`, "info");
+            Logger.log(`[AutoPrune] 14日以上前のスナップ写真プール「${key}」を自動回収しました`, "info");
           }
         }
       }
     } catch(e) {}
   },
 
-  /* ★ 全スナップ写真保持＆スマート再圧縮エンジン */
   async purgeAndCompressAllPhotos() {
-    Logger.log("[StoragePurge] 写真を全て大切に残したまま、約20KBへの再圧縮と重複解消を開始ニャ…", "info");
     let compressedPoolCount = 0;
     let compressedDiaryCount = 0;
 
-    // 1. 会話ログ（最近の会話 & 日別ログ）から重複Base64画像を安全に除去（テキストは1文字も消しません）
     try {
       const recent = this.loadRecentTimelineLogs();
       let recentModified = false;
@@ -1407,7 +1403,6 @@ const StorageManager = {
       }
     } catch(e) {}
 
-    // 2. 写真プール（kuro_daily_photos_...）内の全写真を約20KBにスマート再圧縮して【全て残す】！
     try {
       for (let key in localStorage) {
         if (key.startsWith('kuro_daily_photos_')) {
@@ -1428,7 +1423,6 @@ const StorageManager = {
       }
     } catch(e) {}
 
-    // 3. 絵日記（kuro_data_diaries）のメイン写真も約20KBにスマート再圧縮
     try {
       const diaries = this.loadAllDiaries();
       for (const d of diaries) {
@@ -1441,11 +1435,9 @@ const StorageManager = {
     } catch(e) {}
 
     this.pruneOldPhotoPools(14);
-    Logger.log(`[StoragePurge] 写真全残し再圧縮完了！（スナップ写真: ${compressedPoolCount}枚, 日記写真: ${compressedDiaryCount}枚）`, "success");
     return { compressedPoolCount, compressedDiaryCount };
   },
 
-  /* Base64画像をブラウザCanvasで超軽量化再圧縮（約20〜25KB） */
   async _recompressBase64Image(base64Str, maxWidth = 320, quality = 0.50) {
     return new Promise((resolve) => {
       const img = new Image();
@@ -1574,17 +1566,13 @@ const StorageManager = {
     }
   },
 
+  /* 写真プールへの保存処理（12枚上限管理） */
   addPhotoToDailyPool(photoBase64, userComment = "") {
     const timeInfo = TimeProvider.getCurrentInfo();
     const photoPoolKey = `kuro_daily_photos_${timeInfo.lifeLogKey}`;
     try {
       const raw = localStorage.getItem(photoPoolKey);
       let pool = raw ? JSON.parse(raw) : [];
-      let isReplaced = false;
-
-      if (pool.length >= 12) {
-        isReplaced = true;
-      }
 
       pool.push({
         base64: photoBase64,
@@ -1596,12 +1584,36 @@ const StorageManager = {
       pool = pool.slice(-12);
       localStorage.setItem(photoPoolKey, JSON.stringify(pool));
       Logger.log(`[PhotoPool] 今日の写真プールに保存完了（総数: ${pool.length}枚）`, "info");
-
-      if (isReplaced) {
-        Toast.show("思い出がいっぱいになったから、一番古いお写真を新しいお写真と入れ替えたニャン！📷✨", "info", 4000);
-      }
     } catch(e) {
       Logger.log(`[PhotoPool保存警告] ${e.message}`, "warn");
+    }
+  },
+
+  /* ★ 新設：日別写真プールから指定したスナップ写真を1枚安全削除 */
+  removePhotoFromDailyPool(lifeDateKey, photoIndex) {
+    const photoPoolKey = `kuro_daily_photos_${lifeDateKey}`;
+    try {
+      const raw = localStorage.getItem(photoPoolKey);
+      if (!raw) return false;
+      let pool = JSON.parse(raw);
+      if (!Array.isArray(pool) || photoIndex < 0 || photoIndex >= pool.length) return false;
+
+      const deletedItem = pool.splice(photoIndex, 1)[0];
+      localStorage.setItem(photoPoolKey, JSON.stringify(pool));
+      Logger.log(`[PhotoPool削除] ${lifeDateKey} の写真（${deletedItem?.comment || photoIndex + 1}）を削除しました（残り: ${pool.length}枚）`, "info");
+
+      // もし削除した写真がその日の日記メイン写真だった場合は、次の写真またはnullに更新
+      const diaries = this.loadAllDiaries();
+      const targetDiary = diaries.find(d => d.dateKey === lifeDateKey);
+      if (targetDiary && targetDiary.photo === deletedItem.base64) {
+        targetDiary.photo = pool.length > 0 ? pool[0].base64 : null;
+        this.saveAllDiaries(diaries);
+      }
+
+      return true;
+    } catch(e) {
+      Logger.log(`[PhotoPool削除例外] ${e.message}`, "error");
+      return false;
     }
   },
 
@@ -1749,16 +1761,14 @@ const StorageManager = {
     return null;
   },
 
-  /* ★ 完全バックアップ出力：写真プール・日別会話も100%完全集約 */
   downloadDataPackage() {
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const ymd = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
     const hm = `${pad(now.getHours())}${pad(now.getMinutes())}`;
     const filename = `クロちゃんデータ_${ymd}_${hm}.json`;
-    const curVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.1.9.0";
+    const curVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.1.10.0";
 
-    // 全ての日別写真プール（kuro_daily_photos_*）を収集
     const allDailyPhotos = {};
     for (let key in localStorage) {
       if (key.startsWith('kuro_daily_photos_')) {
@@ -1768,7 +1778,6 @@ const StorageManager = {
       }
     }
 
-    // 全ての日別会話ログ（kuro_daily_logs_*）を収集
     const allDailyLogs = {};
     for (let key in localStorage) {
       if (key.startsWith('kuro_daily_logs_')) {
@@ -1785,8 +1794,8 @@ const StorageManager = {
       memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
       recentLogs: this.loadRecentTimelineLogs(),
-      dailyPhotoPools: allDailyPhotos,   // ★ 全日写真プール（最大12枚×日数分）を完全収録！
-      dailyChatLogs: allDailyLogs,       // ★ 全日会話ログを完全収録！
+      dailyPhotoPools: allDailyPhotos,
+      dailyChatLogs: allDailyLogs,
       settings: {
         speakerId: localStorage.getItem('kuro_voice_speaker_id') || '10',
         voiceRate: localStorage.getItem('kuro_rate') || '1.05',
@@ -1813,7 +1822,6 @@ const StorageManager = {
     Logger.log(`[完全データ書き出し完了] ${filename}（全写真プール・会話ログ収録）`, "success");
   },
 
-  /* ★ 完全復元処理（古いバックアップ形式に対する下位互換回路内蔵） */
   importAndReplaceDataPackage(data) {
     if (!data || typeof data !== 'object') throw new Error("無効なデータファイルです");
 
@@ -1827,7 +1835,6 @@ const StorageManager = {
       localStorage.setItem(DATA_KEYS.RECENT_LOGS, JSON.stringify(data.recentLogs));
     }
 
-    // ★ 日別写真プールの完全復元（古いバックアップでも安全フォールバック）
     if (data.dailyPhotoPools && typeof data.dailyPhotoPools === 'object') {
       for (let key in data.dailyPhotoPools) {
         if (key.startsWith('kuro_daily_photos_')) {
@@ -1835,7 +1842,6 @@ const StorageManager = {
         }
       }
     } else {
-      // 古いバックアップ（dailyPhotoPools未収録）の場合：各日記のメイン写真から安全補完
       if (Array.isArray(data.diaries)) {
         data.diaries.forEach(d => {
           if (d.photo && d.dateKey) {
@@ -1853,7 +1859,6 @@ const StorageManager = {
       }
     }
 
-    // ★ 日別会話ログの完全復元
     if (data.dailyChatLogs && typeof data.dailyChatLogs === 'object') {
       for (let key in data.dailyChatLogs) {
         if (key.startsWith('kuro_daily_logs_')) {
@@ -1876,7 +1881,8 @@ const StorageManager = {
       if (s.eyelidCoords) this.saveEyelidCoords(s.eyelidCoords);
     }
 
-    this.pruneOldPhotoPools(14);
+    // 復元時にバックグラウンドで自動的に写真の再圧縮と古いプールのクレンジングを実施
+    this.purgeAndCompressAllPhotos().catch(() => {});
     Logger.log("[完全データ復元完了] ファイルから写真プール・全会話を復元しました", "success");
     return true;
   }
@@ -2840,7 +2846,7 @@ const AppCore = {
       });
 
       setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-      Logger.log("[AppCore] 全システム正常稼働！iPhone風ストレージモニター＆写真全貌プレビュー準備完了ニャ🐾", "success");
+      Logger.log("[AppCore] 全システム正常稼働！左右2分割アルバム＆13枚目警告アドバイス稼働中ニャ🐾", "success");
     } catch(e) {
       Logger.log(`[初期化完了警告] ${e.message}`, "warn");
     }
@@ -2874,10 +2880,10 @@ const AppCore = {
 
     if (statusPill) {
       if (usage.isDanger) {
-        statusPill.textContent = "⚠️ 残りわずか（スリム化推奨）";
+        statusPill.textContent = "⚠️ 残りわずか";
         statusPill.style.color = "#dc2626";
       } else if (usage.isWarning) {
-        statusPill.textContent = "⚠️ 注意（そろそろスリム化）";
+        statusPill.textContent = "⚠️ 注意（容量管理）";
         statusPill.style.color = "#d97706";
       } else {
         statusPill.textContent = "安心・快適ニャ🐾";
@@ -3122,7 +3128,6 @@ const AppCore = {
     };
   },
 
-  /* 写真拡大プレビューモーダル（ライトボックス）のバインド */
   _bindPhotoLightboxUI() {
     const modal = document.getElementById('photo-lightbox-modal');
     const closeBtn = document.getElementById('btn-lightbox-close');
@@ -3226,6 +3231,7 @@ const AppCore = {
     this._scrollToLatest(true);
   },
 
+  /* ★ 新設：13枚目撮影時の親切アドバイス付き削除警告ガード */
   _bindPhotoUploadUI() {
     const photoInput = document.getElementById('camera-photo-input');
     const photoBtn = document.getElementById('photo-action-btn');
@@ -3235,6 +3241,26 @@ const AppCore = {
         this.resetActivityTimer();
         this.audio.stopListening();
         this.audio.unlockMasterAudio();
+
+        const timeInfo = TimeProvider.getCurrentInfo();
+        const currentPool = StorageManager.getDailyPhotoPool(timeInfo.lifeLogKey);
+
+        if (currentPool.length >= 12) {
+          const isOk = window.confirm(
+            "【思い出写真がいっぱいですニャ！📷】\n\n" +
+            "きょうのお写真はすでに上限の12枚に達しています。\n" +
+            "このまま保存すると、一番古いお写真（1枚目）が自動で削除されて新しい写真と入れ替わりますニャ。\n\n" +
+            "💡 クロちゃんからのアドバイス：\n" +
+            "一旦キャンセルして、画面の上の『📖 日記帳』を開くと、途中で撮ったブレた写真やいらない写真を【🗑️ 削除】して空き枠を作ることができますニャ！\n\n" +
+            "一番古い写真と入れ替えて、このまま撮影・選択を続けますかニャ？"
+          );
+
+          if (!isOk) {
+            if (this.state.isRunning) this.audio.startListening();
+            return;
+          }
+        }
+
         photoInput.click();
       };
 
@@ -4025,7 +4051,7 @@ const AppCore = {
     }
   },
 
-  /* 日記帳アルバムのバインド（フッターページャー集約対応） */
+  /* 日記帳アルバムのバインド（左右2分割フォトブロック ＆ スナップ個別削除対応） */
   _bindBookStudioUI() {
     const modal = document.getElementById('book-studio-modal');
     const topDiaryBtn = document.getElementById('top-diary-btn');
@@ -4099,6 +4125,7 @@ const AppCore = {
     modal.classList.add('is-open');
   },
 
+  /* ★ 日記帳ページのレンダリング（左右2分割フォトブロック ＆ スナップ個別削除機能） */
   _renderStudioDiaryPage() {
     const pageContainer = document.getElementById('studio-diary-single-page');
     const pageIndicator = document.getElementById('studio-page-indicator');
@@ -4138,51 +4165,15 @@ const AppCore = {
     const letterIdx = Math.abs((diary.dateKey || "").split('-').reduce((acc, c) => acc + parseInt(c, 10), 0)) % loveLetters.length;
     const todayLetter = loveLetters[letterIdx];
 
-    // 写真プールからその日のスナップ写真を取得（最大12枚）
     const photoPool = StorageManager.getDailyPhotoPool(diary.dateKey);
-    const existingBase64Set = new Set(photoPool.map(p => p.base64));
 
-    const dailyLogs = StorageManager.getDailyLogs(diary.dateKey);
-    dailyLogs.forEach((l) => {
-      if (l.photoUrl && l.photoUrl.startsWith('data:image') && !existingBase64Set.has(l.photoUrl)) {
-        photoPool.push({
-          base64: l.photoUrl,
-          comment: `写真 ${photoPool.length + 1}`,
-          time: l.time || "00:00",
-          timestamp: l.timestamp || Date.now()
-        });
-        existingBase64Set.add(l.photoUrl);
-      }
-    });
-
-    if (diary.photo && !existingBase64Set.has(diary.photo)) {
+    if (diary.photo && !photoPool.some(p => p.base64 === diary.photo)) {
       photoPool.unshift({
         base64: diary.photo,
         comment: "メイン写真",
         time: "00:00",
         timestamp: Date.now()
       });
-    }
-
-    let thumbnailsHtml = '';
-    if (photoPool && photoPool.length > 0) {
-      thumbnailsHtml = `
-        <div class="snap-strip-container">
-          <div class="snap-strip-header">
-            <span>📷 思い出スナップ（全${photoPool.length}枚 / タップでメイン写真に切替）:</span>
-          </div>
-          <div class="snap-thumbnails-row">
-            ${photoPool.map((p, pIdx) => {
-              const isSelected = (diary.photo && diary.photo === p.base64);
-              return `
-                <div class="snap-thumb-item ${isSelected ? 'is-selected' : ''}" data-photo-idx="${pIdx}" title="${p.comment || '写真 ' + (pIdx + 1)}">
-                  <img src="${p.base64}" alt="スナップ" class="snap-thumb-img">
-                </div>
-              `;
-            }).join('')}
-          </div>
-        </div>
-      `;
     }
 
     pageContainer.innerHTML = `
@@ -4204,23 +4195,44 @@ const AppCore = {
           </div>
         </div>
 
-        <!-- メイン写真フレーム（contain比率維持 ＆ タップでフルサイズ拡大） -->
-        <div class="book-photo-frame" id="book-photo-box" title="タップで全画面拡大表示するニャ！">
-          ${diary.photo 
-            ? `<img src="${diary.photo}" alt="散歩写真" class="book-photo-img" id="book-main-img-view">
-               <span class="book-photo-zoom-hint">🔍 タップで拡大</span>
-               <button type="button" class="book-photo-remove-btn" id="btn-remove-photo">✕ 写真解除</button>`
-            : `<div class="book-photo-placeholder">
-                 <span style="font-size:24px;">🐾</span>
-                 <span>📷 散歩写真フレーム</span>
-                 <span style="font-size:11px;color:#94a3b8;">（撮影した写真がここに飾られますニャ！）</span>
-               </div>`
-          }
+        <!-- ★ 左右2分割フォトブロック（縦横比完全ロック＆独立スクロール） -->
+        <div class="diary-photo-duo-container">
+          <!-- 左列：メイン写真フレーム -->
+          <div class="photo-duo-left" id="book-photo-box" title="タップで全画面拡大表示するニャ！">
+            ${diary.photo 
+              ? `<img src="${diary.photo}" alt="散歩写真" class="book-photo-img" id="book-main-img-view">
+                 <span class="book-photo-zoom-hint">🔍 タップで拡大</span>
+                 <button type="button" class="book-photo-remove-btn" id="btn-remove-photo">✕ 外す</button>`
+              : `<div class="book-photo-placeholder">
+                   <span style="font-size:20px;">🐾</span>
+                   <span>📷 散歩写真</span>
+                   <span style="font-size:10px;color:#94a3b8;">（写真をタップでセット）</span>
+                 </div>`
+            }
+          </div>
+
+          <!-- 右列：思い出スナッププール（2列ミニグリッド・個別削除対応） -->
+          <div class="photo-duo-right">
+            <div class="duo-right-header">
+              <span>📷 スナップ（全${photoPool.length}枚）</span>
+              <span style="font-size:9.5px;color:#9a3412;">💡🗑️で整理</span>
+            </div>
+            <div class="duo-right-grid">
+              ${photoPool.map((p, pIdx) => {
+                const isSelected = (diary.photo && diary.photo === p.base64);
+                return `
+                  <div class="snap-grid-item ${isSelected ? 'is-selected' : ''}" data-photo-idx="${pIdx}" title="${p.comment || '写真 ' + (pIdx + 1)}">
+                    <img src="${p.base64}" alt="スナップ" class="snap-grid-img">
+                    <button type="button" class="btn-snap-del" data-del-idx="${pIdx}" title="この写真を削除">✕</button>
+                  </div>
+                `;
+              }).join('')}
+              ${photoPool.length === 0 ? '<div style="grid-column:span 2;text-align:center;color:#94a3b8;font-size:10px;padding:20px 0;">写真なし</div>' : ''}
+            </div>
+          </div>
         </div>
 
-        ${thumbnailsHtml}
-
-        <!-- 日記本文入力エリア（画面の残りの高さに合わせて広々伸びる） -->
+        <!-- 日記本文入力エリア（広々伸びる） -->
         <div class="book-content-box">
           <div class="book-textarea-label">
             <span>✍️ クロの日記本文（直接編集もできます）:</span>
@@ -4241,7 +4253,6 @@ const AppCore = {
       </div>
     `;
 
-    // メイン写真クリックでフルサイズ拡大モーダルを表示
     const photoBox = document.getElementById('book-photo-box');
     if (photoBox && diary.photo) {
       photoBox.onclick = (e) => {
@@ -4250,14 +4261,30 @@ const AppCore = {
       };
     }
 
-    // スナップ写真サムネイルの切り替えクリック
-    pageContainer.querySelectorAll('.snap-thumb-item').forEach(thumb => {
+    // スナップ写真クリックでメイン写真に切替
+    pageContainer.querySelectorAll('.snap-grid-item').forEach(thumb => {
       thumb.onclick = (e) => {
+        if (e.target.classList.contains('btn-snap-del')) return;
         e.stopPropagation();
         const pIdx = parseInt(thumb.dataset.photoIdx, 10);
         if (photoPool[pIdx]) {
           diaries[curIdx].photo = photoPool[pIdx].base64;
           this.audio.playEffect('aizuchi');
+          this._renderStudioDiaryPage();
+        }
+      };
+    });
+
+    // スナップ個別削除ボタンの処理
+    pageContainer.querySelectorAll('.btn-snap-del').forEach(delBtn => {
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        const pIdx = parseInt(delBtn.dataset.delIdx, 10);
+        const isOk = window.confirm("この写真を思い出から削除しますかニャ？\n（※削除すると空き枠が1つ増えます）");
+        if (isOk) {
+          StorageManager.removePhotoFromDailyPool(diary.dateKey, pIdx);
+          this.audio.playEffect('purr');
+          Toast.show("お写真を1枚削除して空き枠を作ったニャ！📷✨", "success");
           this._renderStudioDiaryPage();
         }
       };
@@ -4557,38 +4584,6 @@ const AppCore = {
     const btnDiagForce = document.getElementById('diag-force-reload-btn');
     if (btnForce) btnForce.onclick = forceReload;
     if (btnDiagForce) btnDiagForce.onclick = forceReload;
-
-    // 重複写真スリム化ボタンの処理
-    const btnPurgeStorage = document.getElementById('btn-purge-storage');
-    if (btnPurgeStorage) {
-      btnPurgeStorage.onclick = async () => {
-        const isOk = window.confirm(
-          "【安心お掃除の確認】\n\n" +
-          "・日記の文章やクロの記憶帳は1文字も消えません。\n" +
-          "・思い出の写真（スナップ最大12枚）も消さずに約20KBに超軽量再圧縮して残します。\n" +
-          "・重複していた余分な画像コピーだけをお掃除して空き容量を一気に増やします。\n\n" +
-          "スリム化を実行しますかニャ？🐾"
-        );
-        if (!isOk) return;
-
-        btnPurgeStorage.disabled = true;
-        btnPurgeStorage.innerHTML = `<span>⏳</span><span>写真をお掃除＆スマート圧縮中ニャ…</span>`;
-        Toast.show("写真を残したままスマート再圧縮中ニャ…🧹✨", "info", 5000);
-
-        try {
-          const res = await StorageManager.purgeAndCompressAllPhotos();
-          this._updateStorageMonitorUI();
-          this.audio.playEffect('purr');
-          Toast.show(`スリム化大成功ニャ！写真${res.compressedPoolCount + res.compressedDiaryCount}枚を綺麗に残して空き容量激増ニャン！🎉`, "success", 4000);
-          this.triggerActionVoice("バッチリニャ！", "🧹 スリム化完了ニャ！", 400);
-        } catch(err) {
-          Toast.show(`お掃除中にエラーが発生しました: ${err.message}`, "error");
-        } finally {
-          btnPurgeStorage.disabled = false;
-          btnPurgeStorage.innerHTML = `<span>🧹</span><span>重複写真をお掃除してスリム化するニャ！</span>`;
-        }
-      };
-    }
 
     const btnDownloadBackup = document.getElementById('btn-download-backup');
     if (btnDownloadBackup) {
@@ -5145,4 +5140,5 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
+
 

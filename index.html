@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -1505,26 +1504,6 @@
     .breakdown-badge.badge-chat { background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; }
     .breakdown-badge.badge-meta { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
 
-    .btn-purge-storage {
-      width: 100%;
-      padding: 9px;
-      background: linear-gradient(135deg, #fef3c7, #fde68a);
-      border: 1.5px solid #f59e0b;
-      color: #92400e;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 900;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      margin-top: 4px;
-      box-shadow: 0 2px 6px rgba(245, 158, 11, 0.15);
-      transition: all 0.15s;
-    }
-    .btn-purge-storage:active { transform: scale(0.97); background: #fde047; }
-
     .home-coord-row { display: flex; gap: 6px; margin-top: 5px; }
     .btn-coord-action {
       padding: 6px 10px;
@@ -1666,7 +1645,7 @@
       font-weight: 700;
     }
 
-    /* ▼ 絵日記アルバム（レイアウト劇的拡張・フッターページャー集約） */
+    /* ▼ 絵日記アルバム（左右2分割フォトブロック ＆ スナップ個別削除機能） */
     #book-studio-modal {
       position: fixed;
       inset: 0;
@@ -1813,11 +1792,19 @@
       font-weight: 800;
     }
 
-    /* 写真全貌キープ ＆ タップでフルサイズ拡大可能な写真枠 */
-    .book-photo-frame {
+    /* ★ 左右2分割フォトブロック（縦横比完全ロック＆独立スクロール） */
+    .diary-photo-duo-container {
       width: 100%;
       height: 145px;
-      max-height: 145px;
+      display: flex;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    /* 左列：メイン写真フレーム（比率維持＆拡大ヒント） */
+    .photo-duo-left {
+      flex: 1.15;
+      height: 100%;
       border: 2px dashed #fed7aa;
       border-radius: 14px;
       background: #fffaf5;
@@ -1827,102 +1814,132 @@
       overflow: hidden;
       position: relative;
       cursor: pointer;
-      flex-shrink: 0;
+      min-width: 0;
     }
     .book-photo-img {
       max-width: 100%;
       max-height: 100%;
-      object-fit: contain; /* ★ アスペクト比を100%完全維持（縦でも横でも切れない） */
+      object-fit: contain;
       display: block;
       transition: transform 0.2s ease-out;
     }
-    .book-photo-frame:hover .book-photo-img {
+    .photo-duo-left:hover .book-photo-img {
       transform: scale(1.02);
     }
     .book-photo-zoom-hint {
       position: absolute;
-      bottom: 6px;
-      right: 8px;
-      background: rgba(15, 23, 42, 0.75);
+      bottom: 5px;
+      right: 6px;
+      background: rgba(15, 23, 42, 0.78);
       color: #ffffff;
-      padding: 2.5px 7px;
-      border-radius: 8px;
-      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 9.5px;
       font-weight: 800;
       backdrop-filter: blur(4px);
       pointer-events: none;
       display: flex;
       align-items: center;
-      gap: 3px;
+      gap: 2px;
     }
     .book-photo-placeholder {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 3px;
+      gap: 2px;
       color: #ea580c;
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 800;
     }
     .book-photo-remove-btn {
       position: absolute;
-      top: 6px;
-      right: 6px;
+      top: 5px;
+      right: 5px;
       background: rgba(0, 0, 0, 0.65);
       color: white;
       border: none;
       border-radius: 6px;
-      padding: 4px 8px;
-      font-size: 11px;
+      padding: 3px 6px;
+      font-size: 10px;
       cursor: pointer;
       z-index: 10;
     }
 
-    .snap-strip-container {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
+    /* 右列：思い出スナッププール（2列ミニグリッド・個別削除対応） */
+    .photo-duo-right {
+      flex: 0.95;
+      height: 100%;
       background: #fffaf5;
       border: 1px dashed #fed7aa;
-      border-radius: 12px;
-      padding: 5px 8px;
-      flex-shrink: 0;
+      border-radius: 14px;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      overflow: hidden;
     }
-    .snap-strip-header {
-      font-size: 10.5px;
-      font-weight: 800;
+    .duo-right-header {
+      font-size: 10px;
+      font-weight: 900;
       color: #ea580c;
       display: flex;
       justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+      padding: 0 2px;
     }
-    .snap-thumbnails-row {
-      display: flex;
-      gap: 7px;
-      overflow-x: auto;
-      padding: 2px 1px;
+    .duo-right-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      overflow-y: auto;
+      padding-right: 2px;
     }
-    .snap-thumb-item {
-      width: 44px;
-      height: 44px;
+    .duo-right-grid::-webkit-scrollbar { width: 3px; }
+    .duo-right-grid::-webkit-scrollbar-thumb { background: #fdba74; border-radius: 3px; }
+
+    .snap-grid-item {
+      aspect-ratio: 1;
       border-radius: 8px;
       border: 1.5px solid #fed7aa;
       overflow: hidden;
-      flex-shrink: 0;
       cursor: pointer;
       position: relative;
-      transition: transform 0.15s, border-color 0.15s;
       background: #ffffff;
+      transition: transform 0.15s, border-color 0.15s;
     }
-    .snap-thumb-item:active { transform: scale(0.92); }
-    .snap-thumb-item.is-selected {
+    .snap-grid-item:active { transform: scale(0.94); }
+    .snap-grid-item.is-selected {
       border: 2px solid #f472b6;
       box-shadow: 0 0 8px rgba(244, 114, 182, 0.6);
     }
-    .snap-thumb-img {
+    .snap-grid-img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      display: block;
     }
+    .btn-snap-del {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      background: rgba(15, 23, 42, 0.75);
+      color: #ffffff;
+      border: none;
+      border-radius: 50%;
+      width: 17px;
+      height: 17px;
+      font-size: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 5;
+      transition: background 0.15s;
+    }
+    .btn-snap-del:hover { background: #ef4444; }
 
     /* 日記本文エリア：広々伸びる可変エリア */
     .book-content-box {
@@ -2030,7 +2047,7 @@
       justify-content: center;
     }
 
-    /* ▼ 写真フルサイズ拡大表示モーダル（新設） */
+    /* ▼ 写真フルサイズ拡大表示モーダル */
     #photo-lightbox-modal {
       position: fixed;
       inset: 0;
@@ -2505,7 +2522,7 @@
     </div>
   </div>
 
-  <!-- ▼ 絵日記アルバムモーダル（上部ページャーをフッターに集約し、本文と写真を広々拡大） -->
+  <!-- ▼ 絵日記アルバムモーダル（左右2分割フォトブロック ＆ スナップ個別削除機能） -->
   <div id="book-studio-modal">
     <div class="book-studio-window">
       <div class="studio-top-bar">
@@ -2534,7 +2551,7 @@
     </div>
   </div>
 
-  <!-- ▼ 写真フルサイズ拡大表示モーダル（新設：タップで全画面・原寸アスペクト比鑑賞） -->
+  <!-- ▼ 写真フルサイズ拡大表示モーダル -->
   <div id="photo-lightbox-modal">
     <div class="lightbox-content-box">
       <button type="button" class="btn-lightbox-close" id="btn-lightbox-close">✕ 閉じる</button>
@@ -2634,9 +2651,10 @@
           <div class="manual-sec-title">🏠 在宅判定とお散歩（どこ？と聞いた時）</div>
           <div>お家にいる時は「お家でまったりしてるニャン🐾」と正確に答え、お外にいる時だけ「〇〇町をお散歩中ニャ！」と答える賢いセンサーを搭載したニャ！</div>
 
-          <div class="manual-sec-title">📷 写真を見せる ＆ 思い出写真</div>
-          <div>下の「📷 写真」ボタンを押すと、スマホのカメラで撮った写真やアルバムの写真をクロちゃんに見せられるニャ！今日撮った写真の中から、日記の内容に一番ぴったりのベストショットをAIが選んで絵日記に飾るニャン♪ アルバムの下にあるスナップ写真をタップすれば、好きな写真にいつでも差し替えできるニャ！さらに日記の写真をタップすると全画面で大きく見られるニャン！<br>
-          <span style="color:#c2410c;font-weight:800;">※お写真は1日に最大12枚まで思い出としてプールにストックされます（13枚目以降は古い写真と自動で入れ替わりますニャ）。</span></div>
+          <div class="manual-sec-title">📷 写真を見せる ＆ 思い出写真（12枚上限と個別整理）</div>
+          <div>下の「📷 写真」ボタンを押すと、スマホのカメラで撮った写真やアルバムの写真をクロちゃんに見せられるニャ！今日撮った写真の中から、日記の内容に一番ぴったりのベストショットをAIが選んで絵日記に飾るニャン♪<br>
+          ・<b>左右2分割アルバム</b>：日記帳を開くと、左にメイン写真、右側に今日撮ったスナップ写真（最大12枚）が並びます。タップでメイン写真へワンタップ切替、または全画面拡大ができます。<br>
+          ・<b>💡 写真の個別整理</b>：スナップ写真の右上の【🗑️】ボタンを押すと、失敗した写真や不要な写真だけを選んで1枚ずつ削除できます。もし12枚いっぱいになっても、いらない写真を削除すれば新しい写真の枠をいつでも空けられますニャ！</div>
 
           <div class="manual-sec-title">📖 絵日記の仕様と生活リズム（午前4時切り替え・自動補完）</div>
           <div>
@@ -2733,11 +2751,11 @@
         </div>
         <div class="pc-sync-btn-row">
           <button type="button" class="btn-pc-sync" id="btn-download-backup">📁 ファイル保存</button>
-          <button type="button" class="btn-trigger-restore" id="btn-trigger-restore">📁 ファイル読込</button>
+          <button type="button" class="btn-pc-sync" id="btn-trigger-restore">📁 ファイル読込</button>
           <input type="file" id="file-input-restore" accept=".json" style="display:none;">
         </div>
 
-        <!-- iPhone風マルチカラー・ストレージ使用量モニター -->
+        <!-- iPhone風マルチカラー・ストレージ使用量モニター（旧スリム化ボタンは綺麗に撤去） -->
         <div class="storage-monitor-box">
           <div class="storage-monitor-header">
             <span>📊 ストレージ使用量（思い出の引き出し）:</span>
@@ -2760,10 +2778,6 @@
             <span class="breakdown-badge badge-chat" id="pill-chat-usage">💬 会話: 0.00 MB</span>
             <span class="breakdown-badge badge-meta" id="pill-meta-usage">📝 記憶設定: 0.00 MB</span>
           </div>
-
-          <button type="button" class="btn-purge-storage" id="btn-purge-storage" title="大切な日記写真は綺麗に残したまま、重複した重い画像をお掃除して空き容量を一気に増やすニャ！">
-            <span>🧹</span><span>重複写真をお掃除してスリム化するニャ！</span>
-          </button>
         </div>
       </div>
 
@@ -2875,5 +2889,4 @@
   <script src="app.js"></script>
 </body>
 </html>
-
 
