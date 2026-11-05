@@ -1,3 +1,4 @@
+
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆中央司令塔（app.js Part 1/2）
    - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
@@ -220,7 +221,7 @@ class AudioSpeechEngine {
       noise.start(now); noise.stop(now + 0.35);
 
     } else if (type === 'purr') {
-      /* ★【音響完全修復】プツプツノイズを物理的にゼロにし、温かく豊かな音量で響く元祖ゴロゴロ音 */
+      /* ★【音響完全修復】直列カスケード方式によりプツプツノイズを完全根絶、温かく豊かな音量で響く元祖ゴロゴロ音 */
       const osc = ctx.createOscillator();
       const filter = ctx.createBiquadFilter();
       const tremoloGain = ctx.createGain();
@@ -242,14 +243,13 @@ class AudioSpeechEngine {
       lfo.type = 'sine';
       lfo.frequency.setValueAtTime(21, now);
 
-      // 【ノイズ完全根絶】直列カスケード方式によりゲインが絶対に0以下（負）にならない安全設計
-      // tremoloGain は 0.55 ± 0.42 ➔ 常に 0.13 〜 0.97 の間で正のまま滑らかに変調！
+      // ゲインが絶対に0以下（負）にならない安全設計（常に 0.13 〜 0.97 の間で正のまま滑らかに変調）
       tremoloGain.gain.setValueAtTime(0.55, now);
       lfoGain.gain.setValueAtTime(0.42, now);
       lfo.connect(lfoGain);
       lfoGain.connect(tremoloGain.gain);
 
-      // 全体のエンベロープ（音量を従来の1.8倍に引き上げ、ふっくら心地よい響きを実現）
+      // 全体のエンベロープ
       masterGain.gain.setValueAtTime(0.02, now);
       masterGain.gain.linearRampToValueAtTime(0.72, now + 0.14);
       masterGain.gain.exponentialRampToValueAtTime(0.001, now + 0.96);
@@ -493,7 +493,6 @@ class AudioSpeechEngine {
     if (!text) return true;
     const normalized = text.replace(/[\s、。！？ニャンニャ]/g, '');
     if (normalized.length < 2) return true;
-    // クロちゃん特有の語尾を持つ完全なシステム発声のみを除外
     if (/^(?:おまかせニャ|あそぶニャ|バッチリニャ|はーい|ちょい待ちニャ|すすめるニャ)/.test(text.trim())) return true;
     for (const spoken of this.recentSpokenTexts) {
       if (spoken.replace(/[\s、。！？ニャンニャ]/g, '') === normalized) return true;
@@ -809,7 +808,6 @@ const StorageManager = {
         if (k.startsWith('kuro_daily_photos_')) {
           photoBytes += bytes;
         } else if (k === DATA_KEYS.DIARIES) {
-          // 日記データ内の写真サイズを正確に抽出し写真容量へ正しく計上
           try {
             const diaries = JSON.parse(val) || [];
             let diaryPhotoBytes = 0;
@@ -824,7 +822,6 @@ const StorageManager = {
             metaBytes += bytes;
           }
         } else if (k.startsWith('kuro_daily_logs_') || k === DATA_KEYS.RECENT_LOGS) {
-          // 会話ログ内のテキストと、紛れ込んだ写真Base64を分離集計（既存データは絶対に消さない！）
           try {
             const logs = JSON.parse(val) || [];
             let embeddedPhotoBytes = 0;
@@ -961,7 +958,6 @@ const StorageManager = {
       const todayKey = timeInfo.lifeLogKey;
 
       return list.map(d => {
-        // 今日より前の過去分について、既知のダミー文は完全に無効化し空欄（枠のみ）にする
         if (d.dateKey !== todayKey) {
           if (d.kuroComment && d.kuroComment.includes("今日もおやびんと一緒で最高に幸せな一日だった")) {
             d.kuroComment = "";
@@ -982,7 +978,6 @@ const StorageManager = {
     let cleanContent = AppCore.audio.cleanEndingNenyan(entryText);
     let extractedComment = kuroComment;
 
-    // 本文末尾からのひとこと抽出
     const match = cleanContent.match(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?)\s*([^\n]+)/);
     if (match) {
       if (!extractedComment) extractedComment = match[1].trim();
@@ -992,7 +987,6 @@ const StorageManager = {
     let list = this.loadAllDiaries();
     const idx = list.findIndex(d => d.dateKey === dateKey);
 
-    // 既存の日記があれば、元々の一言を安全に維持
     if (idx >= 0 && !extractedComment) {
       extractedComment = list[idx].kuroComment || "";
     }
@@ -1141,6 +1135,7 @@ const StorageManager = {
    - 【今夜から本物の一言】日記要約時に会話ログの内容に即した固有の一言メッセージを生成・記録
    - 【音声タイマー停止】「タイマー止めて」「アラーム消して」の音声コマンドで即時停止
    - 【ゾンビタイマー根絶】ウィジェット消去時・ストップ時に背後のチャイム鳴動を即時完全停止
+   - 【高速保存スマート判定】APIキーが前回と変更された時だけ導通テストを実施。テーマや設定変更は待ち時間ゼロで即完了！
    - キャラクター描画＆お休み中の「目を瞑る居眠り」完全維持
    ========================================================================== */
 
@@ -1653,7 +1648,6 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
   /* ★【フライング完全撤廃】クロ自身が「見つけてきた」「案内する」と確定発言した時のみカード生成 */
   _detectCardsFromKuroSpeech(speechText, userPrompt) {
     const combined = `${speechText} ${userPrompt}`;
-    // クロちゃん自身が確定案内セリフを喋った時だけ発動！
     const isMapConfirmed = /(?:見つけてきたニャ|探してきたニャ|地図で案内するニャ|地図をチェックしてニャ)/.test(speechText);
     const isNewsConfirmed = /(?:ニュースをチェックしたニャ|最新ニュース.*見てみてニャ)/.test(speechText);
 
@@ -2354,7 +2348,6 @@ const AppCore = {
         if (bubble) {
           bubble.textContent = res.text;
 
-          // ★【修復の核心】AIからの案内カードをタイムライン行へ確実に挿入！
           if (res.groundingCards && res.groundingCards.length > 0) {
             const parentRow = bubble.closest('.chat-row');
             if (parentRow && !parentRow.querySelector('.action-card-box')) {
@@ -3031,6 +3024,7 @@ const AppCore = {
       }
     });
 
+    /* ★【高速保存スマート判定】APIキーが前回から変更された時だけ導通テストを実施。テーマや設定変更は待ち時間ゼロで即完了！ */
     document.getElementById('save-settings-btn')?.addEventListener('click', async () => {
       const newApiKey = document.getElementById('api-key-input')?.value.trim() || '';
       const newVvKey = document.getElementById('voicevox-key-input')?.value.trim() || '';
@@ -3038,12 +3032,13 @@ const AppCore = {
       const saveBtn = document.getElementById('save-settings-btn');
       const saveTxt = document.getElementById('save-btn-text');
 
-      if (saveBtn) saveBtn.classList.add('is-saving');
-      if (saveTxt) saveTxt.textContent = "APIキーを検証中ニャ…⚡";
+      const isApiKeyChanged = (newApiKey !== this.ai.apiKey);
 
-      let hasError = false;
+      if (isApiKeyChanged && newApiKey) {
+        if (saveBtn) saveBtn.classList.add('is-saving');
+        if (saveTxt) saveTxt.textContent = "APIキーを検証中ニャ…⚡";
 
-      if (newApiKey) {
+        let hasError = false;
         try {
           const testRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${FIXED_LITE_MODELS[0]}:generateContent?key=${newApiKey}`, {
             method: 'POST',
@@ -3061,15 +3056,15 @@ const AppCore = {
           hasError = true;
           Logger.log(`[Auth] ❌ Gemini API通信エラー: ${err.message}`, "error");
         }
-      }
 
-      if (saveBtn) saveBtn.classList.remove('is-saving');
-      if (saveTxt) saveTxt.textContent = "設定と記憶を保存するニャン♪";
+        if (saveBtn) saveBtn.classList.remove('is-saving');
+        if (saveTxt) saveTxt.textContent = "設定と記憶を保存するニャン♪";
 
-      if (hasError) {
-        this.audio.playEffect('alarm');
-        Toast.show("⚠️ APIキーエラーです。キーを確認してくださいニャ！", "error", 4500);
-        return;
+        if (hasError) {
+          this.audio.playEffect('alarm');
+          Toast.show("⚠️ APIキーエラーです。キーを確認してくださいニャ！", "error", 4500);
+          return;
+        }
       }
 
       this.ai.apiKey = newApiKey;
@@ -3110,4 +3105,3 @@ const AppCore = {
 };
 
 window.addEventListener('load', () => AppCore.init());
-
