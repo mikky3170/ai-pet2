@@ -1,13 +1,13 @@
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆中央司令塔（app.js Part 1/2）
    - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
-   - 【徹底監査修復】お休み中（居眠り）状態におけるステータスバーの誤上書きを100%防護
-   - 【徹底監査修復】数字の音声読み上げにおける「undefinedじゅう」バグを完全解消（万単位まで完全対応）
-   - 【徹底監査修復】GPS在宅センサーの初期化漏れによる「外出中もお家誤判定」バグを完全解消
+   - 【徹底防護】お休み中（居眠りモード）のステータス誤上書きを100%完全根絶
+   - 【安全自動補完】朝4時以降の昨日日記自動作成におけるミリ秒日付誤差・パラメータ不整合を完全解消
+   - 【既存日記100%保護】すでに日記が存在する日は物理的にスキップし、既存データを絶対保護
+   - 【生活日完全連動】TimeProvider.getYesterdayLifeInfo() による正確な前日キー＆曜日連携
    - 【音響完全修復】直列カスケード回路によるプツプツノイズ100%根絶 ＆ 温かく豊かな音量の元祖ゴロゴロ音
    - 【自声エコー厳密化】「おまかせ」等のユーザー音声入力を誤破棄しない安全判定
-   - 【データ完全保護】今日までの嘘のひとことを排除し枠のみ（空欄）保持。今夜から本物の一言を記録
-   - 【ストレージ非破壊集計】既存データを壊さず、会話ログ内の写真残骸を分離集計し約0.02MBへ是正
+   - 【非破壊ストレージ集計】既存データを壊さず、会話ログ内の写真残骸を分離集計し約0.02MBへ是正
    ※このPart 1は StorageManager の閉じカッコ（};）まで綺麗に完結しています。
    ========================================================================== */
 
@@ -124,6 +124,25 @@ const TimeProvider = {
       dateDisplay: `きょうは ${month}月${date}日 (${dayOfWeek}曜日) だニャ！`,
       isLateNight, lifeLogKey, lifeFullDate
     };
+  },
+
+  /* ★【新設】生活日基準で確実に昨日の日付キーと曜日付き表示名を割り出すエンジン */
+  getYesterdayLifeInfo() {
+    const cur = this.getCurrentInfo();
+    const [y, m, d] = cur.lifeLogKey.split('-').map(Number);
+    const baseDate = new Date(y, m - 1, d);
+    const yesterdayDate = new Date(baseDate.getTime() - 24 * 60 * 60 * 1000);
+
+    const year = yesterdayDate.getFullYear();
+    const month = yesterdayDate.getMonth() + 1;
+    const date = yesterdayDate.getDate();
+    const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+    const dayOfWeek = dayNames[yesterdayDate.getDay()];
+    const pad = (n) => String(n).padStart(2, '0');
+    const key = `${year}-${pad(month)}-${pad(date)}`;
+    const fullDate = `${year}年${month}月${date}日 (${dayOfWeek})`;
+
+    return { year, month, date, dayOfWeek, key, fullDate };
   }
 };
 
@@ -229,27 +248,22 @@ class AudioSpeechEngine {
       const lfoGain = ctx.createGain();
       const masterGain = ctx.createGain();
 
-      // 猫の喉鳴り三角波（175Hz）
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(175, now);
       osc.frequency.linearRampToValueAtTime(162, now + 0.4);
       osc.frequency.linearRampToValueAtTime(180, now + 0.85);
 
-      // 角を取り温かみを出すローパスフィルター（850Hz）
       filter.type = 'lowpass';
       filter.frequency.setValueAtTime(850, now);
 
-      // 毎秒21回の心地よい喉の震え（LFO）
       lfo.type = 'sine';
       lfo.frequency.setValueAtTime(21, now);
 
-      // ゲインが絶対に0以下（負）にならない安全設計（常に 0.13 〜 0.97 の間で正のまま滑らかに変調）
       tremoloGain.gain.setValueAtTime(0.55, now);
       lfoGain.gain.setValueAtTime(0.42, now);
       lfo.connect(lfoGain);
       lfoGain.connect(tremoloGain.gain);
 
-      // 全体のエンベロープ
       masterGain.gain.setValueAtTime(0.02, now);
       masterGain.gain.linearRampToValueAtTime(0.72, now + 0.14);
       masterGain.gain.exponentialRampToValueAtTime(0.001, now + 0.96);
@@ -330,7 +344,7 @@ class AudioSpeechEngine {
     return t;
   }
 
-  /* ★【徹底監査修復】万単位まで正確に日本語かなに変換する堅牢なエンジン（undefinedじゅうバグを完全根絶） */
+  /* ★【万単位対応】数字の音声読み上げにおける「undefinedじゅう」を完全根絶した変換エンジン */
   _convertAllNumbersToKana(text) {
     if (!text) return "";
     let t = this.cleanEndingNenyan(text).replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
@@ -343,13 +357,11 @@ class AudioSpeechEngine {
       if (n === 0) return 'ぜろ';
       let res = '';
 
-      // 万の位
       if (n >= 10000) {
         const man = Math.floor(n / 10000);
         res += numToKana(man) + 'まん';
         n %= 10000;
       }
-      // 千の位
       if (n >= 1000) {
         const sen = Math.floor(n / 1000);
         if (sen === 1) res += 'せん';
@@ -358,7 +370,6 @@ class AudioSpeechEngine {
         else res += d[sen] + 'せん';
         n %= 1000;
       }
-      // 百の位
       if (n >= 100) {
         const hyaku = Math.floor(n / 100);
         if (hyaku === 1) res += 'ひゃく';
@@ -368,13 +379,11 @@ class AudioSpeechEngine {
         else res += d[hyaku] + 'ひゃく';
         n %= 100;
       }
-      // 十の位
       if (n >= 10) {
         const ten = Math.floor(n / 10);
         res += (ten === 1 ? 'じゅう' : d[ten] + 'じゅう');
         n %= 10;
       }
-      // 一の位
       if (n > 0) {
         res += d[n];
       }
@@ -488,7 +497,7 @@ class AudioSpeechEngine {
     return blobUrl;
   }
 
-  /* ★【自声エコー厳密判定】ユーザーの「おまかせで探して」等の発言を誤破棄しない安全判定 */
+  /* ★【自声エコー厳密判定】ユーザーの「おまかせ」発言等を誤破棄しない安全判定 */
   _isSelfEcho(text) {
     if (!text) return true;
     const normalized = text.replace(/[\s、。！？ニャンニャ]/g, '');
@@ -522,7 +531,6 @@ class AudioSpeechEngine {
 
       this.masterAudio.onplaying = () => {
         this.isSpeaking = true;
-        // ★【お休み中ステータス防護】お休み中なら「お話し中♪」に書き換えない
         if (AppCore.state.isRunning) {
           const st = document.getElementById('status-text');
           if (st) st.textContent = "🗣️ お話し中♪";
@@ -534,7 +542,6 @@ class AudioSpeechEngine {
         this.lastSpeechEndTime = Date.now();
         if (onEnd) onEnd();
         setTimeout(() => {
-          // ★【お休み中ステータス防護】お休み中のときは「聴いてるニャ」で上書きしない
           if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !this.isActionButtonLocked && !AppCore.state.isThinking && !AppCore.state.isProcessingInput) {
             const st = document.getElementById('status-text');
             if (st) st.textContent = "👂 聴いてるニャ♪";
@@ -632,7 +639,6 @@ class AudioSpeechEngine {
 
       Logger.log(`[Mic] 🎤 音声認識：「${resultText}」`, "info");
 
-      // 音声でのストップ／タイマー停止コマンド判定
       if (/(?:ストップ|やめて|とまって|止めて|タイマー.*(?:止めて|やめて|消して)|アラーム.*(?:止めて|消して))/.test(resultText)) {
         AppCore.cancelKitchenTimer(true);
         this.stopReadingAloud(); this.stopSpeaking();
@@ -691,7 +697,6 @@ const LocationProvider = {
     return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
   },
 
-  /* ★【徹底監査修復】起動時に必ずストレージから自宅座標を事前読込（外出中のお家誤判定を完全根絶） */
   initWatcher() {
     this._loadHomeCoordsFromStorage();
     this.fetchLocationOnDemand(false);
@@ -799,7 +804,7 @@ const StorageManager = {
   },
   defaultEyelidCoords: { y: 172, x: 0, gap: 28, size: 16 },
 
-  /* ★【非破壊ストレージ集計】既存データを傷つけず、会話ログ内の写真残骸を分離し真実のサイズ（約0.02MB）を測定 */
+  /* ★【非破壊ストレージ集計】真実のサイズ（約0.02MB）を測定 */
   getStorageUsage() {
     let totalBytes = 0, photoBytes = 0, chatBytes = 0, metaBytes = 0;
     try {
@@ -918,7 +923,6 @@ const StorageManager = {
       const del = pool.splice(photoIndex, 1)[0];
       localStorage.setItem(key, JSON.stringify(pool));
 
-      // 日記データ側のメイン写真との整合性を即時同期
       const diaries = this.loadAllDiaries();
       const target = diaries.find(d => d.dateKey === lifeDateKey);
       if (target && target.photo === del.base64) {
@@ -954,7 +958,6 @@ const StorageManager = {
   },
   saveMemories(m) { localStorage.setItem(DATA_KEYS.MEMORIES, JSON.stringify(m)); },
 
-  /* ★【完全確定仕様】今日までの過去日記の一言は嘘の文を消去して空欄（枠のみ）。今夜から本物の一言を記録 */
   loadAllDiaries() {
     try {
       const list = JSON.parse(localStorage.getItem(DATA_KEYS.DIARIES)) || [];
@@ -972,6 +975,12 @@ const StorageManager = {
     } catch(e) { return []; }
   },
   saveAllDiaries(list) { localStorage.setItem(DATA_KEYS.DIARIES, JSON.stringify(list)); },
+
+  /* ★【完全防護】指定日の日記がすでに作成済みか判定する安全ガード */
+  hasDiary(dateKey) {
+    const list = this.loadAllDiaries();
+    return list.some(d => d.dateKey === dateKey && d.content && d.content.trim().length > 0);
+  },
 
   saveDiary(entryText, customDateKey = null, customFullDate = null, photoData = null, currentLogCount = null, kuroComment = null) {
     if (!entryText || entryText.length < 20) return false;
@@ -1131,16 +1140,16 @@ const StorageManager = {
     return true;
   }
 };
-
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆中央司令塔（app.js Part 2/2）
    - 【徹底防護】お休み中（居眠りモード）のステータス誤上書きを100%完全根絶
-   - 【仕様厳格化】お調べモードのフライング暴発を完全撤廃。会話ラリーで絞り込み後にカードを表示
+   - 【自動補完エンジン完成】生活日基準（getYesterdayLifeInfo）による昨日の日記自動生成
+   - 【既存日記100%保護】既に日記が存在する日は物理的に完全スキップし、既存データを絶対保護
+   - 【本物の一言保証】昨日の会話ログに即したオリジナルの「クロのひとこと」を生成・記録
+   - 【日記帳レスキュー機能】未作成の昨日がある場合、日記帳内からもワンタップで即時作成可能
    - 【即時同期描画】案内カード（Googleマップ・ニュース）をセリフと同時にタイムラインへ即時表示
-   - 【今夜から本物の一言】日記要約時に会話ログの内容に即した固有の一言メッセージを生成・記録
    - 【音声タイマー停止】「タイマー止めて」「アラーム消して」の音声コマンドで即時停止
-   - 【ゾンビタイマー根絶】ウィジェット消去時・ストップ時に背後のチャイム鳴動を即時完全停止
-   - 【高速保存スマート判定】APIキーが前回と変更された時だけ導通テストを実施。テーマや設定変更は待ち時間ゼロで即完了！
+   - 【高速保存スマート判定】APIキー変更時のみ導通テストを行い、通常設定変更は待ち時間ゼロ
    - キャラクター描画＆お休み中の「愛らしい自然な居眠り」完全維持
    ========================================================================== */
 
@@ -1384,7 +1393,6 @@ class AIThoughtEngine {
     });
   }
 
-  /* 会話記憶の動的枠数（日中40件／夜間20件） */
   _buildContentsPayload(rawLogs, currentPrompt, photoBase64 = null) {
     const contents = [];
     let lastRole = null;
@@ -1439,7 +1447,6 @@ class AIThoughtEngine {
     const recentDiaries = StorageManager.getRecentDiariesSummary(3);
     const pastMemoryDiary = StorageManager.findRelevantPastDiary(promptText);
 
-    /* ★【対話型コンシェルジュ厳格化】会話ラリー中はカードを出さず、確定時のみツール発火するプロンプト */
     const modeInstruction = isAssistant ? `
 【★モード：👓 おてつだいモード（おやびんの世界一のマブダチ＆天才案内役）】
 ・おやびんの大好物（ラーメン、餃子、焼肉、ホルモン、お寿司、麻婆豆腐）を熟知しています。
@@ -1503,7 +1510,6 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
           signal: fetchController.signal
         });
 
-        // ツール指定でエラーになった場合のフォールバック（リトライ用独立タイマー）
         if (!res.ok && isAssistant) {
           clearTimeout(timeoutTimer);
           fetchController = new AbortController();
@@ -1555,7 +1561,6 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
             clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
             clean = AppCore.audio.cleanEndingNenyan(clean);
 
-            // クロちゃんが明確に案内確定した時のみカードを補完（フライング暴発完全撤廃）
             if (isAssistant && cards.length === 0) {
               const fallbackCards = this._detectCardsFromKuroSpeech(clean, promptText);
               if (fallbackCards.length > 0) cards = fallbackCards;
@@ -1650,7 +1655,6 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
     return cards;
   }
 
-  /* ★【フライング完全撤廃】クロ自身が「見つけてきた」「案内する」と確定発言した時のみカード生成 */
   _detectCardsFromKuroSpeech(speechText, userPrompt) {
     const combined = `${speechText} ${userPrompt}`;
     const isMapConfirmed = /(?:見つけてきたニャ|探してきたニャ|地図で案内するニャ|地図をチェックしてニャ)/.test(speechText);
@@ -1669,7 +1673,7 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
     return [];
   }
 
-  /* ★【今夜から本物の一言】会話ログの内容をしっかり読み込み、その日に即した固有のひとことを生成 */
+  /* ★【日付整合＆本物の一言保証】指定日の会話内容に基づき固有のひとことを生成 */
   async generateDailyDiarySummary(dailyAllLogs, targetLifeDateKey = null, targetLifeFullDate = null) {
     if (!this.apiKey) return { success: false };
 
@@ -1818,6 +1822,7 @@ const AppCore = {
     this.audio.prefetchVoice("おやびん、わたしはクロだニャン🐾", spk);
     this.audio.preloadAllFillers(spk);
 
+    /* ★【昨日の日記自動補完】朝4時以降の起動時に安全点検・自動作成 */
     this.checkAndFinalizeYesterdayDiary();
     this._startIdleSoliloquyWatcher();
 
@@ -1913,22 +1918,52 @@ const AppCore = {
 
   resetActivityTimer() { this.state.lastActivityTime = Date.now(); },
 
+  /* ★【完全改修】昨日の日記自動補完エンジン（生活日連動・二重スキップ保護・トースト＆通知付き） */
   async checkAndFinalizeYesterdayDiary() {
     const timeInfo = TimeProvider.getCurrentInfo();
+    // 朝4時前の深夜未明は、まだ「昨夜のお話し中」とみなし処理を保留
     if (timeInfo.isLateNight) return;
 
-    const yesterdayObj = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const pad = (n) => String(n).padStart(2, '0');
-    const yKey = `${yesterdayObj.getFullYear()}-${pad(yesterdayObj.getMonth() + 1)}-${pad(yesterdayObj.getDate())}`;
-    const yLogs = StorageManager.getDailyLogs(yKey);
-    if (!yLogs || yLogs.length < 2) return;
+    // 正確な昨日の生活日情報を取得
+    const yInfo = TimeProvider.getYesterdayLifeInfo();
+    const yKey = yInfo.key;
+    const yFullDate = yInfo.fullDate;
 
-    const allDiaries = StorageManager.loadAllDiaries();
-    if (!allDiaries.find(d => d.dateKey === yKey)) {
-      const res = await this.ai.generateDailyDiarySummary(yLogs, yKey);
+    // 🛡️【完全防護】すでに日記が存在している日は絶対にスキップ（上書き・破損を100%防止）
+    if (StorageManager.hasDiary(yKey)) {
+      Logger.log(`[Diary] 昨日の日記（${yKey}）は既に作成済みのため安全にスキップ`, "info");
+      return;
+    }
+
+    // 昨日の会話ログを点検（実質的な会話が2件以上あるか）
+    const yLogs = StorageManager.getDailyLogs(yKey);
+    if (!yLogs || yLogs.length < 2) {
+      Logger.log(`[Diary] 昨日の会話ログ不足（${yLogs ? yLogs.length : 0}件）のため自動作成をスキップ`, "info");
+      return;
+    }
+
+    Logger.log(`[Diary] 昨日の未作成絵日記を検出（${yFullDate} / 会話:${yLogs.length}件）。自動要約を開始ニャ…`, "info");
+
+    try {
+      // 昨日の正確な日付と曜日をAIに明示して要約生成
+      const res = await this.ai.generateDailyDiarySummary(yLogs, yKey, yFullDate);
       if (res.success && res.diaryText) {
-        StorageManager.saveDiary(res.diaryText, yKey, `${yesterdayObj.getMonth()+1}月${yesterdayObj.getDate()}日`, res.selectedPhoto, null, res.kuroComment);
+        // 絵日記を安全に保存
+        StorageManager.saveDiary(res.diaryText, yKey, yFullDate, res.selectedPhoto, null, res.kuroComment);
+
+        Logger.log(`[Diary] ✅ 昨日の絵日記の自動作成に大成功！(${yFullDate})`, "success");
+        Toast.show(`おやびん！昨日の絵日記を書いておいたニャン🐾（${yFullDate}）`, "success", 4500);
+
+        // 画面タイムラインに温かいメッセージを添えてカードを表示
+        const autoNotice = `おやびん！昨日は日記帳を閉じたあと、わたしが昨日の思い出絵日記を書いておいたニャン🐾 日記帳を見てみてニャ♪`;
+        this.renderBubble('model', autoNotice);
+        const savedDiary = StorageManager.loadAllDiaries().find(d => d.dateKey === yKey);
+        if (savedDiary) this.renderDiaryCard(savedDiary);
+
+        this._updateStorageMonitorUI();
       }
+    } catch (err) {
+      Logger.log(`[Diary] ⚠️ 昨日の日記自動生成で一時エラー: ${err.message}`, "warn");
     }
   },
 
@@ -2332,7 +2367,6 @@ const AppCore = {
     this.executeThought(text);
   },
 
-  /* ★【即時同期描画】セリフと同時に案内カード（Googleマップ・ニュース）を確実に画面描画 */
   async executeThought(promptText, photoBase64 = null, isPhotoAlreadyLogged = false) {
     this.state.isThinking = true;
     if (this.avatar && this.state.isRunning) this.avatar.setEmotion('thinking');
@@ -2503,8 +2537,31 @@ const AppCore = {
     const diaries = this.state.studioDiaries;
     if (!pageContainer) return;
 
+    // 昨日の未作成チェック
+    const yInfo = TimeProvider.getYesterdayLifeInfo();
+    const hasYesterdayDiary = StorageManager.hasDiary(yInfo.key);
+    const yesterdayLogs = StorageManager.getDailyLogs(yInfo.key);
+    const canCreateYesterday = (!hasYesterdayDiary && yesterdayLogs && yesterdayLogs.length >= 2);
+
     if (diaries.length === 0) {
-      pageContainer.innerHTML = '<div style="text-align:center;padding:40px;color:#9a3412;">まだ日記がありませんニャ🐾</div>';
+      if (canCreateYesterday) {
+        pageContainer.innerHTML = `
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fffaf5; border:2px dashed #fed7aa; border-radius:20px; padding:30px 20px; text-align:center; gap:14px;">
+            <div style="font-size:46px;">🐾📖</div>
+            <div style="font-size:15.5px; font-weight:900; color:#9a3412;">昨日の絵日記がまだ書かれていませんニャ🐾</div>
+            <div style="font-size:12px; color:#c2410c; line-height:1.6; max-width:320px;">
+              昨日の会話ログ（${yesterdayLogs.length}件）が残っています！<br>
+              下のボタンを押すと、クロが昨日の思い出を絵日記にまとめて記録するニャン♪
+            </div>
+            <button type="button" id="btn-rescue-yesterday-diary" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:13px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ 昨日の絵日記を書くニャ！（${yInfo.fullDate}）</button>
+          </div>
+        `;
+        document.getElementById('btn-rescue-yesterday-diary')?.addEventListener('click', async () => {
+          await this._rescueCreateYesterdayDiary(yInfo.key, yInfo.fullDate, yesterdayLogs);
+        });
+      } else {
+        pageContainer.innerHTML = '<div style="text-align:center;padding:40px;color:#9a3412;">まだ日記がありませんニャ🐾</div>';
+      }
       if (pageIndicator) pageIndicator.textContent = "0 / 0 日目";
       return;
     }
@@ -2582,6 +2639,22 @@ const AppCore = {
         }
       };
     });
+  },
+
+  /* ★【手動レスキュー】日記帳内からワンタップで未作成の昨日の日記を安全生成 */
+  async _rescueCreateYesterdayDiary(yKey, yFullDate, yLogs) {
+    Toast.show("昨日の絵日記を作成中ニャ…🐾", "info");
+    const res = await this.ai.generateDailyDiarySummary(yLogs, yKey, yFullDate);
+    if (res.success && res.diaryText) {
+      StorageManager.saveDiary(res.diaryText, yKey, yFullDate, res.selectedPhoto, null, res.kuroComment);
+      Toast.show("昨日の絵日記を作成・保存したニャン！📖✨", "success");
+      this.state.studioDiaries = JSON.parse(JSON.stringify(StorageManager.loadAllDiaries()));
+      this.state.studioDiaryPageIdx = 0;
+      this._renderStudioDiaryPage();
+      this._updateStorageMonitorUI();
+    } else {
+      Toast.show("絵日記の作成に失敗しましたニャ。通信状態を確認してくださいニャ", "error");
+    }
   },
 
   _updateDiaryReadBtnUI(reading) {
@@ -2915,7 +2988,6 @@ const AppCore = {
       this.triggerActionVoice("はーい！", "🛑 はーい！");
     });
 
-    /* ★【徹底防護】お休み中への遷移時、音声・タイマー・思考を即時完全停止しステータスを即時ロック */
     document.getElementById('pause-btn')?.addEventListener('click', () => {
       this.state.isRunning = !this.state.isRunning;
       const btn = document.getElementById('pause-btn');
@@ -2928,7 +3000,6 @@ const AppCore = {
       document.getElementById('pause-text').textContent = this.state.isRunning ? "会話中" : "お休み中";
 
       if (!this.state.isRunning) {
-        // お休み中突入：すべての非同期発話を即座に完全停止
         this.audio.stopListening();
         this.audio.stopSpeaking();
         this.audio.stopReadingAloud();
@@ -2949,7 +3020,6 @@ const AppCore = {
 
         Logger.log(`[Status] 💤 お休み中（居眠りモード開始・ステータス完全防護）`, "info");
       } else {
-        // 会話中復帰
         petContainer?.classList.remove('is-paused-mode');
         if (wrap) wrap.classList.remove('is-sleeping');
         if (st) st.textContent = "👂 聴いてるニャ♪";
@@ -3042,7 +3112,6 @@ const AppCore = {
       }
     });
 
-    /* ★【高速保存スマート判定】APIキーが前回から変更された時だけ導通テストを実施。テーマや設定変更は待ち時間ゼロで即完了！ */
     document.getElementById('save-settings-btn')?.addEventListener('click', async () => {
       const newApiKey = document.getElementById('api-key-input')?.value.trim() || '';
       const newVvKey = document.getElementById('voicevox-key-input')?.value.trim() || '';
