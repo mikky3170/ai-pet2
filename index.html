@@ -18,25 +18,25 @@
 
   <style>
     /* ==========================================================================
-       新・4大テーマ定義（ノーマル / ナイトダーク / フォレストミント / キャンディポップ）
-       ※OSのダークモード設定に関わらず、ユーザーが選んだテーマを常時100%美しく固定表示
+       新・4大カラーテーマ完全リニューアル定義
+       ※完全透過クロちゃんに対応し、お部屋ごとに一目で違いがわかる豊かな世界観を実現！
        ========================================================================== */
-    /* 1. ノーマルテーマ（元祖・ピュアホワイト＆サクラピンク） */
+    /* 1. 🌸 ノーマル（サクラ・スウィートピンク） */
     :root, [data-theme="normal"] {
-      --primary-color: #f472b6;
+      --primary-color: #ec4899;
       --secondary-color: #38bdf8;
       --bubble-bg: rgba(255, 255, 255, 0.98);
       --text-color: #1f2937;
-      --shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-      --outer-bg: #cbd5e1;
-      --container-bg: #ffffff;
+      --shadow: 0 10px 25px rgba(236, 72, 153, 0.12);
+      --outer-bg: #fbcfe8;
+      --container-bg: linear-gradient(180deg, #fff1f5 0%, #ffe4e6 100%);
       --roof-border-color: #f472b6;
       --roof-glow: 
         inset 0 3px 0 0 rgba(255, 255, 255, 0.95),
-        inset 0 0 14px rgba(244, 114, 182, 0.55),
-        inset 0 0 0 2.5px rgba(244, 114, 182, 0.8),
-        0 8px 30px rgba(244, 114, 182, 0.25);
-      --stage-rug: radial-gradient(ellipse at center, rgba(244, 114, 182, 0.22) 0%, rgba(255, 255, 255, 0) 72%);
+        inset 0 0 16px rgba(244, 114, 182, 0.6),
+        inset 0 0 0 3px rgba(244, 114, 182, 0.85),
+        0 10px 32px rgba(244, 114, 182, 0.3);
+      --stage-rug: radial-gradient(ellipse at center, rgba(244, 114, 182, 0.35) 0%, rgba(255, 228, 230, 0) 72%);
       --theme-modal-border: #f472b6;
       --theme-modal-header-bg: #fdf2f8;
       --theme-modal-header-color: #db2777;
@@ -44,7 +44,7 @@
       --cat-scale: 1; /* 縦画面の基準スケール */
     }
 
-    /* 2. ナイトダークテーマ（常時シックな漆黒＆ディープネイビー） */
+    /* 2. 🌙 ナイトダーク（常時シックな漆黒＆ディープネイビー） */
     [data-theme="dark"] {
       --primary-color: #38bdf8;
       --secondary-color: #818cf8;
@@ -52,7 +52,7 @@
       --text-color: #f8fafc;
       --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
       --outer-bg: #030712;
-      --container-bg: #0b1120;
+      --container-bg: linear-gradient(180deg, #0b1120 0%, #030712 100%);
       --roof-border-color: #38bdf8;
       --roof-glow: 
         inset 0 2px 0 0 rgba(255, 255, 255, 0.25),
@@ -66,44 +66,44 @@
       --theme-save-btn: linear-gradient(135deg, #0284c7, #0369a1);
     }
 
-    /* 3. フォレストミントテーマ（北欧ミントグリーン壁紙＆瞳とおそろいのエメラルド） */
+    /* 3. 🍃 フォレストミント（北欧ボタニカル＆澄み切ったエメラルド） */
     [data-theme="mint"] {
       --primary-color: #059669;
       --secondary-color: #06b6d4;
       --bubble-bg: rgba(255, 255, 255, 0.98);
       --text-color: #064e3b;
-      --shadow: 0 10px 25px rgba(5, 150, 105, 0.12);
+      --shadow: 0 10px 25px rgba(5, 150, 105, 0.15);
       --outer-bg: #a7f3d0;
-      --container-bg: #f0fdf4;
+      --container-bg: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%);
       --roof-border-color: #059669;
       --roof-glow: 
         inset 0 3px 0 0 rgba(255, 255, 255, 0.95),
-        inset 0 0 14px rgba(16, 185, 129, 0.55),
-        inset 0 0 0 2.5px rgba(5, 150, 105, 0.8),
-        0 8px 28px rgba(5, 150, 105, 0.25);
-      --stage-rug: radial-gradient(ellipse at center, rgba(16, 185, 129, 0.28) 0%, rgba(240, 253, 244, 0) 72%);
+        inset 0 0 16px rgba(16, 185, 129, 0.6),
+        inset 0 0 0 3px rgba(5, 150, 105, 0.85),
+        0 10px 30px rgba(5, 150, 105, 0.28);
+      --stage-rug: radial-gradient(ellipse at center, rgba(16, 185, 129, 0.35) 0%, rgba(209, 250, 229, 0) 72%);
       --theme-modal-border: #059669;
       --theme-modal-header-bg: #ecfdf5;
       --theme-modal-header-color: #047857;
       --theme-save-btn: linear-gradient(135deg, #10b981, #059669);
     }
 
-    /* 4. キャンディポップテーマ（温かみのあるクリーミーイエロー壁紙＆アプリコットオレンジ） */
+    /* 4. 🍊 キャンディポップ（陽だまりアプリコット＆ハニーオレンジ） */
     [data-theme="pop"] {
       --primary-color: #ea580c;
       --secondary-color: #f43f5e;
       --bubble-bg: rgba(255, 255, 255, 0.98);
       --text-color: #431407;
-      --shadow: 0 10px 25px rgba(234, 88, 12, 0.15);
+      --shadow: 0 10px 25px rgba(234, 88, 12, 0.18);
       --outer-bg: #fed7aa;
-      --container-bg: #fffbeb;
+      --container-bg: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
       --roof-border-color: #ea580c;
       --roof-glow: 
         inset 0 3px 0 0 rgba(255, 255, 255, 0.98),
-        inset 0 0 16px rgba(249, 115, 22, 0.6),
-        inset 0 0 0 3px rgba(234, 88, 12, 0.85),
-        0 10px 32px rgba(234, 88, 12, 0.28);
-      --stage-rug: radial-gradient(ellipse at center, rgba(249, 115, 22, 0.35) 0%, rgba(255, 251, 235, 0) 72%);
+        inset 0 0 18px rgba(249, 115, 22, 0.65),
+        inset 0 0 0 3px rgba(234, 88, 12, 0.9),
+        0 12px 34px rgba(234, 88, 12, 0.32);
+      --stage-rug: radial-gradient(ellipse at center, rgba(249, 115, 22, 0.4) 0%, rgba(255, 237, 213, 0) 72%);
       --theme-modal-border: #ea580c;
       --theme-modal-header-bg: #fff7ed;
       --theme-modal-header-color: #c2410c;
@@ -140,7 +140,7 @@
       width: 90%;
       max-width: 420px;
       padding: 12px 16px;
-      border-radius: 18px;
+      border-radius: 20px;
       font-size: 13px;
       font-weight: 800;
       display: flex;
@@ -162,6 +162,7 @@
     #toast-notification.error { background: #450a0a; color: #fca5a5; border: 1.5px solid #ef4444; }
     #toast-notification.info { background: #0f172a; color: #38bdf8; border: 1.5px solid #38bdf8; }
 
+    /* ★【四隅なだらか化】現代のスマホ画面ベゼルに心地よく寄り添う 36px の美しい角丸 */
     #pet-container {
       position: absolute;
       width: 100%;
@@ -174,8 +175,8 @@
       z-index: 50;
       box-sizing: border-box;
       background: var(--container-bg);
-      border-radius: 26px;
-      border-top: 3px solid var(--roof-border-color);
+      border-radius: 36px;
+      border-top: 3.5px solid var(--roof-border-color);
       box-shadow: var(--roof-glow);
       transition: all 0.3s ease-out;
       overflow: hidden;
@@ -699,6 +700,8 @@
       mix-blend-mode: normal !important;
     }
 
+    /* ★【居眠りまぶたの自然な毛並み融合デザイン】
+       貼り付けた黒いパッチ感を解消し、ノルウェージャンの毛並みに溶け込むグラデーションと穏やかに閉じた瞳のアーチライン */
     .real-eyelid-unit {
       position: absolute;
       bottom: 0;
@@ -714,29 +717,40 @@
     .real-eyelid {
       position: absolute;
       background: 
-        radial-gradient(ellipse at 50% 25%, rgba(51, 65, 85, 0.4) 0%, rgba(15, 23, 42, 0.98) 75%),
-        repeating-linear-gradient(175deg, #181a24 0px, #0f1118 2px, #262933 3.5px, #0f1118 5px);
-      border-radius: 50% 50% 45% 45%;
+        radial-gradient(ellipse at 50% 15%, rgba(51, 65, 85, 0.45) 0%, rgba(20, 24, 33, 0.96) 65%, #0e1117 95%),
+        repeating-linear-gradient(172deg, rgba(30, 35, 48, 0.6) 0px, #141720 2.5px, #252a38 4px, #12141c 6px);
+      border-radius: 46% 46% 50% 50%;
       transform-origin: top center;
       transform: scaleY(0);
       opacity: 0.98;
-      transition: transform 0.12s ease-out;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.8), inset 0 -1.5px 1px rgba(10, 12, 16, 0.9);
+      transition: transform 0.16s cubic-bezier(0.25, 1, 0.5, 1);
+      /* 周囲の毛並みに馴染むソフトフェザーシャドウと、愛らしい閉じたまつ毛のスリット */
+      box-shadow: 
+        0 1.5px 3px rgba(0, 0, 0, 0.7),
+        0 0 4px rgba(18, 22, 30, 0.5),
+        inset 0 -2px 1.5px rgba(8, 10, 14, 0.95);
       pointer-events: none;
-      border-bottom: 1.5px solid #08090d;
+      border-bottom: 2px solid rgba(12, 14, 20, 0.95);
     }
 
+    /* 穏やかな瞬き */
     .pet-avatar-wrapper.is-real-mode.is-idling:not(.is-sleeping) .real-eyelid {
       animation: realEyeBlink 4.6s ease-in-out infinite;
     }
     @keyframes realEyeBlink {
       0%, 93%, 100% { transform: scaleY(0); }
-      96%, 98% { transform: scaleY(1.05); }
+      96%, 98% { transform: scaleY(1.02); }
     }
 
+    /* お休み中（居眠り）：完全に閉じてスヤスヤ眠る自然な瞼 */
     .pet-avatar-wrapper.is-sleeping .real-eyelid {
-      transform: scaleY(1.08) !important;
+      transform: scaleY(1.04) !important;
       animation: none !important;
+      border-bottom: 2px solid #06070a;
+      box-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.8),
+        0 0 5px rgba(14, 18, 25, 0.6),
+        inset 0 -2.5px 2px rgba(5, 7, 10, 0.98);
     }
 
     .accessory-layer {
@@ -1226,7 +1240,7 @@
       pointer-events: none;
     }
 
-    /* 横画面時の最適化CSS */
+    /* ★横画面時の最適化CSS（四隅Rもなだらかに統一） */
     @media (orientation: landscape) {
       :root {
         --cat-scale: 0.78;
@@ -1238,7 +1252,7 @@
         justify-content: space-between;
         padding: calc(env(safe-area-inset-top, 6px) + 6px) calc(env(safe-area-inset-right, 14px) + 18px) calc(env(safe-area-inset-bottom, 6px) + 4px) calc(env(safe-area-inset-left, 14px) + 18px);
         gap: 16px;
-        border-radius: 26px;
+        border-radius: 36px;
       }
 
       .app-col-left {
@@ -1421,10 +1435,10 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.15);
       flex-shrink: 0;
     }
-    .swatch-normal { background: linear-gradient(135deg, #f472b6 50%, #ffffff 50%); }
+    .swatch-normal { background: linear-gradient(135deg, #f472b6 50%, #ffe4e6 50%); }
     .swatch-dark { background: linear-gradient(135deg, #0b1120 50%, #38bdf8 50%); }
-    .swatch-mint { background: linear-gradient(135deg, #059669 50%, #f0fdf4 50%); }
-    .swatch-pop { background: linear-gradient(135deg, #ea580c 50%, #fffbeb 50%); }
+    .swatch-mint { background: linear-gradient(135deg, #059669 50%, #d1fae5 50%); }
+    .swatch-pop { background: linear-gradient(135deg, #ea580c 50%, #ffedd5 50%); }
 
     .theme-card-info {
       display: flex;
@@ -2830,7 +2844,7 @@
           ・<b>👓 おてつだい</b>：博士帽とメガネを装着！ネット検索して「近くのラーメン屋」や「最新ニュース」をGoogleマップ付きで案内するニャ！（※機械的なニュース一覧や店舗リストは日記から自動除外され、おやびんの気分や会話の思い出として優しく記録されます）。</div>
 
           <div class="manual-sec-title">🎨 新・4大背景テーマ</div>
-          <div>設定画面から【🌸 ノーマル（元祖ピンク）】【🌙 ナイトダーク】【🍃 フォレストミント】【🍊 キャンディポップ】をお好みで選べるニャ！気分に合わせて着せ替えしてニャン🐾</div>
+          <div>設定画面から【🌸 ノーマル（サクラピンク）】【🌙 ナイトダーク】【🍃 フォレストミント】【🍊 キャンディポップ】をお好みで選べるニャ！透過クロちゃんがどのお部屋でも美しく引き立ちますニャン🐾</div>
 
           <div class="manual-sec-title">📱 画面の向きと空中くるりん着地</div>
           <div>スマホやタブレットを横向きに寝かせると、ボタンがサッと道をあけて、クロちゃんが空中で身をひるがえして「くるりんっ♪トンッ！」と華麗に着地するニャ！足元にキラキラ肉球が弾けて、最新のお話しへ自動でシュッと移動するニャン🐾（歩行中のちょっとした揺れでは動かない安心安全設計ニャ！）</div>
@@ -2868,7 +2882,7 @@
             <span class="theme-swatch-dot swatch-normal"></span>
             <div class="theme-card-info">
               <span class="theme-card-title">🌸 ノーマル</span>
-              <span class="theme-card-sub">元祖ピンク＆ホワイト</span>
+              <span class="theme-card-sub">サクラ・スウィートピンク</span>
             </div>
           </button>
           <button type="button" class="theme-card-btn" data-theme-val="dark">
@@ -2882,14 +2896,14 @@
             <span class="theme-swatch-dot swatch-mint"></span>
             <div class="theme-card-info">
               <span class="theme-card-title">🍃 フォレスト</span>
-              <span class="theme-card-sub">瞳とおそろいミント</span>
+              <span class="theme-card-sub">北欧ボタニカルミント</span>
             </div>
           </button>
           <button type="button" class="theme-card-btn" data-theme-val="pop">
             <span class="theme-swatch-dot swatch-pop"></span>
             <div class="theme-card-info">
               <span class="theme-card-title">🍊 キャンディ</span>
-              <span class="theme-card-sub">パステルビタミン</span>
+              <span class="theme-card-sub">陽だまりアプリコット</span>
             </div>
           </button>
         </div>
@@ -3107,5 +3121,4 @@
   <script src="app.js"></script>
 </body>
 </html>
-
 
