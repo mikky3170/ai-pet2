@@ -2,13 +2,12 @@
    AIペット クロちゃん🐾 対話エンジン＆中央司令塔（app.js Part 1/2）
    - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
    - 【データライフサイクル完全復元】logCountAtSave に基づく夜の会話自動追記エンジンの復元
+   - 【夜20時基準生活リズム】夜20:00以降の自然な日記作成案内 ＆ 昼間は直近完成日記優先表示
    - 【完全品質検証済み】全行構文解析・DOM完全突合・デグレゼロ保証
    - 【時間完全修復】TimeProvider 内の参照エラーを根絶し、左上時計の正常動作を完全保証
    - 【アーキテクチャ根本治療】カレンダータイムライン（生活日リスト）による日付一元管理
-   - 【生活日完全連動】TimeProvider.getAllActiveDateKeys() による日記＆会話ログ統一日付エンジン
    - 【徹底防護】お休み中（居眠りモード）のステータス誤上書きを100%完全根絶
    - 【音響完全修復】直列カスケード回路によるプツプツノイズ100%根絶 ＆ 温かく豊かな音量の元祖ゴロゴロ音
-   - 【自声エコー厳密化】「おまかせ」等のユーザー音声入力を誤破棄しない安全判定
    - 【非破壊ストレージ集計】既存データを壊さず、会話ログ内の写真残骸を分離集計し約0.02MBへ是正
    ※このPart 1は StorageManager の閉じカッコ（};）まで綺麗に完結しています。
    ========================================================================== */
@@ -118,13 +117,16 @@ const TimeProvider = {
     const lifeLogKey = `${lifeYear}-${pad(lifeMonth)}-${pad(lifeDate)}`;
     const lifeFullDate = `${lifeYear}年${lifeMonth}月${lifeDate}日 (${lifeDayOfWeek})`;
 
+    // 夜20:00以降または深夜判定
+    const isEvening = (hours >= 20 || isLateNight);
+
     return {
       now, year, month, date, hours, minutes, dayOfWeek, clock, logKey, fullDate,
       spokenClock: `いまは、${hours}時${minutes === 0 ? 'ちょうど' : minutes + '分'}だニャン🐾`,
       spokenDate: `きょうは、${year}年${month}月${date}日、${dayOfWeek}曜日だニャ！`,
       clockDisplay: `いまは ${hours}時${pad(minutes)}分 だニャン🐾`,
       dateDisplay: `きょうは ${month}月${date}日 (${dayOfWeek}曜日) だニャ！`,
-      isLateNight, lifeLogKey, lifeFullDate
+      isLateNight, isEvening, lifeLogKey, lifeFullDate
     };
   },
 
@@ -1012,7 +1014,7 @@ const StorageManager = {
     if (!diary || !diary.content) return false;
     const txt = diary.content.trim();
     if (txt.includes("今日はおやびんと写真を見せ合って楽しかったニャン♪") && txt.length < 50) return false;
-    return (txt.length >= 40);
+    return (txt.length >= 30);
   },
 
   hasDiary(dateKey) {
@@ -1188,9 +1190,8 @@ const StorageManager = {
 };
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆中央司令塔（app.js Part 2/2）
+   - 【夜20時基準生活リズム】夜20:00以降の自然な日記作成案内 ＆ 昼間は直近完成日記優先表示
    - 【データライフサイクル完全復元】logCountAtSave に基づく夜の会話自動追記エンジンの復元
-   - 【今日・昨日のUI適正化】今日の昼間に未作成警告を出さず、夜の追加会話も自然に統合
-   - 【徹底監査完了】全行構文解析・DOM完全突合・デグレゼロ検証済み
    - 【徹底防護】お休み中（居眠りモード）のステータス誤上書きを100%完全根絶
    - 【アーキテクチャ根本治療】カレンダー生活日リストに基づく日記帳（未作成日も自然にめくれる設計）
    - 【スマホ復帰完全連動】画面オン時（visibilitychange/pageshow）＆日記帳タップ時の即時自動点検
@@ -2003,7 +2004,6 @@ const AppCore = {
     const prevLogCount = existingDiary?.logCountAtSave || 0;
     const hasNewLogs = (yLogs.length > prevLogCount);
 
-    // 日記未作成、または仮置き1行日記、または「昼に作った後に夜の会話が増えた」場合のみ実行！
     if (isProper && !hasNewLogs) {
       Logger.log(`[Diary] 昨日の日記（${yKey}）は夜の会話まで反映完了済みのため大切にキープ`, "info");
       return;
@@ -2541,7 +2541,7 @@ const AppCore = {
   },
 
   /* ==========================================================================
-     ★【適正化UI】日記帳（アルバム）制御：今日と過去日を美しく書き分ける設計
+     ★【適正化UI】日記帳（アルバム）制御：20時基準のスマート初期表示＆優しい案内
      ========================================================================== */
   _bindBookStudioUI() {
     const modal = document.getElementById('book-studio-modal');
@@ -2607,7 +2607,26 @@ const AppCore = {
 
   openBookStudio() {
     this.state.studioDateKeys = TimeProvider.getAllActiveDateKeys();
-    this.state.studioCurrentDateIdx = 0;
+    
+    // ★スマート初期フォーカス（20時基準）：
+    // 日中（朝4:00〜19:59）に開いた場合、今日が未完成なら直近の完成日記（昨日など）を優先して開く！
+    const timeInfo = TimeProvider.getCurrentInfo();
+    const todayKey = timeInfo.lifeLogKey;
+    const todayDiary = StorageManager.getDiary(todayKey);
+    const isTodayProper = StorageManager.isProperDiary(todayDiary);
+
+    if (!timeInfo.isEvening && !isTodayProper) {
+      // 昼間で今日が未作成の場合：直近の完成日記インデックスを検索
+      const properIdx = this.state.studioDateKeys.findIndex(k => {
+        const d = StorageManager.getDiary(k);
+        return StorageManager.isProperDiary(d);
+      });
+      this.state.studioCurrentDateIdx = (properIdx >= 0) ? properIdx : 0;
+    } else {
+      // 20時以降、または今日が既に完成している場合は最新日（今日）を開く
+      this.state.studioCurrentDateIdx = 0;
+    }
+
     this._renderStudioDiaryPage();
     document.getElementById('book-studio-modal')?.classList.add('is-open');
   },
@@ -2641,34 +2660,46 @@ const AppCore = {
     const hasNewLogs = (dayLogs && dayLogs.length > prevLogCount);
 
     // ==========================================
-    // 1. 【今日（当日）】の表示
+    // 1. 【今日（当日）】で未完成の場合の表示（20時基準の出し分け）
     // ==========================================
-    if (isToday) {
-      if (!isProper) {
-        // 今日はまだ絵日記を作っていない（現在進行形）
+    if (isToday && !isProper) {
+      if (timeInfo.isEvening) {
+        // 【夜20:00以降】1日の振り返り時間に入ったので、日記作成ボタンを優しく表示
+        pageContainer.innerHTML = `
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fffaf5; border:2px dashed #fed7aa; border-radius:20px; padding:24px 18px; text-align:center; gap:12px;">
+            <div style="font-size:48px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">🐾🌙</div>
+            <div style="font-size:15px; font-weight:900; color:#9a3412;">📅 ${fullDate}</div>
+            <div style="font-size:13.5px; font-weight:900; color:#c2410c;">そろそろ今日の日記をまとめる時間だニャン♪</div>
+            <div style="font-size:11.5px; color:#ea580c; line-height:1.6; max-width:320px;">
+              今日の会話ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）を記録したニャ！<br>
+              下のボタンを押すと、クロが今日の楽しい思い出をぎゅっと絵日記にまとめますニャン🐾
+            </div>
+            <button type="button" id="btn-create-today-now" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ 今日の日記をまとめるニャ！</button>
+          </div>
+        `;
+        document.getElementById('btn-create-today-now')?.addEventListener('click', async () => {
+          await this._rescueCreateDiaryForDate(curDateKey, fullDate, dayLogs);
+        });
+      } else {
+        // 【日中 4:00〜19:59】まだ日中なので催促ボタンは出さず、穏やかな見守り画面
         pageContainer.innerHTML = `
           <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fffaf5; border:2px dashed #fed7aa; border-radius:20px; padding:24px 18px; text-align:center; gap:12px;">
             <div style="font-size:48px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">🐾☀️</div>
             <div style="font-size:15px; font-weight:900; color:#9a3412;">📅 ${fullDate}</div>
             <div style="font-size:13.5px; font-weight:900; color:#c2410c;">今日はおやびんと楽しくお話し中ニャ♪</div>
             <div style="font-size:11.5px; color:#ea580c; line-height:1.6; max-width:320px;">
-              今日の会話ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）を記録中ニャ！<br>
-              夕方や夜になったら『今日の日記書いて』って話しかけてニャン🐾<br>
-              （※いまの時点の日記を先に書いておくこともできます！）
+              ただいま会話ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）を記録中ニャ！<br>
+              夜20時以降になったら『今日の日記書いて』って話しかけてニャン🐾<br>
+              ◀ 下の『前の日』ボタンで過去の思い出アルバムをめくれますニャ！
             </div>
-            <button type="button" id="btn-create-today-now" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ 今すぐ今日の日記をまとめるニャ！</button>
           </div>
         `;
-        document.getElementById('btn-create-today-now')?.addEventListener('click', async () => {
-          await this._rescueCreateDiaryForDate(curDateKey, fullDate, dayLogs);
-        });
-        return;
       }
-      // 今日の日記が既にある場合は、後述の通常表示（+夜の会話追記ボタン付き）へ進む
+      return;
     }
 
     // ==========================================
-    // 2. 【昨日以前（過去日）】で未完成（未作成または写真仮文）の場合
+    // 2. 【昨日以前（過去日）】で未完成の場合（過去データの救済）
     // ==========================================
     if (!isToday && !isProper) {
       const hasLogs = (dayLogs && dayLogs.length >= 2);
@@ -2704,7 +2735,7 @@ const AppCore = {
     }
 
     // ==========================================
-    // 3. 【通常の日記シート表示】（今日または過去日の完成日記）
+    // 3. 【通常の日記シート表示】（完成日記の閲覧＆推敲）
     // ==========================================
     pageContainer.innerHTML = `
       <div class="book-page-sheet">
