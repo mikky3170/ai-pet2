@@ -1,10 +1,11 @@
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆中央司令塔（app.js Part 1/2）
    - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
+   - 【アーキテクチャ根本治療】カレンダータイムライン（生活日リスト）による日付一元管理
+   - 【生活日完全連動】TimeProvider.getAllActiveDateKeys() による日記＆会話ログ統一日付エンジン
    - 【徹底防護】お休み中（居眠りモード）のステータス誤上書きを100%完全根絶
    - 【安全自動補完】朝4時以降の昨日日記自動作成におけるミリ秒日付誤差・パラメータ不整合を完全解消
    - 【既存日記100%保護】すでに日記が存在する日は物理的にスキップし、既存データを絶対保護
-   - 【生活日完全連動】TimeProvider.getYesterdayLifeInfo() による正確な前日キー＆曜日連携
    - 【音響完全修復】直列カスケード回路によるプツプツノイズ100%根絶 ＆ 温かく豊かな音量の元祖ゴロゴロ音
    - 【自声エコー厳密化】「おまかせ」等のユーザー音声入力を誤破棄しない安全判定
    - 【非破壊ストレージ集計】既存データを壊さず、会話ログ内の写真残骸を分離集計し約0.02MBへ是正
@@ -121,12 +122,12 @@ const TimeProvider = {
       spokenClock: `いまは、${hours}時${minutes === 0 ? 'ちょうど' : minutes + '分'}だニャン🐾`,
       spokenDate: `きょうは、${year}年${month}月${date}日、${dayOfWeek}曜日だニャ！`,
       clockDisplay: `いまは ${hours}時${pad(minutes)}分 だニャン🐾`,
-      dateDisplay: `きょうは ${month}月${date}日 (${dayOfWeek}曜日) だニャ！`,
+      dateDisplay: `きょうは ${month}月${date}日 (${dayOfWeek曜日}) だニャ！`,
       isLateNight, lifeLogKey, lifeFullDate
     };
   },
 
-  /* ★【新設】生活日基準で確実に昨日の日付キーと曜日付き表示名を割り出すエンジン */
+  /* 生活日基準で前日（昨日）の日付キーと曜日付き表示名を割り出す */
   getYesterdayLifeInfo() {
     const cur = this.getCurrentInfo();
     const [y, m, d] = cur.lifeLogKey.split('-').map(Number);
@@ -143,6 +144,42 @@ const TimeProvider = {
     const fullDate = `${year}年${month}月${date}日 (${dayOfWeek})`;
 
     return { year, month, date, dayOfWeek, key, fullDate };
+  },
+
+  /* 任意の日付キー（YYYY-MM-DD）から日本語の曜日付き表示名を算出する */
+  formatDateKeyToFull(dateKey) {
+    if (!dateKey) return "";
+    const parts = dateKey.split('-').map(Number);
+    if (parts.length < 3 || isNaN(parts[0])) return dateKey;
+    const dt = new Date(parts[0], parts[1] - 1, parts[2]);
+    const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+    return `${parts[0]}年${parts[1]}月${parts[2]}日 (${dayNames[dt.getDay()]})`;
+  },
+
+  /* ★【根本治療】日記・会話ログ・写真が存在する全日付キーのユニーク一覧（降順）を生成 */
+  getAllActiveDateKeys() {
+    const dateSet = new Set();
+    const cur = this.getCurrentInfo();
+    dateSet.add(cur.lifeLogKey);
+
+    // 昨日の生活日も必ず含める（未作成でもめくれるようにする）
+    const yInfo = this.getYesterdayLifeInfo();
+    dateSet.add(yInfo.key);
+
+    // 既存の日記から取得
+    const diaries = StorageManager.loadAllDiaries();
+    diaries.forEach(d => { if (d && d.dateKey) dateSet.add(d.dateKey); });
+
+    // 保存されている会話ログや写真プールのキーから取得
+    for (let k in localStorage) {
+      if (k.startsWith('kuro_daily_logs_')) {
+        dateSet.add(k.replace('kuro_daily_logs_', ''));
+      } else if (k.startsWith('kuro_daily_photos_')) {
+        dateSet.add(k.replace('kuro_daily_photos_', ''));
+      }
+    }
+
+    return Array.from(dateSet).sort().reverse();
   }
 };
 
@@ -240,7 +277,7 @@ class AudioSpeechEngine {
       noise.start(now); noise.stop(now + 0.35);
 
     } else if (type === 'purr') {
-      /* ★【音響完全修復】直列カスケード方式によりプツプツノイズを完全根絶、温かく豊かな音量で響く元祖ゴロゴロ音 */
+      /* 直列カスケード回路によるプツプツノイズ完全根絶ゴロゴロ音 */
       const osc = ctx.createOscillator();
       const filter = ctx.createBiquadFilter();
       const tremoloGain = ctx.createGain();
@@ -344,7 +381,6 @@ class AudioSpeechEngine {
     return t;
   }
 
-  /* ★【万単位対応】数字の音声読み上げにおける「undefinedじゅう」を完全根絶した変換エンジン */
   _convertAllNumbersToKana(text) {
     if (!text) return "";
     let t = this.cleanEndingNenyan(text).replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
@@ -497,7 +533,6 @@ class AudioSpeechEngine {
     return blobUrl;
   }
 
-  /* ★【自声エコー厳密判定】ユーザーの「おまかせ」発言等を誤破棄しない安全判定 */
   _isSelfEcho(text) {
     if (!text) return true;
     const normalized = text.replace(/[\s、。！？ニャンニャ]/g, '');
@@ -804,7 +839,6 @@ const StorageManager = {
   },
   defaultEyelidCoords: { y: 172, x: 0, gap: 28, size: 16 },
 
-  /* ★【非破壊ストレージ集計】真実のサイズ（約0.02MB）を測定 */
   getStorageUsage() {
     let totalBytes = 0, photoBytes = 0, chatBytes = 0, metaBytes = 0;
     try {
@@ -976,10 +1010,16 @@ const StorageManager = {
   },
   saveAllDiaries(list) { localStorage.setItem(DATA_KEYS.DIARIES, JSON.stringify(list)); },
 
-  /* ★【完全防護】指定日の日記がすでに作成済みか判定する安全ガード */
+  /* 指定日の日記（実質的本文20文字以上）が存在するか確実に判定 */
   hasDiary(dateKey) {
     const list = this.loadAllDiaries();
-    return list.some(d => d.dateKey === dateKey && d.content && d.content.trim().length > 0);
+    return list.some(d => d.dateKey === dateKey && d.content && d.content.trim().length >= 20);
+  },
+
+  /* 指定日の日記オブジェクトを取得 */
+  getDiary(dateKey) {
+    const list = this.loadAllDiaries();
+    return list.find(d => d.dateKey === dateKey) || null;
   },
 
   saveDiary(entryText, customDateKey = null, customFullDate = null, photoData = null, currentLogCount = null, kuroComment = null) {
@@ -991,10 +1031,11 @@ const StorageManager = {
     let cleanContent = AppCore.audio.cleanEndingNenyan(entryText);
     let extractedComment = kuroComment;
 
-    const match = cleanContent.match(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?)\s*([^\n]+)/);
+    // 「クロのひとこと」を高精度に分離抽出
+    const match = cleanContent.match(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?)\s*([^\n]+)/);
     if (match) {
       if (!extractedComment) extractedComment = match[1].trim();
-      cleanContent = cleanContent.replace(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?)\s*[^\n]+$/, '').trim();
+      cleanContent = cleanContent.replace(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?)\s*[^\n]+$/, '').trim();
     }
 
     let list = this.loadAllDiaries();
@@ -1143,10 +1184,10 @@ const StorageManager = {
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆中央司令塔（app.js Part 2/2）
    - 【徹底防護】お休み中（居眠りモード）のステータス誤上書きを100%完全根絶
-   - 【自動補完エンジン完成】生活日基準（getYesterdayLifeInfo）による昨日の日記自動生成
+   - 【アーキテクチャ根本治療】カレンダー生活日リストに基づく日記帳（未作成日も自然にめくれる設計）
+   - 【スマホ復帰完全連動】画面オン時（visibilitychange/pageshow）＆日記帳タップ時の即時自動点検
    - 【既存日記100%保護】既に日記が存在する日は物理的に完全スキップし、既存データを絶対保護
    - 【本物の一言保証】昨日の会話ログに即したオリジナルの「クロのひとこと」を生成・記録
-   - 【日記帳レスキュー機能】未作成の昨日がある場合、日記帳内からもワンタップで即時作成可能
    - 【即時同期描画】案内カード（Googleマップ・ニュース）をセリフと同時にタイムラインへ即時表示
    - 【音声タイマー停止】「タイマー止めて」「アラーム消して」の音声コマンドで即時停止
    - 【高速保存スマート判定】APIキー変更時のみ導通テストを行い、通常設定変更は待ち時間ゼロ
@@ -1673,12 +1714,12 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
     return [];
   }
 
-  /* ★【日付整合＆本物の一言保証】指定日の会話内容に基づき固有のひとことを生成 */
+  /* 会話内容に基づき固有のひとことを高精度生成 */
   async generateDailyDiarySummary(dailyAllLogs, targetLifeDateKey = null, targetLifeFullDate = null) {
     if (!this.apiKey) return { success: false };
 
     const timeInfo = TimeProvider.getCurrentInfo();
-    const fullDate = targetLifeFullDate || timeInfo.lifeFullDate;
+    const fullDate = targetLifeFullDate || (targetLifeDateKey ? TimeProvider.formatDateKeyToFull(targetLifeDateKey) : timeInfo.lifeFullDate);
     const lifeKey = targetLifeDateKey || timeInfo.lifeLogKey;
 
     const filteredLogs = dailyAllLogs.filter(l => l.text && !l.text.startsWith('http') && !/(?:絵?日記|にっき).*(?:書いて|まとめて)/.test(l.text));
@@ -1717,10 +1758,10 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
 
           let content = clean;
           let kuroComment = "";
-          const match = clean.match(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?)\s*([^\n]+)/);
+          const match = clean.match(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?)\s*([^\n]+)/);
           if (match) {
             kuroComment = match[1].trim();
-            content = clean.replace(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?)\s*[^\n]+$/, '').trim();
+            content = clean.replace(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?)\s*[^\n]+$/, '').trim();
           }
 
           const pool = StorageManager.getDailyPhotoPool(lifeKey);
@@ -1755,7 +1796,12 @@ const AppCore = {
     timerId: null, timerSeconds: 0, timerLabel: "", isTimerPaused: false, isTimerCompleted: false,
     chimeTimerId: null,
     wakeLockSentinel: null, isLandscape: false,
-    studioDiaries: [], studioDiaryPageIdx: 0, isDiaryReading: false,
+
+    /* 日記帳モーダルの日付一元管理ステート */
+    studioDateKeys: [],
+    studioCurrentDateIdx: 0,
+    isDiaryReading: false,
+
     idleSoliloquyTimer: null, lastActivityTime: Date.now()
   },
 
@@ -1801,6 +1847,7 @@ const AppCore = {
     this._bindPhotoUploadUI();
     this._bindOrientationWatcher();
     this._bindScrollToBottomUI();
+    this._bindDeviceWakeWatcher();
 
     this._renderMemories();
     this._restoreTimelineHistory();
@@ -1822,12 +1869,24 @@ const AppCore = {
     this.audio.prefetchVoice("おやびん、わたしはクロだニャン🐾", spk);
     this.audio.preloadAllFillers(spk);
 
-    /* ★【昨日の日記自動補完】朝4時以降の起動時に安全点検・自動作成 */
+    /* ★【朝4時以降自動補完】起動時の昨日の日記安全点検 */
     this.checkAndFinalizeYesterdayDiary();
     this._startIdleSoliloquyWatcher();
 
     setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
     Logger.log("[AppCore] 全システム正常稼働！全バグ根絶・健全稼働中ニャ🐾", "success");
+  },
+
+  /* ★【スマホ復帰監視】画面ロック解除やSafari復帰時に昨日の日記をスマート点検 */
+  _bindDeviceWakeWatcher() {
+    const handleWake = () => {
+      if (document.visibilityState === 'visible') {
+        Logger.log(`[Lifecycle] 📱 スマホ画面復帰を検知。未作成日記を点検ニャ…`, "info");
+        this.checkAndFinalizeYesterdayDiary();
+      }
+    };
+    document.addEventListener('visibilitychange', handleWake);
+    window.addEventListener('pageshow', handleWake);
   },
 
   _updateStorageMonitorUI() {
@@ -1918,46 +1977,38 @@ const AppCore = {
 
   resetActivityTimer() { this.state.lastActivityTime = Date.now(); },
 
-  /* ★【完全改修】昨日の日記自動補完エンジン（生活日連動・二重スキップ保護・トースト＆通知付き） */
+  /* ★【昨日の日記自動補完】生活日基準・既存保護・重複防止の自動作成エンジン */
   async checkAndFinalizeYesterdayDiary() {
     const timeInfo = TimeProvider.getCurrentInfo();
-    // 朝4時前の深夜未明は、まだ「昨夜のお話し中」とみなし処理を保留
     if (timeInfo.isLateNight) return;
 
-    // 正確な昨日の生活日情報を取得
     const yInfo = TimeProvider.getYesterdayLifeInfo();
     const yKey = yInfo.key;
     const yFullDate = yInfo.fullDate;
 
-    // 🛡️【完全防護】すでに日記が存在している日は絶対にスキップ（上書き・破損を100%防止）
+    // 🛡️ 既存の日記があれば絶対にスキップ（完全保護）
     if (StorageManager.hasDiary(yKey)) {
-      Logger.log(`[Diary] 昨日の日記（${yKey}）は既に作成済みのため安全にスキップ`, "info");
       return;
     }
 
-    // 昨日の会話ログを点検（実質的な会話が2件以上あるか）
     const yLogs = StorageManager.getDailyLogs(yKey);
     if (!yLogs || yLogs.length < 2) {
-      Logger.log(`[Diary] 昨日の会話ログ不足（${yLogs ? yLogs.length : 0}件）のため自動作成をスキップ`, "info");
       return;
     }
 
     Logger.log(`[Diary] 昨日の未作成絵日記を検出（${yFullDate} / 会話:${yLogs.length}件）。自動要約を開始ニャ…`, "info");
 
     try {
-      // 昨日の正確な日付と曜日をAIに明示して要約生成
       const res = await this.ai.generateDailyDiarySummary(yLogs, yKey, yFullDate);
       if (res.success && res.diaryText) {
-        // 絵日記を安全に保存
         StorageManager.saveDiary(res.diaryText, yKey, yFullDate, res.selectedPhoto, null, res.kuroComment);
 
         Logger.log(`[Diary] ✅ 昨日の絵日記の自動作成に大成功！(${yFullDate})`, "success");
         Toast.show(`おやびん！昨日の絵日記を書いておいたニャン🐾（${yFullDate}）`, "success", 4500);
 
-        // 画面タイムラインに温かいメッセージを添えてカードを表示
         const autoNotice = `おやびん！昨日は日記帳を閉じたあと、わたしが昨日の思い出絵日記を書いておいたニャン🐾 日記帳を見てみてニャ♪`;
         this.renderBubble('model', autoNotice);
-        const savedDiary = StorageManager.loadAllDiaries().find(d => d.dateKey === yKey);
+        const savedDiary = StorageManager.getDiary(yKey);
         if (savedDiary) this.renderDiaryCard(savedDiary);
 
         this._updateStorageMonitorUI();
@@ -2282,7 +2333,7 @@ const AppCore = {
       return;
     }
 
-    // 2. 絵日記作成
+    // 2. 絵日記作成コマンド
     const isDiary = /(?:今日|きょう)?(?:の)?(?:絵?日記|にっき).*(?:書いて|まとめて|記録して)/.test(text);
     if (isDiary) {
       this.audio.playImmediateFiller('think');
@@ -2472,14 +2523,22 @@ const AppCore = {
     }
   },
 
+  /* ==========================================================================
+     ★【根本治療】日記帳（アルバム）制御：カレンダー日付タイムライン方式
+     ========================================================================== */
   _bindBookStudioUI() {
     const modal = document.getElementById('book-studio-modal');
+
     document.getElementById('top-diary-btn')?.addEventListener('click', () => {
       this.resetActivityTimer();
       this.audio.stopListening();
       this.audio.unlockMasterAudio();
+
+      // 日記帳を開く瞬間にも昨日の未作成チェックを安全に実行
+      this.checkAndFinalizeYesterdayDiary();
       this.openBookStudio();
     });
+
     document.getElementById('btn-close-studio')?.addEventListener('click', () => {
       this.audio.stopReadingAloud();
       this.state.isDiaryReading = false;
@@ -2487,18 +2546,24 @@ const AppCore = {
       modal?.classList.remove('is-open');
       if (this.state.isRunning) this.audio.startListening();
     });
+
+    // 「◀ 前の日」ボタン（インデックスを進めて過去へめくる）
     document.getElementById('btn-studio-prev-page')?.addEventListener('click', () => {
-      if (this.state.studioDiaryPageIdx < this.state.studioDiaries.length - 1) {
-        this.state.studioDiaryPageIdx++; this._renderStudioDiaryPage();
+      if (this.state.studioCurrentDateIdx < this.state.studioDateKeys.length - 1) {
+        this.state.studioCurrentDateIdx++;
+        this._renderStudioDiaryPage();
       }
     });
+
+    // 「次の日 ▶」ボタン（インデックスを戻して最新へめくる）
     document.getElementById('btn-studio-next-page')?.addEventListener('click', () => {
-      if (this.state.studioDiaryPageIdx > 0) {
-        this.state.studioDiaryPageIdx--; this._renderStudioDiaryPage();
+      if (this.state.studioCurrentDateIdx > 0) {
+        this.state.studioCurrentDateIdx--;
+        this._renderStudioDiaryPage();
       }
     });
+
     document.getElementById('btn-studio-save-exit')?.addEventListener('click', () => {
-      StorageManager.saveAllDiaries(this.state.studioDiaries);
       Toast.show("絵日記を保存したニャン！📖✨", "success");
       modal?.classList.remove('is-open');
       if (this.state.isRunning) this.audio.startListening();
@@ -2506,8 +2571,10 @@ const AppCore = {
 
     document.addEventListener('click', (e) => {
       if (e.target && e.target.id === 'btn-read-diary-aloud') {
-        const cur = this.state.studioDiaries[this.state.studioDiaryPageIdx];
-        if (!cur) return;
+        const curDateKey = this.state.studioDateKeys[this.state.studioCurrentDateIdx];
+        const diary = StorageManager.getDiary(curDateKey);
+        if (!diary || !diary.content) return;
+
         if (this.state.isDiaryReading) {
           this.audio.stopReadingAloud();
           this.state.isDiaryReading = false;
@@ -2515,7 +2582,7 @@ const AppCore = {
         } else {
           this.state.isDiaryReading = true;
           this._updateDiaryReadBtnUI(true);
-          this.audio.readDiarySeamless(cur.content, null, null, () => {
+          this.audio.readDiarySeamless(diary.content, null, null, () => {
             this.state.isDiaryReading = false;
             this._updateDiaryReadBtnUI(false);
           });
@@ -2525,69 +2592,92 @@ const AppCore = {
   },
 
   openBookStudio() {
-    this.state.studioDiaries = JSON.parse(JSON.stringify(StorageManager.loadAllDiaries()));
-    this.state.studioDiaryPageIdx = 0;
+    // 全生活日キーの一覧（降順）を取得
+    this.state.studioDateKeys = TimeProvider.getAllActiveDateKeys();
+    this.state.studioCurrentDateIdx = 0;
     this._renderStudioDiaryPage();
     document.getElementById('book-studio-modal')?.classList.add('is-open');
   },
 
+  /* 選択された日付のページを描画（作成済み日記または未作成案内カード） */
   _renderStudioDiaryPage() {
     const pageContainer = document.getElementById('studio-diary-single-page');
     const pageIndicator = document.getElementById('studio-page-indicator');
-    const diaries = this.state.studioDiaries;
+    const prevBtn = document.getElementById('btn-studio-prev-page');
+    const nextBtn = document.getElementById('btn-studio-next-page');
+
     if (!pageContainer) return;
 
-    // 昨日の未作成チェック
-    const yInfo = TimeProvider.getYesterdayLifeInfo();
-    const hasYesterdayDiary = StorageManager.hasDiary(yInfo.key);
-    const yesterdayLogs = StorageManager.getDailyLogs(yInfo.key);
-    const canCreateYesterday = (!hasYesterdayDiary && yesterdayLogs && yesterdayLogs.length >= 2);
+    const dateKeys = this.state.studioDateKeys;
+    const curIdx = this.state.studioCurrentDateIdx;
+    const curDateKey = dateKeys[curIdx] || TimeProvider.getCurrentInfo().lifeLogKey;
+    const fullDate = TimeProvider.formatDateKeyToFull(curDateKey);
 
-    if (diaries.length === 0) {
-      if (canCreateYesterday) {
-        pageContainer.innerHTML = `
-          <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fffaf5; border:2px dashed #fed7aa; border-radius:20px; padding:30px 20px; text-align:center; gap:14px;">
-            <div style="font-size:46px;">🐾📖</div>
-            <div style="font-size:15.5px; font-weight:900; color:#9a3412;">昨日の絵日記がまだ書かれていませんニャ🐾</div>
-            <div style="font-size:12px; color:#c2410c; line-height:1.6; max-width:320px;">
-              昨日の会話ログ（${yesterdayLogs.length}件）が残っています！<br>
-              下のボタンを押すと、クロが昨日の思い出を絵日記にまとめて記録するニャン♪
-            </div>
-            <button type="button" id="btn-rescue-yesterday-diary" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:13px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ 昨日の絵日記を書くニャ！（${yInfo.fullDate}）</button>
+    // ページ番号と前次ボタンの活性制御
+    if (pageIndicator) pageIndicator.textContent = `${curIdx + 1} / ${dateKeys.length} 日目`;
+    if (prevBtn) prevBtn.disabled = (curIdx >= dateKeys.length - 1);
+    if (nextBtn) nextBtn.disabled = (curIdx <= 0);
+
+    const diary = StorageManager.getDiary(curDateKey);
+    const hasDiary = (diary && diary.content && diary.content.trim().length >= 20);
+    const photoPool = StorageManager.getDailyPhotoPool(curDateKey);
+    const dayLogs = StorageManager.getDailyLogs(curDateKey);
+
+    // 1. 日記が未作成の日の場合（温かい案内カード ＆ 作成ボタンを表示）
+    if (!hasDiary) {
+      const hasLogs = (dayLogs && dayLogs.length >= 2);
+      pageContainer.innerHTML = `
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fffaf5; border:2px dashed #fed7aa; border-radius:20px; padding:24px 18px; text-align:center; gap:12px;">
+          <div style="font-size:46px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">🐾📖</div>
+          <div style="font-size:15px; font-weight:900; color:#9a3412;">📅 ${fullDate}</div>
+          <div style="font-size:13px; font-weight:900; color:#c2410c;">まだ絵日記が書かれていませんニャ🐾</div>
+          <div style="font-size:11.5px; color:#ea580c; line-height:1.6; max-width:320px;">
+            ${hasLogs 
+              ? `この日の会話ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）が大切に保管されていますニャ！下のボタンを押すと、クロが思い出をぎゅっと絵日記にまとめますニャン♪` 
+              : `この日はまだクロとのお話し記録がありませんニャ。`}
           </div>
-        `;
-        document.getElementById('btn-rescue-yesterday-diary')?.addEventListener('click', async () => {
-          await this._rescueCreateYesterdayDiary(yInfo.key, yInfo.fullDate, yesterdayLogs);
-        });
-      } else {
-        pageContainer.innerHTML = '<div style="text-align:center;padding:40px;color:#9a3412;">まだ日記がありませんニャ🐾</div>';
-      }
-      if (pageIndicator) pageIndicator.textContent = "0 / 0 日目";
+          ${hasLogs ? `
+            <button type="button" id="btn-rescue-create-diary" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ この日の絵日記を書くニャ！（${fullDate}）</button>
+          ` : `
+            <button type="button" id="btn-empty-create-diary" style="background:#ffedd5; border:1.5px solid #ea580c; color:#c2410c; padding:8px 18px; border-radius:12px; font-size:12px; font-weight:900; cursor:pointer;">✍️ 今すぐ新しく書くニャ！</button>
+          `}
+        </div>
+      `;
+
+      document.getElementById('btn-rescue-create-diary')?.addEventListener('click', async () => {
+        await this._rescueCreateDiaryForDate(curDateKey, fullDate, dayLogs);
+      });
+
+      document.getElementById('btn-empty-create-diary')?.addEventListener('click', () => {
+        const dummyText = `今日もおやびんと一緒に過ごせて幸せな一日だったニャン🐾`;
+        StorageManager.saveDiary(dummyText, curDateKey, fullDate, photoPool[0]?.base64 || null, 0, "おやびん大好きニャ！");
+        this._renderStudioDiaryPage();
+        this._updateStorageMonitorUI();
+      });
       return;
     }
 
-    const cur = diaries[this.state.studioDiaryPageIdx];
-    if (pageIndicator) pageIndicator.textContent = `${this.state.studioDiaryPageIdx + 1} / ${diaries.length} 日目`;
-    const photoPool = StorageManager.getDailyPhotoPool(cur.dateKey);
-
+    // 2. 日記がすでに作成されている日の場合（通常の日記見開き表示）
     pageContainer.innerHTML = `
       <div class="book-page-sheet">
         <div class="book-page-header">
-          <span class="book-date-title">📅 ${cur.fullDate}</span>
+          <span class="book-date-title">📅 ${diary.fullDate}</span>
           <div class="book-meta-tags">
             <button type="button" class="btn-read-aloud" id="btn-read-diary-aloud">${this.state.isDiaryReading ? '🛑 朗読ストップ' : '🔊 クロが読むニャ♪'}</button>
             <button type="button" class="book-btn-del-entry" id="btn-del-cur-diary">🗑️ 削除</button>
           </div>
         </div>
+
         <div class="diary-photo-duo-container">
           <div class="photo-duo-left" id="book-photo-box">
-            ${cur.photo ? `<img src="${cur.photo}" class="book-photo-img"><span class="book-photo-zoom-hint">🔍 拡大</span>` : '<span style="font-size:11px;color:#ea580c;">写真なし</span>'}
+            ${diary.photo ? `<img src="${diary.photo}" class="book-photo-img"><span class="book-photo-zoom-hint">🔍 拡大</span>` : '<span style="font-size:11px;color:#ea580c;">写真なし</span>'}
           </div>
           <div class="photo-duo-right">
             <div class="duo-right-header"><span>📷 スナップ一覧（${photoPool.length}枚）</span></div>
             <div class="duo-right-grid-horizontal">
+              ${photoPool.length === 0 ? '<span style="font-size:10px;color:#94a3b8;margin:auto;">スナップなし</span>' : ''}
               ${photoPool.map((p, idx) => `
-                <div class="snap-grid-item ${cur.photo === p.base64 ? 'is-selected' : ''}" data-idx="${idx}">
+                <div class="snap-grid-item ${diary.photo === p.base64 ? 'is-selected' : ''}" data-idx="${idx}">
                   <img src="${p.base64}" class="snap-grid-img">
                   <button type="button" class="btn-snap-del" data-del="${idx}">✕</button>
                 </div>
@@ -2595,31 +2685,48 @@ const AppCore = {
             </div>
           </div>
         </div>
+
         <div class="book-content-box">
-          <textarea class="book-diary-textarea" id="studio-diary-text">${cur.content}</textarea>
+          <textarea class="book-diary-textarea" id="studio-diary-text">${diary.content}</textarea>
         </div>
+
         <div class="studio-diary-comment-box">
           <span class="studio-diary-comment-label">🐾 クロのひとこと:</span>
-          <textarea class="studio-diary-comment-textarea" id="studio-diary-comment" rows="2" placeholder="（ひとこと記録なし）">${cur.kuroComment || ""}</textarea>
+          <textarea class="studio-diary-comment-textarea" id="studio-diary-comment" rows="2" placeholder="（ひとこと記録なし）">${diary.kuroComment || ""}</textarea>
         </div>
       </div>
     `;
 
-    document.getElementById('studio-diary-text')?.addEventListener('input', (e) => { cur.content = e.target.value; });
-    document.getElementById('studio-diary-comment')?.addEventListener('input', (e) => { cur.kuroComment = e.target.value; });
-    document.getElementById('book-photo-box')?.addEventListener('click', () => { if (cur.photo) this.openPhotoLightbox(cur.photo); });
+    document.getElementById('studio-diary-text')?.addEventListener('input', (e) => {
+      diary.content = e.target.value;
+      StorageManager.saveDiary(diary.content, curDateKey, diary.fullDate, diary.photo, null, diary.kuroComment);
+    });
+
+    document.getElementById('studio-diary-comment')?.addEventListener('input', (e) => {
+      diary.kuroComment = e.target.value;
+      StorageManager.saveDiary(diary.content, curDateKey, diary.fullDate, diary.photo, null, diary.kuroComment);
+    });
+
+    document.getElementById('book-photo-box')?.addEventListener('click', () => {
+      if (diary.photo) this.openPhotoLightbox(diary.photo, `📖 ${diary.fullDate} の思い出写真`);
+    });
+
     document.getElementById('btn-del-cur-diary')?.addEventListener('click', () => {
-      if (window.confirm("この日の日記を削除しますかニャ？")) {
-        diaries.splice(this.state.studioDiaryPageIdx, 1);
-        this.state.studioDiaryPageIdx = Math.max(0, this.state.studioDiaryPageIdx - 1);
+      if (window.confirm(`「${diary.fullDate}」の日記を削除しますかニャ？\n（※会話ログやお写真はそのまま安全に残ります）`)) {
+        let allDiaries = StorageManager.loadAllDiaries();
+        allDiaries = allDiaries.filter(d => d.dateKey !== curDateKey);
+        StorageManager.saveAllDiaries(allDiaries);
         this._renderStudioDiaryPage();
+        this._updateStorageMonitorUI();
       }
     });
 
     pageContainer.querySelectorAll('.snap-grid-item').forEach(item => {
       item.onclick = (e) => {
         if (e.target.classList.contains('btn-snap-del')) return;
-        cur.photo = photoPool[parseInt(item.dataset.idx, 10)].base64;
+        const selected = photoPool[parseInt(item.dataset.idx, 10)].base64;
+        diary.photo = selected;
+        StorageManager.saveDiary(diary.content, curDateKey, diary.fullDate, diary.photo, null, diary.kuroComment);
         this._renderStudioDiaryPage();
       };
     });
@@ -2629,27 +2736,20 @@ const AppCore = {
         e.stopPropagation();
         if (window.confirm("この写真を削除しますかニャ？")) {
           const delIdx = parseInt(btn.dataset.del, 10);
-          const delPhotoBase64 = photoPool[delIdx]?.base64;
-          StorageManager.removePhotoFromDailyPool(cur.dateKey, delIdx);
-          if (cur.photo === delPhotoBase64) {
-            const updatedPool = StorageManager.getDailyPhotoPool(cur.dateKey);
-            cur.photo = updatedPool.length > 0 ? updatedPool[0].base64 : null;
-          }
+          StorageManager.removePhotoFromDailyPool(curDateKey, delIdx);
           this._renderStudioDiaryPage();
         }
       };
     });
   },
 
-  /* ★【手動レスキュー】日記帳内からワンタップで未作成の昨日の日記を安全生成 */
-  async _rescueCreateYesterdayDiary(yKey, yFullDate, yLogs) {
-    Toast.show("昨日の絵日記を作成中ニャ…🐾", "info");
-    const res = await this.ai.generateDailyDiarySummary(yLogs, yKey, yFullDate);
+  /* 指定日（昨日など）の絵日記をその場でAI要約・生成するレスキュー関数 */
+  async _rescueCreateDiaryForDate(targetDateKey, targetFullDate, dayLogs) {
+    Toast.show(`絵日記を一生懸命書いてるニャ…🐾`, "info");
+    const res = await this.ai.generateDailyDiarySummary(dayLogs, targetDateKey, targetFullDate);
     if (res.success && res.diaryText) {
-      StorageManager.saveDiary(res.diaryText, yKey, yFullDate, res.selectedPhoto, null, res.kuroComment);
-      Toast.show("昨日の絵日記を作成・保存したニャン！📖✨", "success");
-      this.state.studioDiaries = JSON.parse(JSON.stringify(StorageManager.loadAllDiaries()));
-      this.state.studioDiaryPageIdx = 0;
+      StorageManager.saveDiary(res.diaryText, targetDateKey, targetFullDate, res.selectedPhoto, null, res.kuroComment);
+      Toast.show(`絵日記を書き上げましたニャン！📖✨`, "success");
       this._renderStudioDiaryPage();
       this._updateStorageMonitorUI();
     } else {
