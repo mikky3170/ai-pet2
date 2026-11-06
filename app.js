@@ -7,6 +7,8 @@
    - 【時間完全修復】TimeProvider 内の参照エラーを根絶し、左上時計の正常動作を完全保証
    - 【アーキテクチャ根本治療】カレンダータイムライン（生活日リスト）による日付一元管理
    - 【徹底防護】お休み中（居眠りモード）のステータス誤上書きを100%完全根絶
+   - 【居眠り表情完全修復】お休み中におけるトーキング顔フリーズを根絶し、安らかなidle顔を保証
+   - 【TTSキー可視化】システム診断モニターに「🔑個別キー適用済 / 🆓無料枠」をリアルタイム明記
    - 【音響完全修復】直列カスケード回路によるプツプツノイズ100%根絶 ＆ 温かく豊かな音量の元祖ゴロゴロ音
    - 【非破壊ストレージ集計】既存データを壊さず、会話ログ内の写真残骸を分離集計し約0.02MBへ是正
    ※このPart 1は StorageManager の閉じカッコ（};）まで綺麗に完結しています。
@@ -302,7 +304,7 @@ class AudioSpeechEngine {
 
       masterGain.gain.setValueAtTime(0.02, now);
       masterGain.gain.linearRampToValueAtTime(0.72, now + 0.14);
-      masterGain.gain.exponentialRampToValueAtTime(0.001, now + 0.96);
+      masterGain.exponentialRampToValueAtTime(0.001, now + 0.96);
 
       osc.connect(filter);
       filter.connect(tremoloGain);
@@ -494,7 +496,10 @@ class AudioSpeechEngine {
     let initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodeURIComponent(text)}&speaker=${speakerId}`;
     if (vvKey) initUrl += `&key=${encodeURIComponent(vvKey)}`;
 
-    Logger.log(`[TTS] 音声生成開始 (話者:${speakerId}): 「${text.substring(0, 16)}…」`, "info");
+    // ★システム診断モニターでキー適用状態をリアルタイム明記
+    const keyStatusText = vvKey ? "🔑個別キー適用済" : "🆓無料枠";
+    Logger.log(`[TTS] 音声生成開始 (${keyStatusText}, 話者:${speakerId}): 「${text.substring(0, 16)}…」`, "info");
+
     const initRes = await fetch(initUrl, { signal });
     if (!initRes.ok) {
       Logger.log(`[TTS] HTTPエラー ${initRes.status}`, "error");
@@ -528,7 +533,7 @@ class AudioSpeechEngine {
     const blobUrl = URL.createObjectURL(blob);
     this.blobUrlCache.set(key, blobUrl);
     const ms = Math.round(performance.now() - t0);
-    Logger.log(`[TTS] ✅ 音声取得完了 (${ms}ms)`, "success");
+    Logger.log(`[TTS] ✅ 音声取得完了 (${ms}ms) [${keyStatusText}]`, "success");
     return blobUrl;
   }
 
@@ -991,6 +996,7 @@ const StorageManager = {
   },
   saveMemories(m) { localStorage.setItem(DATA_KEYS.MEMORIES, JSON.stringify(m)); },
 
+  /* ★【根本治療】散らばっていたダミークレンジングをここに一本化・集約 */
   loadAllDiaries() {
     try {
       const list = JSON.parse(localStorage.getItem(DATA_KEYS.DIARIES)) || [];
@@ -1188,14 +1194,16 @@ const StorageManager = {
     return true;
   }
 };
+
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆中央司令塔（app.js Part 2/2）
+   - 【居眠り表情完全修復】お休み中におけるトーキング顔フリーズを根絶し、安らかなidle顔を保証
+   - 【朝4時またぎ自動監視】開いたまま朝を迎えても自動で生活日を切り替え昨日の日記を完全救済
+   - 【防音シールド】タイマー完了アラーム鳴動中のマイク誤認識を物理的に完全遮断
    - 【夜20時基準生活リズム】夜20:00以降の自然な日記作成案内 ＆ 昼間は直近完成日記優先表示
    - 【データライフサイクル完全復元】logCountAtSave に基づく夜の会話自動追記エンジンの復元
    - 【徹底防護】お休み中（居眠りモード）のステータス誤上書きを100%完全根絶
    - 【アーキテクチャ根本治療】カレンダー生活日リストに基づく日記帳（未作成日も自然にめくれる設計）
-   - 【スマホ復帰完全連動】画面オン時（visibilitychange/pageshow）＆日記帳タップ時の即時自動点検
-   - 【本物の一言保証】昨日の会話ログに即したオリジナルの「クロのひとこと」を生成・記録
    - 【即時同期描画】案内カード（Googleマップ・ニュース）をセリフと同時にタイムラインへ即時表示
    - 【音声タイマー停止】「タイマー止めて」「アラーム消して」の音声コマンドで即時停止
    - 【高速保存スマート判定】APIキー変更時のみ導通テストを行い、通常設定変更は待ち時間ゼロ
@@ -1808,7 +1816,8 @@ const AppCore = {
     studioCurrentDateIdx: 0,
     isDiaryReading: false,
 
-    idleSoliloquyTimer: null, lastActivityTime: Date.now()
+    idleSoliloquyTimer: null, lastActivityTime: Date.now(),
+    lastCheckedLifeLogKey: null // 朝4時またぎ監視用
   },
 
   audio: new AudioSpeechEngine(),
@@ -1862,12 +1871,23 @@ const AppCore = {
 
     if (typeof VersionManager !== 'undefined') VersionManager.applyToDOM();
 
-    /* メイン画面左上の時計正常初期化 ＆ 毎秒タイマー */
+    /* ★【朝4時またぎ監視組み込み】時計初期化 ＆ 毎秒監視タイマー */
+    const initialInfo = TimeProvider.getCurrentInfo();
+    this.state.lastCheckedLifeLogKey = initialInfo.lifeLogKey;
     const clk = document.getElementById('clock-display');
-    if (clk) clk.textContent = TimeProvider.getCurrentInfo().clock;
+    if (clk) clk.textContent = initialInfo.clock;
+
     setInterval(() => {
+      const cur = TimeProvider.getCurrentInfo();
       const c = document.getElementById('clock-display');
-      if (c) c.textContent = TimeProvider.getCurrentInfo().clock;
+      if (c) c.textContent = cur.clock;
+
+      // 朝4:00を跨いで生活日が変わった瞬間を即座に自動検知！
+      if (this.state.lastCheckedLifeLogKey && cur.lifeLogKey !== this.state.lastCheckedLifeLogKey) {
+        Logger.log(`[Lifecycle] 🌅 朝4:00の生活日切り替えを検知（${this.state.lastCheckedLifeLogKey} ➔ ${cur.lifeLogKey}）。昨日の日記を自動救済ニャ…`, "info");
+        this.state.lastCheckedLifeLogKey = cur.lifeLogKey;
+        this.checkAndFinalizeYesterdayDiary();
+      }
     }, 1000);
 
     LocationProvider.initWatcher();
@@ -2254,6 +2274,10 @@ const AppCore = {
         this.state.timerId = null;
         if (this.state.wakeLockSentinel) { this.state.wakeLockSentinel.release(); this.state.wakeLockSentinel = null; }
         this.state.isTimerCompleted = true;
+
+        /* ★【防音シールド】アラーム鳴動中のマイク誤認識を物理的に完全遮断 */
+        this.audio.stopListening();
+
         if (widget) widget.className = 'is-completed';
         if (icon) icon.textContent = '🔔';
         if (disp) disp.textContent = '00:00 🔔';
@@ -2277,7 +2301,11 @@ const AppCore = {
         this.audio.speak(alertMsg, null, () => {
           this.renderBubble('model', alertMsg);
           if (this.avatar && this.state.isRunning) this.avatar.setEmotion('talking');
-        }, () => { if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle'); });
+        }, () => {
+          if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
+          /* セリフ終了後に安全にマイクを再開 */
+          if (this.state.isRunning && !this.audio.isSpeaking) this.audio.startListening();
+        });
       }
     }, 1000);
   },
@@ -3193,20 +3221,26 @@ const AppCore = {
         this.state.isProcessingInput = false;
         this.state.isDiaryReading = false;
 
+        /* ★【居眠り表情完全修復】お休み中への突入時に表情を強制的にidleへリセット！ */
+        if (this.avatar) this.avatar.setEmotion('idle');
+
         petContainer?.classList.add('is-paused-mode');
         if (st) st.textContent = "💤 すやすやお昼寝中…";
 
         if (this.avatar) this.avatar.triggerYawn();
         setTimeout(() => {
-          if (!this.state.isRunning && wrap) {
-            wrap.classList.add('is-sleeping');
+          if (!this.state.isRunning) {
+            /* あくび後も確実にidle顔で安らかに目を閉じる */
+            if (this.avatar) this.avatar.setEmotion('idle');
+            if (wrap) wrap.classList.add('is-sleeping');
           }
         }, 500);
 
-        Logger.log(`[Status] 💤 お休み中（居眠りモード開始・ステータス完全防護）`, "info");
+        Logger.log(`[Status] 💤 お休み中（居眠りモード開始・ステータス完全防護・idle顔ロック）`, "info");
       } else {
         petContainer?.classList.remove('is-paused-mode');
         if (wrap) wrap.classList.remove('is-sleeping');
+        if (this.avatar) this.avatar.setEmotion('idle');
         if (st) st.textContent = "👂 聴いてるニャ♪";
         const wakeMsg = "ふぁ〜あ…！おやびん、起きたニャン🐾";
         this.audio.speak(wakeMsg, null, () => this.renderBubble('model', wakeMsg), () => {
