@@ -1,13 +1,14 @@
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆中央司令塔（app.js Part 1/2）
    - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
-   - 【データライフサイクル完全復元】logCountAtSave に基づく夜の会話自動追記エンジンの復元
+   - 【お散歩＆寄り道拡張】公園・カフェ・休憩場所・散策スポットのGoogleマップカード即時連携
+   - 【オンデマンド即時GPS測位】場所質問時にその場で最新位置情報を取得してから即答
+   - 【言葉遊び＆知育】しりとり・なぞなぞ・お散歩探検ミッション・肉球うらないのスマート対話
    - 【夜20時基準生活リズム】夜20:00以降の自然な日記作成案内 ＆ 昼間は直近完成日記優先表示
-   - 【完全品質検証済み】全行構文解析・DOM完全突合・デグレゼロ保証
-   - 【時間完全修復】TimeProvider 内の参照エラーを根絶し、左上時計の正常動作を完全保証
-   - 【アーキテクチャ根本治療】カレンダータイムライン（生活日リスト）による日付一元管理
-   - 【徹底防護】お休み中（居眠りモード）のステータス誤上書きを100%完全根絶
+   - 【データライフサイクル完全復元】logCountAtSave に基づく夜の会話自動追記エンジンの復元
    - 【居眠り表情完全修復】お休み中におけるトーキング顔フリーズを根絶し、安らかなidle顔を保証
+   - 【朝4時またぎ自動監視】開いたまま朝を迎えても自動で生活日を切り替え昨日の日記を完全救済
+   - 【防音シールド】タイマー完了アラーム鳴動中のマイク誤認識を物理的に完全遮断
    - 【TTSキー可視化】システム診断モニターに「🔑個別キー適用済 / 🆓無料枠」をリアルタイム明記
    - 【音響完全修復】直列カスケード回路によるプツプツノイズ100%根絶 ＆ 温かく豊かな音量の元祖ゴロゴロ音
    - 【非破壊ストレージ集計】既存データを壊さず、会話ログ内の写真残骸を分離集計し約0.02MBへ是正
@@ -20,17 +21,17 @@ const FIXED_LITE_MODELS = Object.freeze([
   "gemini-flash-lite-latest"   // 第2優先（タイムアウト時バックアップ）
 ]);
 
-/* ★ 正式なFunction Calling定義 */
+/* ★ 正式なFunction Calling定義（公園・カフェ・散策スポットへ自然拡張） */
 const KURO_TOOLS = [
   {
     functionDeclarations: [
       {
         name: "searchMapPlaces",
-        description: "Googleマップでお店や施設を検索して案内カードを表示します。",
+        description: "Googleマップでお店（ラーメン、焼肉等）や公園、カフェ、休憩スポット、散策施設を検索して案内カードを表示します。",
         parameters: {
           type: "OBJECT",
           properties: {
-            spotName: { type: "STRING", description: "検索する店名や料理ジャンル（例: 炭火ホルモン 丸川, ラーメン）" },
+            spotName: { type: "STRING", description: "検索する店名・施設・ジャンル（例: 近くの公園, カフェ, 炭火ホルモン 丸川, ラーメン）" },
             area: { type: "STRING", description: "検索するエリア（例: 東京都東村山市, 現在地周辺）" }
           },
           required: ["spotName"]
@@ -496,7 +497,7 @@ class AudioSpeechEngine {
     let initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodeURIComponent(text)}&speaker=${speakerId}`;
     if (vvKey) initUrl += `&key=${encodeURIComponent(vvKey)}`;
 
-    // ★システム診断モニターでキー適用状態をリアルタイム明記
+    // システム診断モニターでキー適用状態をリアルタイム明記
     const keyStatusText = vvKey ? "🔑個別キー適用済" : "🆓無料枠";
     Logger.log(`[TTS] 音声生成開始 (${keyStatusText}, 話者:${speakerId}): 「${text.substring(0, 16)}…」`, "info");
 
@@ -553,7 +554,7 @@ class AudioSpeechEngine {
     const speakerId = (speakerIdOverride !== null) ? speakerIdOverride : AppCore.getSpeakerId();
     const cooldownMs = (cooldownOverride !== null) ? cooldownOverride : 350;
 
-    let clean = this._convertAllNumbersToKana(text).replace(/<[^>]*>/g, '').replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷🏠]/gu, '').trim();
+    let clean = this._convertAllNumbersToKana(text).replace(/<[^>]*>/g, '').replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷🏠🔮]/gu, '').trim();
     if (!clean) {
       if (onStart) onStart(); if (onEnd) onEnd();
       setTimeout(() => { if (AppCore.state.isRunning && !this.isActionButtonLocked) this.startListening(); }, cooldownMs);
@@ -720,7 +721,7 @@ class AudioSpeechEngine {
 }
 
 /* ==========================================================================
-   MODULE 2: オンデマンドGPS ＆ 在宅センサー
+   MODULE 2: オンデマンドGPS ＆ リアルタイム在宅センサー
    ========================================================================== */
 const LocationProvider = {
   lat: null, lon: null, homeLat: null, homeLon: null,
@@ -757,9 +758,10 @@ const LocationProvider = {
     }
   },
 
+  /* ★場所質問時や散策時にその場で最新GPSを即座に測位するオンデマンド取得 */
   async fetchLocationOnDemand(fetchSpots = true) {
     this._loadHomeCoordsFromStorage();
-    if (!('geolocation' in navigator)) { await this._applyHomeFallback(); return; }
+    if (!('geolocation' in navigator)) { await this._applyHomeFallback(); return false; }
     return new Promise(resolve => {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
@@ -767,10 +769,11 @@ const LocationProvider = {
           await this._reverseGeocode(this.lat, this.lon);
           this._checkHomeProximity();
           this._fetchWeather(this.lat, this.lon);
+          Logger.log(`[GPS] 📍 リアルタイム最新測位完了: ${this.townLevelArea} (${this.isAtHome ? 'お家' : 'お散歩中'})`, "info");
           resolve(true);
         },
         async () => { await this._applyHomeFallback(); resolve(false); },
-        { enableHighAccuracy: true, timeout: 6000 }
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
       );
     });
   },
@@ -996,7 +999,7 @@ const StorageManager = {
   },
   saveMemories(m) { localStorage.setItem(DATA_KEYS.MEMORIES, JSON.stringify(m)); },
 
-  /* ★【根本治療】散らばっていたダミークレンジングをここに一本化・集約 */
+  /* 散らばっていたダミークレンジングをここに一本化・集約 */
   loadAllDiaries() {
     try {
       const list = JSON.parse(localStorage.getItem(DATA_KEYS.DIARIES)) || [];
@@ -1015,7 +1018,7 @@ const StorageManager = {
   },
   saveAllDiaries(list) { localStorage.setItem(DATA_KEYS.DIARIES, JSON.stringify(list)); },
 
-  /* 指定日にちゃんとした絵日記が存在するか判定（初期仮文や空日記は未完成と判定） */
+  /* 指定日にちゃんとした絵日記が存在するか判定 */
   isProperDiary(diary) {
     if (!diary || !diary.content) return false;
     const txt = diary.content.trim();
@@ -1033,7 +1036,7 @@ const StorageManager = {
     return list.find(d => d.dateKey === dateKey) || null;
   },
 
-  /* ★【データライフサイクル完全保持】日記作成時の会話数を確実に記録（夜の追加会話検知用） */
+  /* 日記作成時の会話数を確実に記録（夜の追加会話検知用） */
   saveDiary(entryText, customDateKey = null, customFullDate = null, photoData = null, currentLogCount = null, kuroComment = null) {
     if (!entryText || entryText.length < 15) return false;
     const timeInfo = TimeProvider.getCurrentInfo();
@@ -1194,19 +1197,19 @@ const StorageManager = {
     return true;
   }
 };
-
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆中央司令塔（app.js Part 2/2）
+   - 【オンデマンド即時GPS測位】場所質問時にその場で最新位置情報を取得してから即答
+   - 【お散歩＆寄り道拡張】公園・カフェ・休憩場所・散策スポットのGoogleマップカード即時連携
+   - 【言葉遊び＆知育】しりとり・なぞなぞ・お散歩探検ミッション・肉球うらないのスマート対話
+   - 【音声案内サポート】「何ができるの？」と聞くだけでモードごとのキーワードを声で案内
+   - 【絵日記思い出昇華】ゲームや探検の思い出を生き生きと温かくまとめる日記要約
    - 【居眠り表情完全修復】お休み中におけるトーキング顔フリーズを根絶し、安らかなidle顔を保証
    - 【朝4時またぎ自動監視】開いたまま朝を迎えても自動で生活日を切り替え昨日の日記を完全救済
    - 【防音シールド】タイマー完了アラーム鳴動中のマイク誤認識を物理的に完全遮断
    - 【夜20時基準生活リズム】夜20:00以降の自然な日記作成案内 ＆ 昼間は直近完成日記優先表示
    - 【データライフサイクル完全復元】logCountAtSave に基づく夜の会話自動追記エンジンの復元
    - 【徹底防護】お休み中（居眠りモード）のステータス誤上書きを100%完全根絶
-   - 【アーキテクチャ根本治療】カレンダー生活日リストに基づく日記帳（未作成日も自然にめくれる設計）
-   - 【即時同期描画】案内カード（Googleマップ・ニュース）をセリフと同時にタイムラインへ即時表示
-   - 【音声タイマー停止】「タイマー止めて」「アラーム消して」の音声コマンドで即時停止
-   - 【高速保存スマート判定】APIキー変更時のみ導通テストを行い、通常設定変更は待ち時間ゼロ
    - キャラクター描画＆お休み中の「愛らしい自然な居眠り」完全維持
    ========================================================================== */
 
@@ -1431,7 +1434,7 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   MODULE 5: Gemini AI思考エンジン（マブダチ対話＆ダイナミック記憶）
+   MODULE 5: Gemini AI思考エンジン（マブダチ対話＆ダイナミック知育記憶）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
@@ -1504,17 +1507,29 @@ class AIThoughtEngine {
     const recentDiaries = StorageManager.getRecentDiariesSummary(3);
     const pastMemoryDiary = StorageManager.findRelevantPastDiary(promptText);
 
+    /* ★モード別対話＆キーワードルールの完全定義 */
     const modeInstruction = isAssistant ? `
 【★モード：👓 おてつだいモード（おやびんの世界一のマブダチ＆天才案内役）】
-・おやびんの大好物（ラーメン、餃子、焼肉、ホルモン、お寿司、麻婆豆腐）を熟知しています。
+・おやびんの大好物（ラーメン、餃子、焼肉、ホルモン、お寿司、麻婆豆腐）や、お散歩中の『近くの公園』『カフェ』『休憩スポット』『最新ニュース』を熟知しています。
 ・【超重要：対話型コンシェルジュの会話ラリールール】
-　1. おやびんが「お腹空いた」「なんか食べたい」「おすすめ教えて」など漠然と言った時は、絶対にまだツール（searchMapPlaces）を実行しないでください！
-　　「今日はお肉の気分？それともラーメンにするニャ？ホルモンも最高ニャ！」のように好物を提案しておやびんと楽しくラリーしてください。
-　2. 会話のラリーでおやびんの気分や料理ジャンル（ラーメン、焼肉等）や具体的な店名が定まった時、または「おまかせ」「今すぐ探して」と頼まれた時だけ、満を持して「searchMapPlaces」ツールを実行してください。
+　1. おやびんが漠然と「お腹空いた」「どこか行きたい」「おすすめ教えて」と言った時は、まだツール（searchMapPlaces）を実行しないでください！
+　　「今日はお肉の気分？それともラーメンにするニャ？近くの公園でお散歩も最高ニャ！」のように好物を提案しておやびんと楽しくラリーしてください。
+　2. 会話のラリーでおやびんの気分や料理ジャンル（ラーメン、焼肉等）や具体的な施設・公園・カフェが定まった時、または「おまかせ」「今すぐ探して」「近くの公園教えて」と頼まれた時だけ、満を持して「searchMapPlaces」ツールを実行してください。
 　3. ニュースの場合も同様に、「大谷翔平の話題？それとも東村山や地元のニュースを見るニャ？」とラリーし、興味が定まった時にだけ「searchLatestNews」ツールを実行してください。
 ` : `
-【★モード：🐾 なかよしモード】
-おやびんと純粋にお話しを楽しむ甘えん坊モードです。ツールや地図は一切使わず、愛らしく雑談してください。
+【★モード：🐾 なかよしモード（お遊び・絆・スキンシップ）】
+おやびんと純粋にお話しや言葉遊びを楽しむ甘えん坊モードです。ツールや地図は一切使わず、愛らしく対話してください。
+【★なかよしモードでの言葉遊びルール】
+1. しりとり（「しりとりしよ！」等）：
+　おやびんからしりとりを持ちかけられたら大喜びで応じ、テンポよく1単語（可愛い語尾付き）で返してください。『ん』がついたら負けを認めて悔しがってください（例:「ニャーッ！『ん』って言っちゃったニャ…クロの負けニャ〜！」）。
+2. なぞなぞ・クイズ（「なぞなぞ出して」「クイズしよ」等）：
+　出題時は【絶対に答えを言わず】、問題だけ出してワクワクしながら待ってください。おやびんが答えたら正誤を判定し、間違えたら可愛いヒントを出してあげてください。正解したら大絶賛してください。
+3. お散歩探検ミッション（「ミッションちょうだい」「探検しよ」等）：
+　探検隊長になり、お散歩で見つけられそうな可愛いもの（黄色いお花、ポスト、丸い看板、可愛い猫など）を1つ指定して写真で見せるよう伝えてください。写真を見せてくれたら大喜びで褒めてください。
+4. 肉球うらない（「今日の運勢は？」「占って」等）：
+　肉球水晶で占うフリをして、今日のラッキーフード（ラーメン等）やラッキーアクションを楽しく占ってください。
+5. 会話の柔軟性：
+　しりとりやクイズの最中におやびんが急に時間や天気など別の話題を振ったら、機械的に固執せず、自然にそっちの話題に合わせて返答してください。
 `;
 
     const systemPrompt = `
@@ -1597,7 +1612,7 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
             const args = callInfo.args || {};
 
             if (callInfo.name === "searchMapPlaces") {
-              const spot = args.spotName || "美味しいお店";
+              const spot = args.spotName || "近くの公園・評判店";
               const area = args.area || townArea || "東村山市";
               Logger.log(`[Tool] 📍 マップ検索実行: ${spot} (${area})`, "info");
               cards = this._createSmartMapCards(spot, area);
@@ -1663,8 +1678,8 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
     if (spotLimit >= 2) {
       cards.push({
         type: 'map-sub',
-        icon: '🍜',
-        title: `${cleanSpot}（現在地周辺の評判店）`,
+        icon: '🌳',
+        title: `${cleanSpot}（現在地周辺のスポット）`,
         url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanSpot + ' 人気')}`
       });
     }
@@ -1673,8 +1688,8 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
       cards.push({
         type: 'map-all',
         icon: '🗺️',
-        title: `${searchArea}の人気グルメ一覧（まとめ）`,
-        url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchArea + ' グルメ')}`
+        title: `${searchArea}の周辺おすすめ一覧（まとめ）`,
+        url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchArea + ' スポット')}`
       });
     }
     return cards;
@@ -1718,8 +1733,8 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
     const isNewsConfirmed = /(?:ニュースをチェックしたニャ|最新ニュース.*見てみてニャ)/.test(speechText);
 
     if (isMapConfirmed) {
-      const match = combined.match(/(?:炭火ホルモン\s*丸川|丸川|餃子の満洲|ラーメン|ホルモン|餃子|焼肉|寿司|麻婆豆腐|カレー|うどん|カフェ)/);
-      const spot = match ? match[0] : "おすすめの人気店";
+      const match = combined.match(/(?:公園|カフェ|ベンチ|散歩|炭火ホルモン\s*丸川|丸川|餃子の満洲|ラーメン|ホルモン|餃子|焼肉|寿司|麻婆豆腐|カレー|うどん)/);
+      const spot = match ? match[0] : "おすすめスポット";
       return this._createSmartMapCards(spot, LocationProvider.cityArea);
     }
     if (isNewsConfirmed) {
@@ -1730,6 +1745,7 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
     return [];
   }
 
+  /* ★絵日記要約AI：ゲームや探検の思い出を生き生きとまとめるルール */
   async generateDailyDiarySummary(dailyAllLogs, targetLifeDateKey = null, targetLifeFullDate = null) {
     if (!this.apiKey) return { success: false };
 
@@ -1751,7 +1767,8 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
 【執筆ルール】
 - 語尾は「〜ニャ」「〜ニャン♪」「〜だニャ🐾」を使用（「〜ねニャン」は禁止）。
 - 本文は250〜450文字程度。
-- 【超重要】日記本文の最後に必ず改行して、今日話した具体的な内容（食べたもの、話題、出来事など）に深く関連した、おやびんへの愛嬌あふれる本物のひとことを【クロのひとこと：〇〇】という形式で1行添えてください。（※ありきたりな定型文やダミー文は絶対に禁止します）。
+- 【超重要ルール】しりとりやクイズ、お散歩ミッション、占いで遊んだ場合は、単語をそのまま並べるのではなく「おやびんと白熱のしりとり対決をして大はしゃぎした」「お散歩ミッションでお花を見つけて冒険した」のように、楽しかった思い出として温かく生き生きとまとめてください。
+- 【超重要】日記本文の最後に必ず改行して、今日話した具体的な内容に深く関連した、おやびんへの愛嬌あふれる本物のひとことを【クロのひとこと：〇〇】という形式で1行添えてください（定型文・ダミー文は完全禁止）。
 `;
 
     try {
@@ -1817,7 +1834,7 @@ const AppCore = {
     isDiaryReading: false,
 
     idleSoliloquyTimer: null, lastActivityTime: Date.now(),
-    lastCheckedLifeLogKey: null // 朝4時またぎ監視用
+    lastCheckedLifeLogKey: null
   },
 
   audio: new AudioSpeechEngine(),
@@ -1871,7 +1888,7 @@ const AppCore = {
 
     if (typeof VersionManager !== 'undefined') VersionManager.applyToDOM();
 
-    /* ★【朝4時またぎ監視組み込み】時計初期化 ＆ 毎秒監視タイマー */
+    /* 朝4時またぎ監視組み込み時計初期化 ＆ 毎秒監視タイマー */
     const initialInfo = TimeProvider.getCurrentInfo();
     this.state.lastCheckedLifeLogKey = initialInfo.lifeLogKey;
     const clk = document.getElementById('clock-display');
@@ -1882,7 +1899,6 @@ const AppCore = {
       const c = document.getElementById('clock-display');
       if (c) c.textContent = cur.clock;
 
-      // 朝4:00を跨いで生活日が変わった瞬間を即座に自動検知！
       if (this.state.lastCheckedLifeLogKey && cur.lifeLogKey !== this.state.lastCheckedLifeLogKey) {
         Logger.log(`[Lifecycle] 🌅 朝4:00の生活日切り替えを検知（${this.state.lastCheckedLifeLogKey} ➔ ${cur.lifeLogKey}）。昨日の日記を自動救済ニャ…`, "info");
         this.state.lastCheckedLifeLogKey = cur.lifeLogKey;
@@ -1896,7 +1912,6 @@ const AppCore = {
     this.audio.prefetchVoice("おやびん、わたしはクロだニャン🐾", spk);
     this.audio.preloadAllFillers(spk);
 
-    /* ★【データライフサイクル完全復元】起動時の昨日の日記安全点検 */
     this.checkAndFinalizeYesterdayDiary();
     this._startIdleSoliloquyWatcher();
 
@@ -1904,7 +1919,6 @@ const AppCore = {
     Logger.log("[AppCore] 全システム正常稼働！データライフサイクル＆全機能健全稼働中ニャ🐾", "success");
   },
 
-  /* スマホ画面復帰時の自動点検リスナー */
   _bindDeviceWakeWatcher() {
     const handleWake = () => {
       if (document.visibilityState === 'visible') {
@@ -1996,7 +2010,7 @@ const AppCore = {
         if (b) { b.style.opacity = '0.85'; b.style.borderStyle = 'dashed'; }
         if (this.avatar) {
           this.avatar.setEmotion('happy');
-          setTimeout(() => { if (!this.audio.isSpeaking && this.state.isRunning) this.avatar.setEmotion('idle'); }, 2000);
+          setTimeout(() => { if (!this.audio.isSpeaking && this.avatar && this.state.isRunning) this.avatar.setEmotion('idle'); }, 2000);
         }
       }
     }, 5000);
@@ -2004,8 +2018,6 @@ const AppCore = {
 
   resetActivityTimer() { this.state.lastActivityTime = Date.now(); },
 
-  /* ★【データライフサイクル完全復元】
-     お昼に作ったあとの夜の会話追加（logCountAtSave）を自動検知し、夜の分も含めて最終確定するエンジン */
   async checkAndFinalizeYesterdayDiary() {
     const timeInfo = TimeProvider.getCurrentInfo();
     if (timeInfo.isLateNight) return;
@@ -2015,9 +2027,7 @@ const AppCore = {
     const yFullDate = yInfo.fullDate;
 
     const yLogs = StorageManager.getDailyLogs(yKey);
-    if (!yLogs || yLogs.length < 2) {
-      return;
-    }
+    if (!yLogs || yLogs.length < 2) return;
 
     const existingDiary = StorageManager.getDiary(yKey);
     const isProper = StorageManager.isProperDiary(existingDiary);
@@ -2275,7 +2285,7 @@ const AppCore = {
         if (this.state.wakeLockSentinel) { this.state.wakeLockSentinel.release(); this.state.wakeLockSentinel = null; }
         this.state.isTimerCompleted = true;
 
-        /* ★【防音シールド】アラーム鳴動中のマイク誤認識を物理的に完全遮断 */
+        /* 防音シールド：チャイム鳴動中のマイク誤認識を物理的に完全遮断 */
         this.audio.stopListening();
 
         if (widget) widget.className = 'is-completed';
@@ -2303,7 +2313,6 @@ const AppCore = {
           if (this.avatar && this.state.isRunning) this.avatar.setEmotion('talking');
         }, () => {
           if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
-          /* セリフ終了後に安全にマイクを再開 */
           if (this.state.isRunning && !this.audio.isSpeaking) this.audio.startListening();
         });
       }
@@ -2377,7 +2386,19 @@ const AppCore = {
       return;
     }
 
-    // 2. 絵日記作成コマンド
+    // 2. ★何ができるの？音声案内サポート
+    if (/(?:何ができる|なにができる|何ができるの|なにができるの|何して遊ぶ|なにができるか教えて)/.test(text)) {
+      const isAssistant = this.state.isAssistantMode;
+      const guideText = isAssistant
+        ? "おてつだいモードでは、『近くの公園』『評判のカフェ』『美味しいラーメン』『最新ニュース』を地図付きで案内できるニャン👓 何を調べるニャ？"
+        : "なかよしモードでは、『しりとり』『なぞなぞ』『お散歩ミッション』『今日の運勢』で一緒に遊べるニャン🐾 なにして遊ぶニャ？";
+      this.audio.speak(guideText, null, () => this.renderBubble('model', guideText), () => {
+        this.state.isProcessingInput = false;
+      });
+      return;
+    }
+
+    // 3. 絵日記作成コマンド
     const isDiary = /(?:今日|きょう)?(?:の)?(?:絵?日記|にっき).*(?:書いて|まとめて|記録して)/.test(text);
     if (isDiary) {
       this.audio.playImmediateFiller('think');
@@ -2402,7 +2423,7 @@ const AppCore = {
       return;
     }
 
-    // 3. タイマー判定
+    // 4. タイマー判定
     if (/(?:タイマー|測って|計って|カウント)/.test(text)) {
       const normText = this._normalizeNumbers(text);
       let totalSec = 0;
@@ -2430,8 +2451,10 @@ const AppCore = {
       }
     }
 
-    // 4. 在宅・現在地確認
+    // 5. ★在宅・現在地確認（その場で即時GPS測位を行ってから正確に即答！）
     if (/(?:いまどこ|今どこ|ここどこ|どこにいる)/.test(text)) {
+      Toast.show("現在地を確認中ニャ…📍", "info", 1500);
+      await LocationProvider.fetchLocationOnDemand(false);
       const isAtHome = LocationProvider.isAtHome;
       const rep = isAtHome 
         ? "いまはお家でぬくぬく、まったりしてるニャン🐾 落ち着くニャ〜♡" 
@@ -2442,7 +2465,7 @@ const AppCore = {
       return;
     }
 
-    // 5. 時計
+    // 6. 時計
     if (/(?:いま何時|今何時)/.test(text)) {
       const info = TimeProvider.getCurrentInfo();
       this.audio.speak(info.spokenClock, null, () => this.renderBubble('model', info.clockDisplay), () => {
@@ -2451,7 +2474,7 @@ const AppCore = {
       return;
     }
 
-    // 6. カレンダー・日付
+    // 7. カレンダー・日付
     if (/(?:今日何日|きょう何日|何曜日)/.test(text)) {
       const info = TimeProvider.getCurrentInfo();
       this.audio.speak(info.spokenDate, null, () => this.renderBubble('model', info.dateDisplay), () => {
@@ -2568,9 +2591,7 @@ const AppCore = {
     }
   },
 
-  /* ==========================================================================
-     ★【適正化UI】日記帳（アルバム）制御：20時基準のスマート初期表示＆優しい案内
-     ========================================================================== */
+  /* 日記帳（アルバム）制御：20時基準のスマート初期表示＆優しい案内 */
   _bindBookStudioUI() {
     const modal = document.getElementById('book-studio-modal');
 
@@ -2636,7 +2657,7 @@ const AppCore = {
   openBookStudio() {
     this.state.studioDateKeys = TimeProvider.getAllActiveDateKeys();
     
-    // ★スマート初期フォーカス（20時基準）：
+    // スマート初期フォーカス（20時基準）：
     // 日中（朝4:00〜19:59）に開いた場合、今日が未完成なら直近の完成日記（昨日など）を優先して開く！
     const timeInfo = TimeProvider.getCurrentInfo();
     const todayKey = timeInfo.lifeLogKey;
@@ -2644,14 +2665,12 @@ const AppCore = {
     const isTodayProper = StorageManager.isProperDiary(todayDiary);
 
     if (!timeInfo.isEvening && !isTodayProper) {
-      // 昼間で今日が未作成の場合：直近の完成日記インデックスを検索
       const properIdx = this.state.studioDateKeys.findIndex(k => {
         const d = StorageManager.getDiary(k);
         return StorageManager.isProperDiary(d);
       });
       this.state.studioCurrentDateIdx = (properIdx >= 0) ? properIdx : 0;
     } else {
-      // 20時以降、または今日が既に完成している場合は最新日（今日）を開く
       this.state.studioCurrentDateIdx = 0;
     }
 
@@ -2692,7 +2711,6 @@ const AppCore = {
     // ==========================================
     if (isToday && !isProper) {
       if (timeInfo.isEvening) {
-        // 【夜20:00以降】1日の振り返り時間に入ったので、日記作成ボタンを優しく表示
         pageContainer.innerHTML = `
           <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fffaf5; border:2px dashed #fed7aa; border-radius:20px; padding:24px 18px; text-align:center; gap:12px;">
             <div style="font-size:48px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">🐾🌙</div>
@@ -2709,7 +2727,6 @@ const AppCore = {
           await this._rescueCreateDiaryForDate(curDateKey, fullDate, dayLogs);
         });
       } else {
-        // 【日中 4:00〜19:59】まだ日中なので催促ボタンは出さず、穏やかな見守り画面
         pageContainer.innerHTML = `
           <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fffaf5; border:2px dashed #fed7aa; border-radius:20px; padding:24px 18px; text-align:center; gap:12px;">
             <div style="font-size:48px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">🐾☀️</div>
@@ -3221,7 +3238,7 @@ const AppCore = {
         this.state.isProcessingInput = false;
         this.state.isDiaryReading = false;
 
-        /* ★【居眠り表情完全修復】お休み中への突入時に表情を強制的にidleへリセット！ */
+        /* お休みモード突入時に表情を強制的にidleへリセット */
         if (this.avatar) this.avatar.setEmotion('idle');
 
         petContainer?.classList.add('is-paused-mode');
@@ -3230,7 +3247,6 @@ const AppCore = {
         if (this.avatar) this.avatar.triggerYawn();
         setTimeout(() => {
           if (!this.state.isRunning) {
-            /* あくび後も確実にidle顔で安らかに目を閉じる */
             if (this.avatar) this.avatar.setEmotion('idle');
             if (wrap) wrap.classList.add('is-sleeping');
           }
