@@ -10,17 +10,30 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 
-  <!-- PWA・モバイル設定 -->
+  <!-- PWA・モバイル設定（端末システム外観追従カラー） -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="クロちゃん🐾">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 
   <style>
     /* ==========================================================================
-       新・4大カラーテーマ完全リニューアル定義
-       ※完全透過クロちゃんに対応し、お部屋ごとに一目で違いがわかる豊かな世界観を実現！
+       新・4大カラーテーマ完全定義 ＆ 端末外観（ライト=白 / ダーク=黒）自動追従
        ========================================================================== */
+    :root {
+      /* スマホのシステム外観（デフォルトはライト=白） */
+      --system-outer-bg: #ffffff;
+      --cat-scale: 1; /* 縦画面の基準スケール */
+    }
+
+    /* 端末がダークモード設定の時は四隅の外側を完全な漆黒に */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --system-outer-bg: #000000;
+      }
+    }
+
     /* 1. 🌸 ノーマル（サクラ・スウィートピンク） */
     :root, [data-theme="normal"] {
       --primary-color: #ec4899;
@@ -28,7 +41,6 @@
       --bubble-bg: rgba(255, 255, 255, 0.98);
       --text-color: #1f2937;
       --shadow: 0 10px 25px rgba(236, 72, 153, 0.12);
-      --outer-bg: #fbcfe8;
       --container-bg: linear-gradient(180deg, #fff1f5 0%, #ffe4e6 100%);
       --roof-border-color: #f472b6;
       --roof-glow: 
@@ -41,7 +53,6 @@
       --theme-modal-header-bg: #fdf2f8;
       --theme-modal-header-color: #db2777;
       --theme-save-btn: linear-gradient(135deg, #f472b6, #ec4899);
-      --cat-scale: 1; /* 縦画面の基準スケール */
     }
 
     /* 2. 🌙 ナイトダーク（常時シックな漆黒＆ディープネイビー） */
@@ -51,7 +62,6 @@
       --bubble-bg: rgba(30, 41, 59, 0.95);
       --text-color: #f8fafc;
       --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-      --outer-bg: #030712;
       --container-bg: linear-gradient(180deg, #0b1120 0%, #030712 100%);
       --roof-border-color: #38bdf8;
       --roof-glow: 
@@ -73,7 +83,6 @@
       --bubble-bg: rgba(255, 255, 255, 0.98);
       --text-color: #064e3b;
       --shadow: 0 10px 25px rgba(5, 150, 105, 0.15);
-      --outer-bg: #a7f3d0;
       --container-bg: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%);
       --roof-border-color: #059669;
       --roof-glow: 
@@ -95,7 +104,6 @@
       --bubble-bg: rgba(255, 255, 255, 0.98);
       --text-color: #431407;
       --shadow: 0 10px 25px rgba(234, 88, 12, 0.18);
-      --outer-bg: #fed7aa;
       --container-bg: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
       --roof-border-color: #ea580c;
       --roof-glow: 
@@ -117,13 +125,14 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    /* ★四隅の外側を端末のシステムカラー（白 / 黒）に完全一致 */
     body {
       margin: 0;
       padding: 0;
       width: 100vw;
       height: 100dvh;
       overflow: hidden;
-      background: var(--outer-bg);
+      background: var(--system-outer-bg);
       font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
       position: relative;
       display: flex;
@@ -162,7 +171,7 @@
     #toast-notification.error { background: #450a0a; color: #fca5a5; border: 1.5px solid #ef4444; }
     #toast-notification.info { background: #0f172a; color: #38bdf8; border: 1.5px solid #38bdf8; }
 
-    /* ★【四隅なだらか化】36px の美しい角丸 */
+    /* ★36pxの美しい四隅角丸 ＆ 下部セーフエリア完全確保 */
     #pet-container {
       position: absolute;
       width: 100%;
@@ -171,7 +180,7 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: calc(env(safe-area-inset-top, 8px) + 6px) 14px env(safe-area-inset-bottom, 8px) 14px;
+      padding: calc(env(safe-area-inset-top, 8px) + 6px) 14px calc(env(safe-area-inset-bottom, 8px) + 6px) 14px;
       z-index: 50;
       box-sizing: border-box;
       background: var(--container-bg);
@@ -198,6 +207,7 @@
       flex-shrink: 0;
     }
 
+    /* ★ヘッダー：時計と日記帳の間隔にゆとりを持たせ押しやすさ向上 */
     .top-header {
       width: 100%;
       flex-shrink: 0;
@@ -206,7 +216,7 @@
       justify-content: space-between;
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(8px);
-      padding: 6px 8px;
+      padding: 6px 10px;
       border-radius: 24px;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
       border: 1px solid rgba(241, 245, 249, 0.85);
@@ -216,9 +226,9 @@
       z-index: 20;
       margin-top: 2px;
       margin-bottom: 6px;
-      gap: 4px;
+      gap: 6px;
     }
-    .top-header-left { display: flex; align-items: center; flex-shrink: 0; gap: 5px; padding-left: 2px; }
+    .top-header-left { display: flex; align-items: center; flex-shrink: 0; gap: 8px; padding-left: 2px; }
     .top-header-right { display: flex; align-items: center; flex-shrink: 0; gap: 4px; padding-right: 2px; }
     #clock-display { font-size: 12px; font-weight: 800; color: #334155; padding-left: 0; margin-left: 0; }
 
@@ -267,7 +277,7 @@
       color: #db2777;
       border: 1.2px solid #f472b6;
       border-radius: 12px;
-      padding: 4px 8px;
+      padding: 4px 9px;
       font-size: 11px;
       font-weight: 900;
       cursor: pointer;
@@ -613,6 +623,7 @@
       100% { transform: scale(var(--cat-scale, 1)) translateY(0); }
     }
 
+    /* ★Zzzの愛らしい文字に微細な白フチを追加して全テーマでくっきり視認化 */
     #sleep-zzz-bubble {
       position: absolute;
       top: 15px;
@@ -629,8 +640,12 @@
     .pet-avatar-wrapper.is-sleeping #sleep-zzz-bubble { opacity: 1; }
     .zzz-item {
       font-weight: 900;
-      color: #38bdf8;
-      text-shadow: 0 0 10px rgba(56, 189, 248, 0.8), 0 2px 4px rgba(0,0,0,0.4);
+      color: #0284c7;
+      text-shadow: 
+        0 0 1px #ffffff,
+        0 0 3px #ffffff,
+        0 0 10px rgba(56, 189, 248, 0.8),
+        0 2px 4px rgba(0, 0, 0, 0.35);
       animation: zzzFloat 2.6s infinite ease-in-out;
       opacity: 0;
     }
@@ -665,12 +680,13 @@
       100% { opacity: 0; transform: translateX(-50%) scale(1.25) translateY(-40px); }
     }
 
+    /* ★リアル枠とベクター枠の初期重複を完全防止する排他CSS */
     .cat-frame {
       position: absolute;
       bottom: 0;
       width: 320px;
       height: 310px;
-      display: flex;
+      display: none; /* 初期は完全に非表示 */
       justify-content: center;
       align-items: flex-end;
       opacity: 0;
@@ -680,7 +696,13 @@
       border: none !important;
       box-shadow: none !important;
     }
-    .cat-frame.active { opacity: 1; pointer-events: none; }
+    .pet-avatar-wrapper.is-real-mode .cat-frame {
+      display: flex;
+    }
+    .pet-avatar-wrapper.is-real-mode .cat-frame.active {
+      opacity: 1;
+      pointer-events: none;
+    }
 
     .cat-avatar-img {
       position: absolute;
@@ -700,7 +722,6 @@
       mix-blend-mode: normal !important;
     }
 
-    /* 居眠りまぶたの自然な毛並み融合デザイン */
     .real-eyelid-unit {
       position: absolute;
       bottom: 0;
@@ -888,6 +909,7 @@
       100% { transform: scale(1.08); filter: brightness(1.2); }
     }
 
+    /* ★ベクター枠の初期重複防止 */
     #cat-vector-avatar {
       width: 270px;
       height: 310px;
@@ -1101,6 +1123,7 @@
       flex-direction: column;
       align-items: center;
       z-index: 30;
+      padding-bottom: 2px;
     }
     
     .action-bar {
@@ -1114,14 +1137,14 @@
       box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
       padding: 7px 9px;
       border-radius: 36px;
-      gap: 6px;
+      gap: 5px;
       border: 1px solid rgba(255, 255, 255, 0.1);
       transition: all 0.2s;
     }
 
     .btn-mode-toggle {
       height: 44px;
-      padding: 0 12px;
+      padding: 0 11px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1130,7 +1153,7 @@
       border: 1px solid rgba(244, 114, 182, 0.35);
       background: rgba(157, 23, 77, 0.4);
       color: #fce7f3;
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 800;
       cursor: pointer;
       white-space: nowrap;
@@ -1155,7 +1178,7 @@
       border: 1px solid rgba(14, 165, 233, 0.35);
       background: rgba(3, 105, 161, 0.35);
       color: #e0f2fe;
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 800;
       cursor: pointer;
       white-space: nowrap;
@@ -1164,6 +1187,7 @@
     }
     .btn-photo:active { transform: scale(0.95); background: rgba(3, 105, 161, 0.55); }
 
+    /* ★新・とりけしボタン（赤系警告色のまま幅・文字詰まりを完全に保持） */
     .btn-stop {
       height: 44px;
       padding: 0 11px;
@@ -1175,8 +1199,9 @@
       border: 1px solid rgba(248, 113, 113, 0.35);
       background: rgba(153, 27, 27, 0.35);
       color: #fee2e2;
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 800;
+      letter-spacing: -0.2px;
       cursor: pointer;
       white-space: nowrap;
       flex-shrink: 0;
@@ -1193,7 +1218,7 @@
       gap: 5px;
       border-radius: 24px;
       border: 1px solid rgba(255, 255, 255, 0.12);
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 800;
       cursor: pointer;
       background: rgba(30, 41, 59, 0.65);
@@ -1229,7 +1254,8 @@
       font-size: 9.5px;
       color: #94a3b8;
       opacity: 0.65;
-      margin-top: 4px;
+      margin-top: 5px;
+      margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 2px);
       text-align: center;
       letter-spacing: 0.5px;
       font-weight: 700;
@@ -1263,7 +1289,7 @@
       .top-header {
         margin-top: 0;
         margin-bottom: 4px;
-        padding: 4px 6px;
+        padding: 4px 8px;
         border-radius: 16px;
       }
       #chat-timeline {
@@ -2451,7 +2477,8 @@
         </svg>
 
         <div id="cat-stage-box">
-          <div class="cat-frame active" id="frame-idle">
+          <!-- リアル枠（初期はCSSで完全非表示） -->
+          <div class="cat-frame" id="frame-idle">
             <img src="idle.png" onerror="if(this.src.endsWith('.png')){this.src='idle.jpg';this.classList.remove('is-png');}" onload="if(this.src.endsWith('.png')){this.classList.add('is-png');}" alt="待機中" class="cat-avatar-img" id="img-idle">
             <div class="real-eyelid-unit" id="eyelid-unit-idle">
               <div class="real-eyelid eye-left" id="eye-left-idle"></div>
@@ -2472,7 +2499,8 @@
             <div class="accessory-layer" id="acc-happy"></div>
           </div>
 
-          <svg viewBox="0 0 200 240" id="cat-vector-avatar" class="active-mode">
+          <!-- ベクター枠（初期はCSSで完全非表示） -->
+          <svg viewBox="0 0 200 240" id="cat-vector-avatar">
             <defs>
               <radialGradient id="grad-fur-black" cx="50%" cy="40%" r="60%">
                 <stop offset="0%" stop-color="#262933"/>
@@ -2545,7 +2573,7 @@
               <g class="anim-thinking-paw">
                 <path d="M60 210 C55 180 72 145 84 126 C88 120 94 122 92 128 C84 145 74 180 74 210 Z" fill="#181a24"/>
                 <ellipse cx="86" cy="122" rx="9" ry="8" fill="#262933"/>
-                <ellipse cx="86" cy="122" rx="4.5" ry="4" fill="#fda4af" opacity="0.8"/>
+                <ellipse cx="86" cy="122" rx="4.5" ry="4.5" fill="#fda4af" opacity="0.8"/>
               </g>
             </g>
 
@@ -2708,8 +2736,9 @@
           </button>
           <input type="file" id="camera-photo-input" accept="image/*" capture="environment" style="display:none;">
 
-          <button class="btn-stop" id="stop-action-btn" title="考え中・お話しを途中で取り消すニャ！">
-            <span>🛑</span><span>ストップ</span>
+          <!-- ★新・とりけしボタン（誤認識巻き戻し機能付き） -->
+          <button class="btn-stop" id="stop-action-btn" title="考え中・話し中の誤認識発言を取り消してやり直すニャ！">
+            <span>↩️</span><span>とりけし</span>
           </button>
 
           <button class="btn-action" id="pause-btn">
@@ -2883,13 +2912,14 @@
             ・<b>シームレスな朗読</b>：上の「📖 日記帳」を開いて「🔊 クロちゃんが読むニャ♪」を押すと、本文の中身だけをスラスラ滑らかに朗読してくれるニャン！
           </div>
 
-          <div class="manual-sec-title">✨ 変身・🐟 おやつ・なでなで・⏱️ タイマー・🛑 ストップ</div>
+          <div class="manual-sec-title">✨ 変身・🐟 おやつ・なでなで・⏱️ タイマー・↩️ とりけし</div>
           <div>
             ・<b>✨ 変身</b>：右下の「変身」ボタンを押すと、リアル写真と手描きイラストの姿が煙と共に瞬時に入れ替わるニャ！<br>
             ・<b>🐟 おやつ と なでなで</b>：左下の「おやつ」でちゅ〜るを食べるニャ（3回連続で極楽ゴロゴロ♪）。画面のクロをタップすると「なでなで」されて喉を鳴らして喜ぶニャ！<br>
             ・<b>⏱️ タイマー</b>：「3分測って」「1分半タイマー」「20秒計って」と言うと、クロの左に砂時計付きタイマーが作動するニャ！「タイマー止めて」の声でも即停止できます。<br>
             ・<b>🐾 ちょい待ちニャ ＆ すすめるニャ！</b>：動いているタイマーをタップすると「ちょい待ちニャ🐾」で一時停止、もう一度タップすると「すすめるニャ！🐾」で再開するニャ！<br>
-            ・<b>🛑 ストップ・🟢 会話中</b>：お話しを途中で止めたい時は「ストップ」ボタン、会話をお休みしたい時は「会話中（緑）」ボタンを押してニャ。
+            ・<b>↩️ とりけし</b>：マイクの誤認識でおかしな言葉を聞き取って考え始めてしまった時や、お話し中に押すと、今の発言をきれいに取り消して巻き戻せますニャ！（※声を受け付ける待機中には過去の会話は消えない安心安全設計ニャ！）。<br>
+            ・<b>🟢 会話中 / 🛑 お休み中</b>：会話をお休みしたい時は「会話中（緑）」ボタンを押してニャ。
           </div>
         </div>
       </details>
@@ -3017,7 +3047,7 @@
             <div class="storage-seg seg-meta" id="bar-seg-meta" style="width: 0%;" title="記憶・設定"></div>
           </div>
 
-          <div class="storage-bar-track" id="storage-bar-track">
+          <div class="storage-monitor-footer">
             <span id="storage-usage-text">0.00 MB / 5.00 MB</span>
             <span id="storage-percent-text">0%</span>
           </div>
@@ -3140,5 +3170,4 @@
   <script src="app.js"></script>
 </body>
 </html>
-
 

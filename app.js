@@ -1,11 +1,13 @@
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆中央司令塔（app.js Part 1/2）
    - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
+   - 【起動重複完全根絶】リアルとアニメアバターの初期排他表示を保証
+   - 【新・とりけし（巻き戻し）保護エンジン】直前の誤認識発言・ログを安全にロールバック
    - 【お散歩＆寄り道拡張】公園・カフェ・休憩場所・散策スポットのGoogleマップカード即時連携
    - 【オンデマンド即時GPS測位】場所質問時にその場で最新位置情報を取得してから即答
    - 【言葉遊び＆知育】しりとり・なぞなぞ・お散歩探検ミッション・肉球うらないのスマート対話
    - 【夜20時基準生活リズム】夜20:00以降の自然な日記作成案内 ＆ 昼間は直近完成日記優先表示
-   - 【データライフサイクル完全復元】logCountAtSave に基づく夜の会話自動追記エンジンの復元
+   - 【データライフサイクル完全保護】logCountAtSave に基づく夜の会話自動追記エンジンの維持
    - 【居眠り表情完全修復】お休み中におけるトーキング顔フリーズを根絶し、安らかなidle顔を保証
    - 【朝4時またぎ自動監視】開いたまま朝を迎えても自動で生活日を切り替え昨日の日記を完全救済
    - 【防音シールド】タイマー完了アラーム鳴動中のマイク誤認識を物理的に完全遮断
@@ -497,7 +499,6 @@ class AudioSpeechEngine {
     let initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodeURIComponent(text)}&speaker=${speakerId}`;
     if (vvKey) initUrl += `&key=${encodeURIComponent(vvKey)}`;
 
-    // システム診断モニターでキー適用状態をリアルタイム明記
     const keyStatusText = vvKey ? "🔑個別キー適用済" : "🆓無料枠";
     Logger.log(`[TTS] 音声生成開始 (${keyStatusText}, 話者:${speakerId}): 「${text.substring(0, 16)}…」`, "info");
 
@@ -758,7 +759,7 @@ const LocationProvider = {
     }
   },
 
-  /* ★場所質問時や散策時にその場で最新GPSを即座に測位するオンデマンド取得 */
+  /* 場所質問時や散策時にその場で最新GPSを即座に測位するオンデマンド取得 */
   async fetchLocationOnDemand(fetchSpots = true) {
     this._loadHomeCoordsFromStorage();
     if (!('geolocation' in navigator)) { await this._applyHomeFallback(); return false; }
@@ -941,6 +942,42 @@ const StorageManager = {
     } catch(e) {}
   },
 
+  /* ★直前の誤認識会話（直近1発言または直近1往復）を安全に取り消す（ロールバック） */
+  rollbackLastExchange(includeModelReply = false) {
+    try {
+      const timeInfo = TimeProvider.getCurrentInfo();
+      const dailyKey = `kuro_daily_logs_${timeInfo.lifeLogKey}`;
+      let recent = this.loadRecentTimelineLogs();
+      let daily = JSON.parse(localStorage.getItem(dailyKey) || '[]');
+
+      let removed = false;
+
+      // 1. 直前のAI返答があればまず削除
+      if (includeModelReply && recent.length > 0 && recent[recent.length - 1].role === 'model') {
+        recent.pop();
+        if (daily.length > 0 && daily[daily.length - 1].role === 'model') daily.pop();
+        removed = true;
+      }
+
+      // 2. 直前のおやびんの誤認識発言を削除
+      if (recent.length > 0 && recent[recent.length - 1].role === 'user') {
+        recent.pop();
+        if (daily.length > 0 && daily[daily.length - 1].role === 'user') daily.pop();
+        removed = true;
+      }
+
+      if (removed) {
+        localStorage.setItem(DATA_KEYS.RECENT_LOGS, JSON.stringify(recent));
+        localStorage.setItem(dailyKey, JSON.stringify(daily));
+        Logger.log(`[Rollback] ↩️ 直前の誤認識発言を安全に取り消しました`, "info");
+        return true;
+      }
+    } catch(e) {
+      Logger.log(`[Rollback] ⚠️ ロールバック例外: ${e.message}`, "error");
+    }
+    return false;
+  },
+
   getDailyLogs(lifeDateKey) {
     try { return JSON.parse(localStorage.getItem(`kuro_daily_logs_${lifeDateKey}`)) || []; } catch(e) { return []; }
   },
@@ -999,7 +1036,6 @@ const StorageManager = {
   },
   saveMemories(m) { localStorage.setItem(DATA_KEYS.MEMORIES, JSON.stringify(m)); },
 
-  /* 散らばっていたダミークレンジングをここに一本化・集約 */
   loadAllDiaries() {
     try {
       const list = JSON.parse(localStorage.getItem(DATA_KEYS.DIARIES)) || [];
@@ -1018,7 +1054,6 @@ const StorageManager = {
   },
   saveAllDiaries(list) { localStorage.setItem(DATA_KEYS.DIARIES, JSON.stringify(list)); },
 
-  /* 指定日にちゃんとした絵日記が存在するか判定 */
   isProperDiary(diary) {
     if (!diary || !diary.content) return false;
     const txt = diary.content.trim();
@@ -1036,7 +1071,6 @@ const StorageManager = {
     return list.find(d => d.dateKey === dateKey) || null;
   },
 
-  /* 日記作成時の会話数を確実に記録（夜の追加会話検知用） */
   saveDiary(entryText, customDateKey = null, customFullDate = null, photoData = null, currentLogCount = null, kuroComment = null) {
     if (!entryText || entryText.length < 15) return false;
     const timeInfo = TimeProvider.getCurrentInfo();
@@ -1117,7 +1151,7 @@ const StorageManager = {
     }
     const pkg = {
       format: "kuro_pure_data_package_v2",
-      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.1.11.0",
+      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.1.12.0",
       exportedAt: now.toLocaleString('ja-JP'),
       memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
@@ -1199,6 +1233,8 @@ const StorageManager = {
 };
 /* ==========================================================================
    AIペット クロちゃん🐾 対話エンジン＆中央司令塔（app.js Part 2/2）
+   - 【起動重複完全根絶】初期化時に保存モード（リアル/イラスト）を厳密に排他適用
+   - 【新・とりけし安全防護】考え中・お話し中のみ誤認識発言を巻き戻し消去。通常待機中は過去ログを完全防護
    - 【オンデマンド即時GPS測位】場所質問時にその場で最新位置情報を取得してから即答
    - 【お散歩＆寄り道拡張】公園・カフェ・休憩場所・散策スポットのGoogleマップカード即時連携
    - 【言葉遊び＆知育】しりとり・なぞなぞ・お散歩探検ミッション・肉球うらないのスマート対話
@@ -1208,9 +1244,8 @@ const StorageManager = {
    - 【朝4時またぎ自動監視】開いたまま朝を迎えても自動で生活日を切り替え昨日の日記を完全救済
    - 【防音シールド】タイマー完了アラーム鳴動中のマイク誤認識を物理的に完全遮断
    - 【夜20時基準生活リズム】夜20:00以降の自然な日記作成案内 ＆ 昼間は直近完成日記優先表示
-   - 【データライフサイクル完全復元】logCountAtSave に基づく夜の会話自動追記エンジンの復元
+   - 【データライフサイクル完全保護】logCountAtSave に基づく夜の会話自動追記エンジンの維持
    - 【徹底防護】お休み中（居眠りモード）のステータス誤上書きを100%完全根絶
-   - キャラクター描画＆お休み中の「愛らしい自然な居眠り」完全維持
    ========================================================================== */
 
 /* ==========================================================================
@@ -1244,6 +1279,7 @@ class CatAvatarRenderer {
     this.currentEmotion = 'idle';
 
     this._renderAllAccessories();
+    // ★起動時の重複を完全に防ぐため、保存されているモードを初期段階で厳密に適用
     this.applyMode(this.mode);
     this.applyAllFramesTransform();
     this.applyEyelidTransforms();
@@ -1378,18 +1414,33 @@ class CatAvatarRenderer {
     }
   }
 
+  /* ★リアルとイラストの完全排他表示切り替え */
   applyMode(mode) {
     this.mode = mode;
     localStorage.setItem('kuro_avatar_mode', mode);
     const vec = document.getElementById('cat-vector-avatar');
+
     if (mode === 'vector') {
       if (this.wrapper) this.wrapper.classList.remove('is-real-mode');
-      Object.values(this.frames).forEach(f => { if (f) f.style.display = 'none'; });
-      if (vec) vec.classList.add('active-mode');
+      Object.values(this.frames).forEach(f => {
+        if (f) {
+          f.style.display = 'none';
+          f.classList.remove('active');
+        }
+      });
+      if (vec) {
+        vec.style.display = 'block';
+        vec.classList.add('active-mode');
+      }
     } else {
       if (this.wrapper) this.wrapper.classList.add('is-real-mode');
-      if (vec) vec.classList.remove('active-mode');
-      Object.values(this.frames).forEach(f => { if (f) f.style.display = 'flex'; });
+      if (vec) {
+        vec.style.display = 'none';
+        vec.classList.remove('active-mode');
+      }
+      Object.values(this.frames).forEach(f => {
+        if (f) f.style.display = 'flex';
+      });
     }
     this.setEmotion(this.currentEmotion || 'idle');
   }
@@ -1439,6 +1490,17 @@ class CatAvatarRenderer {
 class AIThoughtEngine {
   constructor() {
     this.apiKey = (localStorage.getItem('kuro_api_key') || '').trim();
+    this.activeAbortController = null;
+  }
+
+  cancelActiveThought() {
+    if (this.activeAbortController) {
+      this.activeAbortController.abort();
+      this.activeAbortController = null;
+      Logger.log(`[AI] 🛑 実行中のGeminiリクエストを強制切断しました`, "info");
+      return true;
+    }
+    return false;
   }
 
   _filterMeaningfulLogs(logs) {
@@ -1507,7 +1569,6 @@ class AIThoughtEngine {
     const recentDiaries = StorageManager.getRecentDiariesSummary(3);
     const pastMemoryDiary = StorageManager.findRelevantPastDiary(promptText);
 
-    /* ★モード別対話＆キーワードルールの完全定義 */
     const modeInstruction = isAssistant ? `
 【★モード：👓 おてつだいモード（おやびんの世界一のマブダチ＆天才案内役）】
 ・おやびんの大好物（ラーメン、餃子、焼肉、ホルモン、お寿司、麻婆豆腐）や、お散歩中の『近くの公園』『カフェ』『休憩スポット』『最新ニュース』を熟知しています。
@@ -1559,8 +1620,10 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
       const t0 = performance.now();
       Logger.log(`[AI] リクエスト送信 ➔ ${cleanModel}`, "info");
 
-      let fetchController = new AbortController();
-      let timeoutTimer = setTimeout(() => fetchController.abort(), 20000);
+      this.activeAbortController = new AbortController();
+      let timeoutTimer = setTimeout(() => {
+        if (this.activeAbortController) this.activeAbortController.abort();
+      }, 20000);
 
       try {
         const bodyPayload = {
@@ -1579,13 +1642,15 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(bodyPayload),
-          signal: fetchController.signal
+          signal: this.activeAbortController.signal
         });
 
         if (!res.ok && isAssistant) {
           clearTimeout(timeoutTimer);
-          fetchController = new AbortController();
-          timeoutTimer = setTimeout(() => fetchController.abort(), 20000);
+          this.activeAbortController = new AbortController();
+          timeoutTimer = setTimeout(() => {
+            if (this.activeAbortController) this.activeAbortController.abort();
+          }, 20000);
 
           delete bodyPayload.tools;
           delete bodyPayload.toolConfig;
@@ -1593,7 +1658,7 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(bodyPayload),
-            signal: fetchController.signal
+            signal: this.activeAbortController.signal
           });
         }
 
@@ -1642,6 +1707,7 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
             if (badge) badge.textContent = `🐾 ${cleanModel.replace('gemini-', '')}`;
 
             Logger.log(`[AI] ✅ 応答受信成功 (${ms}ms) [${cleanModel}] (カード:${cards.length}件)`, "success");
+            this.activeAbortController = null;
             return { success: true, text: clean, groundingCards: cards };
           }
         } else {
@@ -1650,9 +1716,15 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
       } catch (err) {
         clearTimeout(timeoutTimer);
         const ms = Math.round(performance.now() - t0);
+        if (err.name === 'AbortError') {
+          Logger.log(`[AI] 🛑 思考がキャンセルされました`, "info");
+          this.activeAbortController = null;
+          return { success: false, aborted: true };
+        }
         Logger.log(`[AI] ❌ エラー [${cleanModel}]: ${err.message} (${ms}ms)`, "error");
       }
     }
+    this.activeAbortController = null;
     Logger.log(`[AI] ❌ 全Liteモデル失敗`, "error");
     return { success: false, error: "ALL_LITE_MODELS_FAILED" };
   }
@@ -1745,7 +1817,6 @@ ${pastMemoryDiary ? `【昔の思い出】\n${pastMemoryDiary.content}\n` : ''}
     return [];
   }
 
-  /* ★絵日記要約AI：ゲームや探検の思い出を生き生きとまとめるルール */
   async generateDailyDiarySummary(dailyAllLogs, targetLifeDateKey = null, targetLifeFullDate = null) {
     if (!this.apiKey) return { success: false };
 
@@ -1888,7 +1959,6 @@ const AppCore = {
 
     if (typeof VersionManager !== 'undefined') VersionManager.applyToDOM();
 
-    /* 朝4時またぎ監視組み込み時計初期化 ＆ 毎秒監視タイマー */
     const initialInfo = TimeProvider.getCurrentInfo();
     this.state.lastCheckedLifeLogKey = initialInfo.lifeLogKey;
     const clk = document.getElementById('clock-display');
@@ -1916,7 +1986,7 @@ const AppCore = {
     this._startIdleSoliloquyWatcher();
 
     setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-    Logger.log("[AppCore] 全システム正常稼働！データライフサイクル＆全機能健全稼働中ニャ🐾", "success");
+    Logger.log("[AppCore] 全システム正常稼働！排他描画＆新とりけしエンジン健全稼働中ニャ🐾", "success");
   },
 
   _bindDeviceWakeWatcher() {
@@ -2285,7 +2355,6 @@ const AppCore = {
         if (this.state.wakeLockSentinel) { this.state.wakeLockSentinel.release(); this.state.wakeLockSentinel = null; }
         this.state.isTimerCompleted = true;
 
-        /* 防音シールド：チャイム鳴動中のマイク誤認識を物理的に完全遮断 */
         this.audio.stopListening();
 
         if (widget) widget.className = 'is-completed';
@@ -2386,7 +2455,7 @@ const AppCore = {
       return;
     }
 
-    // 2. ★何ができるの？音声案内サポート
+    // 2. 何ができるの？音声案内サポート
     if (/(?:何ができる|なにができる|何ができるの|なにができるの|何して遊ぶ|なにができるか教えて)/.test(text)) {
       const isAssistant = this.state.isAssistantMode;
       const guideText = isAssistant
@@ -2451,7 +2520,7 @@ const AppCore = {
       }
     }
 
-    // 5. ★在宅・現在地確認（その場で即時GPS測位を行ってから正確に即答！）
+    // 5. 在宅・現在地確認（オンデマンドGPS即座測位）
     if (/(?:いまどこ|今どこ|ここどこ|どこにいる)/.test(text)) {
       Toast.show("現在地を確認中ニャ…📍", "info", 1500);
       await LocationProvider.fetchLocationOnDemand(false);
@@ -2495,6 +2564,11 @@ const AppCore = {
     const bubble = this.renderBubble('model', photoBase64 ? "写真を見てるニャ…📷✨" : "クロが考えてるニャ…💭");
     const rawLogs = StorageManager.loadRecentTimelineLogs();
     const res = await this.ai.generateReply(promptText, rawLogs, CHARACTER_CONFIG, this.memories, photoBase64);
+
+    if (res.aborted) {
+      if (bubble) bubble.closest('.chat-row')?.remove();
+      return;
+    }
 
     if (res.success && res.text) {
       if (!isPhotoAlreadyLogged) {
@@ -2591,7 +2665,6 @@ const AppCore = {
     }
   },
 
-  /* 日記帳（アルバム）制御：20時基準のスマート初期表示＆優しい案内 */
   _bindBookStudioUI() {
     const modal = document.getElementById('book-studio-modal');
 
@@ -2657,8 +2730,6 @@ const AppCore = {
   openBookStudio() {
     this.state.studioDateKeys = TimeProvider.getAllActiveDateKeys();
     
-    // スマート初期フォーカス（20時基準）：
-    // 日中（朝4:00〜19:59）に開いた場合、今日が未完成なら直近の完成日記（昨日など）を優先して開く！
     const timeInfo = TimeProvider.getCurrentInfo();
     const todayKey = timeInfo.lifeLogKey;
     const todayDiary = StorageManager.getDiary(todayKey);
@@ -2706,9 +2777,6 @@ const AppCore = {
     const prevLogCount = diary?.logCountAtSave || 0;
     const hasNewLogs = (dayLogs && dayLogs.length > prevLogCount);
 
-    // ==========================================
-    // 1. 【今日（当日）】で未完成の場合の表示（20時基準の出し分け）
-    // ==========================================
     if (isToday && !isProper) {
       if (timeInfo.isEvening) {
         pageContainer.innerHTML = `
@@ -2743,9 +2811,6 @@ const AppCore = {
       return;
     }
 
-    // ==========================================
-    // 2. 【昨日以前（過去日）】で未完成の場合（過去データの救済）
-    // ==========================================
     if (!isToday && !isProper) {
       const hasLogs = (dayLogs && dayLogs.length >= 2);
       pageContainer.innerHTML = `
@@ -2779,9 +2844,6 @@ const AppCore = {
       return;
     }
 
-    // ==========================================
-    // 3. 【通常の日記シート表示】（完成日記の閲覧＆推敲）
-    // ==========================================
     pageContainer.innerHTML = `
       <div class="book-page-sheet">
         <div class="book-page-header">
@@ -2929,7 +2991,7 @@ const AppCore = {
 
     bindSegment('feedback-segment-group', 'kuro_button_feedback', 'pink');
     bindSegment('timer-sound-segment-group', 'kuro_timer_sound', 'blue');
-    bindSegment('acc-style-segment-group', 'kuro_acc_style', 'pink');
+    bindSegment('acc-style-segment-group', 'kuro_acc_style', 'both', 'pink');
     bindSegment('news-count-segment-group', 'kuro_news_count', 'blue');
     bindSegment('spot-count-segment-group', 'kuro_spot_count', 'blue');
   },
@@ -3206,16 +3268,68 @@ const AppCore = {
       this._updateModeUI(true);
     });
 
+    /* ★新・とりけしボタン（考え中・お話し中のみ誤認識会話を完全巻き戻し消去。待機中は過去ログ防護） */
     document.getElementById('stop-action-btn')?.addEventListener('click', () => {
+      this.resetActivityTimer();
       this.cancelKitchenTimer(false);
-      this.audio.stopReadingAloud();
+
+      const isThinking = this.state.isThinking || this.state.isProcessingInput;
+      const isSpeaking = this.audio.isSpeaking || this.audio.isReadingAloud || this.state.isDiaryReading;
+
+      // 1. 【考え中】の場合：AI思考を即時切断し、直前のおやびんの誤認識発言を取り消す
+      if (isThinking) {
+        this.ai.cancelActiveThought();
+        this.audio.stopSpeaking();
+        this.state.isThinking = false;
+        this.state.isProcessingInput = false;
+
+        // 画面タイムラインから末尾（おやびんの吹き出し）を削除
+        const box = document.getElementById('chat-timeline');
+        const lastRow = box?.lastElementChild;
+        if (lastRow) lastRow.remove();
+
+        // ログから直前の1件を削除
+        StorageManager.rollbackLastExchange(false);
+        this._updateStorageMonitorUI();
+
+        if (this.avatar) this.avatar.setEmotion('idle');
+        Toast.show("直前の発言を取り消したニャン🐾", "info");
+        this.triggerActionVoice("はーい！", "↩️ いまのナシ！");
+        return;
+      }
+
+      // 2. 【お話し中】の場合：音声をピタッと止め、直前の会話1往復を取り消す
+      if (isSpeaking) {
+        this.audio.stopReadingAloud();
+        this.audio.stopSpeaking();
+        this.state.isDiaryReading = false;
+        this._updateDiaryReadBtnUI(false);
+
+        // 画面タイムラインから末尾の返答とおやびんの吹き出しを消去
+        const box = document.getElementById('chat-timeline');
+        if (box) {
+          if (box.lastElementChild) box.lastElementChild.remove();
+          if (box.lastElementChild?.classList.contains('user')) box.lastElementChild.remove();
+        }
+
+        // ログから直前の1往復をロールバック
+        StorageManager.rollbackLastExchange(true);
+        this._updateStorageMonitorUI();
+
+        if (this.avatar) this.avatar.setEmotion('idle');
+        Toast.show("いまの会話を取り消したニャン🐾", "info");
+        this.triggerActionVoice("はーい！", "↩️ いまのナシ！");
+        return;
+      }
+
+      // 3. 【通常待機中（耳を澄ませている状態）】の場合：
+      // ★過去の会話は絶対に消さず、安全待機メッセージを表示してマイクをクリアに
       this.audio.stopSpeaking();
       this.state.isThinking = false;
       this.state.isProcessingInput = false;
-      this.state.isDiaryReading = false;
-      this._updateDiaryReadBtnUI(false);
       if (this.avatar) this.avatar.setEmotion('idle');
-      this.triggerActionVoice("はーい！", "🛑 はーい！");
+      Toast.show("おやびんの声を待ってるニャン♪🐾", "info");
+      this.triggerActionVoice("はーい！", "👂 聴いてるニャ♪");
     });
 
     document.getElementById('pause-btn')?.addEventListener('click', () => {
@@ -3238,7 +3352,6 @@ const AppCore = {
         this.state.isProcessingInput = false;
         this.state.isDiaryReading = false;
 
-        /* お休みモード突入時に表情を強制的にidleへリセット */
         if (this.avatar) this.avatar.setEmotion('idle');
 
         petContainer?.classList.add('is-paused-mode');
