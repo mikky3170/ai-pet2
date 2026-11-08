@@ -1,6 +1,8 @@
 /* ==========================================================================
    AIペット 共通対話エンジン＆中央司令塔OS（app.js Part 1/2）
-   - プラグインアーキテクチャ対応（char_kuro.js 等のキャラ定義を自動ロード）
+   - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
+   - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全切替
+   - 【データ独立保護】キャラごとの記憶帳・絵日記を混ざらず安全に独立保持
    - 【通信直列化＆429完全根絶】無謀な一斉プリフェッチを全撤去・音声生成0.2〜0.5秒爆速化
    - 【日時エンジン完全防御】西暦を外した自然な日付返答＆左上日付ヘッダー表示対応
    - 【トークスタイル連動】自動/短い/普通/長いの設定保存・復元に対応
@@ -10,7 +12,7 @@
    - 【非破壊ストレージ大掃除】原本JSONを強制ダウンロード後に安全に3〜5KB化＆重複完全排除
    - 【会話ログ1000件拡張】写真完全分離により1日1000件の会話を安全に保持
    - 【4.0MB自動監視アラート】4MB到達時にPCバックアップを優しく促す安全センサー常時稼働
-   - 【表記ゆれ自動補正】キャラ定義と連動しマイク誤認識された家族の名前をスマート自動補正
+   - 【表記ゆれ自動補正】キャラ定義と連動しマイク誤認識された名前をスマート自動補正
    - 【新・とりけし保護エンジン】直前の誤認識発言・ログを画面とストレージから安全にロールバック
    - 【お散歩＆寄り道拡張】公園・カフェ・休憩場所・散策スポットのGoogleマップカード即時連携
    - 【オンデマンド即時GPS測位】場所質問時にその場で最新位置情報を取得してから即答
@@ -19,14 +21,17 @@
    ※このPart 1は StorageManager の閉じカッコ（};）まで綺麗に完結しています。
    ========================================================================== */
 
-/* ★ アクティブキャラクターの安全動的取得（初期はクロちゃん） */
+/* ★ アクティブキャラクターの安全動的取得（クロちゃん ⇔ シロくん） */
 const CurrentCharacterFallback = {
   id: "kuro",
   name: "クロ",
+  title: "クロちゃん",
+  species: "ノルウェージャンフォレストキャット（1歳の女の子）",
   firstPerson: "クロ",
   ownerCall: "おやびん",
   defaultSpeakerId: 10,
   defaultVoiceRate: 1.05,
+  imagePrefix: "",
   fillerPhrases: ["そうニャン♪", "えーっとニャ…", "確認するニャ！", "おまかせニャ！", "あそぶニャ♪", "バッチリニャ！", "はーい！"],
   cleanEnding: (t) => t,
   correctSpeechInput: (t) => t,
@@ -36,12 +41,19 @@ const CurrentCharacterFallback = {
   getVectorAvatarSvg: () => ""
 };
 
-// スクリプトの読み込み順序に依存せず常に最新のキャラクター定義を動的取得する安全ゲッター
-const getCurChar = () => window.Character_Kuro || CurrentCharacterFallback;
+// スクリプトの読み込み順序や選択キャラに依存せず常に最新のキャラクター定義を動的取得する安全ゲッター
+const getCurChar = () => {
+  const activeId = localStorage.getItem('kuro_active_character') || 'kuro';
+  if (activeId === 'shiro' && window.Character_Shiro) {
+    return window.Character_Shiro;
+  }
+  return window.Character_Kuro || CurrentCharacterFallback;
+};
+
 const CurrentCharacter = new Proxy(CurrentCharacterFallback, {
   get(target, prop) {
-    const active = window.Character_Kuro || target;
-    return active[prop];
+    const active = getCurChar();
+    return active[prop] !== undefined ? active[prop] : target[prop];
   }
 });
 
@@ -156,18 +168,20 @@ const TimeProvider = {
 
       const isEvening = (hours >= 20 || isLateNight);
 
+      const curChar = getCurChar();
+      const suffix = curChar.id === 'shiro' ? 'ホ！' : 'ニャ！';
+      const clockSuffix = curChar.id === 'shiro' ? 'ホな🐾' : 'ニャン🐾';
+
       return {
         now, year, month, date, hours, minutes, dayOfWeek, clock, logKey, fullDate,
         headerDisplay,
-        spokenClock: `いまは、${hours}時${minutes === 0 ? 'ちょうど' : minutes + '分'}だニャン🐾`,
-        // ★西暦を省き「月・日・曜日」のみで自然に発話短縮
-        spokenDate: `きょうは、${month}月${date}日、${dayOfWeek}曜日だニャ！`,
-        clockDisplay: `いまは ${hours}時${pad(minutes)}分 だニャン🐾`,
-        dateDisplay: `きょうは ${month}月${date}日 (${dayOfWeek}曜日) だニャ！`,
+        spokenClock: `いまは、${hours}時${minutes === 0 ? 'ちょうど' : minutes + '分'}だ${clockSuffix}`,
+        spokenDate: `きょうは、${month}月${date}日、${dayOfWeek}曜日だ${suffix}`,
+        clockDisplay: `いまは ${hours}時${pad(minutes)}分 だ${clockSuffix}`,
+        dateDisplay: `きょうは ${month}月${date}日 (${dayOfWeek}曜日) だ${suffix}`,
         isLateNight, isEvening, lifeLogKey, lifeFullDate
       };
     } catch (e) {
-      // 万が一の例外発生時でもアプリ全体を絶対に落とさない完全防御フォールバック
       const fbNow = new Date();
       const fbPad = (n) => String(n).padStart(2, '0');
       const fbClock = `${fbPad(fbNow.getHours())}:${fbPad(fbNow.getMinutes())}`;
@@ -224,11 +238,14 @@ const TimeProvider = {
     const diaries = StorageManager.loadAllDiaries();
     diaries.forEach(d => { if (d && d.dateKey) dateSet.add(d.dateKey); });
 
+    const activeId = getCurChar().id;
     for (let k in localStorage) {
-      if (k.startsWith('kuro_daily_logs_')) {
-        dateSet.add(k.replace('kuro_daily_logs_', ''));
-      } else if (k.startsWith('kuro_daily_photos_')) {
-        dateSet.add(k.replace('kuro_daily_photos_', ''));
+      if (k.startsWith(`kuro_daily_logs_${activeId}_`) || k.startsWith('kuro_daily_logs_')) {
+        const cleanK = k.replace(`kuro_daily_logs_${activeId}_`, '').replace('kuro_daily_logs_', '');
+        if (/^\d{4}-\d{2}-\d{2}$/.test(cleanK)) dateSet.add(cleanK);
+      } else if (k.startsWith(`kuro_daily_photos_${activeId}_`) || k.startsWith('kuro_daily_photos_')) {
+        const cleanP = k.replace(`kuro_daily_photos_${activeId}_`, '').replace('kuro_daily_photos_', '');
+        if (/^\d{4}-\d{2}-\d{2}$/.test(cleanP)) dateSet.add(cleanP);
       }
     }
 
@@ -371,7 +388,7 @@ class AudioSpeechEngine {
       lfo.stop(now + 0.97);
 
       if ('vibrate' in navigator) try { navigator.vibrate([40, 50, 40]); } catch(e) {}
-      Logger.log(`[Sound] 😻 ノイズゼロ・豊潤リアル喉鳴らしゴロゴロ音発音`, "info");
+      Logger.log(`[Sound] 😻 ノイズゼロ・豊潤リアル喉鳴らし/羽音発音`, "info");
 
     } else if (type === 'snack') {
       [0, 0.15, 0.3].forEach(d => {
@@ -509,7 +526,6 @@ class AudioSpeechEngine {
       return Promise.resolve(this.blobUrlCache.get(key));
     }
 
-    // 直列チェーンに登録して前のリクエスト終了を待つ
     this.ttsRequestChain = this.ttsRequestChain.then(async () => {
       if (this.blobUrlCache.has(key)) return this.blobUrlCache.get(key);
 
@@ -528,7 +544,6 @@ class AudioSpeechEngine {
 
       let initRes = await fetch(initUrl);
       
-      // ★429（アクセス制限）時の自動待機＆1回安全リトライ
       if (initRes.status === 429) {
         Logger.log(`[TTS] ⚠️ レート制限(429)検知。1.2秒待機して再試行ニャ…`, "warn");
         await new Promise(r => setTimeout(r, 1200));
@@ -579,11 +594,11 @@ class AudioSpeechEngine {
 
   _isSelfEcho(text) {
     if (!text) return true;
-    const normalized = text.replace(/[\s、。！？ニャンニャ]/g, '');
+    const normalized = text.replace(/[\s、。！？ニャンニャホ]/g, '');
     if (normalized.length < 2) return true;
-    if (/^(?:おまかせニャ|あそぶニャ|バッチリニャ|はーい|ちょい待ちニャ|すすめるニャ)/.test(text.trim())) return true;
+    if (/^(?:おまかせニャ|あそぶニャ|バッチリニャ|はーい|ちょい待ちニャ|すすめるニャ|フン|計算中ホ|任せるが良いホ|ホウ|バッチリホ)/.test(text.trim())) return true;
     for (const spoken of this.recentSpokenTexts) {
-      if (spoken.replace(/[\s、。！？ニャンニャ]/g, '') === normalized) return true;
+      if (spoken.replace(/[\s、。！？ニャンニャホ]/g, '') === normalized) return true;
     }
     return false;
   }
@@ -593,9 +608,8 @@ class AudioSpeechEngine {
     const speakerId = (speakerIdOverride !== null) ? speakerIdOverride : AppCore.getSpeakerId();
     const cooldownMs = (cooldownOverride !== null) ? cooldownOverride : 350;
 
-    // ★セーフティネット：セリフから生URLおよびタグ・記号を物理的に徹底サニタイズ
     let clean = (text || '').replace(/https?:\/\/[^\s]+/gi, '');
-    clean = this._convertAllNumbersToKana(clean).replace(/<[^>]*>/g, '').replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷🏠🔮]/gu, '').trim();
+    clean = this._convertAllNumbersToKana(clean).replace(/<[^>]*>/g, '').replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷🏠🔮🦉]/gu, '').trim();
 
     if (!clean) {
       if (onStart) onStart(); if (onEnd) onEnd();
@@ -626,7 +640,8 @@ class AudioSpeechEngine {
         setTimeout(() => {
           if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !this.isActionButtonLocked && !AppCore.state.isThinking && !AppCore.state.isProcessingInput) {
             const st = document.getElementById('status-text');
-            if (st) st.textContent = "👂 聴いてるニャ♪";
+            const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
+            if (st) st.textContent = `👂 聴いてる${suffix}`;
             this.startListening();
           }
         }, cooldownMs);
@@ -680,7 +695,8 @@ class AudioSpeechEngine {
     this.isReadingAloud = false; this.isSpeaking = false;
     if (AppCore.avatar && AppCore.state.isRunning) AppCore.avatar.setEmotion('idle');
     const st = document.getElementById('status-text');
-    if (st && AppCore.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
+    const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
+    if (st && AppCore.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
     if (onComplete) onComplete();
     setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, 200);
   }
@@ -888,6 +904,12 @@ const StorageManager = {
   },
   defaultEyelidCoords: { y: 172, x: 0, gap: 28, size: 16 },
 
+  _getCharSpecificKey(baseKey) {
+    const curId = getCurChar().id;
+    if (curId === 'kuro') return baseKey; // クロちゃんは既存キーをそのまま使用し100%完全互換
+    return `${baseKey}_${curId}`;
+  },
+
   getStorageUsage() {
     let totalBytes = 0, photoBytes = 0, chatBytes = 0, metaBytes = 0;
     const trackedPhotoSet = new Set();
@@ -907,38 +929,41 @@ const StorageManager = {
         }
       }
 
-      const diaryVal = localStorage.getItem(DATA_KEYS.DIARIES);
-      if (diaryVal) {
-        const rawBytes = (diaryVal.length + DATA_KEYS.DIARIES.length) * 2;
-        try {
-          const diaries = JSON.parse(diaryVal) || [];
-          let uniqueDiaryPhotoBytes = 0;
-          diaries.forEach(d => {
-            if (d && d.photo && typeof d.photo === 'string') {
-              if (!trackedPhotoSet.has(d.photo)) {
-                uniqueDiaryPhotoBytes += (d.photo.length * 2);
+      for (let k in localStorage) {
+        if (!localStorage.hasOwnProperty(k)) continue;
+        if (k.startsWith('kuro_data_diaries')) {
+          const diaryVal = localStorage[k];
+          const rawBytes = (diaryVal.length + k.length) * 2;
+          try {
+            const diaries = JSON.parse(diaryVal) || [];
+            let uniqueDiaryPhotoBytes = 0;
+            diaries.forEach(d => {
+              if (d && d.photo && typeof d.photo === 'string') {
+                if (!trackedPhotoSet.has(d.photo)) {
+                  uniqueDiaryPhotoBytes += (d.photo.length * 2);
+                }
               }
-            }
-          });
-          photoBytes += uniqueDiaryPhotoBytes;
-          const diaryMeta = Math.max(0, rawBytes - uniqueDiaryPhotoBytes);
-          metaBytes += diaryMeta;
-          totalBytes += rawBytes;
-        } catch(e) {
-          metaBytes += rawBytes;
-          totalBytes += rawBytes;
+            });
+            photoBytes += uniqueDiaryPhotoBytes;
+            const diaryMeta = Math.max(0, rawBytes - uniqueDiaryPhotoBytes);
+            metaBytes += diaryMeta;
+            totalBytes += rawBytes;
+          } catch(e) {
+            metaBytes += rawBytes;
+            totalBytes += rawBytes;
+          }
         }
       }
 
       for (let k in localStorage) {
         if (!localStorage.hasOwnProperty(k)) continue;
-        if (k.startsWith('kuro_daily_photos_') || k === DATA_KEYS.DIARIES) continue;
+        if (k.startsWith('kuro_daily_photos_') || k.startsWith('kuro_data_diaries')) continue;
 
         const val = localStorage[k];
         const bytes = (val.length + k.length) * 2;
         totalBytes += bytes;
 
-        if (k.startsWith('kuro_daily_logs_') || k === DATA_KEYS.RECENT_LOGS) {
+        if (k.startsWith('kuro_daily_logs_') || k.startsWith('kuro_recent_chat_logs')) {
           chatBytes += bytes;
         } else {
           metaBytes += bytes;
@@ -961,24 +986,35 @@ const StorageManager = {
   },
 
   loadGlassesCoords() {
-    try { return JSON.parse(localStorage.getItem('kuro_glasses_coords_v5')) || this.defaultGlassesCoords; } catch(e) { return this.defaultGlassesCoords; }
+    const key = `kuro_glasses_coords_v5_${getCurChar().id}`;
+    try { return JSON.parse(localStorage.getItem(key)) || JSON.parse(localStorage.getItem('kuro_glasses_coords_v5')) || this.defaultGlassesCoords; } catch(e) { return this.defaultGlassesCoords; }
   },
-  saveGlassesCoords(c) { localStorage.setItem('kuro_glasses_coords_v5', JSON.stringify(c)); },
+  saveGlassesCoords(c) {
+    const key = `kuro_glasses_coords_v5_${getCurChar().id}`;
+    localStorage.setItem(key, JSON.stringify(c));
+  },
 
   loadEyelidCoords() {
-    try { return JSON.parse(localStorage.getItem('kuro_eyelid_coords_v6')) || this.defaultEyelidCoords; } catch(e) { return this.defaultEyelidCoords; }
+    const key = `kuro_eyelid_coords_v6_${getCurChar().id}`;
+    try { return JSON.parse(localStorage.getItem(key)) || JSON.parse(localStorage.getItem('kuro_eyelid_coords_v6')) || this.defaultEyelidCoords; } catch(e) { return this.defaultEyelidCoords; }
   },
-  saveEyelidCoords(c) { localStorage.setItem('kuro_eyelid_coords_v6', JSON.stringify(c)); },
+  saveEyelidCoords(c) {
+    const key = `kuro_eyelid_coords_v6_${getCurChar().id}`;
+    localStorage.setItem(key, JSON.stringify(c));
+  },
 
   loadRecentTimelineLogs() {
-    try { return JSON.parse(localStorage.getItem(DATA_KEYS.RECENT_LOGS)) || []; } catch(e) { return []; }
+    const key = this._getCharSpecificKey(DATA_KEYS.RECENT_LOGS);
+    try { return JSON.parse(localStorage.getItem(key)) || []; } catch(e) { return []; }
   },
-  clearTimelineDisplayOnly() { localStorage.setItem(DATA_KEYS.RECENT_LOGS, JSON.stringify([])); },
+  clearTimelineDisplayOnly() {
+    const key = this._getCharSpecificKey(DATA_KEYS.RECENT_LOGS);
+    localStorage.setItem(key, JSON.stringify([]));
+  },
 
   appendChatLog(role, text, photoUrl = null) {
     if (!text) return;
     const timeInfo = TimeProvider.getCurrentInfo();
-    // ★セリフから生URLを除去して保存（ログのURL汚染を防止）
     let cleanText = (text || '').replace(/https?:\/\/[^\s]+/gi, '').trim();
     cleanText = AppCore.audio.cleanEndingNenyan(cleanText);
     if (!cleanText) return;
@@ -991,13 +1027,15 @@ const StorageManager = {
       hasPhoto: !!photoUrl, timestamp: Date.now()
     };
     try {
+      const recentKey = this._getCharSpecificKey(DATA_KEYS.RECENT_LOGS);
       const recent = this.loadRecentTimelineLogs();
       const rEntry = { ...entry };
       if (photoUrl && photoUrl.length < 50000) rEntry.photoUrl = photoUrl;
       recent.push(rEntry);
-      localStorage.setItem(DATA_KEYS.RECENT_LOGS, JSON.stringify(recent.slice(-30)));
+      localStorage.setItem(recentKey, JSON.stringify(recent.slice(-30)));
 
-      const dailyKey = `kuro_daily_logs_${timeInfo.lifeLogKey}`;
+      const activeId = getCurChar().id;
+      const dailyKey = activeId === 'kuro' ? `kuro_daily_logs_${timeInfo.lifeLogKey}` : `kuro_daily_logs_${activeId}_${timeInfo.lifeLogKey}`;
       const daily = JSON.parse(localStorage.getItem(dailyKey) || '[]');
       daily.push(entry);
       localStorage.setItem(dailyKey, JSON.stringify(daily.slice(-1000)));
@@ -1007,7 +1045,10 @@ const StorageManager = {
   rollbackLastExchange(includeModelReply = false) {
     try {
       const timeInfo = TimeProvider.getCurrentInfo();
-      const dailyKey = `kuro_daily_logs_${timeInfo.lifeLogKey}`;
+      const activeId = getCurChar().id;
+      const dailyKey = activeId === 'kuro' ? `kuro_daily_logs_${timeInfo.lifeLogKey}` : `kuro_daily_logs_${activeId}_${timeInfo.lifeLogKey}`;
+      const recentKey = this._getCharSpecificKey(DATA_KEYS.RECENT_LOGS);
+
       let recent = this.loadRecentTimelineLogs();
       let daily = JSON.parse(localStorage.getItem(dailyKey) || '[]');
 
@@ -1026,7 +1067,7 @@ const StorageManager = {
       }
 
       if (removed) {
-        localStorage.setItem(DATA_KEYS.RECENT_LOGS, JSON.stringify(recent));
+        localStorage.setItem(recentKey, JSON.stringify(recent));
         localStorage.setItem(dailyKey, JSON.stringify(daily));
         Logger.log(`[Rollback] ↩️ 直前の誤認識発言を安全に取り消しました`, "info");
         return true;
@@ -1038,12 +1079,15 @@ const StorageManager = {
   },
 
   getDailyLogs(lifeDateKey) {
-    try { return JSON.parse(localStorage.getItem(`kuro_daily_logs_${lifeDateKey}`)) || []; } catch(e) { return []; }
+    const activeId = getCurChar().id;
+    const dailyKey = activeId === 'kuro' ? `kuro_daily_logs_${lifeDateKey}` : `kuro_daily_logs_${activeId}_${lifeDateKey}`;
+    try { return JSON.parse(localStorage.getItem(dailyKey)) || []; } catch(e) { return []; }
   },
 
   addPhotoToDailyPool(photoBase64, userComment = "") {
     const timeInfo = TimeProvider.getCurrentInfo();
-    const key = `kuro_daily_photos_${timeInfo.lifeLogKey}`;
+    const activeId = getCurChar().id;
+    const key = activeId === 'kuro' ? `kuro_daily_photos_${timeInfo.lifeLogKey}` : `kuro_daily_photos_${activeId}_${timeInfo.lifeLogKey}`;
     try {
       let pool = JSON.parse(localStorage.getItem(key) || '[]');
       const exists = pool.some(p => p.base64 === photoBase64);
@@ -1056,7 +1100,8 @@ const StorageManager = {
   },
 
   removePhotoFromDailyPool(lifeDateKey, photoIndex) {
-    const key = `kuro_daily_photos_${lifeDateKey}`;
+    const activeId = getCurChar().id;
+    const key = activeId === 'kuro' ? `kuro_daily_photos_${lifeDateKey}` : `kuro_daily_photos_${activeId}_${lifeDateKey}`;
     try {
       let pool = JSON.parse(localStorage.getItem(key) || '[]');
       if (photoIndex < 0 || photoIndex >= pool.length) return false;
@@ -1074,14 +1119,16 @@ const StorageManager = {
   },
 
   getDailyPhotoPool(lifeDateKey) {
+    const activeId = getCurChar().id;
+    const key = activeId === 'kuro' ? `kuro_daily_photos_${lifeDateKey}` : `kuro_daily_photos_${activeId}_${lifeDateKey}`;
     try {
-      let pool = JSON.parse(localStorage.getItem(`kuro_daily_photos_${lifeDateKey}`)) || [];
+      let pool = JSON.parse(localStorage.getItem(key)) || [];
       if (pool.length === 0) {
         const diaries = this.loadAllDiaries();
         const d = diaries.find(item => item.dateKey === lifeDateKey);
         if (d && d.photo) {
           pool = [{ base64: d.photo, comment: "メイン写真", time: "12:00", timestamp: d.timestamp || Date.now() }];
-          localStorage.setItem(`kuro_daily_photos_${lifeDateKey}`, JSON.stringify(pool));
+          localStorage.setItem(key, JSON.stringify(pool));
         }
       }
       return pool;
@@ -1089,19 +1136,24 @@ const StorageManager = {
   },
 
   loadMemories(defaultMemories) {
+    const key = this._getCharSpecificKey(DATA_KEYS.MEMORIES);
     try {
-      const parsed = JSON.parse(localStorage.getItem(DATA_KEYS.MEMORIES));
+      const parsed = JSON.parse(localStorage.getItem(key));
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     } catch(e) {}
     const initList = defaultMemories || getCurChar().defaultMemories || [];
     this.saveMemories(initList);
     return initList;
   },
-  saveMemories(m) { localStorage.setItem(DATA_KEYS.MEMORIES, JSON.stringify(m)); },
+  saveMemories(m) {
+    const key = this._getCharSpecificKey(DATA_KEYS.MEMORIES);
+    localStorage.setItem(key, JSON.stringify(m));
+  },
 
   loadAllDiaries() {
+    const key = this._getCharSpecificKey(DATA_KEYS.DIARIES);
     try {
-      const list = JSON.parse(localStorage.getItem(DATA_KEYS.DIARIES)) || [];
+      const list = JSON.parse(localStorage.getItem(key)) || [];
       const timeInfo = TimeProvider.getCurrentInfo();
       const todayKey = timeInfo.lifeLogKey;
 
@@ -1115,12 +1167,16 @@ const StorageManager = {
       });
     } catch(e) { return []; }
   },
-  saveAllDiaries(list) { localStorage.setItem(DATA_KEYS.DIARIES, JSON.stringify(list)); },
+  saveAllDiaries(list) {
+    const key = this._getCharSpecificKey(DATA_KEYS.DIARIES);
+    localStorage.setItem(key, JSON.stringify(list));
+  },
 
   isProperDiary(diary) {
     if (!diary || !diary.content) return false;
     const txt = diary.content.trim();
     if (txt.includes("今日はおやびんと写真を見せ合って楽しかったニャン♪") && txt.length < 50) return false;
+    if (txt.includes("今日は助手と写真を見せ合って楽しかったホ！") && txt.length < 50) return false;
     return (txt.length >= 30);
   },
 
@@ -1144,10 +1200,10 @@ const StorageManager = {
     cleanContent = AppCore.audio.cleanEndingNenyan(cleanContent);
     let extractedComment = kuroComment;
 
-    const match = cleanContent.match(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?)\s*([^\n]+)/);
+    const match = cleanContent.match(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?)\s*([^\n]+)/);
     if (match) {
       if (!extractedComment) extractedComment = match[1].trim();
-      cleanContent = cleanContent.replace(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?)\s*[^\n]+$/, '').trim();
+      cleanContent = cleanContent.replace(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?)\s*[^\n]+$/, '').trim();
     }
 
     let list = this.loadAllDiaries();
@@ -1189,11 +1245,15 @@ const StorageManager = {
     this.addPhotoToDailyPool(photoBase64, "写真を見せたニャ");
     let list = this.loadAllDiaries();
     const idx = list.findIndex(d => d.dateKey === timeInfo.lifeLogKey);
+    const defTxt = getCurChar().id === 'shiro'
+      ? "今日は助手と写真を見せ合って楽しい時間を過ごしたホ！"
+      : "今日はおやびんと写真を見せ合って楽しかったニャン♪";
+
     if (idx >= 0) {
       list[idx].photo = photoBase64;
       this.saveAllDiaries(list);
     } else {
-      this.saveDiary("今日はおやびんと写真を見せ合って楽しかったニャン♪", timeInfo.lifeLogKey, timeInfo.lifeFullDate, photoBase64, 1);
+      this.saveDiary(defTxt, timeInfo.lifeLogKey, timeInfo.lifeFullDate, photoBase64, 1);
     }
   },
 
@@ -1210,7 +1270,7 @@ const StorageManager = {
   },
 
   async executeSafeStorageDeepClean() {
-    Logger.log("[DeepClean] 🧹 安全ストレージ大掃除を開始ニャ…", "info");
+    Logger.log("[DeepClean] 🧹 安全ストレージ大掃除を開始…", "info");
 
     this.downloadDataPackage();
     await new Promise(r => setTimeout(r, 600));
@@ -1301,7 +1361,8 @@ const StorageManager = {
 
     const recentLogs = this.loadRecentTimelineLogs();
     recentLogs.forEach(l => { if (l && l.photoUrl && photoMapping.has(l.photoUrl)) l.photoUrl = photoMapping.get(l.photoUrl); });
-    localStorage.setItem(DATA_KEYS.RECENT_LOGS, JSON.stringify(recentLogs));
+    const recentKey = this._getCharSpecificKey(DATA_KEYS.RECENT_LOGS);
+    localStorage.setItem(recentKey, JSON.stringify(recentLogs));
 
     Logger.log(`[DeepClean] ✅ 大掃除完了: 写真${processedPhotos}枚を安全に3〜5KB化・重複完全パージ`, "success");
     return true;
@@ -1327,6 +1388,7 @@ const StorageManager = {
       dailyPhotoPools: allDailyPhotos,
       dailyChatLogs: allDailyLogs,
       settings: {
+        activeCharacter: localStorage.getItem('kuro_active_character') || 'kuro',
         speakerId: localStorage.getItem('kuro_voice_speaker_id') || String(getCurChar().defaultSpeakerId || 10),
         voiceRate: localStorage.getItem('kuro_rate') || String(getCurChar().defaultVoiceRate || 1.05),
         talkLength: localStorage.getItem('kuro_talk_length') || 'auto',
@@ -1361,11 +1423,13 @@ const StorageManager = {
       this.saveAllDiaries(data.diaries);
     }
     if (Array.isArray(data.recentLogs)) {
-      localStorage.setItem(DATA_KEYS.RECENT_LOGS, JSON.stringify(data.recentLogs.slice(-30)));
+      const recentKey = this._getCharSpecificKey(DATA_KEYS.RECENT_LOGS);
+      localStorage.setItem(recentKey, JSON.stringify(data.recentLogs.slice(-30)));
     }
 
     if (data.settings && typeof data.settings === 'object') {
       const s = data.settings;
+      if (s.activeCharacter) localStorage.setItem('kuro_active_character', s.activeCharacter);
       if (s.speakerId) localStorage.setItem('kuro_voice_speaker_id', s.speakerId);
       if (s.voiceRate) localStorage.setItem('kuro_rate', s.voiceRate);
       if (s.talkLength) localStorage.setItem('kuro_talk_length', s.talkLength);
@@ -1401,9 +1465,12 @@ const StorageManager = {
     return true;
   }
 };
+
 /* ==========================================================================
    AIペット 共通対話エンジン＆中央司令塔OS（app.js Part 2/2）
-   - プラグインアーキテクチャ対応（char_kuro.js 等のキャラ定義を自動ロード）
+   - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
+   - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全切替
+   - 【アバター動的切替】キャラ選択に応じてリアル写真（shiro_*.png）とSVGを自動更新
    - 【天気・気温スマート即答】最新GPS気象データから0秒即答・長文TTS遅延を完全根絶
    - 【生URL物理除去＆セリフUI完全分離】セリフ内URLを根絶・おてつだい時はカードUIに集約
    - 【トークスタイル3段階自律判定】自動(auto)時に文脈・入力から短/普/長をスマート切替
@@ -1413,7 +1480,7 @@ const StorageManager = {
    - 【思考デッドロック完全根絶】try...finally による入力処理中フラグ（鍵）の確実な自動解除
    - 【左上日付・曜日・時刻常時更新】headerDisplay連動によるリアルタイム日時表示
    - 【絵日記完全日本語ロック】system_instruction による英語ドリフト完全根絶
-   - 【確実なひとこと生成】テンプレート強制によるクロのひとこと抽出完全保証
+   - 【確実なひとこと生成】テンプレート強制によるひとこと抽出完全保証
    - 【メガネ調整完全一致】プレビュー画面とメイン画面の座標計算を100%完全同期
    - 【マップカード厳格化】なかよしモードでの誤作動を根絶しおてつだいモード時のみ正確に案内
    - アバターSVG動的注入 ＆ 透過自動切り替え
@@ -1450,6 +1517,7 @@ class CatAvatarRenderer {
     this.eyelidCoords = StorageManager.loadEyelidCoords();
     this.currentEmotion = 'idle';
 
+    this.refreshAvatarImages();
     this._injectVectorAvatar();
 
     this.eyesNormal = document.getElementById('eyes-normal');
@@ -1466,11 +1534,38 @@ class CatAvatarRenderer {
     this._initImageFormatDetectors();
   }
 
+  refreshAvatarImages() {
+    const cur = getCurChar();
+    const pfx = cur.imagePrefix || "";
+    ['idle', 'talking', 'thinking', 'happy'].forEach(emotion => {
+      const img = document.getElementById(`img-${emotion}`);
+      if (img) {
+        img.src = `${pfx}${emotion}.png`;
+        img.onerror = () => {
+          if (img.src.endsWith('.png')) {
+            img.src = `${pfx}${emotion}.jpg`;
+            img.classList.remove('is-png');
+          }
+        };
+        img.onload = () => {
+          if (img.src.endsWith('.png')) img.classList.add('is-png');
+        };
+      }
+    });
+  }
+
   _injectVectorAvatar() {
     if (!this.vectorContainer) return;
     const cur = getCurChar();
     const svgCode = cur.getVectorAvatarSvg ? cur.getVectorAvatarSvg() : "";
     this.vectorContainer.innerHTML = svgCode;
+
+    this.eyesNormal = document.getElementById('eyes-normal');
+    this.eyesHappy = document.getElementById('eyes-happy');
+    this.mouthClosed = document.getElementById('mouth-closed');
+    this.mouthTalking = document.getElementById('mouth-talking');
+    this.mouthHappy = document.getElementById('mouth-happy');
+    this.headUnit = document.getElementById('head-unit');
   }
 
   _initImageFormatDetectors() {
@@ -1676,7 +1771,7 @@ class AIThoughtEngine {
   constructor() {
     this.apiKey = (localStorage.getItem('kuro_api_key') || '').trim();
     this.activeAbortController = null;
-    this.isUserCancelled = false; // 飼い主さんの手動とりけしフラグ
+    this.isUserCancelled = false;
   }
 
   cancelActiveThought() {
@@ -1684,7 +1779,7 @@ class AIThoughtEngine {
     if (this.activeAbortController) {
       this.activeAbortController.abort();
       this.activeAbortController = null;
-      Logger.log(`[AI] 🛑 飼い主さんの操作により思考を即座にキャンセルしました`, "info");
+      Logger.log(`[AI] 🛑 操作により思考を即座にキャンセルしました`, "info");
       return true;
     }
     return false;
@@ -1697,10 +1792,8 @@ class AIThoughtEngine {
     return logs.filter(item => {
       if (!item || !item.text) return false;
       const t = item.text.trim();
-      // ★今日（生活日）以外の過去ログは除外し、11月7日等の過去混同を100%防止
       if (item.date && item.date !== todayLifeKey) return false;
-      // システム自動通知や定型短文を文脈から除外
-      if (/^(?:おまかせニャ|あそぶニャ|バッチリニャ|はーい|はい|起きたニャ|お昼寝するニャ)/.test(t)) return false;
+      if (/^(?:おまかせニャ|あそぶニャ|バッチリニャ|はーい|はい|起きたニャ|お昼寝するニャ|フン|計算中ホ|任せるが良いホ|ホウ|バッチリホ)/.test(t)) return false;
       if (/(?:今日の日記を書き込みました|昨日の日記|昨日の思い出絵日記)/.test(t)) return false;
       if (/(?:いま何時|今何時|今日何日|きょう何日|天気どんな感じ|気温.*(?:何度|どれくらい))/i.test(t)) return false;
       if (t.startsWith('http') || t.includes('Googleマップで見る')) return false;
@@ -1752,7 +1845,7 @@ class AIThoughtEngine {
       return { success: false, error: "NO_API_KEY" };
     }
 
-    this.isUserCancelled = false; // フラグリセット
+    this.isUserCancelled = false;
     const timeInfo = TimeProvider.getCurrentInfo();
     const weather = LocationProvider.weather;
     const temp = LocationProvider.temperature;
@@ -1764,8 +1857,8 @@ class AIThoughtEngine {
     // ★自動モード（auto）時の3段階スマート判定（短・普・長）
     let effectiveLen = talkLen;
     if (talkLen === 'auto') {
-      const isShortPrompt = promptText.length <= 10 || /^(?:おはよう|こんにちは|こんばんは|うん|おやすみ|ねえ|クロちゃん|ありがと|わかった|なるほど)/.test(promptText.trim());
-      const isLongPrompt = !!photoBase64 || /(?:教えて|詳しく|どう思う|なんで|なぜ|昔|発明|理由|説明)/.test(promptText.trim());
+      const isShortPrompt = promptText.length <= 10 || /^(?:おはよう|こんにちは|こんばんは|うん|おやすみ|ねえ|クロちゃん|シロくん|ホウ博士|ありがと|わかった|なるほど)/.test(promptText.trim());
+      const isLongPrompt = !!photoBase64 || /(?:教えて|詳しく|どう思う|なんで|なぜ|昔|発明|研究|理由|説明)/.test(promptText.trim());
 
       if (isShortPrompt) {
         effectiveLen = 'short';
@@ -1792,12 +1885,12 @@ class AIThoughtEngine {
     if (effectiveLen === 'short') {
       lengthClimaxLock = "\n【最重要：今回の発話制限】必ず1文（30文字以内）でサクッと短く答えてください。2文以上の長いお喋りは完全禁止です。";
     } else if (effectiveLen === 'long') {
-      lengthClimaxLock = "\n【最重要：今回の発話制限】前世の記憶やおやびんへの愛嬌を込めて2〜3文（100〜150文字程度）でたっぷり楽しくお話ししてください。";
+      lengthClimaxLock = "\n【最重要：今回の発話制限】前世の記憶や知識、相棒への愛嬌を込めて2〜3文（100〜150文字程度）でたっぷり楽しくお話ししてください。";
     } else {
       lengthClimaxLock = "\n【最重要：今回の発話制限】1〜2文（40〜70文字程度）の愛らしい標準サイズで小気味よく会話してください。";
     }
 
-    const dateClimaxLock = `\n【絶対厳守の日付アンカー】今日の日付は絶対に【${timeInfo.fullDate}】です。過去の日記に登場する日付（11月7日等）は過去の記録であり、今日の日付ではありません。今日の日付を誤認しないでください。`;
+    const dateClimaxLock = `\n【絶対厳守の日付アンカー】今日の日付は絶対に【${timeInfo.fullDate}】です。過去の日記に登場する日付は過去の記録であり、今日の日付ではありません。今日の日付を誤認しないでください。`;
     systemPrompt += `\n${dateClimaxLock}${lengthClimaxLock}`;
 
     const contents = this._buildContentsPayload(rawLogs, promptText, photoBase64);
@@ -1818,7 +1911,7 @@ class AIThoughtEngine {
       const timeoutTimer = setTimeout(() => {
         isCurrentTimeout = true;
         if (this.activeAbortController) this.activeAbortController.abort();
-      }, 8000); // ★8秒タイムアウト完全固定
+      }, 8000);
 
       try {
         const bodyPayload = {
@@ -1878,12 +1971,16 @@ class AIThoughtEngine {
               const area = args.area || townArea || "東村山市";
               Logger.log(`[Tool] 📍 マップ検索実行: ${spot} (${area})`, "info");
               cards = this._createSmartMapCards(spot, area);
-              replyText = `おやびん、${spot}の場所を地図で見つけてきたニャ！ここから確認してニャン🐾`;
+              replyText = cur.id === 'shiro'
+                ? `助手よ、${spot}の場所を計算して割り出したホ！この地図で確認するが良いホ！`
+                : `おやびん、${spot}の場所を地図で見つけてきたニャ！ここから確認してニャン🐾`;
             } else if (callInfo.name === "searchLatestNews") {
               const topic = args.topic || "最新ニュース";
               Logger.log(`[Tool] 📰 ニュース検索実行: ${topic}`, "info");
               cards = this._createSmartNewsCards(topic);
-              replyText = `おやびん、${topic}の最新ニュースをチェックしたニャ！見てみてニャン📰🐾`;
+              replyText = cur.id === 'shiro'
+                ? `助手よ、${topic}の最新情報を整理したホ！目を通すが良いホ！📰`
+                : `おやびん、${topic}の最新ニュースをチェックしたニャ！見てみてニャン📰🐾`;
             }
           }
 
@@ -1891,20 +1988,18 @@ class AIThoughtEngine {
           if (textPart?.text && !replyText) replyText = textPart.text;
 
           if (replyText) {
-            // ★セリフから生URL（http/https）を物理的に完全除去（UIとデータの完全分離）
             let clean = replyText.replace(/https?:\/\/[^\s]+/gi, '');
             clean = clean.replace(/<!--[\s\S]*?-->/g, '').replace(/[*#_~`]/g, '').trim();
-            clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
+            clean = clean.replace(/余([はがものにもと])/g, `${cur.firstPerson}$1`).replace(/余/g, cur.firstPerson);
             clean = AppCore.audio.cleanEndingNenyan(clean);
 
-            // おてつだいモード時のみフォールバックカード検知
             if (isAssistant && cards.length === 0) {
               const fallbackCards = this._detectCardsFromKuroSpeech(clean, promptText);
               if (fallbackCards.length > 0) cards = fallbackCards;
             }
 
             const badge = document.getElementById('model-badge');
-            if (badge) badge.textContent = `🐾 ${cleanModel.replace('gemini-', '')}`;
+            if (badge) badge.textContent = `${cur.id === 'shiro' ? '🦉' : '🐾'} ${cleanModel.replace('gemini-', '')}`;
 
             Logger.log(`[AI] ✅ 応答受信成功 (${ms}ms) [${cleanModel}] (カード:${cards.length}件)`, "success");
             this.activeAbortController = null;
@@ -1917,12 +2012,12 @@ class AIThoughtEngine {
         clearTimeout(timeoutTimer);
         const ms = Math.round(performance.now() - t0);
         if (this.isUserCancelled) {
-          Logger.log(`[AI] 🛑 飼い主さんのキャンセルを受け付けました`, "info");
+          Logger.log(`[AI] 🛑 キャンセルを受け付けました`, "info");
           this.activeAbortController = null;
           return { success: false, aborted: true };
         }
         if (isCurrentTimeout) {
-          Logger.log(`[AI] ⏱️ [${cleanModel}] が8秒タイムアウト。次へバトンタッチニャ！`, "warn");
+          Logger.log(`[AI] ⏱️ [${cleanModel}] が8秒タイムアウト。次へバトンタッチ！`, "warn");
           continue;
         }
         Logger.log(`[AI] ❌ エラー [${cleanModel}]: ${err.message} (${ms}ms)`, "error");
@@ -1932,12 +2027,15 @@ class AIThoughtEngine {
     this.activeAbortController = null;
     if (this.isUserCancelled) return { success: false, aborted: true };
 
-    // ★最大16秒（8秒＋8秒）で打ち切り。再周回せず案3のセリフで愛らしく決着
     Logger.log(`[AI] ⏱️ 16秒タイムアウト（8秒＋8秒打ち切り完了・案3セリフ発動）`, "warn");
+    const timeoutMsg = cur.id === 'shiro'
+      ? "うむむ…！助手の話を深く思考していたら、計算回路がオーバーヒートしたホ…！もう一度言ってくれホ！"
+      : "うにゃあ…！おやびんのお話しをじっくり考えてたら、頭の中がこんがらがっちゃったニャ〜！もう一回言ってニャン🐾";
+
     return {
       success: false,
       isTimeout: true,
-      text: "うにゃあ…！おやびんのお話しをじっくり考えてたら、頭の中がこんがらがっちゃったニャ〜！もう一回言ってニャン🐾"
+      text: timeoutMsg
     };
   }
 
@@ -2012,12 +2110,11 @@ class AIThoughtEngine {
   }
 
   _detectCardsFromKuroSpeech(speechText, userPrompt) {
-    // なかよしモード時はカードを出さないガード
     if (!AppCore.state.isAssistantMode) return [];
 
     const combined = `${speechText} ${userPrompt}`;
-    const isMapConfirmed = /(?:見つけてきたニャ|探してきたニャ|地図で案内するニャ|地図をチェックしてニャ)/.test(speechText);
-    const isNewsConfirmed = /(?:ニュースをチェックしたニャ|最新ニュース.*見てみてニャ)/.test(speechText);
+    const isMapConfirmed = /(?:見つけてきた|探してきた|地図で案内|地図をチェック|割り出した)/.test(speechText);
+    const isNewsConfirmed = /(?:ニュースをチェック|最新ニュース|情報を整理)/.test(speechText);
 
     if (isMapConfirmed) {
       const match = combined.match(/(?:公園|カフェ|ベンチ|散歩|炭火ホルモン\s*丸川|丸川|餃子の満洲|ラーメン|ホルモン|餃子|焼肉|寿司|麻婆豆腐|カレー|うどん)/);
@@ -2038,15 +2135,15 @@ class AIThoughtEngine {
     const timeInfo = TimeProvider.getCurrentInfo();
     const fullDate = targetLifeFullDate || (targetLifeDateKey ? TimeProvider.formatDateKeyToFull(targetLifeDateKey) : timeInfo.lifeFullDate);
     const lifeKey = targetLifeDateKey || timeInfo.lifeLogKey;
+    const cur = getCurChar();
 
-    const filteredLogs = dailyAllLogs.filter(l => l.text && !l.text.startsWith('http') && !/(?:絵?日記|にっき).*(?:書いて|まとめて)/.test(l.text));
-    const historyText = filteredLogs.map(l => `${l.role === 'user' ? 'おやびん' : 'クロ'}: ${l.text}`).join('\n');
+    const filteredLogs = dailyAllLogs.filter(l => l.text && !l.text.startsWith('http') && !/(?:絵?日記|にっき|日誌).*(?:書いて|まとめて)/.test(l.text));
+    const historyText = filteredLogs.map(l => `${l.role === 'user' ? cur.ownerCall : cur.name}: ${l.text}`).join('\n');
 
     const context = {
       fullDate, isAtHome: LocationProvider.isAtHome, weather: LocationProvider.weather,
       temp: LocationProvider.temperature, historyText
     };
-    const cur = getCurChar();
     const diaryPrompt = cur.buildDiaryPrompt ? cur.buildDiaryPrompt(context) : "";
 
     try {
@@ -2054,7 +2151,7 @@ class AIThoughtEngine {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: "You are Kuro, a Japanese cat. You MUST write in Japanese only. Output must strictly follow the format: diary body on the first lines, followed by 【クロのひとこと：...】 on the last line. Any English text is strictly forbidden." }] },
+          system_instruction: { parts: [{ text: `You are ${cur.name}. You MUST write in Japanese only. Output must strictly follow the format: diary body on the first lines, followed by 【${cur.title || cur.name}のひとこと：...】 on the last line. Any English text is strictly forbidden.` }] },
           contents: [{ role: 'user', parts: [{ text: diaryPrompt }] }],
           generationConfig: { temperature: 0.7, maxOutputTokens: 850 }
         })
@@ -2064,15 +2161,15 @@ class AIThoughtEngine {
         const diaryRaw = (await res.json()).candidates?.[0]?.content?.parts?.[0]?.text;
         if (diaryRaw && diaryRaw.length >= 25) {
           let clean = diaryRaw.replace(/https?:\/\/[^\s]+/gi, '').replace(/[*#_~`]/g, '').trim();
-          clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
+          clean = clean.replace(/余([はがものにもと])/g, `${cur.firstPerson}$1`).replace(/余/g, cur.firstPerson);
           clean = AppCore.audio.cleanEndingNenyan(clean);
 
           let content = clean;
           let kuroComment = "";
-          const match = clean.match(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?)\s*([^\n]+)/);
+          const match = clean.match(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?)\s*([^\n]+)/);
           if (match) {
             kuroComment = match[1].trim();
-            content = clean.replace(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?)\s*[^\n]+$/, '').trim();
+            content = clean.replace(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?)\s*[^\n]+$/, '').trim();
           }
 
           const pool = StorageManager.getDailyPhotoPool(lifeKey);
@@ -2123,13 +2220,74 @@ const AppCore = {
     });
   },
 
+  switchActiveCharacter(charId) {
+    if (charId !== 'kuro' && charId !== 'shiro') return;
+    localStorage.setItem('kuro_active_character', charId);
+    const cur = getCurChar();
+
+    // デフォルト話者IDへの適応（未設定時やキャラ変更時）
+    localStorage.setItem('kuro_voice_speaker_id', cur.defaultSpeakerId);
+
+    // アバター・画像の同期更新
+    if (this.avatar) {
+      this.avatar.refreshAvatarImages();
+      this.avatar._injectVectorAvatar();
+      this.avatar.glassesCoords = StorageManager.loadGlassesCoords();
+      this.avatar.eyelidCoords = StorageManager.loadEyelidCoords();
+      this.avatar.applyAllFramesTransform();
+      this.avatar.applyEyelidTransforms();
+      this.avatar.applyMode(this.avatar.mode);
+    }
+
+    // 記憶帳・タイムラインの再読込
+    this.memories = StorageManager.loadMemories(cur.defaultMemories);
+    this._renderMemories();
+    this._restoreTimelineHistory();
+    this._updateStorageMonitorUI();
+    this._updateCharacterUI();
+
+    const welcomeMsg = charId === 'shiro'
+      ? "フン、ボクの出番ホな！よろしく頼むホ、助手！"
+      : "おやびん、わたしはクロだニャン♪ 今日もよろしくニャ！";
+
+    this.audio.speak(welcomeMsg, null, () => this.renderBubble('model', welcomeMsg));
+    Toast.show(`パートナーを【${cur.name}】に切り替えたホ！`, "success", 3000);
+    Logger.log(`[Character] 🔄 パートナー切替完了: ${cur.name} (${cur.id})`, "success");
+  },
+
+  _updateCharacterUI() {
+    const cur = getCurChar();
+    const isShiro = (cur.id === 'shiro');
+
+    // おやつボタンの動的切替
+    const snackIcon = document.getElementById('snack-btn-icon');
+    const snackTxt = document.getElementById('snack-btn-text');
+    if (snackIcon) snackIcon.textContent = isShiro ? '🌰' : '🐟';
+    if (snackTxt) snackTxt.textContent = isShiro ? '木の実' : 'おやつ';
+
+    // フッターバージョンタグ
+    const verTag = document.getElementById('app-footer-version-tag');
+    if (verTag) verTag.textContent = isShiro ? '🦉 シロくん（ホウ博士）' : '🐾 クロちゃん';
+
+    // 日記帳モーダルのタイトル
+    const studioTitle = document.getElementById('studio-top-title-text');
+    if (studioTitle) studioTitle.textContent = isShiro ? 'ホウ博士の研究観察日誌' : 'クロの思い出絵日記アルバム';
+
+    // セレクターボタンの同期
+    document.querySelectorAll('#character-selector-segment-group .segment-btn').forEach(btn => {
+      btn.classList.toggle('is-active', btn.dataset.charId === cur.id);
+    });
+
+    this._updateModeUI(false);
+  },
+
   async init() {
     this.avatar = new CatAvatarRenderer();
     this.memories = StorageManager.loadMemories(getCurChar().defaultMemories);
     this.todayLogs = StorageManager.loadRecentTimelineLogs();
     this.state.isAssistantMode = localStorage.getItem('kuro_mode') === 'assistant';
 
-    this._updateModeUI(false);
+    this._updateCharacterUI();
     this._setupAudioCallbacks();
 
     const savedTheme = localStorage.getItem('kuro_theme') || 'normal';
@@ -2154,20 +2312,18 @@ const AppCore = {
 
     if (typeof VersionManager !== 'undefined') VersionManager.applyToDOM();
 
-    // ★左上ヘッダーへの「日付・曜日・時刻」（例: 11/8(土) 10:12）即時安全反映
     const initialInfo = TimeProvider.getCurrentInfo();
     this.state.lastCheckedLifeLogKey = initialInfo.lifeLogKey;
     const clk = document.getElementById('clock-display');
     if (clk) clk.textContent = initialInfo.headerDisplay;
 
-    // 毎秒の時計ループ（日付と時刻を常に最新保持＆朝4時またぎ自動救済）
     setInterval(() => {
       const cur = TimeProvider.getCurrentInfo();
       const c = document.getElementById('clock-display');
       if (c) c.textContent = cur.headerDisplay;
 
       if (this.state.lastCheckedLifeLogKey && cur.lifeLogKey !== this.state.lastCheckedLifeLogKey) {
-        Logger.log(`[Lifecycle] 🌅 朝4:00の生活日切り替えを検知（${this.state.lastCheckedLifeLogKey} ➔ ${cur.lifeLogKey}）。昨日の日記を自動救済ニャ…`, "info");
+        Logger.log(`[Lifecycle] 🌅 朝4:00の生活日切り替えを検知（${this.state.lastCheckedLifeLogKey} ➔ ${cur.lifeLogKey}）。昨日の日記を自動救済…`, "info");
         this.state.lastCheckedLifeLogKey = cur.lifeLogKey;
         this.checkAndFinalizeYesterdayDiary();
       }
@@ -2175,18 +2331,17 @@ const AppCore = {
 
     LocationProvider.initWatcher();
 
-    // ★起動時の一斉プリフェッチを全廃（TTS Quest過負荷と429を根絶し爆速化）
     this.checkAndFinalizeYesterdayDiary();
     this._startIdleSoliloquyWatcher();
 
     setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-    Logger.log(`[AppCore] 全システム正常稼働！キャラクター: ${getCurChar().name} プラグインロード完了ニャ🐾`, "success");
+    Logger.log(`[AppCore] 全システム正常稼働！パートナー: ${getCurChar().name} ロード完了！`, "success");
   },
 
   _bindDeviceWakeWatcher() {
     const handleWake = () => {
       if (document.visibilityState === 'visible') {
-        Logger.log(`[Lifecycle] 📱 スマホ画面復帰を検知。未作成・追加会話日記を点検ニャ…`, "info");
+        Logger.log(`[Lifecycle] 📱 画面復帰を検知。未作成・追加会話日記を点検…`, "info");
         this.checkAndFinalizeYesterdayDiary();
       }
     };
@@ -2220,7 +2375,7 @@ const AppCore = {
 
     if (u.usedMB >= 4.0 && !this.state._hasShown4MbAlert) {
       this.state._hasShown4MbAlert = true;
-      Toast.show("おやびん！写真がたくさん溜まってきたニャ！そろそろPCにバックアップしてニャン🐾", "error", 6000);
+      Toast.show("写真がたくさん溜まってきたホ！そろそろPCにバックアップを推奨するホ！", "error", 6000);
       Logger.log(`[Storage] ⚠️ ストレージが4.0MBに達しました。バックアップを推奨します`, "warn");
     }
   },
@@ -2270,12 +2425,16 @@ const AppCore = {
 
   _startIdleSoliloquyWatcher() {
     if (this.state.idleSoliloquyTimer) clearInterval(this.state.idleSoliloquyTimer);
-    const phrases = ["ふぁ〜あ…（あくび）💤", "おやびん、なにしてるのかニャ〜？🐾", "今日もちゅ〜る食べたいニャン♪🐟", "おやびんの近くは落ち着くニャ〜♡"];
+    const phrasesKuro = ["ふぁ〜あ…（あくび）💤", "おやびん、なにしてるのかニャ〜？🐾", "今日もちゅ〜る食べたいニャン♪🐟", "おやびんの近くは落ち着くニャ〜♡"];
+    const phrasesShiro = ["ふぁ〜あ…（羽を伸ばす）💤", "助手よ、研究の進捗はどうホ？🦉", "木の実でもつまみながら読書したいホな…", "助手の近くは集中できるホ…"];
+
     this.state.idleSoliloquyTimer = setInterval(() => {
       const now = Date.now();
       if ((now - this.state.lastActivityTime) > 150000 && this.state.isRunning && !this.audio.isSpeaking && !this.state.isThinking && this.state.timerId === null) {
         this.state.lastActivityTime = now;
-        const phrase = phrases[Math.floor(Math.random() * phrases.length)];
+        const cur = getCurChar();
+        const list = (cur.id === 'shiro') ? phrasesShiro : phrasesKuro;
+        const phrase = list[Math.floor(Math.random() * list.length)];
         const b = this.renderBubble('model', phrase);
         if (b) { b.style.opacity = '0.85'; b.style.borderStyle = 'dashed'; }
         if (this.avatar) {
@@ -2309,7 +2468,7 @@ const AppCore = {
       return;
     }
 
-    Logger.log(`[Diary] 昨日の絵日記更新を検出（${yFullDate} / 前:${prevLogCount}件 ➔ 終:${yLogs.length}件）。完全版を生成ニャ…`, "info");
+    Logger.log(`[Diary] 昨日の絵日記更新を検出（${yFullDate} / 前:${prevLogCount}件 ➔ 終:${yLogs.length}件）。完全版を生成…`, "info");
 
     try {
       const res = await this.ai.generateDailyDiarySummary(yLogs, yKey, yFullDate);
@@ -2317,11 +2476,16 @@ const AppCore = {
         StorageManager.saveDiary(res.diaryText, yKey, yFullDate, res.selectedPhoto, yLogs.length, res.kuroComment);
 
         Logger.log(`[Diary] ✅ 昨日の絵日記の最終アップデートに大成功！(${yFullDate})`, "success");
-        Toast.show(`おやびん！昨日の日記に夜のお話しも追加して、きれいにまとめておいたニャン🐾`, "success", 4500);
+        const cur = getCurChar();
+        const updateToast = cur.id === 'shiro'
+          ? `助手よ！昨日の研究日誌に夜の記録も追加してまとめておいたホ！`
+          : `おやびん！昨日の日記に夜のお話しも追加してまとめておいたニャン🐾`;
+
+        Toast.show(updateToast, "success", 4500);
 
         const autoNotice = hasNewLogs && isProper
-          ? `おやびん！昨日の日記に、そのあと夜にお話しした内容もぜんぶ追加して、新しくまとめ直しておいたニャン🐾`
-          : `おやびん！昨日の思い出絵日記を書いておいたニャン🐾 日記帳を見てみてニャ♪`;
+          ? (cur.id === 'shiro' ? `助手よ！昨日の日誌に夜の会話も追加しておいたホ！` : `おやびん！昨日の日記に夜のお話しも追加しておいたニャン🐾`)
+          : (cur.id === 'shiro' ? `助手よ！昨日の研究観察日誌を書いておいたホ！日誌を見てみるが良いホ！` : `おやびん！昨日の思い出絵日記を書いておいたニャン🐾 日記帳を見てみてニャ♪`);
 
         this.renderBubble('model', autoNotice);
         const savedDiary = StorageManager.getDiary(yKey);
@@ -2335,7 +2499,7 @@ const AppCore = {
   },
 
   async forceRefreshApp() {
-    if (!window.confirm("日記や記憶データは安全にキープされます。最新版の画面を読み直しますかニャ？🐾")) return;
+    if (!window.confirm("日記や記憶データは安全にキープされます。最新版の画面を読み直しますか？")) return;
     try { if ('caches' in window) await Promise.all((await caches.keys()).map(k => caches.delete(k))); } catch(e) {}
     window.location.href = window.location.origin + window.location.pathname + '?refresh=' + Date.now();
   },
@@ -2345,8 +2509,12 @@ const AppCore = {
     if (!box) return;
     box.innerHTML = '';
     const logs = StorageManager.loadRecentTimelineLogs();
+    const cur = getCurChar();
     if (logs.length === 0) {
-      this.renderBubble('model', `おやびん、わたしは${getCurChar().name}だニャン🐾 今日もいっぱいお話しするニャ♪`);
+      const greeting = cur.id === 'shiro'
+        ? `助手よ、ボクは${cur.title || cur.name}だホ！今日も知的な一日にするホ！`
+        : `おやびん、わたしは${cur.name}だニャン🐾 今日もいっぱいお話しするニャ♪`;
+      this.renderBubble('model', greeting);
       return;
     }
     logs.forEach(h => this.renderBubble(h.role, h.text, [], h.photoUrl || null));
@@ -2363,7 +2531,8 @@ const AppCore = {
       this._updateDiaryReadBtnUI(false);
       this.audio.playEffect('aizuchi');
       const st = document.getElementById('status-text');
-      if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
+      const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
+      if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
     };
 
     this.audio.onSpeechFinal = (finalText) => {
@@ -2376,8 +2545,9 @@ const AppCore = {
 
     this.audio.onListeningStatus = () => {
       const st = document.getElementById('status-text');
+      const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
       if (st && this.state.isRunning && !this.audio.isSpeaking && !this.state.isThinking && !this.audio.isActionButtonLocked) {
-        st.textContent = "👂 聴いてるニャ♪";
+        st.textContent = `👂 聴いてる${suffix}`;
       }
     };
   },
@@ -2412,18 +2582,16 @@ const AppCore = {
       const imgWrap = document.createElement('div');
       imgWrap.className = 'timeline-photo-wrap';
       imgWrap.innerHTML = `<img src="${photoUrl}" alt="写真" class="timeline-shared-img">`;
-      imgWrap.onclick = () => this.openPhotoLightbox(photoUrl, "📸 おやびんが見せてくれたお写真");
+      imgWrap.onclick = () => this.openPhotoLightbox(photoUrl, "📸 共有されたお写真");
       row.appendChild(imgWrap);
     }
 
     const b = document.createElement('div');
     b.className = 'chat-bubble';
-    // ★セリフから生URLを除去して吹き出しに表示
     const cleanBubbleText = (text || '').replace(/https?:\/\/[^\s]+/gi, '').trim();
     b.textContent = this.audio.cleanEndingNenyan(cleanBubbleText);
     row.appendChild(b);
 
-    // ★おてつだいモード時のみ案内カードを表示
     if (cards && cards.length > 0 && this.state.isAssistantMode) {
       const cardBox = document.createElement('div');
       cardBox.className = 'action-card-box';
@@ -2445,25 +2613,26 @@ const AppCore = {
   renderDiaryCard(diaryData) {
     const box = document.getElementById('chat-timeline');
     if (!box || !diaryData) return;
+    const cur = getCurChar();
     const row = document.createElement('div');
     row.className = `chat-row model`;
     const card = document.createElement('div');
     card.className = 'timeline-diary-card';
     card.innerHTML = `
-      <div class="timeline-diary-header"><span>📖 ${diaryData.fullDate} の${getCurChar().name}絵日記</span><span>🐾 記録完了</span></div>
+      <div class="timeline-diary-header"><span>📖 ${diaryData.fullDate} の${cur.title || cur.name}記録</span><span>🐾 記録完了</span></div>
       <div class="timeline-diary-meta"><span>🌤️ 天気: ${diaryData.weather}</span><span>🌡️ 気温: ${diaryData.temperature}℃</span></div>
       ${diaryData.photo ? `<div class="timeline-diary-photo"><img src="${diaryData.photo}" alt="写真" id="card-diary-img-${diaryData.dateKey}"></div>` : ''}
       <div class="timeline-diary-body">${diaryData.content}</div>
       ${diaryData.kuroComment ? `
         <div class="timeline-diary-comment-box">
-          <span class="timeline-diary-comment-label">🐾 ${getCurChar().name}のひとこと:</span>
+          <span class="timeline-diary-comment-label">🐾 ${cur.title || cur.name}のひとこと:</span>
           <span class="timeline-diary-comment-text">${diaryData.kuroComment}</span>
         </div>
       ` : ''}
     `;
     if (diaryData.photo) {
       card.querySelector(`#card-diary-img-${diaryData.dateKey}`)?.addEventListener('click', () => {
-        this.openPhotoLightbox(diaryData.photo, `📖 ${diaryData.fullDate} の絵日記写真`);
+        this.openPhotoLightbox(diaryData.photo, `📖 ${diaryData.fullDate} の思い出写真`);
       });
     }
     row.appendChild(card);
@@ -2482,7 +2651,7 @@ const AppCore = {
       this.audio.unlockMasterAudio();
       const currentPool = StorageManager.getDailyPhotoPool(TimeProvider.getCurrentInfo().lifeLogKey);
       if (currentPool.length >= 12) {
-        if (!window.confirm("写真が上限（12枚）に達していますニャ！\n一番古い写真が自動で入れ替わりますが、このまま撮影しますかニャ？")) {
+        if (!window.confirm("写真が上限（12枚）に達しています！\n一番古い写真が自動で入れ替わりますが、このまま撮影しますか？")) {
           if (this.state.isRunning) this.audio.startListening();
           return;
         }
@@ -2493,7 +2662,7 @@ const AppCore = {
     photoInput.onchange = async (e) => {
       const file = e.target.files?.[0];
       if (!file) { if (this.state.isRunning) this.audio.startListening(); return; }
-      Toast.show("写真をギュッと小さく圧縮中ニャ…📷", "info");
+      Toast.show("写真をギュッと小さく圧縮中…📷", "info");
 
       const compressedBase64 = await new Promise(resolve => {
         const reader = new FileReader();
@@ -2512,13 +2681,18 @@ const AppCore = {
         reader.readAsDataURL(file);
       });
 
-      this.renderBubble('user', `${getCurChar().name}ちゃん、この写真見てニャ！`, [], compressedBase64);
-      StorageManager.appendChatLog('user', `${getCurChar().name}ちゃん、この写真見てニャ！`, compressedBase64);
+      const cur = getCurChar();
+      const showPrompt = cur.id === 'shiro'
+        ? `${cur.title || cur.name}、この写真を観察してくれ！`
+        : `${cur.name}ちゃん、この写真見てニャ！`;
+
+      this.renderBubble('user', showPrompt, [], compressedBase64);
+      StorageManager.appendChatLog('user', showPrompt, compressedBase64);
       StorageManager.attachPhotoToTodayDiary(compressedBase64);
       this._updateStorageMonitorUI();
 
       this.audio.playImmediateFiller('search');
-      this.executeThought("この写真を見て感想やお話しを聞かせてニャ！", compressedBase64, true);
+      this.executeThought("この写真を見て感想や考察を聞かせてくれ！", compressedBase64, true);
       photoInput.value = '';
     };
   },
@@ -2579,7 +2753,11 @@ const AppCore = {
           chimeCount++;
         }, 1200);
 
-        const alertMsg = `おやびん！${label}経ったニャ！タイマー鳴ったニャン🔔🐾`;
+        const cur = getCurChar();
+        const alertMsg = cur.id === 'shiro'
+          ? `助手よ！${label}経過したホ！タイマーが完了を告げているホ！🔔`
+          : `おやびん！${label}経ったニャ！タイマー鳴ったニャン🔔🐾`;
+
         this.audio.speak(alertMsg, null, () => {
           this.renderBubble('model', alertMsg);
           if (this.avatar && this.state.isRunning) this.avatar.setEmotion('talking');
@@ -2598,7 +2776,7 @@ const AppCore = {
     this.state.isTimerCompleted = false;
     const widget = document.getElementById('kitchen-timer-widget');
     if (widget) widget.style.display = 'none';
-    if (manual) Toast.show("タイマーを取り消したニャン🐾", "info");
+    if (manual) Toast.show("タイマーを取り消したホ！", "info");
   },
 
   _bindKitchenTimerWidgetUI() {
@@ -2608,13 +2786,13 @@ const AppCore = {
       if (this.state.isTimerCompleted) {
         this.cancelKitchenTimer(false);
         this.audio.playEffect('aizuchi');
-        Toast.show("タイマーを消去したニャン🔔", "info");
+        Toast.show("タイマーを消去したホ！🔔", "info");
         return;
       }
       this.state.isTimerPaused = !this.state.isTimerPaused;
       widget.classList.toggle('is-paused', this.state.isTimerPaused);
       this.audio.playEffect('aizuchi');
-      Toast.show(this.state.isTimerPaused ? "ちょい待ちニャ🐾" : "すすめるニャ！🐾", "info");
+      Toast.show(this.state.isTimerPaused ? "一時停止したホ！" : "再開したホ！", "info");
     };
   },
 
@@ -2630,10 +2808,11 @@ const AppCore = {
 
   async handleUserInput(text) {
     this.resetActivityTimer();
+    const cur = getCurChar();
 
     if (/(?:タイマー.*(?:止めて|やめて|消して|ストップ)|アラーム.*(?:止めて|消して|ストップ))/.test(text)) {
       this.cancelKitchenTimer(true);
-      const rep = "タイマーを止めたニャン🔔🐾";
+      const rep = cur.id === 'shiro' ? "タイマーを停止したホ！🔔" : "タイマーを止めたニャン🔔🐾";
       this.audio.speak(rep, null, () => this.renderBubble('model', rep), () => {
         this.state.isProcessingInput = false;
       });
@@ -2651,7 +2830,10 @@ const AppCore = {
       const txt = document.getElementById('pause-text');
       if (icon) icon.textContent = "🟢";
       if (txt) txt.textContent = "会話中";
-      const wakeMsg = "ふぁ〜あ…！おやびん、起きたニャン🐾 なに話すニャ？";
+      const wakeMsg = cur.id === 'shiro'
+        ? "ふぁ〜あ…！助手よ、目覚めたホ！どんな用件ホ？"
+        : "ふぁ〜あ…！おやびん、起きたニャン🐾 なに話すニャ？";
+
       this.audio.speak(wakeMsg, null, () => this.renderBubble('model', wakeMsg), () => {
         this.state.isProcessingInput = false;
       });
@@ -2660,16 +2842,21 @@ const AppCore = {
 
     if (/(?:何ができる|なにができる|何ができるの|なにができるの|何して遊ぶ|なにができるか教えて)/.test(text)) {
       const isAssistant = this.state.isAssistantMode;
-      const guideText = isAssistant
-        ? "おてつだいモードでは、『近くの公園』『評判のカフェ』『美味しいラーメン』『最新ニュース』を地図付きで案内できるニャン👓 何を調べるニャ？"
-        : "なかよしモードでは、『しりとり』『なぞなぞ』『お散歩ミッション』『今日の運勢』で一緒に遊べるニャン🐾 なにして遊ぶニャ？";
+      const guideText = cur.id === 'shiro'
+        ? (isAssistant
+            ? "おてつだいモードでは、移動時間や混雑を計算して『近くの公園』『カフェ』『ラーメン』『最新ニュース』を地図付きで案内できるホ！何を調べるホ？"
+            : "なかよしモードでは、『しりとり』『知恵比べクイズ』『お散歩ミッション』『星占い』でボクと勝負できるホ！何をして遊ぶホ？")
+        : (isAssistant
+            ? "おてつだいモードでは、『近くの公園』『評判のカフェ』『美味しいラーメン』『最新ニュース』を地図付きで案内できるニャン👓 何を調べるニャ？"
+            : "なかよしモードでは、『しりとり』『なぞなぞ』『お散歩ミッション』『今日の運勢』で一緒に遊べるニャン🐾 なにして遊ぶニャ？");
+
       this.audio.speak(guideText, null, () => this.renderBubble('model', guideText), () => {
         this.state.isProcessingInput = false;
       });
       return;
     }
 
-    const isDiary = /(?:今日|きょう)?(?:の)?(?:絵?日記|にっき).*(?:書いて|まとめて|記録して)/.test(text);
+    const isDiary = /(?:今日|きょう)?(?:の)?(?:絵?日記|にっき|日誌).*(?:書いて|まとめて|記録して)/.test(text);
     if (isDiary) {
       this.audio.playImmediateFiller('think');
       this.state.isDiaryProcessing = true;
@@ -2680,7 +2867,10 @@ const AppCore = {
       const res = await this.ai.generateDailyDiarySummary(currentLogs);
       if (res.success && res.diaryText) {
         StorageManager.saveDiary(res.diaryText, timeInfo.lifeLogKey, timeInfo.lifeFullDate, res.selectedPhoto, currentLogs.length, res.kuroComment);
-        const rep = "今日の日記を書き込みましたニャン🐾 上の『📖 日記帳』から読めるニャ！";
+        const rep = cur.id === 'shiro'
+          ? "本日の研究観察日誌を記録したホ！上の『📖 日記帳』から確認できるホ！"
+          : "今日の日記を書き込みましたニャン🐾 上の『📖 日記帳』から読めるニャ！";
+
         this.audio.speak(rep, null, () => {
           this.renderBubble('model', rep);
           this.renderDiaryCard(StorageManager.getTodayDiary());
@@ -2716,7 +2906,10 @@ const AppCore = {
 
       if (totalSec > 0) {
         this.startKitchenTimer(totalSec, label);
-        const rep = `了解ニャ！${label}しっかり見ておくニャン🐾`;
+        const rep = cur.id === 'shiro'
+          ? `承知したホ！${label}、正確に計測を開始するホ！`
+          : `了解ニャ！${label}しっかり見ておくニャン🐾`;
+
         this.audio.speak(rep, null, () => this.renderBubble('model', rep), () => {
           this.state.isProcessingInput = false;
         });
@@ -2725,12 +2918,13 @@ const AppCore = {
     }
 
     if (/(?:いまどこ|今どこ|ここどこ|どこにいる)/.test(text)) {
-      Toast.show("現在地を確認中ニャ…📍", "info", 1500);
+      Toast.show("現在地を確認中…📍", "info", 1500);
       await LocationProvider.fetchLocationOnDemand(false);
       const isAtHome = LocationProvider.isAtHome;
-      const rep = isAtHome 
-        ? "いまはお家でぬくぬく、まったりしてるニャン🐾 落ち着くニャ〜♡" 
-        : `いまは【${LocationProvider.townLevelArea}】をお散歩中ニャ！お出かけ楽しいニャン🐾`;
+      const rep = cur.id === 'shiro'
+        ? (isAtHome ? "いまは研究所（お家）でまったり待機中だホ！落ち着くホな。" : `いまは【${LocationProvider.townLevelArea}】でフィールドワーク中だホ！`)
+        : (isAtHome ? "いまはお家でぬくぬく、まったりしてるニャン🐾 落ち着くニャ〜♡" : `いまは【${LocationProvider.townLevelArea}】をお散歩中ニャ！お出かけ楽しいニャン🐾`);
+
       this.audio.speak(rep, null, () => this.renderBubble('model', rep), () => {
         this.state.isProcessingInput = false;
       });
@@ -2753,11 +2947,13 @@ const AppCore = {
       return;
     }
 
-    // ★天気・気温のスマート即答ハンドラー（0秒即答・無駄なGemini待ちとTTS長文を完全防止）
+    // ★天気・気温スマート即答ハンドラー（0秒即答）
     if (/(?:(?:今日|きょう|いま|現在)?の?(?:天気|気温|温度).*?(?:どれくらい|どう|教えて|なに|何|何度)|(?:天気|気温|温度).*?(?:どう|どんな|教えて)|いま何度|今日何度)/.test(text)) {
       const w = LocationProvider.weather || "快晴";
       const t = LocationProvider.temperature !== null ? `${LocationProvider.temperature}度` : "過ごしやすい気温";
-      const rep = `きょうは${w}で、気温は${t}だニャン🐾`;
+      const suffix = cur.id === 'shiro' ? 'ホ！' : 'ニャン🐾';
+      const rep = `きょうは${w}で、気温は${t}だ${suffix}`;
+
       this.audio.speak(rep, null, () => this.renderBubble('model', rep), () => {
         this.state.isProcessingInput = false;
       });
@@ -2767,14 +2963,14 @@ const AppCore = {
     this.executeThought(text);
   },
 
-  // ★思考エンジン：try...finally による入力処理中フラグの確実な自動解除 ＆ 16秒タイムアウト案3セリフ完全同期
   async executeThought(promptText, photoBase64 = null, isPhotoAlreadyLogged = false) {
     this.state.isThinking = true;
     if (this.avatar && this.state.isRunning) this.avatar.setEmotion('thinking');
     const st = document.getElementById('status-text');
-    if (st && this.state.isRunning) st.textContent = photoBase64 ? "📷 写真見てるニャ…" : "💭 考え中ニャ…";
+    const cur = getCurChar();
 
-    const bubble = this.renderBubble('model', photoBase64 ? "写真を見てるニャ…📷✨" : "クロが考えてるニャ…💭");
+    if (st && this.state.isRunning) st.textContent = photoBase64 ? "📷 観察中…" : (cur.id === 'shiro' ? "💭 計算中ホ…" : "💭 考え中ニャ…");
+    const bubble = this.renderBubble('model', photoBase64 ? "観察しているホ…📷✨" : (cur.id === 'shiro' ? "ホウ博士が計算中ホ…💭" : "クロが考えてるニャ…💭"));
     
     try {
       const rawLogs = StorageManager.loadRecentTimelineLogs();
@@ -2785,7 +2981,6 @@ const AppCore = {
         return;
       }
 
-      // ★16秒タイムアウト（8秒＋8秒打ち切り）のときは案3のセリフで愛らしく決着
       if (res.isTimeout && res.text) {
         if (bubble) bubble.textContent = res.text;
         this.audio.speak(res.text, null, () => {
@@ -2795,7 +2990,8 @@ const AppCore = {
           if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
           this.state.isThinking = false;
           this.state.isProcessingInput = false;
-          if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
+          const suffix = cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪';
+          if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
         });
         return;
       }
@@ -2810,7 +3006,6 @@ const AppCore = {
           if (bubble) {
             bubble.textContent = res.text;
 
-            // ★おてつだいモード時のみ、画面下部にスマートな案内カードを付加
             if (this.state.isAssistantMode && res.groundingCards && res.groundingCards.length > 0) {
               const parentRow = bubble.closest('.chat-row');
               if (parentRow && !parentRow.querySelector('.action-card-box')) {
@@ -2833,35 +3028,44 @@ const AppCore = {
           if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
           this.state.isThinking = false;
           this.state.isProcessingInput = false;
-          if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
+          const suffix = cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪';
+          if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
         });
       } else {
-        const fb = "おやびん、もう一度ゆっくり話してニャン🐾";
+        const fb = cur.id === 'shiro'
+          ? "助手よ、もう一度明確に話してくれホ！"
+          : "おやびん、もう一度ゆっくり話してニャン🐾";
+
         if (bubble) bubble.textContent = fb;
         this.audio.speak(fb, null, () => {}, () => {
           if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
           this.state.isThinking = false;
           this.state.isProcessingInput = false;
-          if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
+          const suffix = cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪';
+          if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
         });
       }
     } catch (err) {
       Logger.log(`[AppCore] ⚠️ 会話処理例外: ${err.message}`, "error");
-      const errReply = "うにゃあ…！おやびんのお話しをじっくり考えてたら、頭の中がこんがらがっちゃったニャ〜！もう一回言ってニャン🐾";
+      const errReply = cur.id === 'shiro'
+        ? "うむむ…！助手の話を深く思考していたら、計算回路がオーバーヒートしたホ…！もう一度言ってくれホ！"
+        : "うにゃあ…！おやびんのお話しをじっくり考えてたら、頭の中がこんがらがっちゃったニャ〜！もう一回言ってニャン🐾";
+
       if (bubble) bubble.textContent = errReply;
       this.audio.speak(errReply, null, () => {}, () => {
         if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
         this.state.isThinking = false;
         this.state.isProcessingInput = false;
-        if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
+        const suffix = cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪';
+        if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
       });
     } finally {
-      // 処理中フラグの自己復帰セーフティネット
       setTimeout(() => {
         if (this.state.isProcessingInput && !this.audio.isSpeaking && !this.audio.isReadingAloud) {
           this.state.isProcessingInput = false;
           this.state.isThinking = false;
-          if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
+          const suffix = cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪';
+          if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
           if (this.state.isRunning) this.audio.startListening();
         }
       }, 10000);
@@ -2870,7 +3074,11 @@ const AppCore = {
 
   _updateModelBadge() {
     const badge = document.getElementById('model-badge');
-    if (badge) { badge.className = "model-badge lite"; badge.textContent = `🐾 3.5 Flash Lite`; }
+    const cur = getCurChar();
+    if (badge) {
+      badge.className = "model-badge lite";
+      badge.textContent = `${cur.id === 'shiro' ? '🦉' : '🐾'} 3.5 Flash Lite`;
+    }
   },
 
   triggerActionVoice(shortPhrase, statusDisplay, cooldownMs = 350) {
@@ -2884,7 +3092,8 @@ const AppCore = {
       this.audio.playEffect('aizuchi');
       setTimeout(() => {
         this.audio.isActionButtonLocked = false;
-        if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
+        const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
+        if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
         if (this.state.isRunning) this.audio.startListening();
       }, 400);
       return;
@@ -2894,7 +3103,8 @@ const AppCore = {
       if (this.avatar && this.state.isRunning) this.avatar.setEmotion('talking');
     }, () => {
       if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
-      if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
+      const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
+      if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
       this.audio.isActionButtonLocked = false;
     }, cooldownMs);
   },
@@ -2904,16 +3114,24 @@ const AppCore = {
     const icon = document.getElementById('mode-icon');
     const txt = document.getElementById('mode-text');
     const wrap = document.getElementById('avatar-wrapper');
+    const cur = getCurChar();
 
     if (btn) btn.classList.toggle('is-assistant', this.state.isAssistantMode);
     if (wrap) wrap.classList.toggle('is-assistant-mode', this.state.isAssistantMode);
 
     if (this.state.isAssistantMode) {
       if (icon) icon.textContent = "👓"; if (txt) txt.textContent = "おてつだい";
-      if (speak) this.triggerActionVoice("おまかせニャ！", "👓 おまかせニャ！");
+      if (speak) {
+        const rep = cur.id === 'shiro' ? "任せるが良いホ！" : "おまかせニャ！";
+        this.triggerActionVoice(rep, `👓 ${rep}`);
+      }
     } else {
-      if (icon) icon.textContent = "🐾"; if (txt) txt.textContent = "なかよし";
-      if (speak) this.triggerActionVoice("あそぶニャ♪", "🐾 あそぶニャ♪");
+      if (icon) icon.textContent = cur.id === 'shiro' ? "🦉" : "🐾";
+      if (txt) txt.textContent = "なかよし";
+      if (speak) {
+        const rep = cur.id === 'shiro' ? "フン、遊んでやるホ！" : "あそぶニャ♪";
+        this.triggerActionVoice(rep, `${icon.textContent} ${rep}`);
+      }
     }
   },
 
@@ -2952,7 +3170,7 @@ const AppCore = {
     });
 
     document.getElementById('btn-studio-save-exit')?.addEventListener('click', () => {
-      Toast.show("絵日記を保存したニャン！📖✨", "success");
+      Toast.show("絵日記を保存したホ！📖✨", "success");
       modal?.classList.remove('is-open');
       if (this.state.isRunning) this.audio.startListening();
     });
@@ -3016,6 +3234,7 @@ const AppCore = {
 
     const timeInfo = TimeProvider.getCurrentInfo();
     const isToday = (curDateKey === timeInfo.lifeLogKey);
+    const cur = getCurChar();
 
     if (pageIndicator) pageIndicator.textContent = `${curIdx + 1} / ${dateKeys.length} 日目`;
     if (prevBtn) prevBtn.disabled = (curIdx >= dateKeys.length - 1);
@@ -3033,32 +3252,32 @@ const AppCore = {
       if (timeInfo.isEvening) {
         pageContainer.innerHTML = `
           <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fffaf5; border:2px dashed #fed7aa; border-radius:20px; padding:24px 18px; text-align:center; gap:12px;">
-            <div style="font-size:48px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">🐾🌙</div>
+            <div style="font-size:48px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">${cur.id === 'shiro' ? '🦉🌙' : '🐾🌙'}</div>
             <div style="font-size:15px; font-weight:900; color:#9a3412;">📅 ${fullDate}</div>
-            <div style="font-size:13.5px; font-weight:900; color:#c2410c;">そろそろ今日の日記をまとめる時間だニャン♪</div>
+            <div style="font-size:13.5px; font-weight:900; color:#c2410c;">そろそろ今日の日記をまとめる時間だホ！</div>
             <div style="font-size:11.5px; color:#ea580c; line-height:1.6; max-width:320px;">
-              今日の会話ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）を記録したニャ！<br>
-              下のボタンを押すと、クロが今日の楽しい思い出をぎゅっと絵日記にまとめますニャン🐾
+              今日の記録ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）を記録したホ！<br>
+              下のボタンを押すと、今日の楽しい思い出をぎゅっと日誌にまとめますホ！
             </div>
-            <button type="button" id="btn-create-today-now" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ 今日の日記をまとめるニャ！</button>
+            <button type="button" id="btn-create-today-now" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ 今日の日記をまとめるホ！</button>
           </div>
         `;
         document.getElementById('btn-create-today-now')?.addEventListener('click', async (e) => {
           const btn = e.currentTarget;
           btn.disabled = true;
-          btn.textContent = "一生懸命書いてるニャ…📖🐾";
+          btn.textContent = "一生懸命書いてるホ…📖";
           await this._rescueCreateDiaryForDate(curDateKey, fullDate, dayLogs);
         });
       } else {
         pageContainer.innerHTML = `
           <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fffaf5; border:2px dashed #fed7aa; border-radius:20px; padding:24px 18px; text-align:center; gap:12px;">
-            <div style="font-size:48px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">🐾☀️</div>
+            <div style="font-size:48px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">${cur.id === 'shiro' ? '🦉☀️' : '🐾☀️'}</div>
             <div style="font-size:15px; font-weight:900; color:#9a3412;">📅 ${fullDate}</div>
-            <div style="font-size:13.5px; font-weight:900; color:#c2410c;">今日はおやびんと楽しくお話し中ニャ♪</div>
+            <div style="font-size:13.5px; font-weight:900; color:#c2410c;">今日はおやびん/助手と楽しくお話し中だホ！</div>
             <div style="font-size:11.5px; color:#ea580c; line-height:1.6; max-width:320px;">
-              ただいま会話ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）を記録中ニャ！<br>
-              夜20時以降になったら『今日の日記書いて』って話しかけてニャン🐾<br>
-              ◀ 下の『前の日』ボタンで過去の思い出アルバムをめくれますニャ！
+              ただいま会話ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）を記録中だホ！<br>
+              夜20時以降になったら『今日の日記書いて』と話しかけてくれホ！<br>
+              ◀ 下の『前の日』ボタンで過去の記録アルバムをめくれますホ！
             </div>
           </div>
         `;
@@ -3070,18 +3289,18 @@ const AppCore = {
       const hasLogs = (dayLogs && dayLogs.length >= 2);
       pageContainer.innerHTML = `
         <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fffaf5; border:2px dashed #fed7aa; border-radius:20px; padding:24px 18px; text-align:center; gap:12px;">
-          <div style="font-size:46px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">🐾📖</div>
+          <div style="font-size:46px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">${cur.id === 'shiro' ? '🦉📖' : '🐾📖'}</div>
           <div style="font-size:15px; font-weight:900; color:#9a3412;">📅 ${fullDate}</div>
-          <div style="font-size:13px; font-weight:900; color:#c2410c;">まだ絵日記が書かれていませんニャ🐾</div>
+          <div style="font-size:13px; font-weight:900; color:#c2410c;">まだ記録が書かれていませんホ！</div>
           <div style="font-size:11.5px; color:#ea580c; line-height:1.6; max-width:320px;">
             ${hasLogs 
-              ? `この日の会話ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）が大切に保管されていますニャ！下のボタンを押すと、クロが思い出をぎゅっと絵日記にまとめますニャン♪` 
-              : `この日はまだクロとのお話し記録がありませんニャ。`}
+              ? `この日の記録ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）が大切に保管されていますホ！下のボタンを押すと、思い出をぎゅっと絵日記にまとめますホ！` 
+              : `この日はまだお話し記録がありませんホ。`}
           </div>
           ${hasLogs ? `
-            <button type="button" id="btn-rescue-create-diary" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ この日の絵日記を書くニャ！（${fullDate}）</button>
+            <button type="button" id="btn-rescue-create-diary" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ この日の絵日記を書くホ！（${fullDate}）</button>
           ` : `
-            <button type="button" id="btn-empty-create-diary" style="background:#ffedd5; border:1.5px solid #ea580c; color:#c2410c; padding:8px 18px; border-radius:12px; font-size:12px; font-weight:900; cursor:pointer;">✍️ 新しく書くニャ！</button>
+            <button type="button" id="btn-empty-create-diary" style="background:#ffedd5; border:1.5px solid #ea580c; color:#c2410c; padding:8px 18px; border-radius:12px; font-size:12px; font-weight:900; cursor:pointer;">✍️ 新しく書くホ！</button>
           `}
         </div>
       `;
@@ -3089,13 +3308,15 @@ const AppCore = {
       document.getElementById('btn-rescue-create-diary')?.addEventListener('click', async (e) => {
         const btn = e.currentTarget;
         btn.disabled = true;
-        btn.textContent = "一生懸命書いてるニャ…📖🐾";
+        btn.textContent = "一生懸命書いてるホ…📖";
         await this._rescueCreateDiaryForDate(curDateKey, fullDate, dayLogs);
       });
 
       document.getElementById('btn-empty-create-diary')?.addEventListener('click', () => {
-        const dummyText = `今日もおやびんと一緒に過ごせて幸せな一日だったニャン🐾`;
-        StorageManager.saveDiary(dummyText, curDateKey, fullDate, photoPool[0]?.base64 || null, 0, "おやびん大好きニャ！");
+        const dummyText = cur.id === 'shiro'
+          ? `今日も助手と一緒に充実した研究活動を行えたホ！`
+          : `今日もおやびんと一緒に過ごせて幸せな一日だったニャン🐾`;
+        StorageManager.saveDiary(dummyText, curDateKey, fullDate, photoPool[0]?.base64 || null, 0, "助手を信頼しているホ！");
         this._renderStudioDiaryPage();
         this._updateStorageMonitorUI();
       });
@@ -3108,9 +3329,9 @@ const AppCore = {
           <span class="book-date-title">📅 ${diary.fullDate}</span>
           <div class="book-meta-tags">
             ${hasNewLogs ? `
-              <button type="button" class="btn-read-aloud" id="btn-update-with-night-logs" style="background:linear-gradient(135deg, #0284c7, #0369a1);" title="お昼以降の夜の会話も追加して日記を更新するニャ！">📝 夜のお話しも追加更新</button>
+              <button type="button" class="btn-read-aloud" id="btn-update-with-night-logs" style="background:linear-gradient(135deg, #0284c7, #0369a1);" title="お昼以降の夜の会話も追加して更新するホ！">📝 夜の記録も追加更新</button>
             ` : ''}
-            <button type="button" class="btn-read-aloud" id="btn-read-diary-aloud">${this.state.isDiaryReading ? '🛑 朗読ストップ' : '🔊 クロが読むニャ♪'}</button>
+            <button type="button" class="btn-read-aloud" id="btn-read-diary-aloud">${this.state.isDiaryReading ? '🛑 朗読ストップ' : `🔊 ${cur.name}が読むホ♪`}</button>
             <button type="button" class="book-btn-del-entry" id="btn-del-cur-diary">🗑️ 削除</button>
           </div>
         </div>
@@ -3138,7 +3359,7 @@ const AppCore = {
         </div>
 
         <div class="studio-diary-comment-box">
-          <span class="studio-diary-comment-label">🐾 ${getCurChar().name}のひとこと:</span>
+          <span class="studio-diary-comment-label">🐾 ${cur.title || cur.name}のひとこと:</span>
           <textarea class="studio-diary-comment-textarea" id="studio-diary-comment" rows="2" placeholder="（ひとこと記録なし）">${diary.kuroComment || ""}</textarea>
         </div>
       </div>
@@ -3147,7 +3368,7 @@ const AppCore = {
     document.getElementById('btn-update-with-night-logs')?.addEventListener('click', async (e) => {
       const btn = e.currentTarget;
       btn.disabled = true;
-      btn.textContent = "追加お話しを要約中ニャ…📝🐾";
+      btn.textContent = "追加お話しを要約中…📝";
       await this._rescueCreateDiaryForDate(curDateKey, fullDate, dayLogs);
     });
 
@@ -3166,7 +3387,7 @@ const AppCore = {
     });
 
     document.getElementById('btn-del-cur-diary')?.addEventListener('click', () => {
-      if (window.confirm(`「${diary.fullDate}」の日記を削除しますかニャ？\n（※会話ログやお写真はそのまま安全に残ります）`)) {
+      if (window.confirm(`「${diary.fullDate}」の日記を削除しますか？\n（※会話ログやお写真はそのまま安全に残ります）`)) {
         let allDiaries = StorageManager.loadAllDiaries();
         allDiaries = allDiaries.filter(d => d.dateKey !== curDateKey);
         StorageManager.saveAllDiaries(allDiaries);
@@ -3188,7 +3409,7 @@ const AppCore = {
     pageContainer.querySelectorAll('.btn-snap-del').forEach(btn => {
       btn.onclick = (e) => {
         e.stopPropagation();
-        if (window.confirm("この写真を削除しますかニャ？")) {
+        if (window.confirm("この写真を削除しますか？")) {
           const delIdx = parseInt(btn.dataset.del, 10);
           StorageManager.removePhotoFromDailyPool(curDateKey, delIdx);
           this._renderStudioDiaryPage();
@@ -3198,31 +3419,40 @@ const AppCore = {
   },
 
   async _rescueCreateDiaryForDate(targetDateKey, targetFullDate, dayLogs) {
-    Toast.show(`絵日記を一生懸命書いてるニャ…🐾`, "info");
+    Toast.show(`記録を一生懸命書いているホ…📖`, "info");
     const res = await this.ai.generateDailyDiarySummary(dayLogs, targetDateKey, targetFullDate);
     if (res.success && res.diaryText) {
       StorageManager.saveDiary(res.diaryText, targetDateKey, targetFullDate, res.selectedPhoto, dayLogs.length, res.kuroComment);
-      Toast.show(`絵日記を書き上げましたニャン！📖✨`, "success");
+      Toast.show(`記録をまとめあげたホ！📖✨`, "success");
       this._renderStudioDiaryPage();
       this._updateStorageMonitorUI();
     } else {
-      Toast.show("絵日記の作成に失敗しましたニャ。通信状態を確認してくださいニャ", "error");
+      Toast.show("記録の作成に失敗しました。通信状態を確認してくださいホ", "error");
       this._renderStudioDiaryPage();
     }
   },
 
   _updateDiaryReadBtnUI(reading) {
     const btn = document.getElementById('btn-read-diary-aloud');
-    if (btn) btn.textContent = reading ? "🛑 朗読ストップ" : "🔊 クロが読むニャ♪";
+    const cur = getCurChar();
+    if (btn) btn.textContent = reading ? "🛑 朗読ストップ" : `🔊 ${cur.name}が読むホ♪`;
   },
 
   _bindCustomSettingsUI() {
+    // パートナーキャラクター切替ボタン
+    document.querySelectorAll('#character-selector-segment-group .segment-btn').forEach(btn => {
+      btn.onclick = () => {
+        const charId = btn.dataset.charId;
+        this.switchActiveCharacter(charId);
+      };
+    });
+
     document.querySelectorAll('.theme-card-btn').forEach(btn => {
       btn.onclick = () => {
         const theme = btn.dataset.themeVal;
         this.applyTheme(theme);
         this.audio.playEffect('aizuchi');
-        Toast.show(`お部屋のテーマを切り替えたニャ！🎨✨`, "success", 2000);
+        Toast.show(`お部屋のテーマを切り替えたホ！🎨✨`, "success", 2000);
       };
     });
 
@@ -3284,8 +3514,10 @@ const AppCore = {
         document.querySelectorAll('.adjust-tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         this.state.activeAdjustTab = btn.dataset.tab;
+        const cur = getCurChar();
+        const pfx = cur.imagePrefix || "";
         const previewImg = document.getElementById('adjust-cat-img');
-        if (previewImg) previewImg.src = `${this.state.activeAdjustTab}.png`;
+        if (previewImg) previewImg.src = `${pfx}${this.state.activeAdjustTab}.png`;
         updateSliders(this.state.activeAdjustTab);
       };
     });
@@ -3310,8 +3542,10 @@ const AppCore = {
     document.getElementById('open-glasses-adjust-btn')?.addEventListener('click', () => {
       document.getElementById('modal-overlay').style.display = 'none';
       modal?.classList.add('is-open');
+      const cur = getCurChar();
+      const pfx = cur.imagePrefix || "";
       const previewImg = document.getElementById('adjust-cat-img');
-      if (previewImg) previewImg.src = `${this.state.activeAdjustTab}.png`;
+      if (previewImg) previewImg.src = `${pfx}${this.state.activeAdjustTab}.png`;
       updateSliders(this.state.activeAdjustTab);
     });
     document.getElementById('close-adjust-btn')?.addEventListener('click', () => modal?.classList.remove('is-open'));
@@ -3323,12 +3557,12 @@ const AppCore = {
         this.avatar.applyAllFramesTransform();
       }
       updateSliders(this.state.activeAdjustTab);
-      Toast.show("初期位置にリセットしたニャ！👓", "info");
+      Toast.show("初期位置にリセットしたホ！👓", "info");
     });
 
     document.getElementById('btn-adjust-save')?.addEventListener('click', () => {
       if (this.avatar) StorageManager.saveGlassesCoords(this.avatar.glassesCoords);
-      Toast.show("メガネ位置を保存したニャン！👓✨", "success");
+      Toast.show("メガネ位置を保存したホ！👓✨", "success");
     });
   },
 
@@ -3355,7 +3589,7 @@ const AppCore = {
         size: parseInt(document.getElementById('adj-eyelid-size').value, 10)
       };
       StorageManager.saveEyelidCoords(c);
-      Toast.show("まぶた位置を保存したニャ！👁️✨", "success");
+      Toast.show("まぶた位置を保存したホ！👁️✨", "success");
     };
   },
 
@@ -3383,7 +3617,7 @@ const AppCore = {
             StorageManager.saveMemories(this.memories);
             this.state.editingMemoryIdx = null;
             this._renderMemories();
-            Toast.show("記憶を更新したニャン！✏️✨", "success");
+            Toast.show("記憶を更新したホ！✏️✨", "success");
           }
         };
         item.querySelector(`#btn-save-mem-${idx}`).onclick = saveAction;
@@ -3405,7 +3639,7 @@ const AppCore = {
           this._renderMemories();
         };
         item.querySelector(`#btn-del-mem-${idx}`).onclick = () => {
-          if (window.confirm(`「${mem}」を削除しますかニャ？`)) {
+          if (window.confirm(`「${mem}」を削除しますか？`)) {
             this.memories.splice(idx, 1);
             StorageManager.saveMemories(this.memories);
             this._renderMemories();
@@ -3422,16 +3656,16 @@ const AppCore = {
     document.getElementById('btn-download-backup')?.addEventListener('click', () => StorageManager.downloadDataPackage());
 
     document.getElementById('btn-deep-clean-storage')?.addEventListener('click', async () => {
-      const msg = "【安全確認】\n実行すると、まず現在の原本データ（JSON）が自動ダウンロードされます。\nその上で、スマホ内の全写真を「3〜5KB」にスリム化し、容量を安全に90%近く削減しますニャ！\n（※写真や日記は消えずに100%残ります）\n実行しますかニャ？";
+      const msg = "【安全確認】\n実行すると、まず現在の原本データ（JSON）が自動ダウンロードされます。\nその上で、スマホ内の全写真を「3〜5KB」にスリム化し、容量を安全に90%近く削減します！\n（※写真や日記は消えずに100%残ります）\n実行しますか？";
       if (!window.confirm(msg)) return;
 
-      Toast.show("原本バックアップ保存中＆大掃除中ニャ…🧹", "info", 5000);
+      Toast.show("原本バックアップ保存中＆大掃除中…🧹", "info", 5000);
       const ok = await StorageManager.executeSafeStorageDeepClean();
       if (ok) {
         this._updateStorageMonitorUI();
         this._restoreTimelineHistory();
         this.audio.playEffect('purr');
-        Toast.show("大掃除完了！原本を保存し、容量が劇的にスッキリしたニャン！🎉✨", "success", 5000);
+        Toast.show("大掃除完了！原本を保存し、容量がスッキリしたホ！🎉✨", "success", 5000);
       }
     });
 
@@ -3448,7 +3682,8 @@ const AppCore = {
           this._renderMemories();
           this._restoreTimelineHistory();
           this._updateStorageMonitorUI();
-          Toast.show("データを安全に完全復元したニャン！🎉", "success");
+          this._updateCharacterUI();
+          Toast.show("データを安全に完全復元したホ！🎉", "success");
         } catch(err) {
           Toast.show("読み込み失敗: " + err.message, "error");
         }
@@ -3460,17 +3695,17 @@ const AppCore = {
     document.getElementById('btn-copy-home-coords')?.addEventListener('click', () => {
       const val = document.getElementById('home-coords-input')?.value.trim();
       if (!val) {
-        Toast.show("座標が入力されていませんニャ", "error");
+        Toast.show("座標が入力されていません", "error");
         return;
       }
       navigator.clipboard.writeText(val).then(() => {
-        Toast.show("座標をコピーしたニャン！📋", "success");
+        Toast.show("座標をコピーしたホ！📋", "success");
         Logger.log(`[Home] 座標コピー成功: ${val}`, "info");
       });
     });
 
     document.getElementById('btn-get-current-home')?.addEventListener('click', async () => {
-      Toast.show("現在地を取得中ニャ…📍", "info");
+      Toast.show("現在地を取得中…📍", "info");
       const ok = await LocationProvider.fetchLocationOnDemand(false);
       if (ok && LocationProvider.lat !== null) {
         const val = `${LocationProvider.lat.toFixed(6)}, ${LocationProvider.lon.toFixed(6)}`;
@@ -3478,10 +3713,10 @@ const AppCore = {
         LocationProvider.homeLat = LocationProvider.lat;
         LocationProvider.homeLon = LocationProvider.lon;
         localStorage.setItem('kuro_home_coords', val);
-        Toast.show("現在地を自宅にセットしたニャン！🏠✨", "success");
-        Logger.log(`[Home] 現在地を自宅に設定: ${val}`, "success");
+        Toast.show("現在地を拠点（自宅）にセットしたホ！🏠✨", "success");
+        Logger.log(`[Home] 現在地を拠点に設定: ${val}`, "success");
       } else {
-        Toast.show("現在地を取得できませんでしたニャ", "error");
+        Toast.show("現在地を取得できませんでした", "error");
       }
     });
 
@@ -3489,7 +3724,7 @@ const AppCore = {
       const apiKey = AppCore.ai.apiKey;
       if (!apiKey) {
         Logger.log("[診断] ⚠️ APIキーが未設定です。設定画面で入力してください", "error");
-        Toast.show("APIキーを設定してくださいニャ", "error");
+        Toast.show("APIキーを設定してください", "error");
         return;
       }
       Logger.log("=== 固定2モデル導通テスト開始 ===", "info");
@@ -3516,11 +3751,11 @@ const AppCore = {
         }
       }
       Logger.log("=== 導通テスト完了 ===", "info");
-      Toast.show("モデル検証が完了したニャ！🩺", "success");
+      Toast.show("モデル検証が完了したホ！🩺", "success");
     });
 
     document.getElementById('btn-clear-chat-display')?.addEventListener('click', () => {
-      if (window.confirm("画面の会話をお掃除しますかニャ？（日記は残ります）")) {
+      if (window.confirm("画面の会話をお掃除しますか？（日記は残ります）")) {
         StorageManager.clearTimelineDisplayOnly();
         this._restoreTimelineHistory();
       }
@@ -3534,7 +3769,12 @@ const AppCore = {
       this.state.snackCount++;
       this.audio.playEffect('snack');
       if (this.avatar) this.avatar.setEmotion('happy');
-      const msg = this.state.snackCount >= 3 ? "ハフハフ…うまうまニャ！お腹いっぱい大満足ニャ〜極楽ニャン♡" : "もぐもぐ…ちゅ〜る最高ニャ！🐟";
+
+      const cur = getCurChar();
+      const msg = cur.id === 'shiro'
+        ? (this.state.snackCount >= 3 ? "ハフハフ…美味ホ！お腹いっぱい大満足ホ〜パタパタパタ♪" : "もぐもぐ…木の実とお肉は最高ホ！🌰")
+        : (this.state.snackCount >= 3 ? "ハフハフ…うまうまニャ！お腹いっぱい大満足ニャ〜極楽ニャン♡" : "もぐもぐ…ちゅ〜る最高ニャ！🐟");
+
       if (this.state.snackCount >= 3) { this.state.snackCount = 0; this.audio.playEffect('purr'); }
       this.audio.speak(msg, null, () => this.renderBubble('model', msg), () => {
         if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
@@ -3548,7 +3788,7 @@ const AppCore = {
         this.avatar.triggerPoofSmoke();
         const next = (this.avatar.mode === 'vector') ? 'real' : 'vector';
         this.avatar.applyMode(next);
-        Toast.show(`姿を変身したニャ！✨（${next === 'real' ? 'リアル写真' : 'イラスト'}）`, 'info');
+        Toast.show(`姿を変身したホ！✨（${next === 'real' ? 'リアル写真' : 'イラスト'}）`, 'info');
       }
     });
 
@@ -3564,6 +3804,7 @@ const AppCore = {
 
       const isThinking = this.state.isThinking || this.state.isProcessingInput;
       const isSpeaking = this.audio.isSpeaking || this.audio.isReadingAloud || this.state.isDiaryReading;
+      const cur = getCurChar();
 
       if (isThinking) {
         this.ai.cancelActiveThought();
@@ -3585,8 +3826,9 @@ const AppCore = {
         this._updateStorageMonitorUI();
 
         if (this.avatar) this.avatar.setEmotion('idle');
-        Toast.show("直前の発言を取り消したニャン🐾", "info");
-        this.triggerActionVoice("はーい！", "↩️ いまのナシ！");
+        Toast.show("直前の発言を取り消したホ！", "info");
+        const ack = cur.id === 'shiro' ? "うむ！" : "はーい！";
+        this.triggerActionVoice(ack, "↩️ いまのナシ！");
         return;
       }
 
@@ -3608,8 +3850,9 @@ const AppCore = {
         this._updateStorageMonitorUI();
 
         if (this.avatar) this.avatar.setEmotion('idle');
-        Toast.show("いまの会話を取り消したニャン🐾", "info");
-        this.triggerActionVoice("はーい！", "↩️ いまのナシ！");
+        Toast.show("いまの会話を取り消したホ！", "info");
+        const ack = cur.id === 'shiro' ? "うむ！" : "はーい！";
+        this.triggerActionVoice(ack, "↩️ いまのナシ！");
         return;
       }
 
@@ -3617,8 +3860,11 @@ const AppCore = {
       this.state.isThinking = false;
       this.state.isProcessingInput = false;
       if (this.avatar) this.avatar.setEmotion('idle');
-      Toast.show("おやびんの声を待ってるニャン♪🐾", "info");
-      this.triggerActionVoice("はーい！", "👂 聴いてるニャ♪");
+      const waitAck = cur.id === 'shiro' ? "指示を待っているホ！" : "おやびんの声を待ってるニャン♪🐾";
+      Toast.show(waitAck, "info");
+      const ackVoice = cur.id === 'shiro' ? "うむ！" : "はーい！";
+      const statusAck = cur.id === 'shiro' ? "👂 聴いてるホ♪" : "👂 聴いてるニャ♪";
+      this.triggerActionVoice(ackVoice, statusAck);
     });
 
     document.getElementById('pause-btn')?.addEventListener('click', () => {
@@ -3627,6 +3873,7 @@ const AppCore = {
       const wrap = document.getElementById('avatar-wrapper');
       const petContainer = document.getElementById('pet-container');
       const st = document.getElementById('status-text');
+      const cur = getCurChar();
 
       btn?.classList.toggle('is-paused', !this.state.isRunning);
       const icon = document.getElementById('pause-icon');
@@ -3646,7 +3893,7 @@ const AppCore = {
         if (this.avatar) this.avatar.setEmotion('idle');
 
         petContainer?.classList.add('is-paused-mode');
-        if (st) st.textContent = "💤 すやすやお昼寝中…";
+        if (st) st.textContent = "💤 すやすやお休み中…";
 
         if (this.avatar) this.avatar.triggerYawn();
         setTimeout(() => {
@@ -3656,13 +3903,18 @@ const AppCore = {
           }
         }, 500);
 
-        Logger.log(`[Status] 💤 お休み中（居眠りモード開始・ステータス完全防護・idle顔ロック）`, "info");
+        Logger.log(`[Status] 💤 お休み中（居眠りモード開始・idleロック）`, "info");
       } else {
         petContainer?.classList.remove('is-paused-mode');
         if (wrap) wrap.classList.remove('is-sleeping');
         if (this.avatar) this.avatar.setEmotion('idle');
-        if (st) st.textContent = "👂 聴いてるニャ♪";
-        const wakeMsg = "ふぁ〜あ…！おやびん、起きたニャン🐾";
+        const suffix = cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪';
+        if (st) st.textContent = `👂 聴いてる${suffix}`;
+
+        const wakeMsg = cur.id === 'shiro'
+          ? "ふぁ〜あ…！助手よ、目覚めたホ！どんな用件ホ？"
+          : "ふぁ〜あ…！おやびん、起きたニャン🐾";
+
         this.audio.speak(wakeMsg, null, () => this.renderBubble('model', wakeMsg), () => {
           if (this.state.isRunning) this.audio.startListening();
         });
@@ -3678,14 +3930,25 @@ const AppCore = {
       const wrap = document.getElementById('avatar-wrapper');
       const rect = wrap.getBoundingClientRect();
       const clickYRatio = (e.clientY - rect.top) / rect.height;
+      const cur = getCurChar();
 
-      let partMsg = "なでなでされて喉をゴロゴロ鳴らしてるニャ♪😻";
-      if (clickYRatio < 0.35) {
-        partMsg = "お耳ピクピク！くすぐったくて気持ちいいニャン♪👂✨";
-      } else if (clickYRatio < 0.68) {
-        partMsg = "あたまナデナデ大好きニャ〜極楽ニャン♡🐾";
+      let partMsg = "";
+      if (cur.id === 'shiro') {
+        if (clickYRatio < 0.35) {
+          partMsg = "頭を撫でるなホ…！羽毛が乱れるホ…///（パタパタ）";
+        } else if (clickYRatio < 0.68) {
+          partMsg = "フ、フン…ボクを褒めても何も出ないホよ！///（羽パタパタ）";
+        } else {
+          partMsg = "そこはお腹の羽毛ホ！…くすぐったいホな！";
+        }
       } else {
-        partMsg = "そこそこ！あごの下、喉をゴロゴロ鳴らしちゃうニャン😻";
+        if (clickYRatio < 0.35) {
+          partMsg = "お耳ピクピク！くすぐったくて気持ちいいニャン♪👂✨";
+        } else if (clickYRatio < 0.68) {
+          partMsg = "あたまナデナデ大好きニャ〜極楽ニャン♡🐾";
+        } else {
+          partMsg = "そこそこ！あごの下、喉をゴロゴロ鳴らしちゃうニャン😻";
+        }
       }
 
       this.audio.playEffect('purr');
@@ -3696,7 +3959,12 @@ const AppCore = {
 
     document.getElementById('test-voice-btn')?.addEventListener('click', () => {
       const spk = this.getSpeakerId();
-      this.audio.speak(`おやびん、わたしは${getCurChar().name}だニャン🐾`, spk);
+      const cur = getCurChar();
+      const testLine = cur.id === 'shiro'
+        ? `助手よ、ボクは${cur.title || cur.name}だホ！`
+        : `おやびん、わたしは${cur.name}だニャン🐾`;
+
+      this.audio.speak(testLine, spk);
     });
     document.getElementById('test-timer-sound-btn')?.addEventListener('click', () => {
       this.audio.playEffect(this.getTimerSound());
@@ -3725,7 +3993,7 @@ const AppCore = {
         const val = localStorage.getItem(key) || defaultVal;
         const container = document.getElementById(groupId);
         container?.querySelectorAll('.segment-btn').forEach(b => {
-          const bVal = b.dataset.feedbackVal || b.dataset.timerSoundVal || b.dataset.accStyleVal || b.dataset.countVal || b.dataset.talkLen;
+          const bVal = b.dataset.feedbackVal || b.dataset.timerSoundVal || b.dataset.accStyleVal || b.dataset.countVal || b.dataset.talkLen || b.dataset.charId;
           const isMatch = (bVal === val);
           b.classList.toggle('is-active', isMatch);
           if (isMatch) b.classList.add(activeClass);
@@ -3733,6 +4001,7 @@ const AppCore = {
         });
       };
 
+      syncSegment('character-selector-segment-group', 'kuro_active_character', 'kuro', 'pink');
       syncSegment('talk-length-segment-group', 'kuro_talk_length', 'auto', 'pink');
       syncSegment('feedback-segment-group', 'kuro_button_feedback', 'voice', 'pink');
       syncSegment('timer-sound-segment-group', 'kuro_timer_sound', 'bell', 'blue');
@@ -3763,7 +4032,7 @@ const AppCore = {
 
       if (isApiKeyChanged && newApiKey) {
         if (saveBtn) saveBtn.classList.add('is-saving');
-        if (saveTxt) saveTxt.textContent = "APIキーを検証中ニャ…⚡";
+        if (saveTxt) saveTxt.textContent = "APIキーを検証中…⚡";
 
         let hasError = false;
         try {
@@ -3789,7 +4058,7 @@ const AppCore = {
 
         if (hasError) {
           this.audio.playEffect('alarm');
-          Toast.show("⚠️ APIキーエラーです。キーを確認してくださいニャ！", "error", 4500);
+          Toast.show("⚠️ APIキーエラーです。キーを確認してください！", "error", 4500);
           return;
         }
       }
@@ -3801,9 +4070,11 @@ const AppCore = {
 
       LocationProvider._applyHomeFallback();
       document.getElementById('modal-overlay').style.display = 'none';
-      Toast.show("設定と記憶を保存したニャン♪", "success");
-      this.triggerActionVoice("バッチリニャ！", "💾 バッチリニャ！");
-      Logger.log(`[Auth] ✅ 設定保存完了（認証OK・静かに終了）`, "success");
+      Toast.show("設定と記憶を保存したホ！", "success");
+      const cur = getCurChar();
+      const ackVoice = cur.id === 'shiro' ? "バッチリホ！" : "バッチリニャ！";
+      this.triggerActionVoice(ackVoice, `💾 ${ackVoice}`);
+      Logger.log(`[Auth] ✅ 設定保存完了`, "success");
     });
 
     document.getElementById('add-memory-btn')?.addEventListener('click', () => {
@@ -3826,7 +4097,7 @@ const AppCore = {
       if (this.state.isRunning) this.audio.startListening();
     });
     document.getElementById('diag-copy-evidence-btn')?.addEventListener('click', () => {
-      navigator.clipboard.writeText(Logger.getEvidenceText()).then(() => Toast.show("ログをコピーしたニャ！📋", "success"));
+      navigator.clipboard.writeText(Logger.getEvidenceText()).then(() => Toast.show("ログをコピーしたホ！📋", "success"));
     });
   }
 };
@@ -3844,5 +4115,4 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
   document.addEventListener('DOMContentLoaded', bootAIApp);
   window.addEventListener('load', bootAIApp);
 }
-
 
