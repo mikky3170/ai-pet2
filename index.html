@@ -22,12 +22,10 @@
        新・4大カラーテーマ完全定義 ＆ 端末外観（ライト=白 / ダーク=黒）自動追従
        ========================================================================== */
     :root {
-      /* スマホのシステム外観（デフォルトはライト=白） */
       --system-outer-bg: #ffffff;
-      --cat-scale: 1; /* 縦画面の基準スケール */
+      --cat-scale: 1;
     }
 
-    /* 端末がダークモード設定の時は四隅の外側を完全な漆黒に */
     @media (prefers-color-scheme: dark) {
       :root {
         --system-outer-bg: #000000;
@@ -125,7 +123,6 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* ★四隅の外側を端末のシステムカラー（白 / 黒）に完全一致 */
     body {
       margin: 0;
       padding: 0;
@@ -171,7 +168,6 @@
     #toast-notification.error { background: #450a0a; color: #fca5a5; border: 1.5px solid #ef4444; }
     #toast-notification.info { background: #0f172a; color: #38bdf8; border: 1.5px solid #38bdf8; }
 
-    /* ★36pxの美しい四隅角丸 ＆ 下部セーフエリア完全確保 */
     #pet-container {
       position: absolute;
       width: 100%;
@@ -207,7 +203,6 @@
       flex-shrink: 0;
     }
 
-    /* ★ヘッダー：時計と日記帳の間隔にゆとりを持たせ押しやすさ向上 */
     .top-header {
       width: 100%;
       flex-shrink: 0;
@@ -623,7 +618,6 @@
       100% { transform: scale(var(--cat-scale, 1)) translateY(0); }
     }
 
-    /* ★Zzzの愛らしい文字に微細な白フチを追加して全テーマでくっきり視認化 */
     #sleep-zzz-bubble {
       position: absolute;
       top: 15px;
@@ -680,13 +674,12 @@
       100% { opacity: 0; transform: translateX(-50%) scale(1.25) translateY(-40px); }
     }
 
-    /* ★リアル枠とベクター枠の初期重複を完全防止する排他CSS */
     .cat-frame {
       position: absolute;
       bottom: 0;
       width: 320px;
       height: 310px;
-      display: none; /* 初期は完全に非表示 */
+      display: none;
       justify-content: center;
       align-items: flex-end;
       opacity: 0;
@@ -696,13 +689,8 @@
       border: none !important;
       box-shadow: none !important;
     }
-    .pet-avatar-wrapper.is-real-mode .cat-frame {
-      display: flex;
-    }
-    .pet-avatar-wrapper.is-real-mode .cat-frame.active {
-      opacity: 1;
-      pointer-events: none;
-    }
+    .pet-avatar-wrapper.is-real-mode .cat-frame { display: flex; }
+    .pet-avatar-wrapper.is-real-mode .cat-frame.active { opacity: 1; pointer-events: none; }
 
     .cat-avatar-img {
       position: absolute;
@@ -718,9 +706,7 @@
       border: none !important;
       box-shadow: none !important;
     }
-    .cat-avatar-img.is-png {
-      mix-blend-mode: normal !important;
-    }
+    .cat-avatar-img.is-png { mix-blend-mode: normal !important; }
 
     .real-eyelid-unit {
       position: absolute;
@@ -909,8 +895,8 @@
       100% { transform: scale(1.08); filter: brightness(1.2); }
     }
 
-    /* ★ベクター枠の初期重複防止 */
-    #cat-vector-avatar {
+    /* アバターコンテナ（char_kuro.js 等からSVGが動的注入されます） */
+    #cat-vector-avatar-container {
       width: 270px;
       height: 310px;
       position: absolute;
@@ -920,146 +906,7 @@
       z-index: 10;
       pointer-events: none;
     }
-    #cat-vector-avatar.active-mode { display: block; }
-
-    .pose-group { display: none; }
-    .pose-idle-active #pose-idle { display: block; }
-    .pose-talking-active #pose-talking { display: block; }
-    .pose-thinking-active #pose-thinking { display: block; }
-    .pose-happy-active #pose-happy { display: block; }
-
-    .anim-idle-head {
-      transform-origin: 100px 125px;
-      animation: idleHeadTilt 5.6s ease-in-out infinite alternate;
-    }
-    @keyframes idleHeadTilt {
-      0% { transform: rotate(0deg) translateY(0); }
-      35% { transform: rotate(-2.5deg) translateY(-1px); }
-      75% { transform: rotate(2deg) translateY(-0.5px); }
-      100% { transform: rotate(0deg) translateY(0); }
-    }
-
-    .anim-idle-body {
-      transform-origin: 100px 220px;
-      animation: idleBreathe 4.5s ease-in-out infinite;
-    }
-    @keyframes idleBreathe {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.015, 0.985); }
-    }
-    .anim-idle-ruff {
-      transform-origin: 100px 145px;
-      animation: ruffFluff 4.5s ease-in-out infinite;
-    }
-    @keyframes ruffFluff {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.04, 1.02); }
-    }
-    .anim-idle-tail {
-      transform-origin: 140px 190px;
-      animation: idleTailWave 5.0s ease-in-out infinite;
-    }
-    @keyframes idleTailWave {
-      0%, 100% { transform: rotate(0deg); }
-      30% { transform: rotate(8deg) translateY(-2px); }
-      70% { transform: rotate(-5deg) translateY(1px); }
-    }
-
-    .anim-talking-head {
-      transform-origin: 100px 125px;
-      animation: talkHeadBob 0.35s ease-in-out infinite alternate;
-    }
-    @keyframes talkHeadBob {
-      0% { transform: rotate(-2deg) translateY(0); }
-      100% { transform: rotate(2deg) translateY(-3px); }
-    }
-    .anim-talking-tail {
-      transform-origin: 145px 160px;
-      animation: talkTailShake 0.6s ease-in-out infinite alternate;
-    }
-    @keyframes talkTailShake {
-      0% { transform: rotate(-6deg); }
-      100% { transform: rotate(10deg); }
-    }
-
-    .anim-thinking-head {
-      transform-origin: 100px 125px;
-      animation: thinkHeadTilt 3.0s ease-in-out infinite alternate;
-    }
-    @keyframes thinkHeadTilt {
-      0% { transform: rotate(-4deg); }
-      100% { transform: rotate(3deg); }
-    }
-    .anim-thinking-paw {
-      transform-origin: 85px 160px;
-      animation: thinkPawTap 2.0s ease-in-out infinite alternate;
-    }
-    @keyframes thinkPawTap {
-      0% { transform: translateY(0); }
-      100% { transform: translateY(-2px) rotate(-1deg); }
-    }
-
-    .anim-happy-arms {
-      transform-origin: 100px 160px;
-      animation: happyArmsWave 0.4s ease-in-out infinite alternate;
-    }
-    @keyframes happyArmsWave {
-      0% { transform: translateY(0) rotate(-2deg); }
-      100% { transform: translateY(-6px) rotate(2deg); }
-    }
-    .anim-happy-tail {
-      transform-origin: 140px 175px;
-      animation: happyTailHyper 0.28s ease-in-out infinite alternate;
-    }
-    @keyframes happyTailHyper {
-      0% { transform: rotate(12deg) scale(1.02); }
-      100% { transform: rotate(-16deg) scale(1); }
-    }
-
-    .anim-ear-l {
-      transform-origin: 66px 65px;
-      animation: earTwitchL 6.0s ease-in-out infinite;
-    }
-    @keyframes earTwitchL {
-      0%, 88%, 100% { transform: rotate(0deg); }
-      92% { transform: rotate(-6deg); }
-      96% { transform: rotate(3deg); }
-    }
-    .anim-ear-r {
-      transform-origin: 134px 65px;
-      animation: earTwitchR 7.2s ease-in-out infinite;
-    }
-    @keyframes earTwitchR {
-      0%, 82%, 100% { transform: rotate(0deg); }
-      86% { transform: rotate(6deg); }
-      90% { transform: rotate(-3deg); }
-    }
-
-    .cat-eye-blink {
-      transform-origin: center;
-      animation: eyeBlinkAnim 4.6s ease-in-out infinite;
-    }
-    @keyframes eyeBlinkAnim {
-      0%, 92%, 100% { transform: scaleY(1); }
-      95%, 97% { transform: scaleY(0.08); }
-    }
-
-    .mouth-talking {
-      transform-origin: 100px 114px;
-      animation: mouthSyncAnim 0.24s ease-in-out infinite alternate;
-    }
-    @keyframes mouthSyncAnim {
-      0% { transform: scale(0.9, 0.35); }
-      100% { transform: scale(1.15, 1.25); }
-    }
-
-    #cat-vector-accessories {
-      opacity: 0;
-      transform: translateY(-12px) scale(0.92);
-      transform-origin: 100px 75px;
-      transition: opacity 0.35s ease-out, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    .pet-avatar-wrapper.is-assistant-mode #cat-vector-accessories { opacity: 1; transform: translateY(0) scale(1); }
+    #cat-vector-avatar-container.active-mode { display: block; }
 
     .cat-ground-shadow {
       position: absolute;
@@ -1187,7 +1034,6 @@
     }
     .btn-photo:active { transform: scale(0.95); background: rgba(3, 105, 161, 0.55); }
 
-    /* ★新・とりけしボタン（赤系警告色のまま幅・文字詰まりを完全に保持） */
     .btn-stop {
       height: 44px;
       padding: 0 11px;
@@ -1262,7 +1108,6 @@
       pointer-events: none;
     }
 
-    /* 横画面時の最適化CSS */
     @media (orientation: landscape) {
       :root {
         --cat-scale: 0.78;
@@ -1688,6 +1533,26 @@
       transition: background 0.15s;
     }
     .btn-pc-sync:active { background: #dcfce7; }
+
+    .btn-deep-clean-storage {
+      width: 100%;
+      padding: 9px;
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      color: #ffffff;
+      border: none;
+      border-radius: 11px;
+      font-size: 11.5px;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      margin-top: 8px;
+      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
+      transition: all 0.2s;
+    }
+    .btn-deep-clean-storage:active { transform: scale(0.97); }
 
     .storage-monitor-box {
       background: #ffffff;
@@ -2477,7 +2342,6 @@
         </svg>
 
         <div id="cat-stage-box">
-          <!-- リアル枠（初期はCSSで完全非表示） -->
           <div class="cat-frame" id="frame-idle">
             <img src="idle.png" onerror="if(this.src.endsWith('.png')){this.src='idle.jpg';this.classList.remove('is-png');}" onload="if(this.src.endsWith('.png')){this.classList.add('is-png');}" alt="待機中" class="cat-avatar-img" id="img-idle">
             <div class="real-eyelid-unit" id="eyelid-unit-idle">
@@ -2499,197 +2363,8 @@
             <div class="accessory-layer" id="acc-happy"></div>
           </div>
 
-          <!-- ベクター枠（初期はCSSで完全非表示） -->
-          <svg viewBox="0 0 200 240" id="cat-vector-avatar">
-            <defs>
-              <radialGradient id="grad-fur-black" cx="50%" cy="40%" r="60%">
-                <stop offset="0%" stop-color="#262933"/>
-                <stop offset="60%" stop-color="#14161f"/>
-                <stop offset="100%" stop-color="#0a0c12"/>
-              </radialGradient>
-
-              <linearGradient id="grad-silver-ruff" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#f1f5f9"/>
-                <stop offset="35%" stop-color="#cbd5e1"/>
-                <stop offset="70%" stop-color="#94a3b8"/>
-                <stop offset="100%" stop-color="#475569"/>
-              </linearGradient>
-
-              <linearGradient id="grad-tail-smoke" x1="0%" y1="100%" x2="50%" y2="0%">
-                <stop offset="0%" stop-color="#0f1118"/>
-                <stop offset="65%" stop-color="#334155"/>
-                <stop offset="100%" stop-color="#94a3b8"/>
-              </linearGradient>
-
-              <radialGradient id="grad-emerald-eye" cx="45%" cy="40%" r="55%">
-                <stop offset="0%" stop-color="#a7f3d0"/>
-                <stop offset="45%" stop-color="#10b981"/>
-                <stop offset="85%" stop-color="#047857"/>
-                <stop offset="100%" stop-color="#064e3b"/>
-              </radialGradient>
-
-              <pattern id="stripe-bw-vector" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-                <rect width="4" height="8" fill="#111827"/>
-                <rect x="4" width="4" height="8" fill="#ffffff"/>
-              </pattern>
-            </defs>
-
-            <g id="pose-idle" class="pose-group">
-              <g class="anim-idle-tail">
-                <path d="M125 195 C165 185 195 150 188 115 C182 85 195 72 196 68 C188 76 172 98 162 125 C152 152 144 178 128 194 Z" fill="url(#grad-tail-smoke)"/>
-                <path d="M136 190 C168 180 182 148 178 120 C174 100 184 88 188 82 C180 92 166 114 156 138 C148 160 140 182 136 190 Z" fill="#cbd5e1" opacity="0.45"/>
-              </g>
-              <g class="anim-idle-body">
-                <path d="M52 226 C42 185 50 145 54 130 C48 120 48 100 56 85 C68 45 82 50 100 50 C118 50 132 45 144 85 C152 100 152 120 146 130 C150 145 158 185 148 226 Z" fill="url(#grad-fur-black)"/>
-                <ellipse cx="80" cy="225" rx="14" ry="9" fill="#14161f"/>
-                <ellipse cx="120" cy="225" rx="14" ry="9" fill="#14161f"/>
-                <g class="anim-idle-ruff">
-                  <path d="M66 128 C55 145 60 178 80 198 C92 210 108 210 120 198 C140 178 145 145 134 128 Z" fill="url(#grad-silver-ruff)"/>
-                  <path d="M76 134 Q90 120 100 135 Q110 120 124 134 Q132 165 118 190 Q100 204 82 190 Q68 165 76 134 Z" fill="#f8fafc" opacity="0.9"/>
-                  <path d="M85 140 Q100 128 115 140 Q122 168 108 185 Q100 192 92 185 Q78 168 85 140 Z" fill="#ffffff"/>
-                  <path d="M100 138 L100 188 M90 148 L94 176 M110 148 L106 176 M80 158 L86 174 M120 158 L114 174" stroke="#94a3b8" stroke-width="1.3" stroke-linecap="round" opacity="0.5"/>
-                </g>
-              </g>
-            </g>
-
-            <g id="pose-talking" class="pose-group">
-              <g class="anim-talking-tail">
-                <path d="M136 175 C160 160 188 120 182 85 C178 60 192 42 196 35 C186 46 172 70 164 96 C155 125 148 155 136 175 Z" fill="url(#grad-tail-smoke)"/>
-                <path d="M142 170 C165 155 178 122 174 95 C170 76 182 60 186 52 C178 64 165 88 156 114 C148 140 142 160 142 170 Z" fill="#cbd5e1" opacity="0.45"/>
-              </g>
-              <path d="M56 226 C48 180 52 145 56 130 C48 120 50 100 58 85 C68 45 82 50 100 50 C118 50 132 45 142 85 C150 100 152 120 144 130 C148 145 152 180 144 226 Z" fill="url(#grad-fur-black)"/>
-              <rect x="68" y="180" width="18" height="48" rx="9" fill="#14161f"/>
-              <rect x="114" y="180" width="18" height="48" rx="9" fill="#14161f"/>
-              <path d="M68 126 C56 142 62 175 80 192 C92 204 108 204 120 192 C138 175 144 142 132 126 Z" fill="url(#grad-silver-ruff)"/>
-              <path d="M78 132 Q100 118 122 132 Q130 160 118 184 Q100 198 82 184 Q70 160 78 132 Z" fill="#ffffff" opacity="0.95"/>
-            </g>
-
-            <g id="pose-thinking" class="pose-group">
-              <path d="M125 195 C165 185 195 150 188 115 C182 85 195 72 196 68 C188 76 172 98 162 125 Z" fill="url(#grad-tail-smoke)"/>
-              <path d="M52 226 C42 185 50 145 54 130 C48 120 48 100 56 85 C68 45 82 50 100 50 C118 50 132 45 144 85 C152 100 152 120 146 130 C150 145 158 185 148 226 Z" fill="url(#grad-fur-black)"/>
-              <ellipse cx="125" cy="225" rx="14" ry="9" fill="#14161f"/>
-              <path d="M66 128 C55 145 60 178 80 198 C92 210 108 210 120 198 C140 178 145 145 134 128 Z" fill="url(#grad-silver-ruff)"/>
-              <path d="M78 132 Q100 118 122 132 Q130 160 118 184 Q100 198 82 184 Q70 160 78 132 Z" fill="#ffffff" opacity="0.95"/>
-              <g class="anim-thinking-paw">
-                <path d="M60 210 C55 180 72 145 84 126 C88 120 94 122 92 128 C84 145 74 180 74 210 Z" fill="#181a24"/>
-                <ellipse cx="86" cy="122" rx="9" ry="8" fill="#262933"/>
-                <ellipse cx="86" cy="122" rx="4.5" ry="4.5" fill="#fda4af" opacity="0.8"/>
-              </g>
-            </g>
-
-            <g id="pose-happy" class="pose-group">
-              <g class="anim-happy-tail">
-                <path d="M136 175 C165 150 195 110 188 75 C184 50 196 36 200 30 C190 40 175 65 166 92 C156 122 148 152 136 175 Z" fill="url(#grad-tail-smoke)"/>
-              </g>
-              <path d="M54 226 C46 175 52 145 56 130 C48 120 50 100 58 85 C68 45 82 50 100 50 C118 50 132 45 142 85 C150 100 152 120 144 130 C148 145 154 175 146 226 Z" fill="url(#grad-fur-black)"/>
-              <ellipse cx="78" cy="228" rx="13" ry="8" fill="#14161f"/>
-              <ellipse cx="122" cy="228" rx="13" ry="8" fill="#14161f"/>
-              <path d="M68 126 C56 142 62 175 80 192 C92 204 108 204 120 192 C138 175 144 142 132 126 Z" fill="url(#grad-silver-ruff)"/>
-              <path d="M78 132 Q100 118 122 132 Q130 160 118 184 Q100 198 82 184 Q70 160 78 132 Z" fill="#ffffff" opacity="0.95"/>
-              <g class="anim-happy-arms">
-                <path d="M62 145 C50 125 38 95 44 76 C46 70 54 74 56 80 C54 95 65 125 72 140 Z" fill="#181a24"/>
-                <ellipse cx="44" cy="74" rx="11" ry="10" fill="#262933"/>
-                <ellipse cx="44" cy="74" rx="5.5" ry="4.5" fill="#fda4af"/>
-                <circle cx="38" cy="67" r="2.2" fill="#fda4af"/>
-                <circle cx="43" cy="64" r="2.2" fill="#fda4af"/>
-                <circle cx="49" cy="65" r="2.2" fill="#fda4af"/>
-                <circle cx="53" cy="70" r="2.0" fill="#fda4af"/>
-
-                <path d="M138 145 C150 125 162 95 156 76 C154 70 146 74 144 80 C146 95 135 125 128 140 Z" fill="#181a24"/>
-                <ellipse cx="156" cy="74" rx="11" ry="10" fill="#262933"/>
-                <ellipse cx="156" cy="74" rx="5.5" ry="4.5" fill="#fda4af"/>
-                <circle cx="162" cy="67" r="2.2" fill="#fda4af"/>
-                <circle cx="157" cy="64" r="2.2" fill="#fda4af"/>
-                <circle cx="151" cy="65" r="2.2" fill="#fda4af"/>
-                <circle cx="147" cy="70" r="2.0" fill="#fda4af"/>
-              </g>
-            </g>
-
-            <g id="head-unit" class="anim-idle-head">
-              <g class="anim-ear-l">
-                <path d="M50 75 C48 58 62 26 74 18 C77 16 80 18 81 22 C86 36 90 54 88 70 Z" fill="url(#grad-fur-black)"/>
-                <path d="M55 70 C54 56 63 32 74 24 C76 26 83 48 82 66 Z" fill="#fbcfe8" opacity="0.9"/>
-                <path d="M52 68 Q68 54 72 65 Q66 45 76 54 Q70 38 76 34" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" fill="none"/>
-                <path d="M58 66 Q70 52 78 62" stroke="#f1f5f9" stroke-width="2.0" stroke-linecap="round" fill="none"/>
-                <path d="M74 18 Q72 10 67 8" stroke="#181a24" stroke-width="2.4" stroke-linecap="round" fill="none"/>
-              </g>
-
-              <g class="anim-ear-r">
-                <path d="M150 75 C152 58 138 26 126 18 C123 16 120 18 119 22 C114 36 110 54 112 70 Z" fill="url(#grad-fur-black)"/>
-                <path d="M145 70 C146 56 137 32 126 24 C124 26 117 48 118 66 Z" fill="#fbcfe8" opacity="0.9"/>
-                <path d="M148 68 Q132 54 128 65 Q134 45 124 54 Q130 38 124 34" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" fill="none"/>
-                <path d="M142 66 Q130 52 122 62" stroke="#f1f5f9" stroke-width="2.0" stroke-linecap="round" fill="none"/>
-                <path d="M126 18 Q128 10 133 8" stroke="#181a24" stroke-width="2.4" stroke-linecap="round" fill="none"/>
-              </g>
-
-              <path d="M62 74 C46 86 48 100 58 108 C50 112 54 122 70 124 C82 126 92 129 100 129 C108 129 118 126 130 124 C146 122 150 112 142 108 C152 100 154 86 138 74 C124 64 76 64 62 74 Z" fill="url(#grad-fur-black)"/>
-              <path d="M66 105 C60 111 66 117 76 119 C70 115 68 109 66 105 Z" fill="#94a3b8" opacity="0.5"/>
-              <path d="M134 105 C140 111 134 117 124 119 C130 115 132 109 134 105 Z" fill="#94a3b8" opacity="0.5"/>
-
-              <g id="eyes-normal" class="cat-eye-blink" style="transform-origin: 100px 96px;">
-                <ellipse cx="77" cy="96" rx="11" ry="14" fill="url(#grad-emerald-eye)"/>
-                <ellipse cx="77" cy="96" rx="4.5" ry="11.5" fill="#090d16"/>
-                <circle cx="74" cy="92" r="3.6" fill="#ffffff"/>
-                <circle cx="79" cy="100" r="1.6" fill="#ffffff" opacity="0.85"/>
-
-                <ellipse cx="123" cy="96" rx="11" ry="14" fill="url(#grad-emerald-eye)"/>
-                <ellipse cx="123" cy="96" rx="4.5" ry="11.5" fill="#090d16"/>
-                <circle cx="120" cy="92" r="3.6" fill="#ffffff"/>
-                <circle cx="125" cy="100" r="1.6" fill="#ffffff" opacity="0.85"/>
-              </g>
-
-              <g id="eyes-happy" style="display:none;">
-                <path d="M66 98 Q77 84 88 98" stroke="#10b981" stroke-width="4.8" stroke-linecap="round" fill="none"/>
-                <path d="M66 98 Q77 84 88 98" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" fill="none"/>
-                <path d="M112 98 Q123 84 134 98" stroke="#10b981" stroke-width="4.8" stroke-linecap="round" fill="none"/>
-                <path d="M112 98 Q123 84 134 98" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" fill="none"/>
-              </g>
-
-              <polygon points="100,107 94,101 106,101" fill="#f472b6"/>
-
-              <g id="mouth-closed">
-                <path d="M94 109 Q100 114 100 109 Q100 114 106 109" stroke="#64748b" stroke-width="2.2" stroke-linecap="round" fill="none"/>
-              </g>
-
-              <g id="mouth-talking" style="display:none;" class="mouth-talking">
-                <path d="M93 108 Q100 124 107 108 Z" fill="#be123c"/>
-                <ellipse cx="100" cy="116" rx="4.5" ry="3.5" fill="#fb7185"/>
-                <polygon points="95,108 96,111 97,108" fill="#ffffff"/>
-                <polygon points="103,108 104,111 105,108" fill="#ffffff"/>
-              </g>
-
-              <g id="mouth-happy" style="display:none;">
-                <path d="M91 108 Q100 127 109 108 Z" fill="#9f1239" stroke="#be123c" stroke-width="1.5"/>
-                <ellipse cx="100" cy="119" rx="6" ry="4.5" fill="#f43f5e"/>
-                <polygon points="94,108 95,112 97,108" fill="#ffffff"/>
-                <polygon points="103,108 105,112 106,108" fill="#ffffff"/>
-              </g>
-
-              <path d="M64 106 Q44 104 28 108" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.9"/>
-              <path d="M63 112 Q44 114 30 120" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.9"/>
-              <path d="M136 106 Q156 104 172 108" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.9"/>
-              <path d="M137 112 Q156 114 170 120" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.9"/>
-
-              <g id="cat-vector-accessories">
-                <g id="vec-acc-hat">
-                  <path d="M72 50 Q100 42 128 50 L124 58 Q100 50 76 58 Z" fill="#1e293b"/>
-                  <polygon points="100,22 148,36 100,50 52,36" fill="#0f172a" stroke="#334155" stroke-width="1.3"/>
-                  <circle cx="100" cy="36" r="3" fill="#eab308"/>
-                  <g class="mortar-tassel">
-                    <path d="M100 36 Q124 38 130 56" stroke="#ca8a04" stroke-width="2.2" fill="none"/>
-                    <polygon points="128,56 133,56 135,70 126,70" fill="#eab308"/>
-                  </g>
-                </g>
-                <g id="vec-acc-glasses">
-                  <circle cx="77" cy="96" r="17.5" fill="rgba(255, 255, 255, 0.16)" stroke="#090d16" stroke-width="3.8"/>
-                  <circle cx="77" cy="96" r="17.5" fill="none" stroke="url(#stripe-bw-vector)" stroke-width="2.6"/>
-                  <circle cx="123" cy="96" r="17.5" fill="rgba(255, 255, 255, 0.16)" stroke="#090d16" stroke-width="3.8"/>
-                  <circle cx="123" cy="96" r="17.5" fill="none" stroke="url(#stripe-bw-vector)" stroke-width="2.6"/>
-                  <path d="M94.5 95 Q100 90 105.5 95" stroke="#090d16" stroke-width="3.8" fill="none"/>
-                </g>
-              </g>
-            </g>
-          </svg>
+          <!-- アバターコンテナ（char_kuro.js 等のキャラクター定義ファイルからSVGが動的注入されます） -->
+          <div id="cat-vector-avatar-container"></div>
         </div>
 
         <div id="kitchen-timer-widget" title="タップで「ちょい待ち／すすめる」、完了時はタップで消えるニャ！">
@@ -2736,7 +2411,6 @@
           </button>
           <input type="file" id="camera-photo-input" accept="image/*" capture="environment" style="display:none;">
 
-          <!-- ★新・とりけしボタン（誤認識巻き戻し機能付き） -->
           <button class="btn-stop" id="stop-action-btn" title="考え中・話し中の誤認識発言を取り消してやり直すニャ！">
             <span>↩️</span><span>とりけし</span>
           </button>
@@ -3035,6 +2709,10 @@
           <input type="file" id="file-input-restore" accept=".json" style="display:none;">
         </div>
 
+        <button type="button" class="btn-deep-clean-storage" id="btn-deep-clean-storage" title="原本バックアップを自動保存した上で、スマホ内写真を安全に3〜5KBへスリム化し容量を激減させます！">
+          <span>🧹</span><span>写真ストレージ安全お掃除（自動保存付き・3〜5KB化）</span>
+        </button>
+
         <div class="storage-monitor-box">
           <div class="storage-monitor-header">
             <span>📊 ストレージ使用量（思い出の引き出し）:</span>
@@ -3166,8 +2844,9 @@
     </div>
   </div>
 
+  <!-- スクリプト読み込み（新・キャラクター定義 ➔ バージョン管理 ➔ 共通OS） -->
+  <script src="char_kuro.js"></script>
   <script src="version.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
-
