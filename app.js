@@ -2,8 +2,9 @@
    AIペット 共通対話エンジン＆中央司令塔OS（app.js Part 1/2）
    - プラグインアーキテクチャ対応（char_kuro.js 等のキャラ定義を自動ロード）
    - 【通信直列化＆429完全根絶】無謀な一斉プリフェッチを全撤去・音声生成0.2〜0.5秒爆速化
-   - 【日時エンジン完全防御】dayOfWeek未定義バグ根絶・左上日付ヘッダー表示対応
+   - 【日時エンジン完全防御】西暦を外した自然な日付返答＆左上日付ヘッダー表示対応
    - 【トークスタイル連動】自動/短い/普通/長いの設定保存・復元に対応
+   - 【発話サニタイズ】セリフから生URL文字列を物理除去しVOICEVOXのURL読み上げを完全根絶
    - 【しりとり・クイズ救済】2文字以下の単語ログを捨てずにGeminiへ届ける対話整合性
    - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
    - 【非破壊ストレージ大掃除】原本JSONを強制ダウンロード後に安全に3〜5KB化＆重複完全排除
@@ -121,7 +122,7 @@ const Logger = {
 };
 
 /* ==========================================================================
-   MODULE 0.5: 日時・生活リズム提供エンジン（絶対停止防御 ＆ 左上日付表示対応）
+   MODULE 0.5: 日時・生活リズム提供エンジン（絶対停止防御 ＆ 西暦カット自然発話）
    ========================================================================== */
 const TimeProvider = {
   getCurrentInfo() {
@@ -159,7 +160,8 @@ const TimeProvider = {
         now, year, month, date, hours, minutes, dayOfWeek, clock, logKey, fullDate,
         headerDisplay,
         spokenClock: `いまは、${hours}時${minutes === 0 ? 'ちょうど' : minutes + '分'}だニャン🐾`,
-        spokenDate: `きょうは、${year}年${month}月${date}日、${dayOfWeek}曜日だニャ！`,
+        // ★西暦を省き「月・日・曜日」のみで自然に発話短縮
+        spokenDate: `きょうは、${month}月${date}日、${dayOfWeek}曜日だニャ！`,
         clockDisplay: `いまは ${hours}時${pad(minutes)}分 だニャン🐾`,
         dateDisplay: `きょうは ${month}月${date}日 (${dayOfWeek}曜日) だニャ！`,
         isLateNight, isEvening, lifeLogKey, lifeFullDate
@@ -591,7 +593,10 @@ class AudioSpeechEngine {
     const speakerId = (speakerIdOverride !== null) ? speakerIdOverride : AppCore.getSpeakerId();
     const cooldownMs = (cooldownOverride !== null) ? cooldownOverride : 350;
 
-    let clean = this._convertAllNumbersToKana(text).replace(/<[^>]*>/g, '').replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷🏠🔮]/gu, '').trim();
+    // ★セーフティネット：セリフから生URLおよびタグ・記号を物理的に徹底サニタイズ
+    let clean = (text || '').replace(/https?:\/\/[^\s]+/gi, '');
+    clean = this._convertAllNumbersToKana(clean).replace(/<[^>]*>/g, '').replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷🏠🔮]/gu, '').trim();
+
     if (!clean) {
       if (onStart) onStart(); if (onEnd) onEnd();
       setTimeout(() => { if (AppCore.state.isRunning && !this.isActionButtonLocked) this.startListening(); }, cooldownMs);
@@ -654,7 +659,8 @@ class AudioSpeechEngine {
 
     for (let i = 0; i < sentences.length; i++) {
       if (!this.isReadingAloud || !AppCore.state.isRunning) break;
-      const clean = this._convertAllNumbersToKana(sentences[i]).trim();
+      let clean = sentences[i].replace(/https?:\/\/[^\s]+/gi, '');
+      clean = this._convertAllNumbersToKana(clean).trim();
       if (!clean) continue;
       if (onSentenceStart) onSentenceStart(i, sentences[i]);
       try {
@@ -972,7 +978,11 @@ const StorageManager = {
   appendChatLog(role, text, photoUrl = null) {
     if (!text) return;
     const timeInfo = TimeProvider.getCurrentInfo();
-    const cleanText = AppCore.audio.cleanEndingNenyan(text);
+    // ★セリフから生URLを除去して保存（ログのURL汚染を防止）
+    let cleanText = (text || '').replace(/https?:\/\/[^\s]+/gi, '').trim();
+    cleanText = AppCore.audio.cleanEndingNenyan(cleanText);
+    if (!cleanText) return;
+
     const entry = {
       role, text: cleanText,
       mode: AppCore.state.isAssistantMode ? 'assistant' : 'pet',
@@ -1130,7 +1140,8 @@ const StorageManager = {
     const dateKey = customDateKey || timeInfo.lifeLogKey;
     const fullDate = customFullDate || timeInfo.lifeFullDate;
 
-    let cleanContent = AppCore.audio.cleanEndingNenyan(entryText);
+    let cleanContent = entryText.replace(/https?:\/\/[^\s]+/gi, '');
+    cleanContent = AppCore.audio.cleanEndingNenyan(cleanContent);
     let extractedComment = kuroComment;
 
     const match = cleanContent.match(/(?:【?クロの(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?)\s*([^\n]+)/);
@@ -1390,14 +1401,15 @@ const StorageManager = {
     return true;
   }
 };
-
 /* ==========================================================================
    AIペット 共通対話エンジン＆中央司令塔OS（app.js Part 2/2）
    - プラグインアーキテクチャ対応（char_kuro.js 等のキャラ定義を自動ロード）
+   - 【天気・気温スマート即答】最新GPS気象データから0秒即答・長文TTS遅延を完全根絶
+   - 【生URL物理除去＆セリフUI完全分離】セリフ内URLを根絶・おてつだい時はカードUIに集約
+   - 【トークスタイル3段階自律判定】自動(auto)時に文脈・入力から短/普/長をスマート切替
    - 【起動時連射全撤去】起動時プリフェッチを全廃・TTS Quest過負荷と429を根絶
    - 【16秒打ち切り＆案3セリフ】第1(8秒)＋第2(8秒)で決着・知恵熱セリフで愛らしく自動復帰
    - 【今日の日付厳格フィルター】生活日当日ログのみ抽出・過去ログ混同を100%根絶
-   - 【トークスタイル末尾完全強制】短い(1文・30文字以内)／自動(短文判定)の動的ロック
    - 【思考デッドロック完全根絶】try...finally による入力処理中フラグ（鍵）の確実な自動解除
    - 【左上日付・曜日・時刻常時更新】headerDisplay連動によるリアルタイム日時表示
    - 【絵日記完全日本語ロック】system_instruction による英語ドリフト完全根絶
@@ -1690,7 +1702,7 @@ class AIThoughtEngine {
       // システム自動通知や定型短文を文脈から除外
       if (/^(?:おまかせニャ|あそぶニャ|バッチリニャ|はーい|はい|起きたニャ|お昼寝するニャ)/.test(t)) return false;
       if (/(?:今日の日記を書き込みました|昨日の日記|昨日の思い出絵日記)/.test(t)) return false;
-      if (/(?:いま何時|今何時|今日何日|きょう何日|天気どんな感じ)/.test(t)) return false;
+      if (/(?:いま何時|今何時|今日何日|きょう何日|天気どんな感じ|気温.*(?:何度|どれくらい))/i.test(t)) return false;
       if (t.startsWith('http') || t.includes('Googleマップで見る')) return false;
       return true;
     });
@@ -1749,11 +1761,19 @@ class AIThoughtEngine {
     const isAssistant = AppCore.state.isAssistantMode;
     const talkLen = localStorage.getItem('kuro_talk_length') || 'auto';
 
-    // ★自動モード時のスマート短文判定（10文字以下または挨拶は1文返答に固定）
+    // ★自動モード（auto）時の3段階スマート判定（短・普・長）
     let effectiveLen = talkLen;
     if (talkLen === 'auto') {
-      const isShortGreeting = promptText.length <= 10 || /^(?:おはよう|こんにちは|こんばんは|うん|おやすみ|ねえ|クロちゃん|ありがと)/.test(promptText.trim());
-      effectiveLen = isShortGreeting ? 'short' : 'normal';
+      const isShortPrompt = promptText.length <= 10 || /^(?:おはよう|こんにちは|こんばんは|うん|おやすみ|ねえ|クロちゃん|ありがと|わかった|なるほど)/.test(promptText.trim());
+      const isLongPrompt = !!photoBase64 || /(?:教えて|詳しく|どう思う|なんで|なぜ|昔|発明|理由|説明)/.test(promptText.trim());
+
+      if (isShortPrompt) {
+        effectiveLen = 'short';
+      } else if (isLongPrompt) {
+        effectiveLen = 'long';
+      } else {
+        effectiveLen = 'normal';
+      }
     }
 
     const recentDiaries = StorageManager.getRecentDiariesSummary(3);
@@ -1791,7 +1811,7 @@ class AIThoughtEngine {
       if (this.isUserCancelled) break;
       const cleanModel = model.replace(/^models\//, '');
       const t0 = performance.now();
-      Logger.log(`[AI] リクエスト送信 ➔ ${cleanModel} (トーク長:${effectiveLen}, 上限:${targetMaxTokens}, 制限:8秒)`, "info");
+      Logger.log(`[AI] リクエスト送信 ➔ ${cleanModel} (設定:${talkLen} ➔ 適用:${effectiveLen}, 上限:${targetMaxTokens}, 制限:8秒)`, "info");
 
       this.activeAbortController = new AbortController();
       let isCurrentTimeout = false;
@@ -1849,7 +1869,7 @@ class AIThoughtEngine {
           let cards = [];
 
           const functionCallPart = parts.find(p => p.functionCall);
-          if (functionCallPart) {
+          if (functionCallPart && isAssistant) {
             const callInfo = functionCallPart.functionCall;
             const args = callInfo.args || {};
 
@@ -1871,10 +1891,13 @@ class AIThoughtEngine {
           if (textPart?.text && !replyText) replyText = textPart.text;
 
           if (replyText) {
-            let clean = replyText.replace(/<!--[\s\S]*?-->/g, '').replace(/[*#_~`]/g, '').trim();
+            // ★セリフから生URL（http/https）を物理的に完全除去（UIとデータの完全分離）
+            let clean = replyText.replace(/https?:\/\/[^\s]+/gi, '');
+            clean = clean.replace(/<!--[\s\S]*?-->/g, '').replace(/[*#_~`]/g, '').trim();
             clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
             clean = AppCore.audio.cleanEndingNenyan(clean);
 
+            // おてつだいモード時のみフォールバックカード検知
             if (isAssistant && cards.length === 0) {
               const fallbackCards = this._detectCardsFromKuroSpeech(clean, promptText);
               if (fallbackCards.length > 0) cards = fallbackCards;
@@ -1900,7 +1923,6 @@ class AIThoughtEngine {
         }
         if (isCurrentTimeout) {
           Logger.log(`[AI] ⏱️ [${cleanModel}] が8秒タイムアウト。次へバトンタッチニャ！`, "warn");
-          // 次のモデルへ進む（ループ継続）
           continue;
         }
         Logger.log(`[AI] ❌ エラー [${cleanModel}]: ${err.message} (${ms}ms)`, "error");
@@ -1990,6 +2012,9 @@ class AIThoughtEngine {
   }
 
   _detectCardsFromKuroSpeech(speechText, userPrompt) {
+    // なかよしモード時はカードを出さないガード
+    if (!AppCore.state.isAssistantMode) return [];
+
     const combined = `${speechText} ${userPrompt}`;
     const isMapConfirmed = /(?:見つけてきたニャ|探してきたニャ|地図で案内するニャ|地図をチェックしてニャ)/.test(speechText);
     const isNewsConfirmed = /(?:ニュースをチェックしたニャ|最新ニュース.*見てみてニャ)/.test(speechText);
@@ -2038,7 +2063,7 @@ class AIThoughtEngine {
       if (res.ok) {
         const diaryRaw = (await res.json()).candidates?.[0]?.content?.parts?.[0]?.text;
         if (diaryRaw && diaryRaw.length >= 25) {
-          let clean = diaryRaw.replace(/[*#_~`]/g, '').trim();
+          let clean = diaryRaw.replace(/https?:\/\/[^\s]+/gi, '').replace(/[*#_~`]/g, '').trim();
           clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
           clean = AppCore.audio.cleanEndingNenyan(clean);
 
@@ -2393,10 +2418,13 @@ const AppCore = {
 
     const b = document.createElement('div');
     b.className = 'chat-bubble';
-    b.textContent = this.audio.cleanEndingNenyan(text);
+    // ★セリフから生URLを除去して吹き出しに表示
+    const cleanBubbleText = (text || '').replace(/https?:\/\/[^\s]+/gi, '').trim();
+    b.textContent = this.audio.cleanEndingNenyan(cleanBubbleText);
     row.appendChild(b);
 
-    if (cards && cards.length > 0) {
+    // ★おてつだいモード時のみ案内カードを表示
+    if (cards && cards.length > 0 && this.state.isAssistantMode) {
       const cardBox = document.createElement('div');
       cardBox.className = 'action-card-box';
       cards.forEach(c => {
@@ -2725,6 +2753,17 @@ const AppCore = {
       return;
     }
 
+    // ★天気・気温のスマート即答ハンドラー（0秒即答・無駄なGemini待ちとTTS長文を完全防止）
+    if (/(?:(?:今日|きょう|いま|現在)?の?(?:天気|気温|温度).*?(?:どれくらい|どう|教えて|なに|何|何度)|(?:天気|気温|温度).*?(?:どう|どんな|教えて)|いま何度|今日何度)/.test(text)) {
+      const w = LocationProvider.weather || "快晴";
+      const t = LocationProvider.temperature !== null ? `${LocationProvider.temperature}度` : "過ごしやすい気温";
+      const rep = `きょうは${w}で、気温は${t}だニャン🐾`;
+      this.audio.speak(rep, null, () => this.renderBubble('model', rep), () => {
+        this.state.isProcessingInput = false;
+      });
+      return;
+    }
+
     this.executeThought(text);
   },
 
@@ -2771,7 +2810,8 @@ const AppCore = {
           if (bubble) {
             bubble.textContent = res.text;
 
-            if (res.groundingCards && res.groundingCards.length > 0) {
+            // ★おてつだいモード時のみ、画面下部にスマートな案内カードを付加
+            if (this.state.isAssistantMode && res.groundingCards && res.groundingCards.length > 0) {
               const parentRow = bubble.closest('.chat-row');
               if (parentRow && !parentRow.querySelector('.action-card-box')) {
                 const cardBox = document.createElement('div');
