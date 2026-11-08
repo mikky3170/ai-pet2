@@ -4,9 +4,8 @@
    - モチーフ：丸メガネをかけた手のひらサイズの豆メガネフクロウ（男の子）
    - 性格：博識・夜行性・メガネツンデレ（褒められると羽をパタパタして喜ぶ）
    - 一人称：「ボク」 / 飼い主さんの呼び方：「助手」
-   - 【まぶた完全個別化】大きな丸い瞳と白い羽毛に合わせた専用まぶた初期設定
-   - 【専用装飾】元々メガネを着用しているため、おてつだい時は「🎓 博士帽のみ」を装着
-   - 【ポーズ別帽子位置】シロくん専用の4ポーズ（待機/話す/考える/喜ぶ）頭頂部座標
+   - 【まぶた完全個別化】金色の丸メガネの傾き（ハの字8度）に合わせた専用まぶた初期設定
+   - 【不透明博士帽】後ろの羽毛が一切透けないソリッドブラックの学術帽子を装備
    - 【現在日付厳格アンカー】今日の日付を固定し、過去日記の日付混同を100%根絶
    - 【モード別完全棲み分け】なかよしモードでのURL・地図案内を物理的に完全禁止
    - 【セリフ内URL完全禁止】外部リンクはカードUIに一元化し、発話へのURL混入を根絶
@@ -78,12 +77,13 @@ window.Character_Shiro = {
     "家族：ママのかよちゃん、お兄ちゃんのりゅうせいくん、弟分のたいせいくん、大親友のかまぶーくん"
   ],
 
-  // 4. 生体キャリブレーション初期設定（シロくんの丸い目・頭頂部に合わせた専用値）
+  // 4. 生体キャリブレーション初期設定（シロくんの丸メガネ・傾きに合わせた専用値）
   defaultEyelidCoords: {
-    y: 182,      // 目の高さ
+    y: 184,      // 目の高さ
     x: 0,        // 左右中心
-    gap: 34,     // フクロウのパッチリした目の間隔
-    size: 24     // 大きな丸い瞳に合わせたサイズ
+    gap: 36,     // フクロウのパッチリした目の間隔
+    size: 26,    // 大きな丸い瞳に合わせたサイズ
+    rotate: 8    // 写真のメガネに沿った傾き（左目+8度、右目-8度）
   },
 
   // 写真ごとの博士帽（帽子のみ）初期位置
@@ -94,28 +94,32 @@ window.Character_Shiro = {
     happy:    { x: 0, y: 228, scale: 1.00, rotate: 0 }
   },
 
-  // シロくん専用のリアル写真用アクセサリー（学術博士帽のみ）SVG生成
+  // シロくん専用のリアル写真用アクセサリー（完全不透明ソリッド博士帽）SVG生成
   getRealAccessorySvg() {
     return `
       <svg viewBox="0 0 140 140" style="width:100%; height:100%;">
         <defs>
-          <linearGradient id="grad-shiro-mortar" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id="grad-shiro-mortar-solid" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="#1e293b"/>
-            <stop offset="50%" stop-color="#0f172a"/>
+            <stop offset="60%" stop-color="#0f172a"/>
             <stop offset="100%" stop-color="#020617"/>
           </linearGradient>
         </defs>
-        <!-- 威厳あるホウ博士の角帽（博士帽・タッセル付き） -->
+        <!-- 威厳あるホウ博士の角帽（完全不透明ソリッドブラック・後ろが透けない仕様） -->
         <g class="real-hat-group">
-          <!-- 帽子の台座（頭頂部にフィット） -->
-          <path d="M44 44 Q70 36 96 44 L93 51 Q70 43 47 51 Z" fill="#1e293b"/>
-          <!-- 四角い天板 -->
-          <polygon points="70,18 118,32 70,46 22,32" fill="url(#grad-shiro-mortar)" stroke="#475569" stroke-width="1.4"/>
+          <!-- 背景遮断用アンダーレイヤー -->
+          <polygon points="70,16 122,32 70,48 18,32" fill="#020617"/>
+          <path d="M42 42 Q70 33 98 42 L95 53 Q70 44 45 53 Z" fill="#020617"/>
+          
+          <!-- 帽子の台座（頭頂部にしっかり乗る） -->
+          <path d="M44 44 Q70 35 96 44 L93 52 Q70 43 47 52 Z" fill="#0f172a" stroke="#334155" stroke-width="1.2"/>
+          <!-- 四角い天板（完全不透明） -->
+          <polygon points="70,18 118,32 70,46 22,32" fill="url(#grad-shiro-mortar-solid)" stroke="#475569" stroke-width="1.6"/>
           <!-- 天板中央の金ボタン -->
           <circle cx="70" cy="32" r="3.5" fill="#eab308" stroke="#ca8a04" stroke-width="0.8"/>
           <!-- 揺れる金色のタッセル（房） -->
           <g class="mortar-tassel">
-            <path d="M70 32 Q96 35 104 55" stroke="#ca8a04" stroke-width="2.4" fill="none"/>
+            <path d="M70 32 Q96 35 104 55" stroke="#ca8a04" stroke-width="2.6" fill="none"/>
             <polygon points="101,55 107,55 109,72 99,72" fill="#eab308" stroke="#ca8a04" stroke-width="0.5"/>
           </g>
         </g>
@@ -371,7 +375,7 @@ ${context.pastMemoryDiary ? `【昔の思い出】\n${context.pastMemoryDiary.co
 
             <!-- おてつだいモード時：頭上に現れる博士帽 -->
             <g id="vec-acc-hat" style="display:none;">
-              <path d="M78 40 Q100 34 122 40 L120 46 Q100 40 80 46 Z" fill="#1e293b"/>
+              <path d="M78 40 Q100 34 122 40 L120 46 Q100 40 80 46 Z" fill="#0f172a"/>
               <polygon points="100,16 142,28 100,40 58,28" fill="#0f172a" stroke="#334155" stroke-width="1.2"/>
               <circle cx="100" cy="28" r="3" fill="#eab308"/>
               <g class="mortar-tassel">

@@ -24,6 +24,7 @@
     :root {
       --system-outer-bg: #ffffff;
       --cat-scale: 1;
+      --eyelid-rotate: 8deg;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -692,6 +693,7 @@
     .pet-avatar-wrapper.is-real-mode .cat-frame { display: flex; }
     .pet-avatar-wrapper.is-real-mode .cat-frame.active { opacity: 1; pointer-events: none; }
 
+    /* ★ リアル画像アセット（透過処理 ＆ クロちゃん/シロくんの完全両立） */
     .cat-avatar-img {
       position: absolute;
       bottom: 0;
@@ -700,13 +702,22 @@
       object-fit: contain;
       object-position: bottom center;
       background: transparent !important;
-      mix-blend-mode: multiply;
       display: block;
       pointer-events: none;
       border: none !important;
       box-shadow: none !important;
+      mix-blend-mode: multiply;
     }
     .cat-avatar-img.is-png { mix-blend-mode: normal !important; }
+
+    /* ★ シロくんは完全透過PNGのため mix-blend-mode: normal でクリアに発色 */
+    .pet-avatar-wrapper.is-char-shiro .cat-avatar-img {
+      mix-blend-mode: normal !important;
+      background-color: transparent !important;
+    }
+    .pet-avatar-wrapper.is-char-shiro .cat-frame {
+      background-color: transparent !important;
+    }
 
     .real-eyelid-unit {
       position: absolute;
@@ -720,6 +731,7 @@
     }
     .pet-avatar-wrapper.is-real-mode .real-eyelid-unit { display: block; }
 
+    /* 1. クロちゃん専用まぶた（黒毛・引き締まった目・子猫仕様） */
     .real-eyelid {
       position: absolute;
       background: 
@@ -738,15 +750,57 @@
       border-bottom: 2px solid rgba(12, 14, 20, 0.95);
     }
 
-    .pet-avatar-wrapper.is-real-mode.is-idling:not(.is-sleeping) .real-eyelid {
-      animation: realEyeBlink 4.6s ease-in-out infinite;
+    /* 2. ★ シロくん専用まぶた（白フクロウ・羽毛テクスチャ・すやすや目尻ライン） */
+    .pet-avatar-wrapper.is-char-shiro .real-eyelid {
+      background: 
+        radial-gradient(ellipse at 50% 30%, #ffffff 0%, #f8fafc 45%, #e2e8f0 78%, #94a3b8 100%),
+        repeating-linear-gradient(168deg, rgba(255, 255, 255, 0.9) 0px, #f1f5f9 2px, #cbd5e1 3.5px, #94a3b8 5px);
+      border-radius: 50% 50% 48% 48%;
+      opacity: 0.99;
+      box-shadow: 
+        0 2px 5px rgba(15, 23, 42, 0.35),
+        0 0 6px rgba(255, 255, 255, 0.8),
+        inset 0 -2.5px 2px rgba(71, 85, 105, 0.75);
+      border-bottom: 2.5px solid #334155;
     }
-    @keyframes realEyeBlink {
+
+    /* シロくんの初期まぶた（回転角度を変数から適用） */
+    .pet-avatar-wrapper.is-char-shiro .real-eyelid.eye-left {
+      transform-origin: center top;
+      transform: rotate(var(--eyelid-rotate, 8deg)) scaleY(0);
+    }
+    .pet-avatar-wrapper.is-char-shiro .real-eyelid.eye-right {
+      transform-origin: center top;
+      transform: rotate(calc(var(--eyelid-rotate, 8deg) * -1)) scaleY(0);
+    }
+
+    /* クロちゃんの瞬きアニメーション */
+    .pet-avatar-wrapper:not(.is-char-shiro).is-real-mode.is-idling:not(.is-sleeping) .real-eyelid {
+      animation: realEyeBlinkKuro 4.6s ease-in-out infinite;
+    }
+    @keyframes realEyeBlinkKuro {
       0%, 93%, 100% { transform: scaleY(0); }
       96%, 98% { transform: scaleY(1.02); }
     }
 
-    .pet-avatar-wrapper.is-sleeping .real-eyelid {
+    /* ★ シロくん専用の瞬きアニメーション（角度を100%保持しながら開閉） */
+    .pet-avatar-wrapper.is-char-shiro.is-real-mode.is-idling:not(.is-sleeping) .real-eyelid.eye-left {
+      animation: realEyeBlinkShiroL 4.6s ease-in-out infinite;
+    }
+    @keyframes realEyeBlinkShiroL {
+      0%, 93%, 100% { transform: rotate(var(--eyelid-rotate, 8deg)) scaleY(0); }
+      96%, 98% { transform: rotate(var(--eyelid-rotate, 8deg)) scaleY(1.04); }
+    }
+    .pet-avatar-wrapper.is-char-shiro.is-real-mode.is-idling:not(.is-sleeping) .real-eyelid.eye-right {
+      animation: realEyeBlinkShiroR 4.6s ease-in-out infinite;
+    }
+    @keyframes realEyeBlinkShiroR {
+      0%, 93%, 100% { transform: rotate(calc(var(--eyelid-rotate, 8deg) * -1)) scaleY(0); }
+      96%, 98% { transform: rotate(calc(var(--eyelid-rotate, 8deg) * -1)) scaleY(1.04); }
+    }
+
+    /* 眠り状態の目閉じ（回転を保持したまま閉じる） */
+    .pet-avatar-wrapper:not(.is-char-shiro).is-sleeping .real-eyelid {
       transform: scaleY(1.04) !important;
       animation: none !important;
       border-bottom: 2px solid #06070a;
@@ -754,6 +808,24 @@
         0 2px 4px rgba(0, 0, 0, 0.8),
         0 0 5px rgba(14, 18, 25, 0.6),
         inset 0 -2.5px 2px rgba(5, 7, 10, 0.98);
+    }
+    .pet-avatar-wrapper.is-char-shiro.is-sleeping .real-eyelid.eye-left {
+      transform: rotate(var(--eyelid-rotate, 8deg)) scaleY(1.05) !important;
+      animation: none !important;
+      border-bottom: 2.5px solid #1e293b;
+      box-shadow: 
+        0 2px 5px rgba(15, 23, 42, 0.4),
+        0 0 6px rgba(255, 255, 255, 0.9),
+        inset 0 -2.5px 2px rgba(51, 65, 85, 0.85);
+    }
+    .pet-avatar-wrapper.is-char-shiro.is-sleeping .real-eyelid.eye-right {
+      transform: rotate(calc(var(--eyelid-rotate, 8deg) * -1)) scaleY(1.05) !important;
+      animation: none !important;
+      border-bottom: 2.5px solid #1e293b;
+      box-shadow: 
+        0 2px 5px rgba(15, 23, 42, 0.4),
+        0 0 6px rgba(255, 255, 255, 0.9),
+        inset 0 -2.5px 2px rgba(51, 65, 85, 0.85);
     }
 
     .accessory-layer {
@@ -2226,6 +2298,7 @@
     .log-error { color: #f87171; font-weight: bold; }
     .log-info { color: #94a3b8; }
 
+    /* メガネ・帽子微調整モーダル */
     #glasses-adjust-modal {
       position: fixed;
       inset: 0;
@@ -2253,6 +2326,7 @@
       align-items: flex-end;
       overflow: hidden;
       flex-shrink: 0;
+      background: transparent;
     }
     .adjust-cat-img {
       position: absolute;
@@ -2262,8 +2336,10 @@
       object-fit: contain;
       object-position: bottom center;
       pointer-events: none;
+      mix-blend-mode: multiply;
     }
     .adjust-cat-img.is-png { mix-blend-mode: normal !important; }
+    .is-char-shiro .adjust-cat-img { mix-blend-mode: normal !important; }
 
     .adjust-controls-box { width: 100%; max-width: 420px; background: #1e293b; border-radius: 20px; padding: 12px 16px; color: #e2e8f0; display: flex; flex-direction: column; gap: 8px; }
     .adjust-row { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: bold; }
@@ -2310,7 +2386,7 @@
 
     <!-- 右列：ペットステージ ＆ 操作バー -->
     <div class="app-col-right">
-      <div class="pet-avatar-wrapper is-idling pose-idle-active" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
+      <div class="pet-avatar-wrapper is-idling pose-idle-active is-char-kuro" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
         <div class="cat-stage-rug"></div>
         <div class="cat-ground-shadow"></div>
         <div id="idea-bulb">💡</div>
@@ -2482,9 +2558,10 @@
     </div>
   </div>
 
+  <!-- メガネ・帽子微調整モーダル -->
   <div id="glasses-adjust-modal">
     <div class="adjust-header">
-      <span>👓 写真ごとのメガネ・帽子位置を微調整</span>
+      <span id="adjust-modal-title">👓 写真ごとのメガネ・帽子位置を微調整</span>
       <button type="button" class="diag-act-btn" id="close-adjust-btn">✕ 完了</button>
     </div>
 
@@ -2536,7 +2613,7 @@
         <span id="setting-modal-version-tag" style="font-size:11px;font-weight:normal;color:#94a3b8;margin-left:auto;"></span>
       </h3>
 
-      <!-- ★新設：パートナーキャラクター切り替え（クロちゃん ⇔ シロくん） -->
+      <!-- パートナーキャラクター切り替え（クロちゃん ⇔ シロくん） -->
       <div class="setting-section-header">🐾 パートナーの選択（キャラクター切替）</div>
       <div class="form-group">
         <div class="segment-capsule-row" id="character-selector-segment-group">
@@ -2696,7 +2773,7 @@
         <button type="button" class="btn-voice-test" id="test-timer-sound-btn" style="border-color:#f59e0b;color:#d97706;background:#fffbeb;">🔊 アラーム音を試聴するニャ</button>
       </div>
 
-      <div class="form-group">
+      <div class="form-group" id="acc-style-form-group">
         <label>おてつだいモードの装備スタイル:</label>
         <div class="segment-capsule-row" id="acc-style-segment-group">
           <button type="button" class="segment-btn is-active pink" data-acc-style-val="both">🎓👓 フル装備</button>
@@ -2829,7 +2906,7 @@
             </summary>
             <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
               <div style="font-size:10.5px; color:#64748b;">
-                ※1度合わせればスマホ・タブレット共に永久に固定されます。
+                ※選択中のパートナー（クロちゃん/シロくん）ごとに1度合わせれば永久に個別固定されます。
               </div>
               <div class="adjust-row" style="color:#1e293b;">
                 <span>上下 (Y):</span>
@@ -2843,15 +2920,20 @@
               </div>
               <div class="adjust-row" style="color:#1e293b;">
                 <span>目の間隔:</span>
-                <input type="range" id="adj-eyelid-gap" min="16" max="40" step="1" value="28">
+                <input type="range" id="adj-eyelid-gap" min="16" max="50" step="1" value="28">
                 <span class="val-disp" id="adj-eyelid-gap-val" style="color:#0284c7;">28</span>
               </div>
               <div class="adjust-row" style="color:#1e293b;">
                 <span>サイズ:</span>
-                <input type="range" id="adj-eyelid-size" min="10" max="26" step="1" value="16">
+                <input type="range" id="adj-eyelid-size" min="10" max="36" step="1" value="16">
                 <span class="val-disp" id="adj-eyelid-size-val" style="color:#0284c7;">16</span>
               </div>
-              <button type="button" class="btn-pc-sync" id="btn-save-eyelid-settings" style="margin-top:4px;">👁️ まぶた位置を保存するニャ！</button>
+              <div class="adjust-row" style="color:#1e293b;">
+                <span>傾き (度):</span>
+                <input type="range" id="adj-eyelid-rotate" min="0" max="25" step="1" value="0">
+                <span class="val-disp" id="adj-eyelid-rotate-val" style="color:#0284c7;">0°</span>
+              </div>
+              <button type="button" class="btn-pc-sync" id="btn-save-eyelid-settings" style="margin-top:4px;">👁️ 選択中ペットのまぶた位置を保存するニャ！</button>
             </div>
           </details>
 
@@ -2876,3 +2958,5 @@
   <script src="app.js"></script>
 </body>
 </html>
+
+

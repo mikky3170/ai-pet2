@@ -3,6 +3,9 @@
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全切替
    - 【データ独立保護】キャラごとの記憶帳・絵日記を混ざらず安全に独立保持
+   - 【自声エコー完全根絶】長文発話末尾の反響・語尾オウム返しを感度落とさず物理遮断
+   - 【まぶた完全個別化】キャラごとのまぶた座標・サイズ・角度を安全に分離管理
+   - 【装飾個別化】クロちゃん（帽子＋メガネ）／シロくん（博士帽のみ）の独立位置調整
    - 【通信直列化＆429完全根絶】無謀な一斉プリフェッチを全撤去・音声生成0.2〜0.5秒爆速化
    - 【日時エンジン完全防御】西暦を外した自然な日付返答＆左上日付ヘッダー表示対応
    - 【トークスタイル連動】自動/短い/普通/長いの設定保存・復元に対応
@@ -36,6 +39,13 @@ const CurrentCharacterFallback = {
   cleanEnding: (t) => t,
   correctSpeechInput: (t) => t,
   defaultMemories: [],
+  defaultEyelidCoords: { y: 172, x: 0, gap: 28, size: 16, rotate: 0 },
+  defaultAccessoryCoords: {
+    idle: { x: 0, y: 120, scale: 1.0, rotate: 0 },
+    talking: { x: 0, y: 120, scale: 1.0, rotate: 0 },
+    thinking: { x: 0, y: 120, scale: 1.0, rotate: 0 },
+    happy: { x: 0, y: 120, scale: 1.0, rotate: 0 }
+  },
   buildSystemPrompt: () => "",
   buildDiaryPrompt: () => "",
   getVectorAvatarSvg: () => ""
@@ -254,7 +264,7 @@ const TimeProvider = {
 };
 
 /* ==========================================================================
-   MODULE 1: 音声合成＆音声認識エンジン（直列キュー化・429根絶）
+   MODULE 1: 音声合成＆音声認識エンジン（直列キュー化・エコー完全遮断）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -592,13 +602,41 @@ class AudioSpeechEngine {
     return this.ttsRequestChain;
   }
 
+  // ★高精度エコー遮断エンジン（全文一致だけでなく、長文末尾の跳ね返り残響を完全特定排除）
   _isSelfEcho(text) {
     if (!text) return true;
-    const normalized = text.replace(/[\s、。！？ニャンニャホ]/g, '');
-    if (normalized.length < 2) return true;
-    if (/^(?:おまかせニャ|あそぶニャ|バッチリニャ|はーい|ちょい待ちニャ|すすめるニャ|フン|計算中ホ|任せるが良いホ|ホウ|バッチリホ)/.test(text.trim())) return true;
+    const cleanInput = text.trim();
+    const normalizedInput = cleanInput.replace(/[\s、。！？ニャンニャホ]/g, '');
+    
+    // 1文字の残響ノイズ等は無視
+    if (normalizedInput.length < 1) return true;
+
+    // 固定相槌・一声セリフのエコー除外
+    if (/^(?:おまかせニャ|あそぶニャ|バッチリニャ|はーい|ちょい待ちニャ|すすめるニャ|フン|計算中ホ|任せるが良いホ|ホウ|バッチリホ|うむ)/.test(cleanInput)) return true;
+
+    // 単体の語尾だけの跳ね返り（「だホ」「ホ！」「だニャ」「ニャン」など）を完全排除
+    if (/^(?:だホ|ホ|ホウ|だニャ|ニャン|ニャ|ホな|ホよ)[！!？\?]*$/.test(cleanInput)) return true;
+
+    const now = Date.now();
+    const isVeryRecent = (now - this.lastSpeechEndTime) < 1400;
+
     for (const spoken of this.recentSpokenTexts) {
-      if (spoken.replace(/[\s、。！？ニャンニャホ]/g, '') === normalized) return true;
+      if (!spoken) continue;
+      const normalizedSpoken = spoken.replace(/[\s、。！？ニャンニャホ]/g, '');
+
+      // 1. 全文完全一致
+      if (normalizedSpoken === normalizedInput) return true;
+
+      // 2. ★長文発話末尾の反響エコー判定（直前1.4秒以内の末尾フレーズ一致）
+      if (isVeryRecent && normalizedSpoken.length >= 12) {
+        // 直前発話の末尾10文字、15文字を抽出
+        const tail10 = normalizedSpoken.slice(-10);
+        const tail15 = normalizedSpoken.slice(-15);
+        if (normalizedInput.length >= 2 && (tail10.endsWith(normalizedInput) || tail15.endsWith(normalizedInput))) {
+          Logger.log(`[Mic] 🛑 長文末尾エコーを検知・除外: 「${cleanInput}」 (直前発話末尾と一致)`, "info");
+          return true;
+        }
+      }
     }
     return false;
   }
@@ -606,14 +644,16 @@ class AudioSpeechEngine {
   async speak(text, speakerIdOverride = null, onStart = null, onEnd = null, cooldownOverride = null) {
     this.stopSpeaking(); this.stopListening(); this.unlockMasterAudio();
     const speakerId = (speakerIdOverride !== null) ? speakerIdOverride : AppCore.getSpeakerId();
-    const cooldownMs = (cooldownOverride !== null) ? cooldownOverride : 350;
 
     let clean = (text || '').replace(/https?:\/\/[^\s]+/gi, '');
     clean = this._convertAllNumbersToKana(clean).replace(/<[^>]*>/g, '').replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷🏠🔮🦉]/gu, '').trim();
 
+    // ★発話の長さに応じたスマート・クールダウン（長文時は部屋の反響を待つため少しだけ長く取る）
+    let dynamicCooldown = (cooldownOverride !== null) ? cooldownOverride : (clean.length > 70 ? 550 : 350);
+
     if (!clean) {
       if (onStart) onStart(); if (onEnd) onEnd();
-      setTimeout(() => { if (AppCore.state.isRunning && !this.isActionButtonLocked) this.startListening(); }, cooldownMs);
+      setTimeout(() => { if (AppCore.state.isRunning && !this.isActionButtonLocked) this.startListening(); }, dynamicCooldown);
       return;
     }
 
@@ -644,17 +684,17 @@ class AudioSpeechEngine {
             if (st) st.textContent = `👂 聴いてる${suffix}`;
             this.startListening();
           }
-        }, cooldownMs);
+        }, dynamicCooldown);
       };
       this.masterAudio.onerror = (e) => {
         Logger.log(`[Audio] 再生エラー発生`, "error");
         this.isSpeaking = false; if (onStart) onStart(); if (onEnd) onEnd();
-        setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, cooldownMs);
+        setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, dynamicCooldown);
       };
       await this.masterAudio.play();
     } catch(e) {
       this.isSpeaking = false; if (onStart) onStart(); if (onEnd) onEnd();
-      setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, cooldownMs);
+      setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, dynamicCooldown);
     }
   }
 
@@ -693,12 +733,13 @@ class AudioSpeechEngine {
       } catch(e) {}
     }
     this.isReadingAloud = false; this.isSpeaking = false;
+    this.lastSpeechEndTime = Date.now();
     if (AppCore.avatar && AppCore.state.isRunning) AppCore.avatar.setEmotion('idle');
     const st = document.getElementById('status-text');
     const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
     if (st && AppCore.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
     if (onComplete) onComplete();
-    setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, 200);
+    setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, 400);
   }
 
   stopReadingAloud() {
@@ -744,6 +785,8 @@ class AudioSpeechEngine {
         if (this.onBargeIn) this.onBargeIn();
         return;
       }
+
+      // ★強化エコーチェック
       if (this._isSelfEcho(resultText)) {
         Logger.log(`[Mic] 自声エコー除外: 「${resultText}」`, "info");
         return;
@@ -896,13 +939,14 @@ const DATA_KEYS = {
 };
 
 const StorageManager = {
-  defaultGlassesCoords: {
+  // クロちゃん専用デフォルト
+  defaultGlassesCoordsKuro: {
     idle: { x: 0, y: 120, scale: 1.0, rotate: 0 },
     talking: { x: 0, y: 120, scale: 1.0, rotate: 0 },
     thinking: { x: 0, y: 120, scale: 1.0, rotate: 0 },
     happy: { x: 0, y: 120, scale: 1.0, rotate: 0 }
   },
-  defaultEyelidCoords: { y: 172, x: 0, gap: 28, size: 16 },
+  defaultEyelidCoordsKuro: { y: 172, x: 0, gap: 28, size: 16, rotate: 0 },
 
   _getCharSpecificKey(baseKey) {
     const curId = getCurChar().id;
@@ -986,8 +1030,20 @@ const StorageManager = {
   },
 
   loadGlassesCoords() {
-    const key = `kuro_glasses_coords_v5_${getCurChar().id}`;
-    try { return JSON.parse(localStorage.getItem(key)) || JSON.parse(localStorage.getItem('kuro_glasses_coords_v5')) || this.defaultGlassesCoords; } catch(e) { return this.defaultGlassesCoords; }
+    const cur = getCurChar();
+    const curId = cur.id;
+    const defaultCoords = cur.defaultAccessoryCoords || this.defaultGlassesCoordsKuro;
+    const key = `kuro_glasses_coords_v5_${curId}`;
+    try {
+      const saved = JSON.parse(localStorage.getItem(key));
+      if (saved) return saved;
+      if (curId === 'kuro') {
+        return JSON.parse(localStorage.getItem('kuro_glasses_coords_v5')) || defaultCoords;
+      }
+      return defaultCoords;
+    } catch(e) {
+      return defaultCoords;
+    }
   },
   saveGlassesCoords(c) {
     const key = `kuro_glasses_coords_v5_${getCurChar().id}`;
@@ -995,8 +1051,20 @@ const StorageManager = {
   },
 
   loadEyelidCoords() {
-    const key = `kuro_eyelid_coords_v6_${getCurChar().id}`;
-    try { return JSON.parse(localStorage.getItem(key)) || JSON.parse(localStorage.getItem('kuro_eyelid_coords_v6')) || this.defaultEyelidCoords; } catch(e) { return this.defaultEyelidCoords; }
+    const cur = getCurChar();
+    const curId = cur.id;
+    const defaultCoords = cur.defaultEyelidCoords || this.defaultEyelidCoordsKuro;
+    const key = `kuro_eyelid_coords_v6_${curId}`;
+    try {
+      const saved = JSON.parse(localStorage.getItem(key));
+      if (saved) return saved;
+      if (curId === 'kuro') {
+        return JSON.parse(localStorage.getItem('kuro_eyelid_coords_v6')) || defaultCoords;
+      }
+      return defaultCoords;
+    } catch(e) {
+      return defaultCoords;
+    }
   },
   saveEyelidCoords(c) {
     const key = `kuro_eyelid_coords_v6_${getCurChar().id}`;
@@ -1471,6 +1539,9 @@ const StorageManager = {
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全切替
    - 【アバター動的切替】キャラ選択に応じてリアル写真（shiro_*.png）とSVGを自動更新
+   - 【透過PNG完全対応】シロくん透過PNGの黒背景ノイズを完全にパージし鮮明表示
+   - 【まぶた完全個別化】クロちゃん（黒毛）⇔ シロくん（羽毛・ハの字傾斜）の自動切替
+   - 【装飾個別化】クロちゃん（帽子＋メガネ）／シロくん（不透明博士帽のみ）の独立位置調整
    - 【天気・気温スマート即答】最新GPS気象データから0秒即答・長文TTS遅延を完全根絶
    - 【生URL物理除去＆セリフUI完全分離】セリフ内URLを根絶・おてつだい時はカードUIに集約
    - 【トークスタイル3段階自律判定】自動(auto)時に文脈・入力から短/普/長をスマート切替
@@ -1517,6 +1588,7 @@ class CatAvatarRenderer {
     this.eyelidCoords = StorageManager.loadEyelidCoords();
     this.currentEmotion = 'idle';
 
+    this.updateCharacterClass();
     this.refreshAvatarImages();
     this._injectVectorAvatar();
 
@@ -1534,6 +1606,19 @@ class CatAvatarRenderer {
     this._initImageFormatDetectors();
   }
 
+  updateCharacterClass() {
+    const cur = getCurChar();
+    if (this.wrapper) {
+      this.wrapper.classList.remove('is-char-kuro', 'is-char-shiro');
+      this.wrapper.classList.add(`is-char-${cur.id}`);
+    }
+    const adjustStage = document.getElementById('adjust-preview-stage');
+    if (adjustStage) {
+      adjustStage.classList.remove('is-char-kuro', 'is-char-shiro');
+      adjustStage.classList.add(`is-char-${cur.id}`);
+    }
+  }
+
   refreshAvatarImages() {
     const cur = getCurChar();
     const pfx = cur.imagePrefix || "";
@@ -1548,7 +1633,7 @@ class CatAvatarRenderer {
           }
         };
         img.onload = () => {
-          if (img.src.endsWith('.png')) img.classList.add('is-png');
+          if (img.src.endsWith('.png') || cur.id === 'shiro') img.classList.add('is-png');
         };
       }
     });
@@ -1569,11 +1654,12 @@ class CatAvatarRenderer {
   }
 
   _initImageFormatDetectors() {
+    const cur = getCurChar();
     ['idle', 'talking', 'thinking', 'happy'].forEach(emotion => {
       const img = document.getElementById(`img-${emotion}`);
       if (!img) return;
       const checkFormat = () => {
-        if (img.currentSrc?.endsWith('.png') || img.src?.endsWith('.png')) {
+        if (img.currentSrc?.endsWith('.png') || img.src?.endsWith('.png') || cur.id === 'shiro') {
           img.classList.add('is-png');
         } else {
           img.classList.remove('is-png');
@@ -1585,32 +1671,42 @@ class CatAvatarRenderer {
   }
 
   _renderAllAccessories() {
-    const svgContent = `
-      <svg viewBox="0 0 140 140" style="width:100%; height:100%;">
-        <defs>
-          <pattern id="stripe-bw-real" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-            <rect width="4" height="8" fill="#111827"/>
-            <rect width="4" height="8" fill="#ffffff" x="4"/>
-          </pattern>
-        </defs>
-        <g class="real-hat-group">
-          <path d="M45 42 Q70 34 95 42 L92 49 Q70 41 48 49 Z" fill="#1e293b"/>
-          <polygon points="70,18 116,32 70,46 24,32" fill="#0f172a" stroke="#334155" stroke-width="1.2"/>
-          <circle cx="70" cy="32" r="3" fill="#eab308"/>
-          <g class="mortar-tassel">
-            <path d="M70 32 Q95 35 102 54" stroke="#ca8a04" stroke-width="2.2" fill="none"/>
-            <polygon points="99,54 105,54 107,68 97,68" fill="#eab308"/>
+    const cur = getCurChar();
+    let svgContent = "";
+
+    if (cur.id === 'shiro' && cur.getRealAccessorySvg) {
+      // シロくん専用（不透明ソリッド博士帽のみ）
+      svgContent = cur.getRealAccessorySvg();
+    } else {
+      // クロちゃん専用（博士帽 ＋ 丸メガネ）
+      svgContent = `
+        <svg viewBox="0 0 140 140" style="width:100%; height:100%;">
+          <defs>
+            <pattern id="stripe-bw-real" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+              <rect width="4" height="8" fill="#111827"/>
+              <rect width="4" height="8" fill="#ffffff" x="4"/>
+            </pattern>
+          </defs>
+          <g class="real-hat-group">
+            <path d="M45 42 Q70 34 95 42 L92 49 Q70 41 48 49 Z" fill="#1e293b"/>
+            <polygon points="70,18 116,32 70,46 24,32" fill="#0f172a" stroke="#334155" stroke-width="1.2"/>
+            <circle cx="70" cy="32" r="3" fill="#eab308"/>
+            <g class="mortar-tassel">
+              <path d="M70 32 Q95 35 102 54" stroke="#ca8a04" stroke-width="2.2" fill="none"/>
+              <polygon points="99,54 105,54 107,68 97,68" fill="#eab308"/>
+            </g>
           </g>
-        </g>
-        <g class="real-glasses-group">
-          <circle cx="42" cy="85" r="18" fill="rgba(255, 255, 255, 0.2)" stroke="#090d16" stroke-width="4.5"/>
-          <circle cx="42" cy="85" r="18" fill="none" stroke="url(#stripe-bw-real)" stroke-width="3"/>
-          <circle cx="98" cy="85" r="18" fill="rgba(255, 255, 255, 0.2)" stroke="#090d16" stroke-width="4.5"/>
-          <circle cx="98" cy="85" r="18" fill="none" stroke="url(#stripe-bw-real)" stroke-width="3"/>
-          <path d="M60 84 Q70 79 80 84" stroke="#090d16" stroke-width="4.5" fill="none"/>
-        </g>
-      </svg>
-    `;
+          <g class="real-glasses-group">
+            <circle cx="42" cy="85" r="18" fill="rgba(255, 255, 255, 0.2)" stroke="#090d16" stroke-width="4.5"/>
+            <circle cx="42" cy="85" r="18" fill="none" stroke="url(#stripe-bw-real)" stroke-width="3"/>
+            <circle cx="98" cy="85" r="18" fill="rgba(255, 255, 255, 0.2)" stroke="#090d16" stroke-width="4.5"/>
+            <circle cx="98" cy="85" r="18" fill="none" stroke="url(#stripe-bw-real)" stroke-width="3"/>
+            <path d="M60 84 Q70 79 80 84" stroke="#090d16" stroke-width="4.5" fill="none"/>
+          </g>
+        </svg>
+      `;
+    }
+
     ['acc-idle', 'acc-talking', 'acc-thinking', 'acc-happy', 'adjust-glasses-overlay'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = svgContent;
@@ -1630,16 +1726,26 @@ class CatAvatarRenderer {
   }
 
   applyEyelidTransforms() {
-    const c = this.eyelidCoords || { y: 172, x: 0, gap: 28, size: 16 };
+    const cur = getCurChar();
+    const c = this.eyelidCoords || cur.defaultEyelidCoords || { y: 172, x: 0, gap: 28, size: 16, rotate: 0 };
     const leftEl = document.getElementById('eye-left-idle');
     const rightEl = document.getElementById('eye-right-idle');
+
     if (!leftEl || !rightEl) return;
     const halfGap = c.gap / 2;
-    const h = Math.round(c.size * 0.75);
+    const h = Math.round(c.size * (cur.id === 'shiro' ? 0.95 : 0.75));
+    const rot = c.rotate !== undefined ? c.rotate : (cur.id === 'shiro' ? 8 : 0);
+
+    // CSS変数へ角度を注入（瞬きアニメーション・眠り状態と100%同期）
+    if (this.wrapper) {
+      this.wrapper.style.setProperty('--eyelid-rotate', `${rot}deg`);
+    }
+
     leftEl.style.bottom = `${c.y}px`;
     leftEl.style.left = `calc(50% + ${c.x - halfGap - c.size / 2}px)`;
     leftEl.style.width = `${c.size}px`;
     leftEl.style.height = `${h}px`;
+
     rightEl.style.bottom = `${c.y}px`;
     rightEl.style.left = `calc(50% + ${c.x + halfGap - c.size / 2}px)`;
     rightEl.style.width = `${c.size}px`;
@@ -1649,6 +1755,19 @@ class CatAvatarRenderer {
   applyAccessoryStyle(style) {
     this.accessoryStyle = style;
     localStorage.setItem('kuro_acc_style', style);
+    const cur = getCurChar();
+
+    if (cur.id === 'shiro') {
+      // シロくんは素顔でメガネを着用しているため、博士帽のみを表示
+      document.querySelectorAll('.real-hat-group').forEach(el => el.style.display = 'block');
+      document.querySelectorAll('.real-glasses-group').forEach(el => el.style.display = 'none');
+      const vecHat = document.getElementById('vec-acc-hat');
+      const vecGlasses = document.getElementById('vec-acc-glasses');
+      if (vecHat) vecHat.style.display = 'block';
+      if (vecGlasses) vecGlasses.style.display = 'block';
+      return;
+    }
+
     const showHat = (style === 'both' || style === 'hat');
     const showGlasses = (style === 'both' || style === 'glasses');
     document.querySelectorAll('.real-hat-group').forEach(el => el.style.display = showHat ? 'block' : 'none');
@@ -2230,10 +2349,12 @@ const AppCore = {
 
     // アバター・画像の同期更新
     if (this.avatar) {
+      this.avatar.updateCharacterClass();
       this.avatar.refreshAvatarImages();
       this.avatar._injectVectorAvatar();
       this.avatar.glassesCoords = StorageManager.loadGlassesCoords();
       this.avatar.eyelidCoords = StorageManager.loadEyelidCoords();
+      this.avatar._renderAllAccessories();
       this.avatar.applyAllFramesTransform();
       this.avatar.applyEyelidTransforms();
       this.avatar.applyMode(this.avatar.mode);
@@ -2245,6 +2366,7 @@ const AppCore = {
     this._restoreTimelineHistory();
     this._updateStorageMonitorUI();
     this._updateCharacterUI();
+    this._syncEyelidInputsToActiveChar();
 
     const welcomeMsg = charId === 'shiro'
       ? "フン、ボクの出番ホな！よろしく頼むホ、助手！"
@@ -2273,12 +2395,36 @@ const AppCore = {
     const studioTitle = document.getElementById('studio-top-title-text');
     if (studioTitle) studioTitle.textContent = isShiro ? 'ホウ博士の研究観察日誌' : 'クロの思い出絵日記アルバム';
 
+    // 微調整モーダルのタイトル
+    const adjTitle = document.getElementById('adjust-modal-title');
+    if (adjTitle) adjTitle.textContent = isShiro ? '🎓 写真ごとの博士帽位置を微調整' : '👓 写真ごとのメガネ・帽子位置を微調整';
+
+    // 設定画面の装備スタイル選択肢の制御（シロくん時は帽子のみのためスタイル欄をスマート非表示）
+    const accFormGroup = document.getElementById('acc-style-form-group');
+    if (accFormGroup) accFormGroup.style.display = isShiro ? 'none' : 'block';
+
     // セレクターボタンの同期
     document.querySelectorAll('#character-selector-segment-group .segment-btn').forEach(btn => {
       btn.classList.toggle('is-active', btn.dataset.charId === cur.id);
     });
 
     this._updateModeUI(false);
+  },
+
+  _syncEyelidInputsToActiveChar() {
+    const cur = getCurChar();
+    const c = StorageManager.loadEyelidCoords();
+    const setVal = (id, val) => {
+      const inp = document.getElementById(id);
+      const disp = document.getElementById(`${id}-val`);
+      if (inp) inp.value = val;
+      if (disp) disp.textContent = (id === 'adj-eyelid-rotate') ? `${val}°` : val;
+    };
+    setVal('adj-eyelid-y', c.y);
+    setVal('adj-eyelid-x', c.x);
+    setVal('adj-eyelid-gap', c.gap);
+    setVal('adj-eyelid-size', c.size);
+    setVal('adj-eyelid-rotate', c.rotate !== undefined ? c.rotate : (cur.id === 'shiro' ? 8 : 0));
   },
 
   async init() {
@@ -2309,6 +2455,7 @@ const AppCore = {
     this._restoreTimelineHistory();
     this._updateModelBadge();
     this._updateStorageMonitorUI();
+    this._syncEyelidInputsToActiveChar();
 
     if (typeof VersionManager !== 'undefined') VersionManager.applyToDOM();
 
@@ -3501,7 +3648,9 @@ const AppCore = {
     };
 
     const updateSliders = (tab) => {
-      const c = this.avatar?.glassesCoords[tab] || { x: 0, y: 120, scale: 1.0, rotate: 0 };
+      const cur = getCurChar();
+      const defaultCoords = cur.defaultAccessoryCoords || StorageManager.defaultGlassesCoordsKuro;
+      const c = this.avatar?.glassesCoords[tab] || defaultCoords[tab] || { x: 0, y: 120, scale: 1.0, rotate: 0 };
       document.getElementById('adj-x').value = c.x; document.getElementById('adj-x-val').textContent = c.x;
       document.getElementById('adj-y').value = c.y; document.getElementById('adj-y-val').textContent = c.y;
       document.getElementById('adj-scale').value = c.scale; document.getElementById('adj-scale-val').textContent = c.scale;
@@ -3517,7 +3666,10 @@ const AppCore = {
         const cur = getCurChar();
         const pfx = cur.imagePrefix || "";
         const previewImg = document.getElementById('adjust-cat-img');
-        if (previewImg) previewImg.src = `${pfx}${this.state.activeAdjustTab}.png`;
+        if (previewImg) {
+          previewImg.src = `${pfx}${this.state.activeAdjustTab}.png`;
+          if (cur.id === 'shiro') previewImg.classList.add('is-png');
+        }
         updateSliders(this.state.activeAdjustTab);
       };
     });
@@ -3545,40 +3697,48 @@ const AppCore = {
       const cur = getCurChar();
       const pfx = cur.imagePrefix || "";
       const previewImg = document.getElementById('adjust-cat-img');
-      if (previewImg) previewImg.src = `${pfx}${this.state.activeAdjustTab}.png`;
+      if (previewImg) {
+        previewImg.src = `${pfx}${this.state.activeAdjustTab}.png`;
+        if (cur.id === 'shiro') previewImg.classList.add('is-png');
+      }
+      this.avatar?._renderAllAccessories();
       updateSliders(this.state.activeAdjustTab);
     });
     document.getElementById('close-adjust-btn')?.addEventListener('click', () => modal?.classList.remove('is-open'));
 
     document.getElementById('btn-adjust-reset')?.addEventListener('click', () => {
-      const def = StorageManager.defaultGlassesCoords[this.state.activeAdjustTab] || { x: 0, y: 120, scale: 1.0, rotate: 0 };
+      const cur = getCurChar();
+      const defaultCoords = cur.defaultAccessoryCoords || StorageManager.defaultGlassesCoordsKuro;
+      const def = defaultCoords[this.state.activeAdjustTab] || { x: 0, y: 120, scale: 1.0, rotate: 0 };
       if (this.avatar) {
         this.avatar.glassesCoords[this.state.activeAdjustTab] = { ...def };
         this.avatar.applyAllFramesTransform();
       }
       updateSliders(this.state.activeAdjustTab);
-      Toast.show("初期位置にリセットしたホ！👓", "info");
+      Toast.show("初期位置にリセットしたホ！", "info");
     });
 
     document.getElementById('btn-adjust-save')?.addEventListener('click', () => {
       if (this.avatar) StorageManager.saveGlassesCoords(this.avatar.glassesCoords);
-      Toast.show("メガネ位置を保存したホ！👓✨", "success");
+      Toast.show("装飾位置を保存したホ！✨", "success");
     });
   },
 
   _bindEyelidSettingsUI() {
     const btnSave = document.getElementById('btn-save-eyelid-settings');
     if (!btnSave) return;
-    ['adj-eyelid-y', 'adj-eyelid-x', 'adj-eyelid-gap', 'adj-eyelid-size'].forEach(id => {
+    ['adj-eyelid-y', 'adj-eyelid-x', 'adj-eyelid-gap', 'adj-eyelid-size', 'adj-eyelid-rotate'].forEach(id => {
       document.getElementById(id)?.addEventListener('input', () => {
         const c = {
           y: parseInt(document.getElementById('adj-eyelid-y').value, 10),
           x: parseInt(document.getElementById('adj-eyelid-x').value, 10),
           gap: parseInt(document.getElementById('adj-eyelid-gap').value, 10),
-          size: parseInt(document.getElementById('adj-eyelid-size').value, 10)
+          size: parseInt(document.getElementById('adj-eyelid-size').value, 10),
+          rotate: parseInt(document.getElementById('adj-eyelid-rotate').value, 10)
         };
         if (this.avatar) { this.avatar.eyelidCoords = c; this.avatar.applyEyelidTransforms(); }
-        document.getElementById(`${id}-val`).textContent = document.getElementById(id).value;
+        const valDisp = document.getElementById(`${id}-val`);
+        if (valDisp) valDisp.textContent = (id === 'adj-eyelid-rotate') ? `${c.rotate}°` : document.getElementById(id).value;
       });
     });
     btnSave.onclick = () => {
@@ -3586,10 +3746,11 @@ const AppCore = {
         y: parseInt(document.getElementById('adj-eyelid-y').value, 10),
         x: parseInt(document.getElementById('adj-eyelid-x').value, 10),
         gap: parseInt(document.getElementById('adj-eyelid-gap').value, 10),
-        size: parseInt(document.getElementById('adj-eyelid-size').value, 10)
+        size: parseInt(document.getElementById('adj-eyelid-size').value, 10),
+        rotate: parseInt(document.getElementById('adj-eyelid-rotate').value, 10)
       };
       StorageManager.saveEyelidCoords(c);
-      Toast.show("まぶた位置を保存したホ！👁️✨", "success");
+      Toast.show("まぶた位置・角度を保存したホ！👁️✨", "success");
     };
   },
 
@@ -3683,6 +3844,7 @@ const AppCore = {
           this._restoreTimelineHistory();
           this._updateStorageMonitorUI();
           this._updateCharacterUI();
+          this._syncEyelidInputsToActiveChar();
           Toast.show("データを安全に完全復元したホ！🎉", "success");
         } catch(err) {
           Toast.show("読み込み失敗: " + err.message, "error");
@@ -4011,6 +4173,7 @@ const AppCore = {
 
       this._renderMemories();
       this._updateStorageMonitorUI();
+      this._syncEyelidInputsToActiveChar();
       document.getElementById('modal-overlay').style.display = 'flex';
     });
 
@@ -4115,4 +4278,5 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
   document.addEventListener('DOMContentLoaded', bootAIApp);
   window.addEventListener('load', bootAIApp);
 }
+
 
