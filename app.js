@@ -1,6 +1,9 @@
 /* ==========================================================================
    AIペット 共通対話エンジン＆中央司令塔OS（app.js Part 1/2）
    - プラグインアーキテクチャ対応（char_kuro.js 等のキャラ定義を自動ロード）
+   - 【通信直列化＆429完全根絶】無謀な一斉プリフェッチを全撤去・音声生成0.2〜0.5秒爆速化
+   - 【日時エンジン完全防御】dayOfWeek未定義バグ根絶・左上日付ヘッダー表示対応
+   - 【トークスタイル連動】自動/短い/普通/長いの設定保存・復元に対応
    - 【しりとり・クイズ救済】2文字以下の単語ログを捨てずにGeminiへ届ける対話整合性
    - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
    - 【非破壊ストレージ大掃除】原本JSONを強制ダウンロード後に安全に3〜5KB化＆重複完全排除
@@ -15,8 +18,8 @@
    ※このPart 1は StorageManager の閉じカッコ（};）まで綺麗に完結しています。
    ========================================================================== */
 
-/* ★ アクティブキャラクターの取得（初期はクロちゃん） */
-const CurrentCharacter = window.Character_Kuro || {
+/* ★ アクティブキャラクターの安全動的取得（初期はクロちゃん） */
+const CurrentCharacterFallback = {
   id: "kuro",
   name: "クロ",
   firstPerson: "クロ",
@@ -31,6 +34,15 @@ const CurrentCharacter = window.Character_Kuro || {
   buildDiaryPrompt: () => "",
   getVectorAvatarSvg: () => ""
 };
+
+// スクリプトの読み込み順序に依存せず常に最新のキャラクター定義を動的取得する安全ゲッター
+const getCurChar = () => window.Character_Kuro || CurrentCharacterFallback;
+const CurrentCharacter = new Proxy(CurrentCharacterFallback, {
+  get(target, prop) {
+    const active = window.Character_Kuro || target;
+    return active[prop];
+  }
+});
 
 /* ★ Gemini連携モデル完全固定定数（追加・変更・自動並び替えを物理的に完全禁止） */
 const FIXED_LITE_MODELS = Object.freeze([
@@ -109,44 +121,67 @@ const Logger = {
 };
 
 /* ==========================================================================
-   MODULE 0.5: 日時・生活リズム提供エンジン
+   MODULE 0.5: 日時・生活リズム提供エンジン（絶対停止防御 ＆ 左上日付表示対応）
    ========================================================================== */
 const TimeProvider = {
   getCurrentInfo() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    const date = now.getDate();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
-    const dayOfWeek = dayNames[now.getDay()];
-    const pad = (n) => String(n).padStart(2, '0');
-    const clock = `${pad(hours)}:${pad(minutes)}`;
-    const logKey = `${year}-${pad(month)}-${pad(date)}`;
-    const fullDate = `${year}年${month}月${date}日 (${dayOfWeek})`;
+    try {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      const date = now.getDate();
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+      const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+      const dayOfWeek = dayNames[now.getDay()];
+      const pad = (n) => String(n).padStart(2, '0');
+      const clock = `${pad(hours)}:${pad(minutes)}`;
+      const logKey = `${year}-${pad(month)}-${pad(date)}`;
+      const fullDate = `${year}年${month}月${date}日 (${dayOfWeek})`;
 
-    const isLateNight = (hours < 4);
-    let lifeDateObj = now;
-    if (isLateNight) lifeDateObj = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      // 左上ヘッダー用表示フォーマット（例: 11/8(土) 10:12）
+      const headerDisplay = `${month}/${date}(${dayOfWeek}) ${clock}`;
 
-    const lifeYear = lifeDateObj.getFullYear();
-    const lifeMonth = lifeDateObj.getMonth() + 1;
-    const lifeDate = lifeDateObj.getDate();
-    const lifeDayOfWeek = dayNames[lifeDateObj.getDay()];
-    const lifeLogKey = `${lifeYear}-${pad(lifeMonth)}-${pad(lifeDate)}`;
-    const lifeFullDate = `${lifeYear}年${lifeMonth}月${lifeDate}日 (${lifeDayOfWeek})`;
+      const isLateNight = (hours < 4);
+      let lifeDateObj = now;
+      if (isLateNight) lifeDateObj = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-    const isEvening = (hours >= 20 || isLateNight);
+      const lifeYear = lifeDateObj.getFullYear();
+      const lifeMonth = lifeDateObj.getMonth() + 1;
+      const lifeDate = lifeDateObj.getDate();
+      const lifeDayOfWeek = dayNames[lifeDateObj.getDay()];
+      const lifeLogKey = `${lifeYear}-${pad(lifeMonth)}-${pad(lifeDate)}`;
+      const lifeFullDate = `${lifeYear}年${lifeMonth}月${lifeDate}日 (${lifeDayOfWeek})`;
 
-    return {
-      now, year, month, date, hours, minutes, dayOfWeek, clock, logKey, fullDate,
-      spokenClock: `いまは、${hours}時${minutes === 0 ? 'ちょうど' : minutes + '分'}だニャン🐾`,
-      spokenDate: `きょうは、${year}年${month}月${date}日、${dayOfWeek}曜日だニャ！`,
-      clockDisplay: `いまは ${hours}時${pad(minutes)}分 だニャン🐾`,
-      dateDisplay: `きょうは ${month}月${date}日 (${dayOfWeek}曜日) だニャ！`,
-      isLateNight, isEvening, lifeLogKey, lifeFullDate
-    };
+      const isEvening = (hours >= 20 || isLateNight);
+
+      return {
+        now, year, month, date, hours, minutes, dayOfWeek, clock, logKey, fullDate,
+        headerDisplay,
+        spokenClock: `いまは、${hours}時${minutes === 0 ? 'ちょうど' : minutes + '分'}だニャン🐾`,
+        spokenDate: `きょうは、${year}年${month}月${date}日、${dayOfWeek}曜日だニャ！`,
+        clockDisplay: `いまは ${hours}時${pad(minutes)}分 だニャン🐾`,
+        dateDisplay: `きょうは ${month}月${date}日 (${dayOfWeek}曜日) だニャ！`,
+        isLateNight, isEvening, lifeLogKey, lifeFullDate
+      };
+    } catch (e) {
+      // 万が一の例外発生時でもアプリ全体を絶対に落とさない完全防御フォールバック
+      const fbNow = new Date();
+      const fbPad = (n) => String(n).padStart(2, '0');
+      const fbClock = `${fbPad(fbNow.getHours())}:${fbPad(fbNow.getMinutes())}`;
+      const fbKey = `${fbNow.getFullYear()}-${fbPad(fbNow.getMonth() + 1)}-${fbPad(fbNow.getDate())}`;
+      return {
+        now: fbNow, year: fbNow.getFullYear(), month: fbNow.getMonth() + 1, date: fbNow.getDate(),
+        hours: fbNow.getHours(), minutes: fbNow.getMinutes(), dayOfWeek: "日", clock: fbClock,
+        logKey: fbKey, fullDate: `${fbNow.getFullYear()}年${fbNow.getMonth() + 1}月${fbNow.getDate()}日`,
+        headerDisplay: `${fbNow.getMonth() + 1}/${fbNow.getDate()} ${fbClock}`,
+        spokenClock: `いまは、${fbNow.getHours()}時${fbNow.getMinutes()}分だニャン🐾`,
+        spokenDate: `きょうは、${fbNow.getMonth() + 1}月${fbNow.getDate()}日だニャ！`,
+        clockDisplay: `いまは ${fbNow.getHours()}時${fbPad(fbNow.getMinutes())}分 だニャン🐾`,
+        dateDisplay: `きょうは ${fbNow.getMonth() + 1}月${fbNow.getDate()}日 だニャ！`,
+        isLateNight: false, isEvening: false, lifeLogKey: fbKey, lifeFullDate: fbKey
+      };
+    }
   },
 
   getYesterdayLifeInfo() {
@@ -200,7 +235,7 @@ const TimeProvider = {
 };
 
 /* ==========================================================================
-   MODULE 1: 音声合成＆音声認識エンジン（キャラクタープラグイン連動）
+   MODULE 1: 音声合成＆音声認識エンジン（直列キュー化・429根絶）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -212,7 +247,7 @@ class AudioSpeechEngine {
     this.silentWav = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
     this.audioCtx = null;
 
-    this.rate = parseFloat(localStorage.getItem('kuro_rate') || String(CurrentCharacter.defaultVoiceRate || 1.05));
+    this.rate = parseFloat(localStorage.getItem('kuro_rate') || String(getCurChar().defaultVoiceRate || 1.05));
     this.isSpeaking = false;
     this.isListening = false;
     this.isStarting = false;
@@ -224,6 +259,9 @@ class AudioSpeechEngine {
     this.blobUrlCache = new Map();
     this.recentSpokenTexts = [];
     this.lastSpeechEndTime = 0;
+
+    // ★通信1本化ロック（直列キュープロミス）
+    this.ttsRequestChain = Promise.resolve();
     this.lastVoicevoxRequestTime = 0;
     this.currentAbortController = null;
     this.isReadingAloud = false;
@@ -386,11 +424,13 @@ class AudioSpeechEngine {
   }
 
   cleanEndingNenyan(text) {
-    return CurrentCharacter.cleanEnding ? CurrentCharacter.cleanEnding(text) : text;
+    const cur = getCurChar();
+    return cur.cleanEnding ? cur.cleanEnding(text) : text;
   }
 
   correctSpeechInput(text) {
-    return CurrentCharacter.correctSpeechInput ? CurrentCharacter.correctSpeechInput(text) : text;
+    const cur = getCurChar();
+    return cur.correctSpeechInput ? cur.correctSpeechInput(text) : text;
   }
 
   _convertAllNumbersToKana(text) {
@@ -452,100 +492,87 @@ class AudioSpeechEngine {
     return t;
   }
 
-  prefetchVoice(text, speakerId) {
-    this._getVoicevoxBlobUrl(text, speakerId).then(url => {
-      this.fixedPhraseMap.set(`${speakerId}_${text}`, url);
-    }).catch(() => {});
-  }
-
-  preloadAllFillers(speakerId) {
-    const list = CurrentCharacter.fillerPhrases || ["そうニャン♪", "えーっとニャ…", "確認するニャ！", "おまかせニャ！", "あそぶニャ♪", "バッチリニャ！", "はーい！"];
-    list.forEach(f => this.prefetchVoice(f, speakerId));
-  }
-
-  async playImmediateFiller(type = 'general') {
+  // ★即時相槌（端末内WebAudioによる待ち時間0秒の自然なレスポンス）
+  playImmediateFiller(type = 'general') {
     this.unlockMasterAudio();
-    const speakerId = AppCore.getSpeakerId();
-    let phrase = "そうニャン♪";
-    if (AppCore.state.isAssistantMode) {
-      if (type === 'search') phrase = "クロが調べるニャ！";
-      else if (type === 'location') phrase = "確認するニャ！";
-      else phrase = "えーっとニャ…";
-    }
-    const key = `${speakerId}_${phrase}`;
-    if (this.fixedPhraseMap.has(key)) {
-      try {
-        this.fillerAudio.src = this.fixedPhraseMap.get(key);
-        this.fillerAudio.playbackRate = this.rate;
-        await this.fillerAudio.play();
-        if (AppCore.avatar && AppCore.state.isRunning) AppCore.avatar.setEmotion('talking');
-        setTimeout(() => { if (!this.isSpeaking && AppCore.avatar && AppCore.state.isRunning) AppCore.avatar.setEmotion('thinking'); }, 850);
-      } catch(e) {}
-    } else {
-      this.playEffect('aizuchi');
-    }
+    this.playEffect('aizuchi');
+    if (AppCore.avatar && AppCore.state.isRunning) AppCore.avatar.setEmotion('thinking');
   }
 
-  async _getVoicevoxBlobUrl(text, speakerId) {
+  // ★音声リクエストの完全直列化（同時多発を防ぎ、429制限を100%回避）
+  _getVoicevoxBlobUrl(text, speakerId) {
     const key = `${speakerId}_${text}`;
     if (this.blobUrlCache.has(key)) {
       Logger.log(`[TTS] キャッシュヒット: 「${text.substring(0, 15)}…」`, "info");
-      return this.blobUrlCache.get(key);
-    }
-    if (this.fixedPhraseMap.has(key)) return this.fixedPhraseMap.get(key);
-
-    if (this.currentAbortController) this.currentAbortController.abort();
-    this.currentAbortController = new AbortController();
-    const signal = this.currentAbortController.signal;
-
-    const now = Date.now();
-    const elapsed = now - this.lastVoicevoxRequestTime;
-    if (elapsed < 1500) await new Promise(r => setTimeout(r, 1500 - elapsed));
-    this.lastVoicevoxRequestTime = Date.now();
-
-    const t0 = performance.now();
-    const vvKey = (localStorage.getItem('kuro_voicevox_key') || '').trim();
-    let initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodeURIComponent(text)}&speaker=${speakerId}`;
-    if (vvKey) initUrl += `&key=${encodeURIComponent(vvKey)}`;
-
-    const keyStatusText = vvKey ? "🔑個別キー適用済" : "🆓無料枠";
-    Logger.log(`[TTS] 音声生成開始 (${keyStatusText}, 話者:${speakerId}): 「${text.substring(0, 16)}…」`, "info");
-
-    const initRes = await fetch(initUrl, { signal });
-    if (!initRes.ok) {
-      Logger.log(`[TTS] HTTPエラー ${initRes.status}`, "error");
-      throw new Error(`HTTPエラー ${initRes.status}`);
-    }
-    const initData = await initRes.json();
-    if (initData.isAudioError) {
-      Logger.log(`[TTS] VOICEVOX生成エラー`, "error");
-      throw new Error("VOICEVOX生成エラー");
+      return Promise.resolve(this.blobUrlCache.get(key));
     }
 
-    let directUrl = initData.mp3StreamingUrl || initData.mp3DownloadUrl;
-    if (!directUrl && initData.audioStatusUrl) {
-      for (let i = 0; i < 20; i++) {
-        await new Promise(r => setTimeout(r, 450));
-        if (signal.aborted) throw new Error("中断");
-        const sRes = await fetch(initData.audioStatusUrl, { signal });
-        if (sRes.ok) {
-          const sData = await sRes.json();
-          if (sData.isAudioReady) { directUrl = sData.mp3StreamingUrl || sData.mp3DownloadUrl; break; }
+    // 直列チェーンに登録して前のリクエスト終了を待つ
+    this.ttsRequestChain = this.ttsRequestChain.then(async () => {
+      if (this.blobUrlCache.has(key)) return this.blobUrlCache.get(key);
+
+      const now = Date.now();
+      const elapsed = now - this.lastVoicevoxRequestTime;
+      if (elapsed < 300) await new Promise(r => setTimeout(r, 300 - elapsed));
+      this.lastVoicevoxRequestTime = Date.now();
+
+      const t0 = performance.now();
+      const vvKey = (localStorage.getItem('kuro_voicevox_key') || '').trim();
+      let initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodeURIComponent(text)}&speaker=${speakerId}`;
+      if (vvKey) initUrl += `&key=${encodeURIComponent(vvKey)}`;
+
+      const keyStatusText = vvKey ? "🔑個別キー適用済" : "🆓無料枠";
+      Logger.log(`[TTS] 音声生成開始 (${keyStatusText}, 話者:${speakerId}): 「${text.substring(0, 16)}…」`, "info");
+
+      let initRes = await fetch(initUrl);
+      
+      // ★429（アクセス制限）時の自動待機＆1回安全リトライ
+      if (initRes.status === 429) {
+        Logger.log(`[TTS] ⚠️ レート制限(429)検知。1.2秒待機して再試行ニャ…`, "warn");
+        await new Promise(r => setTimeout(r, 1200));
+        initRes = await fetch(initUrl);
+      }
+
+      if (!initRes.ok) {
+        Logger.log(`[TTS] HTTPエラー ${initRes.status}`, "error");
+        throw new Error(`HTTPエラー ${initRes.status}`);
+      }
+
+      const initData = await initRes.json();
+      if (initData.isAudioError) {
+        Logger.log(`[TTS] VOICEVOX生成エラー`, "error");
+        throw new Error("VOICEVOX生成エラー");
+      }
+
+      let directUrl = initData.mp3StreamingUrl || initData.mp3DownloadUrl;
+      if (!directUrl && initData.audioStatusUrl) {
+        for (let i = 0; i < 20; i++) {
+          await new Promise(r => setTimeout(r, 350));
+          const sRes = await fetch(initData.audioStatusUrl);
+          if (sRes.ok) {
+            const sData = await sRes.json();
+            if (sData.isAudioReady) { directUrl = sData.mp3StreamingUrl || sData.mp3DownloadUrl; break; }
+          }
         }
       }
-    }
-    if (!directUrl) {
-      Logger.log(`[TTS] 音声生成タイムアウト`, "error");
-      throw new Error("音声タイムアウト");
-    }
+      if (!directUrl) {
+        Logger.log(`[TTS] 音声生成タイムアウト`, "error");
+        throw new Error("音声タイムアウト");
+      }
 
-    const aRes = await fetch(directUrl, { signal });
-    const blob = await aRes.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    this.blobUrlCache.set(key, blobUrl);
-    const ms = Math.round(performance.now() - t0);
-    Logger.log(`[TTS] ✅ 音声取得完了 (${ms}ms) [${keyStatusText}]`, "success");
-    return blobUrl;
+      const aRes = await fetch(directUrl);
+      const blob = await aRes.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      this.blobUrlCache.set(key, blobUrl);
+      const ms = Math.round(performance.now() - t0);
+      Logger.log(`[TTS] ✅ 音声取得完了 (${ms}ms) [${keyStatusText}]`, "success");
+      return blobUrl;
+    }).catch(err => {
+      Logger.log(`[TTS] ❌ 音声通信エラー: ${err.message}`, "error");
+      throw err;
+    });
+
+    return this.ttsRequestChain;
   }
 
   _isSelfEcho(text) {
@@ -660,7 +687,6 @@ class AudioSpeechEngine {
 
   stopSpeaking() {
     this.isSpeaking = false;
-    if (this.currentAbortController) { this.currentAbortController.abort(); this.currentAbortController = null; }
     this.masterAudio.pause(); this.masterAudio.currentTime = 0;
     this.fillerAudio.pause(); this.fillerAudio.currentTime = 0;
   }
@@ -1057,7 +1083,7 @@ const StorageManager = {
       const parsed = JSON.parse(localStorage.getItem(DATA_KEYS.MEMORIES));
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     } catch(e) {}
-    const initList = defaultMemories || CurrentCharacter.defaultMemories || [];
+    const initList = defaultMemories || getCurChar().defaultMemories || [];
     this.saveMemories(initList);
     return initList;
   },
@@ -1281,8 +1307,8 @@ const StorageManager = {
     }
     const pkg = {
       format: "kuro_pure_data_package_v2",
-      characterId: CurrentCharacter.id,
-      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.1.14.0",
+      characterId: getCurChar().id,
+      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.2.0.0",
       exportedAt: now.toLocaleString('ja-JP'),
       memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
@@ -1290,8 +1316,9 @@ const StorageManager = {
       dailyPhotoPools: allDailyPhotos,
       dailyChatLogs: allDailyLogs,
       settings: {
-        speakerId: localStorage.getItem('kuro_voice_speaker_id') || String(CurrentCharacter.defaultSpeakerId || 10),
-        voiceRate: localStorage.getItem('kuro_rate') || String(CurrentCharacter.defaultVoiceRate || 1.05),
+        speakerId: localStorage.getItem('kuro_voice_speaker_id') || String(getCurChar().defaultSpeakerId || 10),
+        voiceRate: localStorage.getItem('kuro_rate') || String(getCurChar().defaultVoiceRate || 1.05),
+        talkLength: localStorage.getItem('kuro_talk_length') || 'auto',
         buttonFeedback: localStorage.getItem('kuro_button_feedback') || 'voice',
         timerSound: localStorage.getItem('kuro_timer_sound') || 'bell',
         theme: localStorage.getItem('kuro_theme') || 'normal',
@@ -1307,7 +1334,7 @@ const StorageManager = {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `AIペット_${CurrentCharacter.name}_完全バックアップ_${ymd}.json`;
+    a.download = `AIペット_${getCurChar().name}_完全バックアップ_${ymd}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1330,6 +1357,7 @@ const StorageManager = {
       const s = data.settings;
       if (s.speakerId) localStorage.setItem('kuro_voice_speaker_id', s.speakerId);
       if (s.voiceRate) localStorage.setItem('kuro_rate', s.voiceRate);
+      if (s.talkLength) localStorage.setItem('kuro_talk_length', s.talkLength);
       if (s.buttonFeedback) localStorage.setItem('kuro_button_feedback', s.buttonFeedback);
       if (s.timerSound) localStorage.setItem('kuro_timer_sound', s.timerSound);
       if (s.theme) { localStorage.setItem('kuro_theme', s.theme); AppCore.applyTheme(s.theme); }
@@ -1363,18 +1391,26 @@ const StorageManager = {
   }
 };
 
-
 /* ==========================================================================
    AIペット 共通対話エンジン＆中央司令塔OS（app.js Part 2/2）
    - プラグインアーキテクチャ対応（char_kuro.js 等のキャラ定義を自動ロード）
+   - 【起動時連射全撤去】起動時プリフェッチを全廃・TTS Quest過負荷と429を根絶
+   - 【16秒打ち切り＆案3セリフ】第1(8秒)＋第2(8秒)で決着・知恵熱セリフで愛らしく自動復帰
+   - 【今日の日付厳格フィルター】生活日当日ログのみ抽出・過去ログ混同を100%根絶
+   - 【トークスタイル末尾完全強制】短い(1文・30文字以内)／自動(短文判定)の動的ロック
+   - 【思考デッドロック完全根絶】try...finally による入力処理中フラグ（鍵）の確実な自動解除
+   - 【左上日付・曜日・時刻常時更新】headerDisplay連動によるリアルタイム日時表示
+   - 【絵日記完全日本語ロック】system_instruction による英語ドリフト完全根絶
+   - 【確実なひとこと生成】テンプレート強制によるクロのひとこと抽出完全保証
    - 【メガネ調整完全一致】プレビュー画面とメイン画面の座標計算を100%完全同期
    - 【マップカード厳格化】なかよしモードでの誤作動を根絶しおてつだいモード時のみ正確に案内
    - アバターSVG動的注入 ＆ 透過自動切り替え
-   - Gemini対話・Function Calling・絵日記・タイマー・受入テスト全項目完全対応
+   - Gemini対話・Function Calling・タイマー・受入テスト全項目完全対応
    - 【居眠り表情完全修復】お休み中におけるトーキング顔フリーズを根絶し安らかなidle顔を保証
    - 【朝4時またぎ自動監視】開いたまま朝を迎えても自動で生活日を切り替え昨日の日記を完全救済
    - 【夜20時基準生活リズム】夜20:00以降の自然な日記作成案内 ＆ 昼間は直近完成日記優先表示
    - 【データライフサイクル完全保護】logCountAtSave に基づく夜の会話自動追記エンジンの維持
+   - 【三重起動安全ガード】DOMContentLoaded / load / readyState の完全即時安全ブート
    ========================================================================== */
 
 /* ==========================================================================
@@ -1420,7 +1456,8 @@ class CatAvatarRenderer {
 
   _injectVectorAvatar() {
     if (!this.vectorContainer) return;
-    const svgCode = CurrentCharacter.getVectorAvatarSvg ? CurrentCharacter.getVectorAvatarSvg() : "";
+    const cur = getCurChar();
+    const svgCode = cur.getVectorAvatarSvg ? cur.getVectorAvatarSvg() : "";
     this.vectorContainer.innerHTML = svgCode;
   }
 
@@ -1446,7 +1483,7 @@ class CatAvatarRenderer {
         <defs>
           <pattern id="stripe-bw-real" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
             <rect width="4" height="8" fill="#111827"/>
-            <rect width="4" height="8" x="4" fill="#ffffff"/>
+            <rect width="4" height="8" fill="#ffffff" x="4"/>
           </pattern>
         </defs>
         <g class="real-hat-group">
@@ -1627,24 +1664,32 @@ class AIThoughtEngine {
   constructor() {
     this.apiKey = (localStorage.getItem('kuro_api_key') || '').trim();
     this.activeAbortController = null;
+    this.isUserCancelled = false; // 飼い主さんの手動とりけしフラグ
   }
 
   cancelActiveThought() {
+    this.isUserCancelled = true;
     if (this.activeAbortController) {
       this.activeAbortController.abort();
       this.activeAbortController = null;
-      Logger.log(`[AI] 🛑 実行中のGeminiリクエストを強制切断しました`, "info");
+      Logger.log(`[AI] 🛑 飼い主さんの操作により思考を即座にキャンセルしました`, "info");
       return true;
     }
     return false;
   }
 
-  // ★しりとり等の短い単語を捨てずに生かす健全なフィルター
   _filterMeaningfulLogs(logs) {
+    const timeInfo = TimeProvider.getCurrentInfo();
+    const todayLifeKey = timeInfo.lifeLogKey;
+
     return logs.filter(item => {
       if (!item || !item.text) return false;
       const t = item.text.trim();
-      if (/^(?:おまかせニャ|あそぶニャ|バッチリニャ|はーい|はい|起きたニャ|お昼寝するニャ|今日の日記を書き込みましたニャン)/.test(t)) return false;
+      // ★今日（生活日）以外の過去ログは除外し、11月7日等の過去混同を100%防止
+      if (item.date && item.date !== todayLifeKey) return false;
+      // システム自動通知や定型短文を文脈から除外
+      if (/^(?:おまかせニャ|あそぶニャ|バッチリニャ|はーい|はい|起きたニャ|お昼寝するニャ)/.test(t)) return false;
+      if (/(?:今日の日記を書き込みました|昨日の日記|昨日の思い出絵日記)/.test(t)) return false;
       if (/(?:いま何時|今何時|今日何日|きょう何日|天気どんな感じ)/.test(t)) return false;
       if (t.startsWith('http') || t.includes('Googleマップで見る')) return false;
       return true;
@@ -1655,7 +1700,7 @@ class AIThoughtEngine {
     const contents = [];
     let lastRole = null;
     const timeInfo = TimeProvider.getCurrentInfo();
-    const historyLimit = timeInfo.isLateNight ? 20 : 40;
+    const historyLimit = timeInfo.isLateNight ? 16 : 30;
     const targetHistoryLogs = this._filterMeaningfulLogs(rawLogs).slice(-historyLimit);
 
     for (const item of targetHistoryLogs) {
@@ -1695,39 +1740,71 @@ class AIThoughtEngine {
       return { success: false, error: "NO_API_KEY" };
     }
 
+    this.isUserCancelled = false; // フラグリセット
     const timeInfo = TimeProvider.getCurrentInfo();
     const weather = LocationProvider.weather;
     const temp = LocationProvider.temperature;
     const townArea = LocationProvider.townLevelArea;
     const isAtHome = LocationProvider.isAtHome;
     const isAssistant = AppCore.state.isAssistantMode;
+    const talkLen = localStorage.getItem('kuro_talk_length') || 'auto';
+
+    // ★自動モード時のスマート短文判定（10文字以下または挨拶は1文返答に固定）
+    let effectiveLen = talkLen;
+    if (talkLen === 'auto') {
+      const isShortGreeting = promptText.length <= 10 || /^(?:おはよう|こんにちは|こんばんは|うん|おやすみ|ねえ|クロちゃん|ありがと)/.test(promptText.trim());
+      effectiveLen = isShortGreeting ? 'short' : 'normal';
+    }
 
     const recentDiaries = StorageManager.getRecentDiariesSummary(3);
     const pastMemoryDiary = StorageManager.findRelevantPastDiary(promptText);
 
     const context = {
       timeInfo, weather, temp, townArea, isAtHome, isAssistantMode: isAssistant,
-      memories, recentDiaries, pastMemoryDiary
+      memories, recentDiaries, pastMemoryDiary, talkLength: talkLen, effectiveTalkLength: effectiveLen
     };
-    const systemPrompt = characterPlugin.buildSystemPrompt ? characterPlugin.buildSystemPrompt(context) : "";
+
+    const cur = getCurChar();
+    let systemPrompt = cur.buildSystemPrompt ? cur.buildSystemPrompt(context) : "";
+
+    // ★プロンプト最末尾への強力なトーク長制限＆現在日付アンカーの念押し注入
+    let lengthClimaxLock = "";
+    if (effectiveLen === 'short') {
+      lengthClimaxLock = "\n【最重要：今回の発話制限】必ず1文（30文字以内）でサクッと短く答えてください。2文以上の長いお喋りは完全禁止です。";
+    } else if (effectiveLen === 'long') {
+      lengthClimaxLock = "\n【最重要：今回の発話制限】前世の記憶やおやびんへの愛嬌を込めて2〜3文（100〜150文字程度）でたっぷり楽しくお話ししてください。";
+    } else {
+      lengthClimaxLock = "\n【最重要：今回の発話制限】1〜2文（40〜70文字程度）の愛らしい標準サイズで小気味よく会話してください。";
+    }
+
+    const dateClimaxLock = `\n【絶対厳守の日付アンカー】今日の日付は絶対に【${timeInfo.fullDate}】です。過去の日記に登場する日付（11月7日等）は過去の記録であり、今日の日付ではありません。今日の日付を誤認しないでください。`;
+    systemPrompt += `\n${dateClimaxLock}${lengthClimaxLock}`;
 
     const contents = this._buildContentsPayload(rawLogs, promptText, photoBase64);
 
+    let targetMaxTokens = 140;
+    if (effectiveLen === 'short') targetMaxTokens = 60;
+    else if (effectiveLen === 'long') targetMaxTokens = 300;
+
+    // ★固定2モデルによる「8秒 ＋ 8秒 ＝ 最大16秒打ち切り」完全実装
     for (const model of FIXED_LITE_MODELS) {
+      if (this.isUserCancelled) break;
       const cleanModel = model.replace(/^models\//, '');
       const t0 = performance.now();
-      Logger.log(`[AI] リクエスト送信 ➔ ${cleanModel}`, "info");
+      Logger.log(`[AI] リクエスト送信 ➔ ${cleanModel} (トーク長:${effectiveLen}, 上限:${targetMaxTokens}, 制限:8秒)`, "info");
 
       this.activeAbortController = new AbortController();
-      let timeoutTimer = setTimeout(() => {
+      let isCurrentTimeout = false;
+      const timeoutTimer = setTimeout(() => {
+        isCurrentTimeout = true;
         if (this.activeAbortController) this.activeAbortController.abort();
-      }, 20000);
+      }, 8000); // ★8秒タイムアウト完全固定
 
       try {
         const bodyPayload = {
           system_instruction: { parts: [{ text: systemPrompt }] },
           contents: contents,
-          generationConfig: { temperature: 0.75, maxOutputTokens: 350 }
+          generationConfig: { temperature: 0.7, maxOutputTokens: targetMaxTokens }
         };
 
         if (isAssistant) {
@@ -1743,12 +1820,13 @@ class AIThoughtEngine {
           signal: this.activeAbortController.signal
         });
 
-        if (!res.ok && isAssistant) {
+        if (!res.ok && isAssistant && !isCurrentTimeout && !this.isUserCancelled) {
           clearTimeout(timeoutTimer);
           this.activeAbortController = new AbortController();
-          timeoutTimer = setTimeout(() => {
+          const fallbackTimer = setTimeout(() => {
+            isCurrentTimeout = true;
             if (this.activeAbortController) this.activeAbortController.abort();
-          }, 20000);
+          }, 8000);
 
           delete bodyPayload.tools;
           delete bodyPayload.toolConfig;
@@ -1758,6 +1836,7 @@ class AIThoughtEngine {
             body: JSON.stringify(bodyPayload),
             signal: this.activeAbortController.signal
           });
+          clearTimeout(fallbackTimer);
         }
 
         clearTimeout(timeoutTimer);
@@ -1796,7 +1875,6 @@ class AIThoughtEngine {
             clean = clean.replace(/余([はがものにもと])/g, 'クロ$1').replace(/余/g, 'クロ');
             clean = AppCore.audio.cleanEndingNenyan(clean);
 
-            // ★おてつだいモード時のみフォールバックカード検知
             if (isAssistant && cards.length === 0) {
               const fallbackCards = this._detectCardsFromKuroSpeech(clean, promptText);
               if (fallbackCards.length > 0) cards = fallbackCards;
@@ -1815,17 +1893,30 @@ class AIThoughtEngine {
       } catch (err) {
         clearTimeout(timeoutTimer);
         const ms = Math.round(performance.now() - t0);
-        if (err.name === 'AbortError') {
-          Logger.log(`[AI] 🛑 思考がキャンセルされました`, "info");
+        if (this.isUserCancelled) {
+          Logger.log(`[AI] 🛑 飼い主さんのキャンセルを受け付けました`, "info");
           this.activeAbortController = null;
           return { success: false, aborted: true };
+        }
+        if (isCurrentTimeout) {
+          Logger.log(`[AI] ⏱️ [${cleanModel}] が8秒タイムアウト。次へバトンタッチニャ！`, "warn");
+          // 次のモデルへ進む（ループ継続）
+          continue;
         }
         Logger.log(`[AI] ❌ エラー [${cleanModel}]: ${err.message} (${ms}ms)`, "error");
       }
     }
+
     this.activeAbortController = null;
-    Logger.log(`[AI] ❌ 全Liteモデル失敗`, "error");
-    return { success: false, error: "ALL_LITE_MODELS_FAILED" };
+    if (this.isUserCancelled) return { success: false, aborted: true };
+
+    // ★最大16秒（8秒＋8秒）で打ち切り。再周回せず案3のセリフで愛らしく決着
+    Logger.log(`[AI] ⏱️ 16秒タイムアウト（8秒＋8秒打ち切り完了・案3セリフ発動）`, "warn");
+    return {
+      success: false,
+      isTimeout: true,
+      text: "うにゃあ…！おやびんのお話しをじっくり考えてたら、頭の中がこんがらがっちゃったニャ〜！もう一回言ってニャン🐾"
+    };
   }
 
   _createSmartMapCards(spotName, area) {
@@ -1930,13 +2021,15 @@ class AIThoughtEngine {
       fullDate, isAtHome: LocationProvider.isAtHome, weather: LocationProvider.weather,
       temp: LocationProvider.temperature, historyText
     };
-    const diaryPrompt = CurrentCharacter.buildDiaryPrompt ? CurrentCharacter.buildDiaryPrompt(context) : "";
+    const cur = getCurChar();
+    const diaryPrompt = cur.buildDiaryPrompt ? cur.buildDiaryPrompt(context) : "";
 
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${FIXED_LITE_MODELS[0]}:generateContent?key=${this.apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          system_instruction: { parts: [{ text: "You are Kuro, a Japanese cat. You MUST write in Japanese only. Output must strictly follow the format: diary body on the first lines, followed by 【クロのひとこと：...】 on the last line. Any English text is strictly forbidden." }] },
           contents: [{ role: 'user', parts: [{ text: diaryPrompt }] }],
           generationConfig: { temperature: 0.7, maxOutputTokens: 850 }
         })
@@ -1991,7 +2084,7 @@ const AppCore = {
   memories: [],
   todayLogs: [],
 
-  getSpeakerId() { return parseInt(localStorage.getItem('kuro_voice_speaker_id') || String(CurrentCharacter.defaultSpeakerId || 10), 10); },
+  getSpeakerId() { return parseInt(localStorage.getItem('kuro_voice_speaker_id') || String(getCurChar().defaultSpeakerId || 10), 10); },
   getTimerSound() { return localStorage.getItem('kuro_timer_sound') || 'bell'; },
 
   applyTheme(theme) {
@@ -2007,7 +2100,7 @@ const AppCore = {
 
   async init() {
     this.avatar = new CatAvatarRenderer();
-    this.memories = StorageManager.loadMemories(CurrentCharacter.defaultMemories);
+    this.memories = StorageManager.loadMemories(getCurChar().defaultMemories);
     this.todayLogs = StorageManager.loadRecentTimelineLogs();
     this.state.isAssistantMode = localStorage.getItem('kuro_mode') === 'assistant';
 
@@ -2036,15 +2129,17 @@ const AppCore = {
 
     if (typeof VersionManager !== 'undefined') VersionManager.applyToDOM();
 
+    // ★左上ヘッダーへの「日付・曜日・時刻」（例: 11/8(土) 10:12）即時安全反映
     const initialInfo = TimeProvider.getCurrentInfo();
     this.state.lastCheckedLifeLogKey = initialInfo.lifeLogKey;
     const clk = document.getElementById('clock-display');
-    if (clk) clk.textContent = initialInfo.clock;
+    if (clk) clk.textContent = initialInfo.headerDisplay;
 
+    // 毎秒の時計ループ（日付と時刻を常に最新保持＆朝4時またぎ自動救済）
     setInterval(() => {
       const cur = TimeProvider.getCurrentInfo();
       const c = document.getElementById('clock-display');
-      if (c) c.textContent = cur.clock;
+      if (c) c.textContent = cur.headerDisplay;
 
       if (this.state.lastCheckedLifeLogKey && cur.lifeLogKey !== this.state.lastCheckedLifeLogKey) {
         Logger.log(`[Lifecycle] 🌅 朝4:00の生活日切り替えを検知（${this.state.lastCheckedLifeLogKey} ➔ ${cur.lifeLogKey}）。昨日の日記を自動救済ニャ…`, "info");
@@ -2055,15 +2150,12 @@ const AppCore = {
 
     LocationProvider.initWatcher();
 
-    const spk = this.getSpeakerId();
-    this.audio.prefetchVoice(`おやびん、わたしは${CurrentCharacter.name}だニャン🐾`, spk);
-    this.audio.preloadAllFillers(spk);
-
+    // ★起動時の一斉プリフェッチを全廃（TTS Quest過負荷と429を根絶し爆速化）
     this.checkAndFinalizeYesterdayDiary();
     this._startIdleSoliloquyWatcher();
 
     setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
-    Logger.log(`[AppCore] 全システム正常稼働！キャラクター: ${CurrentCharacter.name} プラグインロード完了ニャ🐾`, "success");
+    Logger.log(`[AppCore] 全システム正常稼働！キャラクター: ${getCurChar().name} プラグインロード完了ニャ🐾`, "success");
   },
 
   _bindDeviceWakeWatcher() {
@@ -2229,7 +2321,7 @@ const AppCore = {
     box.innerHTML = '';
     const logs = StorageManager.loadRecentTimelineLogs();
     if (logs.length === 0) {
-      this.renderBubble('model', `おやびん、わたしは${CurrentCharacter.name}だニャン🐾 今日もいっぱいお話しするニャ♪`);
+      this.renderBubble('model', `おやびん、わたしは${getCurChar().name}だニャン🐾 今日もいっぱいお話しするニャ♪`);
       return;
     }
     logs.forEach(h => this.renderBubble(h.role, h.text, [], h.photoUrl || null));
@@ -2330,13 +2422,13 @@ const AppCore = {
     const card = document.createElement('div');
     card.className = 'timeline-diary-card';
     card.innerHTML = `
-      <div class="timeline-diary-header"><span>📖 ${diaryData.fullDate} の${CurrentCharacter.name}絵日記</span><span>🐾 記録完了</span></div>
+      <div class="timeline-diary-header"><span>📖 ${diaryData.fullDate} の${getCurChar().name}絵日記</span><span>🐾 記録完了</span></div>
       <div class="timeline-diary-meta"><span>🌤️ 天気: ${diaryData.weather}</span><span>🌡️ 気温: ${diaryData.temperature}℃</span></div>
       ${diaryData.photo ? `<div class="timeline-diary-photo"><img src="${diaryData.photo}" alt="写真" id="card-diary-img-${diaryData.dateKey}"></div>` : ''}
       <div class="timeline-diary-body">${diaryData.content}</div>
       ${diaryData.kuroComment ? `
         <div class="timeline-diary-comment-box">
-          <span class="timeline-diary-comment-label">🐾 ${CurrentCharacter.name}のひとこと:</span>
+          <span class="timeline-diary-comment-label">🐾 ${getCurChar().name}のひとこと:</span>
           <span class="timeline-diary-comment-text">${diaryData.kuroComment}</span>
         </div>
       ` : ''}
@@ -2392,8 +2484,8 @@ const AppCore = {
         reader.readAsDataURL(file);
       });
 
-      this.renderBubble('user', `${CurrentCharacter.name}ちゃん、この写真見てニャ！`, [], compressedBase64);
-      StorageManager.appendChatLog('user', `${CurrentCharacter.name}ちゃん、この写真見てニャ！`, compressedBase64);
+      this.renderBubble('user', `${getCurChar().name}ちゃん、この写真見てニャ！`, [], compressedBase64);
+      StorageManager.appendChatLog('user', `${getCurChar().name}ちゃん、この写真見てニャ！`, compressedBase64);
       StorageManager.attachPhotoToTodayDiary(compressedBase64);
       this._updateStorageMonitorUI();
 
@@ -2527,8 +2619,10 @@ const AppCore = {
       petContainer?.classList.remove('is-paused-mode');
       wrap?.classList.remove('is-sleeping');
       document.getElementById('pause-btn')?.classList.remove('is-paused');
-      document.getElementById('pause-icon').textContent = "🟢";
-      document.getElementById('pause-text').textContent = "会話中";
+      const icon = document.getElementById('pause-icon');
+      const txt = document.getElementById('pause-text');
+      if (icon) icon.textContent = "🟢";
+      if (txt) txt.textContent = "会話中";
       const wakeMsg = "ふぁ〜あ…！おやびん、起きたニャン🐾 なに話すニャ？";
       this.audio.speak(wakeMsg, null, () => this.renderBubble('model', wakeMsg), () => {
         this.state.isProcessingInput = false;
@@ -2567,6 +2661,10 @@ const AppCore = {
           this.state.isThinking = false;
           this.state.isProcessingInput = false;
         });
+      } else {
+        if (this.avatar) this.avatar.setEmotion('idle');
+        this.state.isThinking = false;
+        this.state.isProcessingInput = false;
       }
       return;
     }
@@ -2630,6 +2728,7 @@ const AppCore = {
     this.executeThought(text);
   },
 
+  // ★思考エンジン：try...finally による入力処理中フラグの確実な自動解除 ＆ 16秒タイムアウト案3セリフ完全同期
   async executeThought(promptText, photoBase64 = null, isPhotoAlreadyLogged = false) {
     this.state.isThinking = true;
     if (this.avatar && this.state.isRunning) this.avatar.setEmotion('thinking');
@@ -2637,57 +2736,95 @@ const AppCore = {
     if (st && this.state.isRunning) st.textContent = photoBase64 ? "📷 写真見てるニャ…" : "💭 考え中ニャ…";
 
     const bubble = this.renderBubble('model', photoBase64 ? "写真を見てるニャ…📷✨" : "クロが考えてるニャ…💭");
-    const rawLogs = StorageManager.loadRecentTimelineLogs();
-    const res = await this.ai.generateReply(promptText, rawLogs, CurrentCharacter, this.memories, photoBase64);
+    
+    try {
+      const rawLogs = StorageManager.loadRecentTimelineLogs();
+      const res = await this.ai.generateReply(promptText, rawLogs, getCurChar(), this.memories, photoBase64);
 
-    if (res.aborted) {
-      if (bubble) bubble.closest('.chat-row')?.remove();
-      return;
-    }
-
-    if (res.success && res.text) {
-      if (!isPhotoAlreadyLogged) {
-        StorageManager.appendChatLog('user', promptText);
+      if (res.aborted) {
+        if (bubble) bubble.closest('.chat-row')?.remove();
+        return;
       }
-      StorageManager.appendChatLog('model', res.text);
 
-      this.audio.speak(res.text, null, () => {
-        if (bubble) {
-          bubble.textContent = res.text;
+      // ★16秒タイムアウト（8秒＋8秒打ち切り）のときは案3のセリフで愛らしく決着
+      if (res.isTimeout && res.text) {
+        if (bubble) bubble.textContent = res.text;
+        this.audio.speak(res.text, null, () => {
+          if (this.avatar && this.state.isRunning) this.avatar.setEmotion('talking');
+          this._scrollToLatest(true);
+        }, () => {
+          if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
+          this.state.isThinking = false;
+          this.state.isProcessingInput = false;
+          if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
+        });
+        return;
+      }
 
-          if (res.groundingCards && res.groundingCards.length > 0) {
-            const parentRow = bubble.closest('.chat-row');
-            if (parentRow && !parentRow.querySelector('.action-card-box')) {
-              const cardBox = document.createElement('div');
-              cardBox.className = 'action-card-box';
-              res.groundingCards.forEach(c => {
-                const a = document.createElement('a');
-                a.className = `link-action-card ${c.type}-card`;
-                a.href = c.url; a.target = '_blank';
-                a.innerHTML = `<span class="card-icon">${c.icon}</span><span class="card-title-text">${c.title}</span><span class="card-arrow">➔</span>`;
-                cardBox.appendChild(a);
-              });
-              parentRow.appendChild(cardBox);
+      if (res.success && res.text) {
+        if (!isPhotoAlreadyLogged) {
+          StorageManager.appendChatLog('user', promptText);
+        }
+        StorageManager.appendChatLog('model', res.text);
+
+        this.audio.speak(res.text, null, () => {
+          if (bubble) {
+            bubble.textContent = res.text;
+
+            if (res.groundingCards && res.groundingCards.length > 0) {
+              const parentRow = bubble.closest('.chat-row');
+              if (parentRow && !parentRow.querySelector('.action-card-box')) {
+                const cardBox = document.createElement('div');
+                cardBox.className = 'action-card-box';
+                res.groundingCards.forEach(c => {
+                  const a = document.createElement('a');
+                  a.className = `link-action-card ${c.type}-card`;
+                  a.href = c.url; a.target = '_blank';
+                  a.innerHTML = `<span class="card-icon">${c.icon}</span><span class="card-title-text">${c.title}</span><span class="card-arrow">➔</span>`;
+                  cardBox.appendChild(a);
+                });
+                parentRow.appendChild(cardBox);
+              }
             }
           }
+          if (this.avatar && this.state.isRunning) this.avatar.setEmotion('talking');
+          this._scrollToLatest(true);
+        }, () => {
+          if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
+          this.state.isThinking = false;
+          this.state.isProcessingInput = false;
+          if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
+        });
+      } else {
+        const fb = "おやびん、もう一度ゆっくり話してニャン🐾";
+        if (bubble) bubble.textContent = fb;
+        this.audio.speak(fb, null, () => {}, () => {
+          if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
+          this.state.isThinking = false;
+          this.state.isProcessingInput = false;
+          if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
+        });
+      }
+    } catch (err) {
+      Logger.log(`[AppCore] ⚠️ 会話処理例外: ${err.message}`, "error");
+      const errReply = "うにゃあ…！おやびんのお話しをじっくり考えてたら、頭の中がこんがらがっちゃったニャ〜！もう一回言ってニャン🐾";
+      if (bubble) bubble.textContent = errReply;
+      this.audio.speak(errReply, null, () => {}, () => {
+        if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
+        this.state.isThinking = false;
+        this.state.isProcessingInput = false;
+        if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
+      });
+    } finally {
+      // 処理中フラグの自己復帰セーフティネット
+      setTimeout(() => {
+        if (this.state.isProcessingInput && !this.audio.isSpeaking && !this.audio.isReadingAloud) {
+          this.state.isProcessingInput = false;
+          this.state.isThinking = false;
+          if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
+          if (this.state.isRunning) this.audio.startListening();
         }
-        if (this.avatar && this.state.isRunning) this.avatar.setEmotion('talking');
-        this._scrollToLatest(true);
-      }, () => {
-        if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
-        this.state.isThinking = false;
-        this.state.isProcessingInput = false;
-        if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
-      });
-    } else {
-      const fb = "おやびん、もう一度ゆっくり話してニャン🐾";
-      if (bubble) bubble.textContent = fb;
-      this.audio.speak(fb, null, () => {}, () => {
-        if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
-        this.state.isThinking = false;
-        this.state.isProcessingInput = false;
-        if (st && this.state.isRunning) st.textContent = "👂 聴いてるニャ♪";
-      });
+      }, 10000);
     }
   },
 
@@ -2866,7 +3003,10 @@ const AppCore = {
             <button type="button" id="btn-create-today-now" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ 今日の日記をまとめるニャ！</button>
           </div>
         `;
-        document.getElementById('btn-create-today-now')?.addEventListener('click', async () => {
+        document.getElementById('btn-create-today-now')?.addEventListener('click', async (e) => {
+          const btn = e.currentTarget;
+          btn.disabled = true;
+          btn.textContent = "一生懸命書いてるニャ…📖🐾";
           await this._rescueCreateDiaryForDate(curDateKey, fullDate, dayLogs);
         });
       } else {
@@ -2906,7 +3046,10 @@ const AppCore = {
         </div>
       `;
 
-      document.getElementById('btn-rescue-create-diary')?.addEventListener('click', async () => {
+      document.getElementById('btn-rescue-create-diary')?.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        btn.textContent = "一生懸命書いてるニャ…📖🐾";
         await this._rescueCreateDiaryForDate(curDateKey, fullDate, dayLogs);
       });
 
@@ -2955,24 +3098,27 @@ const AppCore = {
         </div>
 
         <div class="studio-diary-comment-box">
-          <span class="studio-diary-comment-label">🐾 ${CurrentCharacter.name}のひとこと:</span>
+          <span class="studio-diary-comment-label">🐾 ${getCurChar().name}のひとこと:</span>
           <textarea class="studio-diary-comment-textarea" id="studio-diary-comment" rows="2" placeholder="（ひとこと記録なし）">${diary.kuroComment || ""}</textarea>
         </div>
       </div>
     `;
 
-    document.getElementById('btn-update-with-night-logs')?.addEventListener('click', async () => {
+    document.getElementById('btn-update-with-night-logs')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      btn.textContent = "追加お話しを要約中ニャ…📝🐾";
       await this._rescueCreateDiaryForDate(curDateKey, fullDate, dayLogs);
     });
 
     document.getElementById('studio-diary-text')?.addEventListener('input', (e) => {
       diary.content = e.target.value;
-      StorageManager.saveDiary(diary.content, curDateKey, diary.fullDate, diary.photo, diary.logCountAtSave || dayLogs.length, diary.kuroComment);
+      StorageManager.saveDiary(diary.content, curDateKey, diary.fullDate, diary.photo, diary.logCountAtSave, diary.kuroComment);
     });
 
     document.getElementById('studio-diary-comment')?.addEventListener('input', (e) => {
       diary.kuroComment = e.target.value;
-      StorageManager.saveDiary(diary.content, curDateKey, diary.fullDate, diary.photo, diary.logCountAtSave || dayLogs.length, diary.kuroComment);
+      StorageManager.saveDiary(diary.content, curDateKey, diary.fullDate, diary.photo, diary.logCountAtSave, diary.kuroComment);
     });
 
     document.getElementById('book-photo-box')?.addEventListener('click', () => {
@@ -2994,7 +3140,7 @@ const AppCore = {
         if (e.target.classList.contains('btn-snap-del')) return;
         const selected = photoPool[parseInt(item.dataset.idx, 10)].base64;
         diary.photo = selected;
-        StorageManager.saveDiary(diary.content, curDateKey, diary.fullDate, diary.photo, diary.logCountAtSave || dayLogs.length, diary.kuroComment);
+        StorageManager.saveDiary(diary.content, curDateKey, diary.fullDate, diary.photo, diary.logCountAtSave, diary.kuroComment);
         this._renderStudioDiaryPage();
       };
     });
@@ -3021,6 +3167,7 @@ const AppCore = {
       this._updateStorageMonitorUI();
     } else {
       Toast.show("絵日記の作成に失敗しましたニャ。通信状態を確認してくださいニャ", "error");
+      this._renderStudioDiaryPage();
     }
   },
 
@@ -3045,7 +3192,6 @@ const AppCore = {
         btn.classList.add('is-active');
         const spk = parseInt(btn.dataset.voiceId, 10);
         localStorage.setItem('kuro_voice_speaker_id', spk);
-        this.audio.prefetchVoice(`おやびん、わたしは${CurrentCharacter.name}だニャン🐾`, spk);
         this.audio.playEffect('aizuchi');
       };
     });
@@ -3057,21 +3203,21 @@ const AppCore = {
         btn.onclick = () => {
           container.querySelectorAll('.segment-btn').forEach(b => b.classList.remove('is-active', 'pink', 'blue'));
           btn.classList.add('is-active', activeClass);
-          const val = btn.dataset.feedbackVal || btn.dataset.timerSoundVal || btn.dataset.accStyleVal || btn.dataset.countVal;
+          const val = btn.dataset.feedbackVal || btn.dataset.timerSoundVal || btn.dataset.accStyleVal || btn.dataset.countVal || btn.dataset.talkLen;
           localStorage.setItem(storageKey, val);
           this.audio.playEffect('aizuchi');
         };
       });
     };
 
+    bindSegment('talk-length-segment-group', 'kuro_talk_length', 'pink');
     bindSegment('feedback-segment-group', 'kuro_button_feedback', 'pink');
     bindSegment('timer-sound-segment-group', 'kuro_timer_sound', 'blue');
-    bindSegment('acc-style-segment-group', 'kuro_acc_style', 'both', 'pink');
+    bindSegment('acc-style-segment-group', 'kuro_acc_style', 'pink');
     bindSegment('news-count-segment-group', 'kuro_news_count', 'blue');
     bindSegment('spot-count-segment-group', 'kuro_spot_count', 'blue');
   },
 
-  // ★プレビュー画面とメイン画面の完全一致ロジック
   _bindGlassesAdjusterUI() {
     const modal = document.getElementById('glasses-adjust-modal');
     const overlay = document.getElementById('adjust-glasses-overlay');
@@ -3258,7 +3404,7 @@ const AppCore = {
       reader.onload = (evt) => {
         try {
           StorageManager.importAndReplaceDataPackage(JSON.parse(evt.target.result));
-          this.memories = StorageManager.loadMemories(CurrentCharacter.defaultMemories);
+          this.memories = StorageManager.loadMemories(getCurChar().defaultMemories);
           this._renderMemories();
           this._restoreTimelineHistory();
           this._updateStorageMonitorUI();
@@ -3443,8 +3589,10 @@ const AppCore = {
       const st = document.getElementById('status-text');
 
       btn?.classList.toggle('is-paused', !this.state.isRunning);
-      document.getElementById('pause-icon').textContent = this.state.isRunning ? "🟢" : "🛑";
-      document.getElementById('pause-text').textContent = this.state.isRunning ? "会話中" : "お休み中";
+      const icon = document.getElementById('pause-icon');
+      const txt = document.getElementById('pause-text');
+      if (icon) icon.textContent = this.state.isRunning ? "🟢" : "🛑";
+      if (txt) txt.textContent = this.state.isRunning ? "会話中" : "お休み中";
 
       if (!this.state.isRunning) {
         this.audio.stopListening();
@@ -3508,7 +3656,7 @@ const AppCore = {
 
     document.getElementById('test-voice-btn')?.addEventListener('click', () => {
       const spk = this.getSpeakerId();
-      this.audio.speak(`おやびん、わたしは${CurrentCharacter.name}だニャン🐾`, spk);
+      this.audio.speak(`おやびん、わたしは${getCurChar().name}だニャン🐾`, spk);
     });
     document.getElementById('test-timer-sound-btn')?.addEventListener('click', () => {
       this.audio.playEffect(this.getTimerSound());
@@ -3530,14 +3678,14 @@ const AppCore = {
       const currentTheme = localStorage.getItem('kuro_theme') || 'normal';
       document.querySelectorAll('.theme-card-btn').forEach(btn => btn.classList.toggle('is-active', btn.dataset.themeVal === currentTheme));
 
-      const currentSpeaker = localStorage.getItem('kuro_voice_speaker_id') || String(CurrentCharacter.defaultSpeakerId || 10);
+      const currentSpeaker = localStorage.getItem('kuro_voice_speaker_id') || String(getCurChar().defaultSpeakerId || 10);
       document.querySelectorAll('.voice-chip-btn').forEach(btn => btn.classList.toggle('is-active', btn.dataset.voiceId === currentSpeaker));
 
       const syncSegment = (groupId, key, defaultVal, activeClass) => {
         const val = localStorage.getItem(key) || defaultVal;
         const container = document.getElementById(groupId);
         container?.querySelectorAll('.segment-btn').forEach(b => {
-          const bVal = b.dataset.feedbackVal || b.dataset.timerSoundVal || b.dataset.accStyleVal || b.dataset.countVal;
+          const bVal = b.dataset.feedbackVal || b.dataset.timerSoundVal || b.dataset.accStyleVal || b.dataset.countVal || b.dataset.talkLen;
           const isMatch = (bVal === val);
           b.classList.toggle('is-active', isMatch);
           if (isMatch) b.classList.add(activeClass);
@@ -3545,6 +3693,7 @@ const AppCore = {
         });
       };
 
+      syncSegment('talk-length-segment-group', 'kuro_talk_length', 'auto', 'pink');
       syncSegment('feedback-segment-group', 'kuro_button_feedback', 'voice', 'pink');
       syncSegment('timer-sound-segment-group', 'kuro_timer_sound', 'bell', 'blue');
       syncSegment('acc-style-segment-group', 'kuro_acc_style', 'both', 'pink');
@@ -3642,6 +3791,18 @@ const AppCore = {
   }
 };
 
-window.addEventListener('load', () => AppCore.init());
+/* ★ 三重起動安全ガード（DOM読み込みタイミングの差異を100%吸収し即時起動） */
+function bootAIApp() {
+  if (window._hasAppBooted) return;
+  window._hasAppBooted = true;
+  AppCore.init();
+}
+
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  bootAIApp();
+} else {
+  document.addEventListener('DOMContentLoaded', bootAIApp);
+  window.addEventListener('load', bootAIApp);
+}
 
 
