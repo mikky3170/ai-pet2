@@ -1,10 +1,10 @@
-<!-- [稼働Ver 作業版 Rev.1] 下部余白極小化・まぶた斜め角度±30度拡大・シロくん瞬きCSS変数キーフレーム・V.1.0.0初期登録仕様 -->
+<!-- [v1.0.0 作業版 Rev.3] core_engine.js読込追加・クロ/シロ自然な上から瞬き・下部余白極小化 -->
 <!DOCTYPE html>
 <html lang="ja" data-theme="normal">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>AIペット クロちゃん＆シロくん🐾🦉 V.1.0.0</title>
+  <title>AIペット クロちゃん＆シロくん🐾🦉 v1.0.0</title>
 
   <!-- キャッシュ完全無効化設定 -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -25,8 +25,6 @@
     :root {
       --system-outer-bg: #ffffff;
       --cat-scale: 1;
-      --eye-rot-l: 0deg;
-      --eye-rot-r: 0deg;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -775,7 +773,7 @@
     }
     .pet-avatar-wrapper.is-real-mode .real-eyelid-unit { display: block; }
 
-    /* 1. クロちゃん専用まぶた */
+    /* 1. クロちゃん専用まぶた（元祖の美しいスタイル完全維持） */
     .real-eyelid {
       position: absolute;
       background: 
@@ -794,58 +792,40 @@
       border-bottom: 2px solid rgba(12, 14, 20, 0.95);
     }
 
-    /* 2. シロくん専用まぶた */
+    /* 2. シロくん専用まぶた（メガネのレンズ枠内側に自然に収まるレンズ内閉眼スリット構造） */
     .pet-avatar-wrapper.is-char-shiro .real-eyelid {
       background: 
         radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.95) 0%, rgba(241, 245, 249, 0.9) 35%, rgba(203, 213, 225, 0.85) 65%, rgba(71, 85, 105, 0.95) 95%),
-        repeating-linear-gradient(168deg, rgba(255, 255, 255, 0.95) 0px, rgba(241, 245, 249, 0.9) 2px, rgba(148, 163, 184, 0.75) 3.5px, rgba(30, 41, 59, 0.88) 5.5px),
-        repeating-radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.9) 0px, rgba(255, 255, 255, 0.9) 3px, rgba(51, 65, 85, 0.4) 4px, rgba(15, 23, 42, 0.6) 6.5px);
+        repeating-linear-gradient(168deg, rgba(255, 255, 255, 0.95) 0px, rgba(241, 245, 249, 0.9) 2px, rgba(148, 163, 184, 0.75) 3.5px, rgba(30, 41, 59, 0.88) 5.5px);
       border-radius: 50% 50% 48% 48%;
       transform-origin: center center;
       opacity: 0.98;
       box-shadow: 
-        0 2.5px 6px rgba(15, 23, 42, 0.55),
-        0 0 8px rgba(255, 255, 255, 0.7),
-        inset 0 -3px 3px rgba(15, 23, 42, 0.9),
-        inset 0 2px 2px rgba(255, 255, 255, 0.9);
-      border-bottom: 2.8px solid #0f172a;
+        0 1.5px 4px rgba(15, 23, 42, 0.45),
+        inset 0 -2.5px 2px rgba(15, 23, 42, 0.85);
+      border-bottom: 2.4px solid #1e293b;
     }
 
-    /* クロちゃんの通常瞬きアニメーション */
-    .pet-avatar-wrapper:not(.is-char-shiro).is-real-mode.is-idling:not(.is-sleeping):not(.is-calibrating-eyelids) .real-eyelid.eye-left {
-      animation: realEyeBlinkKuroLeft 4.6s ease-in-out infinite;
+    /* ★ クロちゃんの元祖・自然な瞬きアニメーション完全復元 */
+    .pet-avatar-wrapper:not(.is-char-shiro).is-real-mode.is-idling:not(.is-sleeping) .real-eyelid {
+      animation: realEyeBlinkKuro 4.6s ease-in-out infinite;
     }
-    .pet-avatar-wrapper:not(.is-char-shiro).is-real-mode.is-idling:not(.is-sleeping):not(.is-calibrating-eyelids) .real-eyelid.eye-right {
-      animation: realEyeBlinkKuroRight 4.6s ease-in-out infinite;
-    }
-    @keyframes realEyeBlinkKuroLeft {
-      0%, 93%, 100% { transform: rotate(var(--eye-rot-l, 0deg)) scaleY(0); }
-      96%, 98% { transform: rotate(var(--eye-rot-l, 0deg)) scaleY(1.02); }
-    }
-    @keyframes realEyeBlinkKuroRight {
-      0%, 93%, 100% { transform: rotate(var(--eye-rot-r, 0deg)) scaleY(0); }
-      96%, 98% { transform: rotate(var(--eye-rot-r, 0deg)) scaleY(1.02); }
+    @keyframes realEyeBlinkKuro {
+      0%, 93%, 100% { transform: scaleY(0); }
+      96%, 98% { transform: scaleY(1.02); }
     }
 
-    /* ★ 刷新：シロくん専用の通常瞬きアニメーション（設定角度を変えても破綻しない動的CSS変数キーフレーム） */
-    .pet-avatar-wrapper.is-char-shiro.is-real-mode.is-idling:not(.is-sleeping):not(.is-calibrating-eyelids) .real-eyelid.eye-left {
-      animation: realEyeBlinkShiroLeft 4.8s ease-in-out infinite;
+    /* ★ シロくんの自然な上からのパチパチ瞬きアニメーション（クロちゃんと同様に上からスッと閉じる自然な瞬き） */
+    .pet-avatar-wrapper.is-char-shiro.is-real-mode.is-idling:not(.is-sleeping) .real-eyelid {
+      animation: realEyeBlinkShiro 4.8s ease-in-out infinite;
     }
-    .pet-avatar-wrapper.is-char-shiro.is-real-mode.is-idling:not(.is-sleeping):not(.is-calibrating-eyelids) .real-eyelid.eye-right {
-      animation: realEyeBlinkShiroRight 4.8s ease-in-out infinite;
-    }
-    @keyframes realEyeBlinkShiroLeft {
-      0%, 93%, 100% { transform: rotate(var(--eye-rot-l, 8deg)) scaleY(0); }
-      96%, 98% { transform: rotate(var(--eye-rot-l, 8deg)) scaleY(1.05); }
-    }
-    @keyframes realEyeBlinkShiroRight {
-      0%, 93%, 100% { transform: rotate(var(--eye-rot-r, -8deg)) scaleY(0); }
-      96%, 98% { transform: rotate(var(--eye-rot-r, -8deg)) scaleY(1.05); }
+    @keyframes realEyeBlinkShiro {
+      0%, 93%, 100% { transform: scaleY(0); }
+      96%, 98% { transform: scaleY(1.02); }
     }
 
-    /* 眠り状態 ＆ キャリブレーション調整中はCSSアニメーションを物理遮断してダイレクト駆動を完全保護 */
-    .pet-avatar-wrapper.is-sleeping .real-eyelid,
-    .pet-avatar-wrapper.is-calibrating-eyelids .real-eyelid {
+    /* お休み中（居眠りモード）はアニメーションを物理解除し、設定された閉眼状態で固定 */
+    .pet-avatar-wrapper.is-sleeping .real-eyelid {
       animation: none !important;
     }
 
@@ -1055,7 +1035,7 @@
     }
     .btn-snack-floating:active { transform: scale(0.92); }
 
-    /* ★ 操作バーの下部余白極小化 */
+    /* 操作バー群（下端ピッタリ最適化） */
     .bottom-controls {
       width: 100%;
       flex-shrink: 0;
@@ -1189,7 +1169,6 @@
     }
     .btn-circle:active { transform: scale(0.93); background: rgba(51, 65, 85, 0.8); }
 
-    /* ★ バージョン表示マージン極小化（下端へピッタリ寄せる） */
     .app-version-tag {
       font-size: 9px;
       color: #94a3b8;
@@ -2398,7 +2377,6 @@
     <div class="app-col-left">
       <div class="top-header">
         <div class="top-header-left">
-          <!-- 上段＝日付・時間 / 下段＝天気アイコン＋市名のみ -->
           <div class="header-weather-clock-box">
             <div class="hwc-row-datetime">
               <span id="clock-display-datetime">11/9 (月) 12:54</span>
@@ -2543,7 +2521,7 @@
           <button class="btn-circle" id="settings-btn" title="設定・記憶・トリセツ">⚙️</button>
         </div>
 
-        <div class="app-version-tag" id="app-footer-version-tag">🐾 AIペット V.1.0.0</div>
+        <div class="app-version-tag" id="app-footer-version-tag">🐾 AIペット v1.0.0</div>
       </div>
     </div>
   </div>
@@ -2949,7 +2927,7 @@
             </summary>
             <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
               <div style="font-size:10.5px; color:#64748b;" id="eyelid-adjust-hint-text">
-                ※開いている間、ステージ上のまぶたがテスト閉眼してリアルタイムに位置・角度が確認できます。
+                ※開いている間、ステージ上のまぶたがテスト閉眼してリアルタイムに位置・傾きが確認できます。
               </div>
               <div class="adjust-row" style="color:#1e293b;">
                 <span>上下 (Y):</span>
@@ -2971,9 +2949,9 @@
                 <input type="range" id="adj-eyelid-size" min="10" max="36" step="1" value="16">
                 <span class="val-disp" id="adj-eyelid-size-val" style="color:#0284c7;">16</span>
               </div>
-              <!-- ★ 角度の可動域を -30度〜+30度に拡張（ダイナミックな傾き調整） -->
+              <!-- 首かしげ（両目傾き・段差）スライダー（シロくんの首かしげ角度にピタリ追従） -->
               <div class="adjust-row" style="color:#1e293b;">
-                <span>傾き (度):</span>
+                <span>首傾き (度):</span>
                 <input type="range" id="adj-eyelid-rotate" min="-30" max="30" step="1" value="0">
                 <span class="val-disp" id="adj-eyelid-rotate-val" style="color:#0284c7;">0°</span>
               </div>
@@ -2995,10 +2973,11 @@
     </div>
   </div>
 
-  <!-- スクリプト読み込み（キャラクタープラグイン群 ➔ バージョン管理 ➔ 共通OS） -->
+  <!-- スクリプト読み込み（キャラクタープラグイン群 ➔ バージョン管理 ➔ 基盤エンジン ➔ 対話司令塔） -->
   <script src="char_kuro.js"></script>
   <script src="char_shiro.js"></script>
   <script src="version.js"></script>
+  <script src="core_engine.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

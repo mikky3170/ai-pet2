@@ -1,10 +1,10 @@
-<!-- [稼働Ver 作業版 Rev.1] 高画質写真プロテクトマージ機能・写真やり取り手順ガイド追加・V.1.0.0初期登録仕様 -->
+<!-- [v1.0.0 作業版 Rev.2] 高画質写真プロテクトマージ機能・写真やり取り手順ガイド追加・v1.0.0初登録仕様 -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>クロちゃんの思い出アルバム ＆ バックアップ ビューワー＆エディター🐾 V.1.0.0</title>
+  <title>クロちゃんの思い出アルバム ＆ バックアップ ビューワー＆エディター🐾 v1.0.0</title>
 
   <style>
     :root {
@@ -35,7 +35,6 @@
       overflow-x: hidden;
     }
 
-    /* 上部ヘッダーバー */
     header {
       width: 100%;
       background: rgba(30, 41, 59, 0.95);
@@ -115,7 +114,6 @@
     }
     .btn-action-top.guide-btn:hover { background: #fce7f3; color: #be185d; }
 
-    /* ファイル未読込時のドロップゾーン */
     #dropzone-container {
       flex: 1;
       width: 100%;
@@ -162,7 +160,6 @@
       margin-bottom: 20px;
     }
 
-    /* メイン見開きブックコンテナ */
     #viewer-main-area {
       display: none;
       width: 100%;
@@ -173,7 +170,6 @@
       gap: 12px;
     }
 
-    /* 上部ナビゲーションバー */
     .book-control-bar {
       width: 100%;
       background: #1e293b;
@@ -245,7 +241,6 @@
     }
     .btn-icon-sub:hover { background: #334155; color: #ffffff; }
 
-    /* 本の見開きレイアウト */
     .spread-book-wrapper {
       display: flex;
       width: 100%;
@@ -273,7 +268,6 @@
       z-index: 20;
     }
 
-    /* 左ページ：絵日記（推敲エディター） */
     .page-pane-left {
       flex: 1;
       background: var(--page-bg);
@@ -288,7 +282,6 @@
       position: relative;
     }
 
-    /* 右ページ：1日の会話ログ */
     .page-pane-right {
       flex: 1;
       background: #ffffff;
@@ -301,7 +294,6 @@
       box-shadow: inset 6px 0 15px rgba(0,0,0,0.03);
     }
 
-    /* 絵日記ヘッダー */
     .diary-page-header {
       display: flex;
       justify-content: space-between;
@@ -325,7 +317,6 @@
       color: #ea580c;
     }
 
-    /* 未作成日の閲覧専用・安心案内カード */
     .diary-empty-card {
       flex: 1;
       display: flex;
@@ -344,7 +335,6 @@
     .diary-empty-title { font-size: 16px; font-weight: 900; color: #9a3412; }
     .diary-empty-desc { font-size: 12.5px; color: #c2410c; line-height: 1.6; max-width: 360px; }
 
-    /* 左右2分割フォトブロック */
     .diary-photo-duo-container {
       width: 100%;
       height: 180px;
@@ -535,7 +525,6 @@
       background: rgba(69, 10, 10, 0.9);
     }
 
-    /* 本文推敲エリア */
     .diary-edit-container {
       flex: 1;
       display: flex;
@@ -570,7 +559,6 @@
       box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.15);
     }
 
-    /* クロからのひとこと推敲枠 */
     .diary-comment-edit-box {
       background: #fdf2f8;
       border: 1.5px solid #fbcfe8;
@@ -607,7 +595,6 @@
       box-shadow: 0 0 0 2px rgba(244, 114, 182, 0.2);
     }
 
-    /* 右ページ要素：会話タイムライン */
     .chat-timeline-header {
       display: flex;
       justify-content: space-between;
@@ -687,7 +674,6 @@
       display: block;
     }
 
-    /* 汎用モーダル */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -730,7 +716,6 @@
       gap: 8px;
     }
 
-    /* 記憶帳・設定ウィンドウ専用デザイン */
     .mem-tab-bar {
       display: flex;
       gap: 6px;
@@ -816,7 +801,6 @@
     }
     .btn-save-memories-main:hover { filter: brightness(1.08); transform: translateY(-1px); }
 
-    /* ガイドモーダル専用デザイン */
     .guide-section-box {
       background: #f8fafc;
       border: 1.5px solid #e2e8f0;
@@ -854,7 +838,6 @@
       line-height: 1.55;
     }
 
-    /* 写真フルサイズ拡大表示モーダル */
     #photo-zoom-modal {
       position: fixed;
       inset: 0;
@@ -904,12 +887,11 @@
 </head>
 <body>
 
-  <!-- 上部ヘッダー（極限までシンプル・4つのボタンだけに集約） -->
   <header>
     <div class="header-logo">
       <span>📖</span>
       <span>クロちゃんの思い出アルバム ＆ バックアップ エディター</span>
-      <span class="badge" id="header-pkg-version">V.1.0.0 対応</span>
+      <span class="badge" id="header-pkg-version">v1.0.0 対応</span>
     </div>
 
     <div class="header-actions">
@@ -922,22 +904,19 @@
     </div>
   </header>
 
-  <!-- ファイルドロップゾーン（初回表示） -->
   <div id="dropzone-container">
     <div class="dropzone-card" id="dropzone-card">
       <div class="dropzone-icon">🐾📁</div>
       <div class="dropzone-title">クロちゃんのバックアップファイル（JSON）をここにドロップ</div>
       <div class="dropzone-desc">
-        スマホのクロちゃんの設定画面で「📁 ファイル保存」したバックアップファイル（.json）を<br>
+        スマホの設定画面で「📁 ファイル保存」したバックアップファイル（.json）を<br>
         この枠内にドラッグ＆ドロップ、またはクリックして選択してくださいニャ！
       </div>
       <button type="button" class="btn-action-top primary" style="margin: 0 auto; padding: 10px 24px; font-size: 13.5px;">ファイルを選択する</button>
     </div>
   </div>
 
-  <!-- メイン見開きビューワー＆エディターエリア -->
   <main id="viewer-main-area">
-    <!-- ナビゲーションバー -->
     <div class="book-control-bar">
       <div class="book-pager">
         <button type="button" class="btn-nav-page" id="btn-prev-day">◀ 前の日</button>
@@ -954,9 +933,7 @@
       </div>
     </div>
 
-    <!-- 本の見開き本体 -->
     <div class="spread-book-wrapper">
-      <!-- 左ページ：エディット①【絵日記本文の推敲 ＆ スナップ写真整理】 -->
       <section class="page-pane-left" id="page-left">
         <div class="diary-page-header">
           <div class="diary-page-date">
@@ -969,23 +946,19 @@
           </div>
         </div>
 
-        <!-- 未作成日の閲覧専用・安心案内カード -->
         <div class="diary-empty-card" id="diary-empty-view" style="display:none;">
           <div class="diary-empty-icon">🐾📖</div>
           <div class="diary-empty-title">この日はまだ絵日記が書かれていませんニャ🐾</div>
           <div class="diary-empty-desc">
-            右ページでその日のおやびんとクロの会話ログを振り返ることができますニャン♪<br>
+            右ページでその日の会話ログを振り返ることができますニャン♪<br>
             <span style="font-size:11.5px; color:#9a3412; font-weight:bold; margin-top:6px; display:inline-block;">
-              ※データの整合性を安全に守るため、絵日記の新規作成はスマホのクロちゃんにお話しして行ってくださいニャ！
+              ※データの整合性を安全に守るため、絵日記の新規作成はスマホ側で行ってくださいニャ！
             </span>
           </div>
         </div>
 
-        <!-- 日記エディター本体 -->
         <div id="diary-editor-view" style="display:flex; flex-direction:column; gap:10px; flex:1;">
-          <!-- 左右2分割フォトブロック -->
           <div class="diary-photo-duo-container">
-            <!-- 左列：メイン写真フレーム -->
             <div class="photo-duo-left" id="diary-main-photo-box" title="クリックでフルサイズ拡大プレビュー">
               <img src="" alt="メイン写真" id="diary-main-photo-img">
               <span class="photo-size-badge" id="main-photo-size-badge">24 KB</span>
@@ -993,7 +966,6 @@
               <button type="button" class="photo-detach-btn" id="btn-detach-main-photo">✕ 外す</button>
             </div>
 
-            <!-- 右列：思い出スナッププール -->
             <div class="photo-duo-right">
               <div class="duo-right-header">
                 <span id="duo-right-header-text">📷 スナップ一覧（0枚）</span>
@@ -1003,29 +975,26 @@
             </div>
           </div>
 
-          <!-- 本文直接編集・推敲エリア -->
           <div class="diary-edit-container">
             <div class="diary-edit-label">
-              <span>✍️ クロの日記本文（直接推敲・修正できます）:</span>
+              <span>✍️ 日記本文（直接推敲・修正できます）:</span>
               <span id="diary-char-counter" style="font-size:10.5px;color:#64748b;">0 文字</span>
             </div>
             <textarea class="diary-edit-textarea" id="diary-content-input" placeholder="ここに絵日記の本文を入力・推敲できますニャ🐾"></textarea>
           </div>
 
-          <!-- クロからのひとこと推敲枠 -->
           <div class="diary-comment-edit-box">
-            <span class="diary-comment-label">🐾 クロからのひとこと:</span>
+            <span class="diary-comment-label">🐾 ひとこと記録:</span>
             <textarea class="diary-comment-textarea" id="diary-comment-input" rows="2" placeholder="（ひとこと記録なし）"></textarea>
           </div>
         </div>
       </section>
 
-      <!-- 右ページ：1日の会話履歴鑑賞 -->
       <section class="page-pane-right" id="page-right">
         <div class="chat-timeline-header">
           <div class="chat-header-title">
             <span>💬</span>
-            <span id="chat-day-title">この日のおやびんとクロの会話</span>
+            <span id="chat-day-title">この日の会話</span>
           </div>
           <span style="font-size:11.5px;color:#64748b;font-weight:700;" id="chat-count-badge">0 件の会話</span>
         </div>
@@ -1035,26 +1004,25 @@
     </div>
   </main>
 
-  <!-- 📌 エディット②【クロの記憶帳 ＆ 設定・大掃除ウィンドウ】 -->
   <div class="modal-overlay" id="mem-settings-modal">
     <div class="modal-window">
       <div class="modal-header-row">
         <div class="modal-header-title">
           <span>📌</span>
-          <span>クロの記憶帳 ＆ システム設定</span>
+          <span>記憶帳 ＆ システム設定</span>
         </div>
         <button type="button" class="btn-action-top" id="btn-close-mem-settings">✕ 閉じる</button>
       </div>
 
       <div class="mem-tab-bar">
-        <button type="button" class="mem-tab-btn active" data-target="tab-memories">📌 クロの記憶帳（絆・設定）</button>
+        <button type="button" class="mem-tab-btn active" data-target="tab-memories">📌 記憶帳（絆・設定）</button>
         <button type="button" class="mem-tab-btn" data-target="tab-settings">⚙️ 声・見た目の設定</button>
         <button type="button" class="mem-tab-btn" data-target="tab-maint">🗄️ データ管理・過去の大掃除</button>
       </div>
 
       <div class="mem-tab-pane active" id="tab-memories">
         <div style="font-size:12px; color:#475569; line-height:1.5;">
-          クロちゃんが一生忘れない大切な記憶です。テキストを直接打ち替えて、最後に下の「💾 記憶の変更を保存するニャ！」を押してくださいニャン🐾
+          一生忘れない大切な記憶です。テキストを直接打ち替えて、最後に下の「💾 記憶の変更を保存するニャ！」を押してくださいニャン🐾
         </div>
         <div id="memories-container" style="display:flex; flex-direction:column; gap:7px; max-height:280px; overflow-y:auto; padding:2px;"></div>
         
@@ -1091,7 +1059,6 @@
     </div>
   </div>
 
-  <!-- ❓ 使い方 ＆ 取扱説明書（スマホ⇔PCの写真連携・軽量化手順を完全明記） -->
   <div class="modal-overlay" id="guide-modal">
     <div class="modal-window">
       <div class="modal-header-row">
@@ -1102,12 +1069,10 @@
         <button type="button" class="btn-action-top" id="btn-close-guide">✕ 閉じる</button>
       </div>
 
-      <!-- 1. はじめに（ツールの役割） -->
       <div style="font-size:12.5px; line-height:1.6; color:#475569;">
         本ツールは、スマホのクロちゃん（またはシロくん）が保存したバックアップデータを、PCの大画面で**「見る（ビューワー）」**そして**「直す（エディター）」**ための専用環境ですニャン🐾
       </div>
 
-      <!-- 2. 写真の連携・軽量化手順と安心設計（新設） -->
       <div class="guide-section-box save">
         <div class="guide-sec-title">📱💻 スマホとPCの写真連携＆軽量化の安心手順</div>
         <div class="guide-sec-body">
@@ -1125,7 +1090,6 @@
         </div>
       </div>
 
-      <!-- 3. ビューワー機能の説明 -->
       <div class="guide-section-box view">
         <div class="guide-sec-title">① 思い出アルバムを見る（ビューワー機能）</div>
         <div class="guide-sec-body">
@@ -1135,21 +1099,19 @@
         </div>
       </div>
 
-      <!-- 4. エディター機能の説明 -->
       <div class="guide-section-box edit">
         <div class="guide-sec-title">② 日記や記憶を直す（エディター機能）</div>
         <div class="guide-sec-body">
           ・<b>【絵日記の推敲】</b>: メイン画面の左ページで、過去の日記本文やクロのひとことを直接キーボードで手直しできます。スナップ写真一覧の「✕」を押すと不要な写真を1枚ずつ整理できます。<br>
-          ・<b>【クロの記憶帳の編集】</b>: 右上の「📌 クロの記憶帳・設定」を開くと、クロちゃんとの大切な記憶（プロフィールや好物、家族の思い出）をじっくり編集・更新できます。<br>
+          ・<b>【記憶帳の編集】</b>: 右上の「📌 記憶帳・設定」を開くと、パートナーとの大切な記憶（プロフィールや好物、家族の思い出）をじっくり編集・更新できます。<br>
           ※安全のため、新しい日記の執筆はスマホ側で行ってくださいニャ！
         </div>
       </div>
 
-      <!-- 5. モード別話しかけキーワードの確認 -->
       <div class="guide-section-box view">
         <div class="guide-sec-title">③ スマホでの話しかけキーワード（お散歩・遊び）</div>
         <div class="guide-sec-body">
-          スマホのクロちゃんに話しかける時に迷ったら「<b>何ができるの？</b>」と聞くだけで、クロちゃんが可愛い声で教えてくれますニャン🐾<br>
+          スマホに話しかける時に迷ったら「<b>何ができるの？</b>」と聞くだけで、可愛い声で教えてくれます🐾<br>
           <div class="guide-kw-pill">
             <b>🐾 なかよしモード（遊び・絆）:</b><br>
             ・しりとり（「しりとりしよ！」）<br>
@@ -1170,7 +1132,6 @@
     </div>
   </div>
 
-  <!-- 写真フルサイズ拡大表示モーダル -->
   <div id="photo-zoom-modal">
     <div class="zoom-content">
       <img src="" alt="写真拡大プレビュー" class="zoom-img" id="zoom-img">
@@ -1181,7 +1142,7 @@
   <script src="version.js"></script>
   <script>
     /* ==========================================================================
-       クロちゃん バックアップデータ解析・エディター＆高画質保護エンジン (V.1.0.0)
+       バックアップデータ解析・エディター＆高画質保護エンジン (v1.0.0)
        ========================================================================== */
     let gPackageData = null;
     let gSortedDateKeys = [];
@@ -1291,18 +1252,15 @@
       return (txt.length >= 30);
     }
 
-    // ★高画質写真プロテクト・マージ機構（軽量化サムネイルによる高画質写真上書きを完全防止）
     function mergeWithHighResProtection(newPkg, existingPkg) {
       if (!existingPkg || !newPkg) return newPkg;
 
-      // 1. 日記写真の高画質マージ
       if (Array.isArray(newPkg.diaries) && Array.isArray(existingPkg.diaries)) {
         newPkg.diaries.forEach(newD => {
           const oldD = existingPkg.diaries.find(d => d.dateKey === newD.dateKey);
           if (oldD && oldD.photo && newD.photo) {
             const oldKB = calcBase64KB(oldD.photo);
             const newKB = calcBase64KB(newD.photo);
-            // 既存が高画質（20KB以上）かつ新規が軽量サムネイル（新KBが旧KBの半分以下）なら高画質を死守
             if (oldKB > 20 && newKB < oldKB * 0.6) {
               newD.photo = oldD.photo;
             }
@@ -1312,7 +1270,6 @@
         });
       }
 
-      // 2. 日別スナップ写真プールの高画質マージ
       if (newPkg.dailyPhotoPools && existingPkg.dailyPhotoPools) {
         for (const poolKey in newPkg.dailyPhotoPools) {
           const newArr = newPkg.dailyPhotoPools[poolKey];
@@ -1340,7 +1297,6 @@
         return;
       }
 
-      // 高画質写真の自動保護マージを実行
       if (gPackageData) {
         pkg = mergeWithHighResProtection(pkg, gPackageData);
       }
@@ -1397,7 +1353,7 @@
       btnOpenMemSettings.style.display = 'flex';
       btnOpenGuide.style.display = 'flex';
 
-      const currentVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.1.0.0";
+      const currentVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.0.0";
       const verTag = document.getElementById('header-pkg-version');
       if (verTag) verTag.textContent = `${currentVer} （${pkg.exportedAt || 'バックアップ'}）`;
 
@@ -1606,7 +1562,6 @@
         });
       }
 
-      // 会話タイムライン
       const chatScroll = document.getElementById('chat-timeline-scroll');
       const chatTitle = document.getElementById('chat-day-title');
       const chatBadge = document.getElementById('chat-count-badge');
