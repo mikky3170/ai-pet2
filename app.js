@@ -1,10 +1,10 @@
-// [v1.0.0 作業版 Rev.4] app.js対話司令塔（クロちゃん原状復元・シロくん首かしげ幾何追従・トースト語尾同期）
+// [v1.0.0 作業版 Rev.5] シロくん上から瞬き（top center基準・幾何連動）への完全統一
 /* ==========================================================================
    AIペット 共通対話エンジン＆中央司令塔OS（app.js）
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全切替
    - 【クロちゃん原状復元】目の位置計算・瞬きアニメーションを前々回の元祖仕様へ100%完全復帰（デグレゼロ）
-   - 【シロくん首かしげ連動】首の傾きに合わせて右目が上がり左目が下がる独立幾何計算
+   - 【シロくん上から瞬き】首の傾きに合わせた独立幾何計算＋上端基準（top center）で上からスッと閉じる自然な瞬き
    - 【メガネ内まぶた】メガネ枠線は二重描画せず写真のレンズ内径にすっぽり収まる上品な目閉じ
    - 【日時・天気2段ステーション】上段:日付＋時間 / 下段:天気アイコン＋市名のみ のスリム表示
    - 【トークスタイル連動】自動/短い/普通/長いの設定保存・復元に対応
@@ -176,7 +176,7 @@ class CatAvatarRenderer {
     });
   }
 
-  // ★重要：クロちゃんは元祖の水平座標計算に100%原状復帰、シロくんのみ首かしげ（右目上がり）を独立計算
+  // ★重要：クロちゃんは元祖の水平座標計算に100%原状復帰、シロくんは首かしげ連動＋上端基準（top center）の上から自然な瞬き
   applyEyelidTransforms() {
     const cur = getCurChar();
     const c = this.eyelidCoords || cur.defaultEyelidCoords || { y: 172, x: 0, gap: 28, size: 16, rotate: 0 };
@@ -212,7 +212,7 @@ class CatAvatarRenderer {
         rightEl.style.transform = `scaleY(0)`;
       }
     } else {
-      // 🦉 【シロくん：首かしげ幾何学独立計算（右目が自然に上がりメガネ内径に完全フィット）】
+      // 🦉 【シロくん：首かしげ幾何学独立計算＋上端基準（top center）の上からスッと閉じる自然な瞬き】
       const rot = c.rotate !== undefined ? c.rotate : 8;
       const h = Math.round(c.size * 0.88);
       const rad = (rot * Math.PI) / 180;
@@ -225,16 +225,16 @@ class CatAvatarRenderer {
       leftEl.style.left = `calc(50% + ${Math.round(c.x - dx - c.size / 2)}px)`;
       leftEl.style.width = `${c.size}px`;
       leftEl.style.height = `${h}px`;
-      leftEl.style.transformOrigin = "center center";
+      leftEl.style.transformOrigin = "top center";
 
       // 右目（首かしげ時：中心から右上へ持ち上がる）
       rightEl.style.bottom = `${Math.round(c.y + dy)}px`;
       rightEl.style.left = `calc(50% + ${Math.round(c.x + dx - c.size / 2)}px)`;
       rightEl.style.width = `${c.size}px`;
       rightEl.style.height = `${h}px`;
-      rightEl.style.transformOrigin = "center center";
+      rightEl.style.transformOrigin = "top center";
 
-      // 上からスッと閉じる自然な開閉（余計な傾き落下なし）
+      // 上からスッと降りて閉じる自然な瞬き
       if (shouldClose) {
         leftEl.style.transform = `scaleY(1.05)`;
         rightEl.style.transform = `scaleY(1.05)`;
@@ -794,7 +794,7 @@ class AIThoughtEngine {
 
 /* ==========================================================================
    MODULE 6: 中央司令塔（AppCore）
-   ========================================================================== */
+   ========================================================================= */
 const AppCore = {
   state: {
     isRunning: true, isThinking: false, isProcessingInput: false, isDiaryProcessing: false,
@@ -2843,7 +2843,7 @@ const AppCore = {
       document.getElementById('modal-overlay').style.display = 'none';
 
       const cur = getCurChar();
-      const saveMsg = cur.id === 'shiro' ? "設定と記憶を保存したホ！" : "設定と記憶を保存したニャン♪";
+      const saveMsg = cur.id === 'shiro' ? "設定と記憶を保存したホ！" : "設定と記憶を保存するニャン♪";
       Toast.show(saveMsg, "success");
       const ackVoice = cur.id === 'shiro' ? "バッチリホ！" : "バッチリニャ！";
       this.triggerActionVoice(ackVoice, `💾 ${ackVoice}`);
