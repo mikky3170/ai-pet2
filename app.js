@@ -3,11 +3,13 @@
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全切替
    - 【データ独立保護】キャラごとの記憶帳・絵日記を混ざらず安全に独立保持
-   - 【自声エコー完全根絶】長文発話末尾の反響・語尾オウム返しを感度落とさず物理遮断
+   - 【自声エコー完全根絶】音声生成準備〜再生完了〜余韻までマイク絶対遮断フラグで物理ロック
+   - 【TTSレート制限(429)防護壁】429検知時のクールダウンタイマー＆安全キューイング機構導入
+   - 【絵日記書き出し完全統一】「YYYY年M月D日 (曜日) 天気: ○○ 気温: ○○℃」ヘッダー自動整形＆重複挨拶パージ
+   - 【PC逆インポート安全防護壁】PCから戻した大きな画像によるスマホ容量パンクを自動再スリム化で完全防御
    - 【まぶた完全個別化】キャラごとのまぶた座標・サイズ・角度を安全に分離管理
    - 【装飾個別化】クロちゃん（帽子＋メガネ）／シロくん（博士帽のみ）の独立位置調整
-   - 【通信直列化＆429完全根絶】無謀な一斉プリフェッチを全撤去・音声生成0.2〜0.5秒爆速化
-   - 【日時エンジン完全防御】西暦を外した自然な日付返答＆左上日付ヘッダー表示対応
+   - 【日時・天気2段ステーション】上段:日付＋時間 / 下段:天気アイコン＋市名のみ のスリム表示
    - 【トークスタイル連動】自動/短い/普通/長いの設定保存・復元に対応
    - 【発話サニタイズ】セリフから生URL文字列を物理除去しVOICEVOXのURL読み上げを完全根絶
    - 【しりとり・クイズ救済】2文字以下の単語ログを捨てずにGeminiへ届ける対話整合性
@@ -162,8 +164,9 @@ const TimeProvider = {
       const logKey = `${year}-${pad(month)}-${pad(date)}`;
       const fullDate = `${year}年${month}月${date}日 (${dayOfWeek})`;
 
-      // 左上ヘッダー用表示フォーマット（例: 11/8(土) 10:12）
-      const headerDisplay = `${month}/${date}(${dayOfWeek}) ${clock}`;
+      // 上段ヘッダー用表示フォーマット（例: 11/9 (月) 12:54）
+      const topDateDisplay = `${month}/${date} (${dayOfWeek}) ${clock}`;
+      const headerDisplay = topDateDisplay;
 
       const isLateNight = (hours < 4);
       let lifeDateObj = now;
@@ -184,7 +187,7 @@ const TimeProvider = {
 
       return {
         now, year, month, date, hours, minutes, dayOfWeek, clock, logKey, fullDate,
-        headerDisplay,
+        headerDisplay, topDateDisplay,
         spokenClock: `いまは、${hours}時${minutes === 0 ? 'ちょうど' : minutes + '分'}だ${clockSuffix}`,
         spokenDate: `きょうは、${month}月${date}日、${dayOfWeek}曜日だ${suffix}`,
         clockDisplay: `いまは ${hours}時${pad(minutes)}分 だ${clockSuffix}`,
@@ -201,6 +204,7 @@ const TimeProvider = {
         hours: fbNow.getHours(), minutes: fbNow.getMinutes(), dayOfWeek: "日", clock: fbClock,
         logKey: fbKey, fullDate: `${fbNow.getFullYear()}年${fbNow.getMonth() + 1}月${fbNow.getDate()}日`,
         headerDisplay: `${fbNow.getMonth() + 1}/${fbNow.getDate()} ${fbClock}`,
+        topDateDisplay: `${fbNow.getMonth() + 1}/${fbNow.getDate()} ${fbClock}`,
         spokenClock: `いまは、${fbNow.getHours()}時${fbNow.getMinutes()}分だニャン🐾`,
         spokenDate: `きょうは、${fbNow.getMonth() + 1}月${fbNow.getDate()}日だニャ！`,
         clockDisplay: `いまは ${fbNow.getHours()}時${fbPad(fbNow.getMinutes())}分 だニャン🐾`,
@@ -264,7 +268,7 @@ const TimeProvider = {
 };
 
 /* ==========================================================================
-   MODULE 1: 音声合成＆音声認識エンジン（直列キュー化・エコー完全遮断）
+   MODULE 1: 音声合成＆音声認識エンジン（自声エコー物理遮断＆429防護壁）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -281,6 +285,10 @@ class AudioSpeechEngine {
     this.isListening = false;
     this.isStarting = false;
     this.isActionButtonLocked = false;
+    
+    // ★マイク物理遮断フラグ（リクエスト準備中〜再生終了余韻までマイクを物理ロック）
+    this.isSpeechProducing = false;
+
     this.recognition = null;
     this.restartTimer = null;
     this.lastMicErrorTime = 0;
@@ -289,7 +297,8 @@ class AudioSpeechEngine {
     this.recentSpokenTexts = [];
     this.lastSpeechEndTime = 0;
 
-    // ★通信1本化ロック（直列キュープロミス）
+    // ★429レート制限防護壁（クールダウンタイマー＆直列ロック）
+    this.rateLimitCooldownUntil = 0;
     this.ttsRequestChain = Promise.resolve();
     this.lastVoicevoxRequestTime = 0;
     this.currentAbortController = null;
@@ -521,14 +530,14 @@ class AudioSpeechEngine {
     return t;
   }
 
-  // ★即時相槌（端末内WebAudioによる待ち時間0秒の自然なレスポンス）
+  // ★即時相槌（WebAudioによる待ち時間0秒の自然なレスポンス）
   playImmediateFiller(type = 'general') {
     this.unlockMasterAudio();
     this.playEffect('aizuchi');
     if (AppCore.avatar && AppCore.state.isRunning) AppCore.avatar.setEmotion('thinking');
   }
 
-  // ★音声リクエストの完全直列化（同時多発を防ぎ、429制限を100%回避）
+  // ★音声リクエストの安全直列化 ＆ 429レート制限防護壁
   _getVoicevoxBlobUrl(text, speakerId) {
     const key = `${speakerId}_${text}`;
     if (this.blobUrlCache.has(key)) {
@@ -536,12 +545,18 @@ class AudioSpeechEngine {
       return Promise.resolve(this.blobUrlCache.get(key));
     }
 
-    this.ttsRequestChain = this.ttsRequestChain.then(async () => {
+    this.ttsRequestChain = this.ttsRequestChain.catch(() => {}).then(async () => {
       if (this.blobUrlCache.has(key)) return this.blobUrlCache.get(key);
 
       const now = Date.now();
+      if (now < this.rateLimitCooldownUntil) {
+        const remainingSec = Math.ceil((this.rateLimitCooldownUntil - now) / 1000);
+        Logger.log(`[TTS] ⏳ 429クールダウン中（残り${remainingSec}秒）。API呼び出しをスキップします`, "warn");
+        throw new Error("TTS_RATE_LIMITED_COOLDOWN");
+      }
+
       const elapsed = now - this.lastVoicevoxRequestTime;
-      if (elapsed < 300) await new Promise(r => setTimeout(r, 300 - elapsed));
+      if (elapsed < 600) await new Promise(r => setTimeout(r, 600 - elapsed));
       this.lastVoicevoxRequestTime = Date.now();
 
       const t0 = performance.now();
@@ -552,12 +567,18 @@ class AudioSpeechEngine {
       const keyStatusText = vvKey ? "🔑個別キー適用済" : "🆓無料枠";
       Logger.log(`[TTS] 音声生成開始 (${keyStatusText}, 話者:${speakerId}): 「${text.substring(0, 16)}…」`, "info");
 
-      let initRes = await fetch(initUrl);
-      
-      if (initRes.status === 429) {
-        Logger.log(`[TTS] ⚠️ レート制限(429)検知。1.2秒待機して再試行ニャ…`, "warn");
-        await new Promise(r => setTimeout(r, 1200));
+      let initRes;
+      try {
         initRes = await fetch(initUrl);
+      } catch (networkErr) {
+        Logger.log(`[TTS] ネットワークエラー: ${networkErr.message}`, "error");
+        throw networkErr;
+      }
+
+      if (initRes.status === 429) {
+        this.rateLimitCooldownUntil = Date.now() + 8000;
+        Logger.log(`[TTS] ⚠️ レート制限(429)検知。8秒間のクールダウン防護壁を展開します`, "warn");
+        throw new Error("HTTPエラー 429");
       }
 
       if (!initRes.ok) {
@@ -594,42 +615,30 @@ class AudioSpeechEngine {
       const ms = Math.round(performance.now() - t0);
       Logger.log(`[TTS] ✅ 音声取得完了 (${ms}ms) [${keyStatusText}]`, "success");
       return blobUrl;
-    }).catch(err => {
-      Logger.log(`[TTS] ❌ 音声通信エラー: ${err.message}`, "error");
-      throw err;
     });
 
     return this.ttsRequestChain;
   }
 
-  // ★高精度エコー遮断エンジン（全文一致だけでなく、長文末尾の跳ね返り残響を完全特定排除）
   _isSelfEcho(text) {
     if (!text) return true;
     const cleanInput = text.trim();
     const normalizedInput = cleanInput.replace(/[\s、。！？ニャンニャホ]/g, '');
     
-    // 1文字の残響ノイズ等は無視
     if (normalizedInput.length < 1) return true;
-
-    // 固定相槌・一声セリフのエコー除外
     if (/^(?:おまかせニャ|あそぶニャ|バッチリニャ|はーい|ちょい待ちニャ|すすめるニャ|フン|計算中ホ|任せるが良いホ|ホウ|バッチリホ|うむ)/.test(cleanInput)) return true;
-
-    // 単体の語尾だけの跳ね返り（「だホ」「ホ！」「だニャ」「ニャン」など）を完全排除
     if (/^(?:だホ|ホ|ホウ|だニャ|ニャン|ニャ|ホな|ホよ)[！!？\?]*$/.test(cleanInput)) return true;
 
     const now = Date.now();
-    const isVeryRecent = (now - this.lastSpeechEndTime) < 1400;
+    const isVeryRecent = (now - this.lastSpeechEndTime) < 1800;
 
     for (const spoken of this.recentSpokenTexts) {
       if (!spoken) continue;
       const normalizedSpoken = spoken.replace(/[\s、。！？ニャンニャホ]/g, '');
 
-      // 1. 全文完全一致
       if (normalizedSpoken === normalizedInput) return true;
 
-      // 2. ★長文発話末尾の反響エコー判定（直前1.4秒以内の末尾フレーズ一致）
-      if (isVeryRecent && normalizedSpoken.length >= 12) {
-        // 直前発話の末尾10文字、15文字を抽出
+      if (isVeryRecent && normalizedSpoken.length >= 10) {
         const tail10 = normalizedSpoken.slice(-10);
         const tail15 = normalizedSpoken.slice(-15);
         if (normalizedInput.length >= 2 && (tail10.endsWith(normalizedInput) || tail15.endsWith(normalizedInput))) {
@@ -642,16 +651,20 @@ class AudioSpeechEngine {
   }
 
   async speak(text, speakerIdOverride = null, onStart = null, onEnd = null, cooldownOverride = null) {
-    this.stopSpeaking(); this.stopListening(); this.unlockMasterAudio();
+    this.isSpeechProducing = true;
+    this.stopSpeaking();
+    this.stopListening();
+    this.unlockMasterAudio();
+
     const speakerId = (speakerIdOverride !== null) ? speakerIdOverride : AppCore.getSpeakerId();
 
     let clean = (text || '').replace(/https?:\/\/[^\s]+/gi, '');
     clean = this._convertAllNumbersToKana(clean).replace(/<[^>]*>/g, '').replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷🏠🔮🦉]/gu, '').trim();
 
-    // ★発話の長さに応じたスマート・クールダウン（長文時は部屋の反響を待つため少しだけ長く取る）
-    let dynamicCooldown = (cooldownOverride !== null) ? cooldownOverride : (clean.length > 70 ? 550 : 350);
+    let dynamicCooldown = (cooldownOverride !== null) ? cooldownOverride : (clean.length > 70 ? 600 : 400);
 
     if (!clean) {
+      this.isSpeechProducing = false;
       if (onStart) onStart(); if (onEnd) onEnd();
       setTimeout(() => { if (AppCore.state.isRunning && !this.isActionButtonLocked) this.startListening(); }, dynamicCooldown);
       return;
@@ -673,11 +686,14 @@ class AudioSpeechEngine {
         }
         if (onStart) onStart();
       };
+
       this.masterAudio.onended = () => {
         this.isSpeaking = false;
         this.lastSpeechEndTime = Date.now();
         if (onEnd) onEnd();
+        
         setTimeout(() => {
+          this.isSpeechProducing = false;
           if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !this.isActionButtonLocked && !AppCore.state.isThinking && !AppCore.state.isProcessingInput) {
             const st = document.getElementById('status-text');
             const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
@@ -686,26 +702,52 @@ class AudioSpeechEngine {
           }
         }, dynamicCooldown);
       };
+
       this.masterAudio.onerror = (e) => {
         Logger.log(`[Audio] 再生エラー発生`, "error");
-        this.isSpeaking = false; if (onStart) onStart(); if (onEnd) onEnd();
-        setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, dynamicCooldown);
+        this.isSpeaking = false;
+        if (onStart) onStart(); if (onEnd) onEnd();
+        setTimeout(() => {
+          this.isSpeechProducing = false;
+          if (AppCore.state.isRunning) this.startListening();
+        }, dynamicCooldown);
       };
+
       await this.masterAudio.play();
-    } catch(e) {
-      this.isSpeaking = false; if (onStart) onStart(); if (onEnd) onEnd();
-      setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, dynamicCooldown);
+
+    } catch(err) {
+      Logger.log(`[TTS] ⚠️ 音声スキップ発話 (安全復帰): ${err.message}`, "warn");
+      this.isSpeaking = false;
+      if (onStart) onStart();
+      if (onEnd) onEnd();
+
+      setTimeout(() => {
+        this.isSpeechProducing = false;
+        this.lastSpeechEndTime = Date.now();
+        if (AppCore.state.isRunning && !this.isActionButtonLocked && !AppCore.state.isThinking) {
+          const st = document.getElementById('status-text');
+          const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
+          if (st) st.textContent = `👂 聴いてる${suffix}`;
+          this.startListening();
+        }
+      }, dynamicCooldown);
     }
   }
 
   async readDiarySeamless(diaryContentOnly, speakerIdOverride = null, onSentenceStart = null, onComplete = null) {
-    this.stopSpeaking(); this.stopListening(); this.unlockMasterAudio();
+    this.isSpeechProducing = true;
+    this.stopSpeaking();
+    this.stopListening();
+    this.unlockMasterAudio();
     this.isReadingAloud = true;
     this.readingAbortController = new AbortController();
     const speakerId = (speakerIdOverride !== null) ? speakerIdOverride : AppCore.getSpeakerId();
     Logger.log(`[Diary] 朗読モード開始`, "info");
 
-    const sentences = this.cleanEndingNenyan(diaryContentOnly)
+    let readBody = (diaryContentOnly || '').replace(/^【?\d{4}年\d{1,2}月\d{1,2}日[\s\S]*?(?:℃|度|天気[^\n]+)?】?\s*\n*/u, '').trim();
+    readBody = readBody.replace(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?)\s*[^\n]+$/u, '').trim();
+
+    const sentences = this.cleanEndingNenyan(readBody)
       .split(/([。！？!\?\n]+)/)
       .reduce((acc, cur, i, arr) => {
         if (i % 2 === 0 && cur.trim()) acc.push((cur + (arr[i+1]||'')).trim());
@@ -730,20 +772,29 @@ class AudioSpeechEngine {
           this.masterAudio.onerror = () => { this.isSpeaking = false; resolve(); };
           this.masterAudio.play().catch(() => resolve());
         });
-      } catch(e) {}
+      } catch(e) {
+        await new Promise(r => setTimeout(r, 600));
+      }
     }
-    this.isReadingAloud = false; this.isSpeaking = false;
+
+    this.isReadingAloud = false;
+    this.isSpeaking = false;
     this.lastSpeechEndTime = Date.now();
     if (AppCore.avatar && AppCore.state.isRunning) AppCore.avatar.setEmotion('idle');
     const st = document.getElementById('status-text');
     const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
     if (st && AppCore.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
     if (onComplete) onComplete();
-    setTimeout(() => { if (AppCore.state.isRunning) this.startListening(); }, 400);
+
+    setTimeout(() => {
+      this.isSpeechProducing = false;
+      if (AppCore.state.isRunning) this.startListening();
+    }, 500);
   }
 
   stopReadingAloud() {
     this.isReadingAloud = false;
+    this.isSpeechProducing = false;
     if (this.readingAbortController) { this.readingAbortController.abort(); this.readingAbortController = null; }
     this.stopSpeaking();
   }
@@ -766,12 +817,20 @@ class AudioSpeechEngine {
     this.recognition.interimResults = false;
 
     this.recognition.onstart = () => {
-      this.isListening = true; this.isStarting = false;
+      if (this.isSpeechProducing || this.isSpeaking || this.isReadingAloud) {
+        try { this.recognition.abort(); } catch(e) {}
+        this.isListening = false;
+        this.isStarting = false;
+        return;
+      }
+      this.isListening = true;
+      this.isStarting = false;
       Logger.log(`[Mic] 👂 マイク待機開始`, "info");
       if (this.onListeningStatus) this.onListeningStatus(true);
     };
+
     this.recognition.onresult = (event) => {
-      if (this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || AppCore.state.isProcessingInput) return;
+      if (this.isSpeechProducing || this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || AppCore.state.isProcessingInput) return;
       const lastIdx = event.results.length - 1;
       let rawText = event.results[lastIdx]?.[0]?.transcript?.trim() || '';
       if (!rawText) return;
@@ -786,50 +845,63 @@ class AudioSpeechEngine {
         return;
       }
 
-      // ★強化エコーチェック
       if (this._isSelfEcho(resultText)) {
         Logger.log(`[Mic] 自声エコー除外: 「${resultText}」`, "info");
         return;
       }
       if (this.onSpeechFinal) this.onSpeechFinal(resultText);
     };
+
     this.recognition.onerror = (e) => {
       this.isStarting = false; this.lastMicErrorTime = Date.now();
       Logger.log(`[Mic] エラー: ${e.error}`, "warn");
       if (e.error === 'not-allowed') this.isListening = false;
     };
+
     this.recognition.onend = () => {
       this.isListening = false; this.isStarting = false;
       if (this.onListeningStatus) this.onListeningStatus(false);
-      if (!AppCore.state.isRunning || this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || AppCore.state.isProcessingInput) return;
+
+      if (!AppCore.state.isRunning || this.isSpeechProducing || this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || AppCore.state.isProcessingInput) return;
+
       if (this.restartTimer) clearTimeout(this.restartTimer);
       this.restartTimer = setTimeout(() => {
-        if (AppCore.state.isRunning && !this.isSpeaking && !this.isListening) this.startListening();
-      }, 300);
+        if (AppCore.state.isRunning && !this.isSpeechProducing && !this.isSpeaking && !this.isListening) {
+          this.startListening();
+        }
+      }, 350);
     };
   }
 
   startListening() {
-    if (!this.recognition || !AppCore.state.isRunning || this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || this.isListening || this.isStarting) return;
-    try { this.isStarting = true; this.recognition.start(); } catch(e) { this.isStarting = false; }
+    if (!this.recognition || !AppCore.state.isRunning || this.isSpeechProducing || this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || this.isListening || this.isStarting) return;
+    try {
+      this.isStarting = true;
+      this.recognition.start();
+    } catch(e) {
+      this.isStarting = false;
+    }
   }
 
   stopListening() {
-    this.isListening = false; this.isStarting = false;
+    this.isListening = false;
+    this.isStarting = false;
     if (this.restartTimer) clearTimeout(this.restartTimer);
-    if (this.recognition) try { this.recognition.abort(); } catch(e) {}
+    if (this.recognition) {
+      try { this.recognition.abort(); } catch(e) {}
+    }
     if (this.onListeningStatus) this.onListeningStatus(false);
   }
 }
 
 /* ==========================================================================
-   MODULE 2: オンデマンドGPS ＆ リアルタイム在宅センサー
+   MODULE 2: オンデマンドGPS ＆ リアルタイム在宅センサー（市名のみスマート抽出）
    ========================================================================== */
 const LocationProvider = {
   lat: null, lon: null, homeLat: null, homeLon: null,
-  cityArea: "東京都東村山市", detailedAddress: "東京都東村山市本町付近",
-  townLevelArea: "東京都東村山市本町付近", nearbySpots: [],
-  weather: "快晴", temperature: "22", isAtHome: true,
+  cityArea: "東村山市", detailedAddress: "東京都東村山市本町付近",
+  townLevelArea: "東村山市", cleanCityOnly: "東村山市",
+  nearbySpots: [], weather: "快晴", temperature: "10", isAtHome: true,
 
   calcDistanceMeters(lat1, lon1, lat2, lon2) {
     const R = 6371000;
@@ -869,11 +941,16 @@ const LocationProvider = {
           this.lat = pos.coords.latitude; this.lon = pos.coords.longitude;
           await this._reverseGeocode(this.lat, this.lon);
           this._checkHomeProximity();
-          this._fetchWeather(this.lat, this.lon);
-          Logger.log(`[GPS] 📍 リアルタイム最新測位完了: ${this.townLevelArea} (${this.isAtHome ? 'お家' : 'お散歩中'})`, "info");
+          await this._fetchWeather(this.lat, this.lon);
+          Logger.log(`[GPS] 📍 リアルタイム最新測位完了: ${this.cleanCityOnly} (${this.isAtHome ? 'お家' : 'お散歩中'})`, "info");
+          AppCore.updateTopHeaderClockWeatherUI();
           resolve(true);
         },
-        async () => { await this._applyHomeFallback(); resolve(false); },
+        async () => {
+          await this._applyHomeFallback();
+          AppCore.updateTopHeaderClockWeatherUI();
+          resolve(false);
+        },
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
       );
     });
@@ -895,7 +972,7 @@ const LocationProvider = {
     this.lon = this.homeLon;
     this.isAtHome = true;
     await this._reverseGeocode(this.lat, this.lon);
-    this._fetchWeather(this.lat, this.lon);
+    await this._fetchWeather(this.lat, this.lon);
   },
 
   async _fetchWeather(lat, lon) {
@@ -913,19 +990,24 @@ const LocationProvider = {
     } catch(e) {}
   },
 
+  // ★都道府県名や丁目・番地を完全に削ぎ落とし、「市・区・町・村」のみを抽出
   async _reverseGeocode(lat, lon) {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=ja`);
       if (res.ok) {
         const a = (await res.json()).address || {};
         const pref = a.province || a.state || "";
-        const city = a.city || a.ward || a.town || "";
+        const city = a.city || a.ward || a.town || a.village || "";
         const sub = a.suburb || a.quarter || "";
+        
+        this.cleanCityOnly = city ? city.trim() : (pref.includes("東京") ? "東村山市" : "市内");
         this.cityArea = `${pref}${city}`.trim() || "東京都東村山市";
-        this.townLevelArea = `${city}${sub}付近`.trim() || "東京都東村山市本町付近";
+        this.townLevelArea = this.cleanCityOnly;
         this.detailedAddress = [pref, city, sub].filter(Boolean).join("") || "東京都東村山市本町";
       }
-    } catch(e) {}
+    } catch(e) {
+      this.cleanCityOnly = "東村山市";
+    }
   }
 };
 
@@ -939,7 +1021,6 @@ const DATA_KEYS = {
 };
 
 const StorageManager = {
-  // クロちゃん専用デフォルト
   defaultGlassesCoordsKuro: {
     idle: { x: 0, y: 120, scale: 1.0, rotate: 0 },
     talking: { x: 0, y: 120, scale: 1.0, rotate: 0 },
@@ -950,7 +1031,7 @@ const StorageManager = {
 
   _getCharSpecificKey(baseKey) {
     const curId = getCurChar().id;
-    if (curId === 'kuro') return baseKey; // クロちゃんは既存キーをそのまま使用し100%完全互換
+    if (curId === 'kuro') return baseKey;
     return `${baseKey}_${curId}`;
   },
 
@@ -1258,21 +1339,36 @@ const StorageManager = {
     return list.find(d => d.dateKey === dateKey) || null;
   },
 
+  // ★絵日記の完全自動統一保存（ヘッダー定型化 ＆ 重複漢数字挨拶の自動カット）
   saveDiary(entryText, customDateKey = null, customFullDate = null, photoData = null, currentLogCount = null, kuroComment = null) {
     if (!entryText || entryText.length < 15) return false;
     const timeInfo = TimeProvider.getCurrentInfo();
     const dateKey = customDateKey || timeInfo.lifeLogKey;
-    const fullDate = customFullDate || timeInfo.lifeFullDate;
+    const fullDate = customFullDate || (customDateKey ? TimeProvider.formatDateKeyToFull(customDateKey) : timeInfo.lifeFullDate);
 
     let cleanContent = entryText.replace(/https?:\/\/[^\s]+/gi, '');
     cleanContent = AppCore.audio.cleanEndingNenyan(cleanContent);
     let extractedComment = kuroComment;
 
+    // 末尾のひとこと抽出
     const match = cleanContent.match(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?)\s*([^\n]+)/);
     if (match) {
       if (!extractedComment) extractedComment = match[1].trim();
       cleanContent = cleanContent.replace(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?)\s*[^\n]+$/, '').trim();
     }
+
+    // 既存の崩れたヘッダー行を完全パージ
+    cleanContent = cleanContent.replace(/^【?[0-9０-９一二三四五六七八九〇]+年[^\n]+】?\s*\n*/u, '').trim();
+
+    // ★重要：本文冒頭に現れる「今日は二〇二六年…」「きょうは2026年…」の日付・天気重複挨拶を自動カット！
+    cleanContent = cleanContent.replace(/^(?:今日|きょう)は[0-9０-９一二三四五六七八九〇]+年[^\n。！？]*[。！？\n]\s*/u, '').trim();
+
+    // ★「YYYY年M月D日 (曜日) 天気: ○○ 気温: ○○℃」の統一ヘッダーを厳格生成
+    const weatherStr = LocationProvider.weather || "快晴";
+    const tempStr = LocationProvider.temperature !== null ? `${LocationProvider.temperature}℃` : "10℃";
+    const unifiedHeader = `【${fullDate} 天気:${weatherStr} 気温:${tempStr}】\n\n`;
+
+    const finalizedContent = unifiedHeader + cleanContent;
 
     let list = this.loadAllDiaries();
     const idx = list.findIndex(d => d.dateKey === dateKey);
@@ -1290,8 +1386,8 @@ const StorageManager = {
 
     const diaryData = {
       dateKey, fullDate,
-      weather: LocationProvider.weather, temperature: LocationProvider.temperature,
-      content: cleanContent,
+      weather: weatherStr, temperature: LocationProvider.temperature,
+      content: finalizedContent,
       kuroComment: extractedComment || "",
       photo: targetPhoto,
       timestamp: Date.now(),
@@ -1340,7 +1436,7 @@ const StorageManager = {
   async executeSafeStorageDeepClean() {
     Logger.log("[DeepClean] 🧹 安全ストレージ大掃除を開始…", "info");
 
-    this.downloadDataPackage();
+    this.downloadPhotoArchivePackage();
     await new Promise(r => setTimeout(r, 600));
 
     const compressToThumbnail = (base64Str) => {
@@ -1358,7 +1454,7 @@ const StorageManager = {
             if (w > h) {
               if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
             } else {
-              if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
+              if (h > maxDim) { h = Math.round((h * maxDim) / h); h = maxDim; }
             }
             canvas.width = Math.max(1, w);
             canvas.height = Math.max(1, h);
@@ -1436,6 +1532,33 @@ const StorageManager = {
     return true;
   },
 
+  downloadPhotoArchivePackage() {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const ymd = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+    const allDailyPhotos = {};
+    for (let k in localStorage) {
+      if (k.startsWith('kuro_daily_photos_')) try { allDailyPhotos[k] = JSON.parse(localStorage[k]); } catch(e) {}
+    }
+    const pkg = {
+      format: "kuro_photo_archive_v1",
+      characterId: getCurChar().id,
+      exportedAt: now.toLocaleString('ja-JP'),
+      dailyPhotoPools: allDailyPhotos,
+      diaries: this.loadAllDiaries().map(d => ({ dateKey: d.dateKey, fullDate: d.fullDate, photo: d.photo }))
+    };
+    const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `AIペット_${getCurChar().name}_高画質写真アルバム_${ymd}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    Logger.log(`[Backup] 📷 高画質写真アルバム原本の書き出し完了`, "success");
+  },
+
   downloadDataPackage() {
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
@@ -1483,13 +1606,23 @@ const StorageManager = {
     Logger.log(`[Backup] データ書き出し完了`, "success");
   },
 
-  importAndReplaceDataPackage(data) {
+  async importAndReplaceDataPackage(data) {
     if (!data || typeof data !== 'object') throw new Error("無効なバックアップデータです。");
 
     if (Array.isArray(data.memories)) this.saveMemories(data.memories);
+
     if (Array.isArray(data.diaries)) {
-      this.saveAllDiaries(data.diaries);
+      const sanitizedDiaries = data.diaries.map(d => {
+        if (d && d.content && !d.content.startsWith('【')) {
+          const w = d.weather || "快晴";
+          const t = d.temperature !== undefined ? `${d.temperature}℃` : "10℃";
+          d.content = `【${d.fullDate || d.dateKey} 天気:${w} 気温:${t}】\n\n` + d.content.replace(/^【?[0-9０-９一二三四五六七八九〇]+年[^\n]+】?\s*\n*/u, '').trim();
+        }
+        return d;
+      });
+      this.saveAllDiaries(sanitizedDiaries);
     }
+
     if (Array.isArray(data.recentLogs)) {
       const recentKey = this._getCharSpecificKey(DATA_KEYS.RECENT_LOGS);
       localStorage.setItem(recentKey, JSON.stringify(data.recentLogs.slice(-30)));
@@ -1517,12 +1650,14 @@ const StorageManager = {
         try { localStorage.setItem(k, JSON.stringify(data.dailyChatLogs[k])); } catch(e) {}
       }
     }
+
     if (data.dailyPhotoPools) {
       for (let k in data.dailyPhotoPools) {
         try {
           localStorage.setItem(k, JSON.stringify(data.dailyPhotoPools[k]));
         } catch(quotaErr) {
           try {
+            Logger.log(`[Import] ⚠️ 写真容量超過を検知。安全サムネイル制限を適用します`, "warn");
             const trimmed = (data.dailyPhotoPools[k] || []).slice(-4);
             localStorage.setItem(k, JSON.stringify(trimmed));
           } catch(e) {}
@@ -1540,21 +1675,19 @@ const StorageManager = {
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全切替
    - 【アバター動的切替】キャラ選択に応じてリアル写真（shiro_*.png）とSVGを自動更新
    - 【透過PNG完全対応】シロくん透過PNGの黒背景ノイズを完全にパージし鮮明表示
-   - 【まぶた完全個別化】クロちゃん（黒毛）⇔ シロくん（羽毛・ハの字傾斜）の自動切替
+   - 【まぶた完全個別化＆直接駆動】JavaScriptから直接 transform 注入し傾きスライダー即時連動
    - 【装飾個別化】クロちゃん（帽子＋メガネ）／シロくん（不透明博士帽のみ）の独立位置調整
+   - 【自声エコー完全根絶】発話準備〜再生〜余韻までマイク絶対遮断フラグで物理ロック
+   - 【起動時重複完全ガード】日記生成のセマフォ制御により起動時・画面復帰時の2重生成を完全根絶
+   - 【絵日記書き出し完全統一】「YYYY年M月D日 (曜日) 天気: ○○ 気温: ○○℃」ヘッダー自動整形
+   - 【日時・天気2段ステーション】上段:日付＋時間 / 下段:天気アイコン＋市名のみ のスリム表示
    - 【天気・気温スマート即答】最新GPS気象データから0秒即答・長文TTS遅延を完全根絶
    - 【生URL物理除去＆セリフUI完全分離】セリフ内URLを根絶・おてつだい時はカードUIに集約
    - 【トークスタイル3段階自律判定】自動(auto)時に文脈・入力から短/普/長をスマート切替
-   - 【起動時連射全撤去】起動時プリフェッチを全廃・TTS Quest過負荷と429を根絶
    - 【16秒打ち切り＆案3セリフ】第1(8秒)＋第2(8秒)で決着・知恵熱セリフで愛らしく自動復帰
-   - 【今日の日付厳格フィルター】生活日当日ログのみ抽出・過去ログ混同を100%根絶
    - 【思考デッドロック完全根絶】try...finally による入力処理中フラグ（鍵）の確実な自動解除
-   - 【左上日付・曜日・時刻常時更新】headerDisplay連動によるリアルタイム日時表示
    - 【絵日記完全日本語ロック】system_instruction による英語ドリフト完全根絶
-   - 【確実なひとこと生成】テンプレート強制によるひとこと抽出完全保証
-   - 【メガネ調整完全一致】プレビュー画面とメイン画面の座標計算を100%完全同期
    - 【マップカード厳格化】なかよしモードでの誤作動を根絶しおてつだいモード時のみ正確に案内
-   - アバターSVG動的注入 ＆ 透過自動切り替え
    - Gemini対話・Function Calling・タイマー・受入テスト全項目完全対応
    - 【居眠り表情完全修復】お休み中におけるトーキング顔フリーズを根絶し安らかなidle顔を保証
    - 【朝4時またぎ自動監視】開いたまま朝を迎えても自動で生活日を切り替え昨日の日記を完全救済
@@ -1675,10 +1808,8 @@ class CatAvatarRenderer {
     let svgContent = "";
 
     if (cur.id === 'shiro' && cur.getRealAccessorySvg) {
-      // シロくん専用（不透明ソリッド博士帽のみ）
       svgContent = cur.getRealAccessorySvg();
     } else {
-      // クロちゃん専用（博士帽 ＋ 丸メガネ）
       svgContent = `
         <svg viewBox="0 0 140 140" style="width:100%; height:100%;">
           <defs>
@@ -1725,6 +1856,7 @@ class CatAvatarRenderer {
     });
   }
 
+  // ★抜本改修：まぶた傾きの直接駆動（!importantの競合を全廃し、左右個別インラインスタイルへダイレクト注入）
   applyEyelidTransforms() {
     const cur = getCurChar();
     const c = this.eyelidCoords || cur.defaultEyelidCoords || { y: 172, x: 0, gap: 28, size: 16, rotate: 0 };
@@ -1736,20 +1868,28 @@ class CatAvatarRenderer {
     const h = Math.round(c.size * (cur.id === 'shiro' ? 0.95 : 0.75));
     const rot = c.rotate !== undefined ? c.rotate : (cur.id === 'shiro' ? 8 : 0);
 
-    // CSS変数へ角度を注入（瞬きアニメーション・眠り状態と100%同期）
-    if (this.wrapper) {
-      this.wrapper.style.setProperty('--eyelid-rotate', `${rot}deg`);
-    }
+    const isSleeping = !AppCore.state.isRunning || this.wrapper?.classList.contains('is-sleeping');
 
     leftEl.style.bottom = `${c.y}px`;
     leftEl.style.left = `calc(50% + ${c.x - halfGap - c.size / 2}px)`;
     leftEl.style.width = `${c.size}px`;
     leftEl.style.height = `${h}px`;
+    leftEl.style.transformOrigin = "center center";
 
     rightEl.style.bottom = `${c.y}px`;
     rightEl.style.left = `calc(50% + ${c.x + halfGap - c.size / 2}px)`;
     rightEl.style.width = `${c.size}px`;
     rightEl.style.height = `${h}px`;
+    rightEl.style.transformOrigin = "center center";
+
+    // お休み中なら確実に目閉じスケールを維持しながら斜めに回転！
+    if (isSleeping) {
+      leftEl.style.transform = `rotate(${rot}deg) scaleY(1.05)`;
+      rightEl.style.transform = `rotate(-${rot}deg) scaleY(1.05)`;
+    } else {
+      leftEl.style.transform = `rotate(${rot}deg) scaleY(0)`;
+      rightEl.style.transform = `rotate(-${rot}deg) scaleY(0)`;
+    }
   }
 
   applyAccessoryStyle(style) {
@@ -1758,7 +1898,6 @@ class CatAvatarRenderer {
     const cur = getCurChar();
 
     if (cur.id === 'shiro') {
-      // シロくんは素顔でメガネを着用しているため、博士帽のみを表示
       document.querySelectorAll('.real-hat-group').forEach(el => el.style.display = 'block');
       document.querySelectorAll('.real-glasses-group').forEach(el => el.style.display = 'none');
       const vecHat = document.getElementById('vec-acc-hat');
@@ -1968,12 +2107,11 @@ class AIThoughtEngine {
     const timeInfo = TimeProvider.getCurrentInfo();
     const weather = LocationProvider.weather;
     const temp = LocationProvider.temperature;
-    const townArea = LocationProvider.townLevelArea;
+    const townArea = LocationProvider.cleanCityOnly;
     const isAtHome = LocationProvider.isAtHome;
     const isAssistant = AppCore.state.isAssistantMode;
     const talkLen = localStorage.getItem('kuro_talk_length') || 'auto';
 
-    // ★自動モード（auto）時の3段階スマート判定（短・普・長）
     let effectiveLen = talkLen;
     if (talkLen === 'auto') {
       const isShortPrompt = promptText.length <= 10 || /^(?:おはよう|こんにちは|こんばんは|うん|おやすみ|ねえ|クロちゃん|シロくん|ホウ博士|ありがと|わかった|なるほど)/.test(promptText.trim());
@@ -1999,7 +2137,6 @@ class AIThoughtEngine {
     const cur = getCurChar();
     let systemPrompt = cur.buildSystemPrompt ? cur.buildSystemPrompt(context) : "";
 
-    // ★プロンプト最末尾への強力なトーク長制限＆現在日付アンカーの念押し注入
     let lengthClimaxLock = "";
     if (effectiveLen === 'short') {
       lengthClimaxLock = "\n【最重要：今回の発話制限】必ず1文（30文字以内）でサクッと短く答えてください。2文以上の長いお喋りは完全禁止です。";
@@ -2018,7 +2155,6 @@ class AIThoughtEngine {
     if (effectiveLen === 'short') targetMaxTokens = 60;
     else if (effectiveLen === 'long') targetMaxTokens = 300;
 
-    // ★固定2モデルによる「8秒 ＋ 8秒 ＝ 最大16秒打ち切り」完全実装
     for (const model of FIXED_LITE_MODELS) {
       if (this.isUserCancelled) break;
       const cleanModel = model.replace(/^models\//, '');
@@ -2161,7 +2297,7 @@ class AIThoughtEngine {
   _createSmartMapCards(spotName, area) {
     const cards = [];
     const spotLimit = parseInt(localStorage.getItem('kuro_spot_count') || '2', 10);
-    const searchArea = area || LocationProvider.cityArea || "東村山市";
+    const searchArea = area || LocationProvider.cleanCityOnly || "東村山市";
     const cleanSpot = spotName.replace(/おすすめ|美味しい|人気/g, '').trim() || spotName;
 
     let queryParam = encodeURIComponent(cleanSpot + ' ' + searchArea);
@@ -2238,7 +2374,7 @@ class AIThoughtEngine {
     if (isMapConfirmed) {
       const match = combined.match(/(?:公園|カフェ|ベンチ|散歩|炭火ホルモン\s*丸川|丸川|餃子の満洲|ラーメン|ホルモン|餃子|焼肉|寿司|麻婆豆腐|カレー|うどん)/);
       const spot = match ? match[0] : "おすすめスポット";
-      return this._createSmartMapCards(spot, LocationProvider.cityArea);
+      return this._createSmartMapCards(spot, LocationProvider.cleanCityOnly);
     }
     if (isNewsConfirmed) {
       const match = combined.match(/(?:大谷翔平|プロ野球|天気|東村山|政治|経済)/);
@@ -2270,7 +2406,7 @@ class AIThoughtEngine {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: `You are ${cur.name}. You MUST write in Japanese only. Output must strictly follow the format: diary body on the first lines, followed by 【${cur.title || cur.name}のひとこと：...】 on the last line. Any English text is strictly forbidden.` }] },
+          system_instruction: { parts: [{ text: `You are ${cur.name}. You MUST write in Japanese only. Output must strictly follow the format: diary body on the first lines, followed by 【${cur.title || cur.name}のひとこと：...】 on the last line. Do NOT output any duplicate dates/weather greetings in the body. Any English text is strictly forbidden.` }] },
           contents: [{ role: 'user', parts: [{ text: diaryPrompt }] }],
           generationConfig: { temperature: 0.7, maxOutputTokens: 850 }
         })
@@ -2290,6 +2426,9 @@ class AIThoughtEngine {
             kuroComment = match[1].trim();
             content = clean.replace(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?)\s*[^\n]+$/, '').trim();
           }
+
+          content = content.replace(/^【?[0-9０-９一二三四五六七八九〇]+年[^\n]+】?\s*\n*/u, '').trim();
+          content = content.replace(/^(?:今日|きょう)は[0-9０-９一二三四五六七八九〇]+年[^\n。！？]*[。！？\n]\s*/u, '').trim();
 
           const pool = StorageManager.getDailyPhotoPool(lifeKey);
           return { success: true, diaryText: content, kuroComment, selectedPhoto: pool[0]?.base64 || null };
@@ -2314,6 +2453,7 @@ const AppCore = {
     studioDateKeys: [],
     studioCurrentDateIdx: 0,
     isDiaryReading: false,
+    isFinalizingDiary: false,
 
     idleSoliloquyTimer: null, lastActivityTime: Date.now(),
     lastCheckedLifeLogKey: null
@@ -2344,10 +2484,8 @@ const AppCore = {
     localStorage.setItem('kuro_active_character', charId);
     const cur = getCurChar();
 
-    // デフォルト話者IDへの適応（未設定時やキャラ変更時）
     localStorage.setItem('kuro_voice_speaker_id', cur.defaultSpeakerId);
 
-    // アバター・画像の同期更新
     if (this.avatar) {
       this.avatar.updateCharacterClass();
       this.avatar.refreshAvatarImages();
@@ -2360,7 +2498,6 @@ const AppCore = {
       this.avatar.applyMode(this.avatar.mode);
     }
 
-    // 記憶帳・タイムラインの再読込
     this.memories = StorageManager.loadMemories(cur.defaultMemories);
     this._renderMemories();
     this._restoreTimelineHistory();
@@ -2381,29 +2518,23 @@ const AppCore = {
     const cur = getCurChar();
     const isShiro = (cur.id === 'shiro');
 
-    // おやつボタンの動的切替
     const snackIcon = document.getElementById('snack-btn-icon');
     const snackTxt = document.getElementById('snack-btn-text');
     if (snackIcon) snackIcon.textContent = isShiro ? '🌰' : '🐟';
     if (snackTxt) snackTxt.textContent = isShiro ? '木の実' : 'おやつ';
 
-    // フッターバージョンタグ
     const verTag = document.getElementById('app-footer-version-tag');
     if (verTag) verTag.textContent = isShiro ? '🦉 シロくん（ホウ博士）' : '🐾 クロちゃん';
 
-    // 日記帳モーダルのタイトル
     const studioTitle = document.getElementById('studio-top-title-text');
     if (studioTitle) studioTitle.textContent = isShiro ? 'ホウ博士の研究観察日誌' : 'クロの思い出絵日記アルバム';
 
-    // 微調整モーダルのタイトル
     const adjTitle = document.getElementById('adjust-modal-title');
     if (adjTitle) adjTitle.textContent = isShiro ? '🎓 写真ごとの博士帽位置を微調整' : '👓 写真ごとのメガネ・帽子位置を微調整';
 
-    // 設定画面の装備スタイル選択肢の制御（シロくん時は帽子のみのためスタイル欄をスマート非表示）
     const accFormGroup = document.getElementById('acc-style-form-group');
     if (accFormGroup) accFormGroup.style.display = isShiro ? 'none' : 'block';
 
-    // セレクターボタンの同期
     document.querySelectorAll('#character-selector-segment-group .segment-btn').forEach(btn => {
       btn.classList.toggle('is-active', btn.dataset.charId === cur.id);
     });
@@ -2425,6 +2556,24 @@ const AppCore = {
     setVal('adj-eyelid-gap', c.gap);
     setVal('adj-eyelid-size', c.size);
     setVal('adj-eyelid-rotate', c.rotate !== undefined ? c.rotate : (cur.id === 'shiro' ? 8 : 0));
+  },
+
+  // ★刷新：上段（日付＋時間）/ 下段（天気アイコン＋市名のみ）の完全同期
+  updateTopHeaderClockWeatherUI() {
+    const cur = TimeProvider.getCurrentInfo();
+    const dtEl = document.getElementById('clock-display-datetime');
+    if (dtEl) dtEl.textContent = cur.topDateDisplay;
+
+    const weatherEl = document.getElementById('clock-display-weather');
+    if (weatherEl) {
+      const wIcon = LocationProvider.weather === '快晴' ? '☀️' : (LocationProvider.weather === 'くもり' ? '☁️' : (LocationProvider.weather === '雨' ? '🌧️' : '🌤️'));
+      weatherEl.textContent = `${wIcon} ${LocationProvider.temperature}℃`;
+    }
+
+    const locEl = document.getElementById('clock-display-location');
+    if (locEl) {
+      locEl.textContent = LocationProvider.cleanCityOnly || "東村山市";
+    }
   },
 
   async init() {
@@ -2461,13 +2610,11 @@ const AppCore = {
 
     const initialInfo = TimeProvider.getCurrentInfo();
     this.state.lastCheckedLifeLogKey = initialInfo.lifeLogKey;
-    const clk = document.getElementById('clock-display');
-    if (clk) clk.textContent = initialInfo.headerDisplay;
+    this.updateTopHeaderClockWeatherUI();
 
     setInterval(() => {
       const cur = TimeProvider.getCurrentInfo();
-      const c = document.getElementById('clock-display');
-      if (c) c.textContent = cur.headerDisplay;
+      this.updateTopHeaderClockWeatherUI();
 
       if (this.state.lastCheckedLifeLogKey && cur.lifeLogKey !== this.state.lastCheckedLifeLogKey) {
         Logger.log(`[Lifecycle] 🌅 朝4:00の生活日切り替えを検知（${this.state.lastCheckedLifeLogKey} ➔ ${cur.lifeLogKey}）。昨日の日記を自動救済…`, "info");
@@ -2481,15 +2628,20 @@ const AppCore = {
     this.checkAndFinalizeYesterdayDiary();
     this._startIdleSoliloquyWatcher();
 
-    setTimeout(() => { if (this.state.isRunning) this.audio.startListening(); }, 500);
+    setTimeout(() => { if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening(); }, 500);
     Logger.log(`[AppCore] 全システム正常稼働！パートナー: ${getCurChar().name} ロード完了！`, "success");
   },
 
   _bindDeviceWakeWatcher() {
+    let wakeDebounceTimer = null;
     const handleWake = () => {
       if (document.visibilityState === 'visible') {
-        Logger.log(`[Lifecycle] 📱 画面復帰を検知。未作成・追加会話日記を点検…`, "info");
-        this.checkAndFinalizeYesterdayDiary();
+        if (wakeDebounceTimer) clearTimeout(wakeDebounceTimer);
+        wakeDebounceTimer = setTimeout(() => {
+          Logger.log(`[Lifecycle] 📱 画面復帰を検知。未作成・追加会話日記を点検…`, "info");
+          this.updateTopHeaderClockWeatherUI();
+          this.checkAndFinalizeYesterdayDiary();
+        }, 300);
       }
     };
     document.addEventListener('visibilitychange', handleWake);
@@ -2577,7 +2729,7 @@ const AppCore = {
 
     this.state.idleSoliloquyTimer = setInterval(() => {
       const now = Date.now();
-      if ((now - this.state.lastActivityTime) > 150000 && this.state.isRunning && !this.audio.isSpeaking && !this.state.isThinking && this.state.timerId === null) {
+      if ((now - this.state.lastActivityTime) > 150000 && this.state.isRunning && !this.audio.isSpeaking && !this.audio.isSpeechProducing && !this.state.isThinking && this.state.timerId === null) {
         this.state.lastActivityTime = now;
         const cur = getCurChar();
         const list = (cur.id === 'shiro') ? phrasesShiro : phrasesKuro;
@@ -2595,29 +2747,31 @@ const AppCore = {
   resetActivityTimer() { this.state.lastActivityTime = Date.now(); },
 
   async checkAndFinalizeYesterdayDiary() {
+    if (this.state.isFinalizingDiary) return;
     const timeInfo = TimeProvider.getCurrentInfo();
     if (timeInfo.isLateNight) return;
 
-    const yInfo = TimeProvider.getYesterdayLifeInfo();
-    const yKey = yInfo.key;
-    const yFullDate = yInfo.fullDate;
-
-    const yLogs = StorageManager.getDailyLogs(yKey);
-    if (!yLogs || yLogs.length < 2) return;
-
-    const existingDiary = StorageManager.getDiary(yKey);
-    const isProper = StorageManager.isProperDiary(existingDiary);
-    const prevLogCount = existingDiary?.logCountAtSave || 0;
-    const hasNewLogs = (yLogs.length > prevLogCount);
-
-    if (isProper && !hasNewLogs) {
-      Logger.log(`[Diary] 昨日の日記（${yKey}）は夜の会話まで反映完了済みのため大切にキープ`, "info");
-      return;
-    }
-
-    Logger.log(`[Diary] 昨日の絵日記更新を検出（${yFullDate} / 前:${prevLogCount}件 ➔ 終:${yLogs.length}件）。完全版を生成…`, "info");
-
+    this.state.isFinalizingDiary = true;
     try {
+      const yInfo = TimeProvider.getYesterdayLifeInfo();
+      const yKey = yInfo.key;
+      const yFullDate = yInfo.fullDate;
+
+      const yLogs = StorageManager.getDailyLogs(yKey);
+      if (!yLogs || yLogs.length < 2) return;
+
+      const existingDiary = StorageManager.getDiary(yKey);
+      const isProper = StorageManager.isProperDiary(existingDiary);
+      const prevLogCount = existingDiary?.logCountAtSave || 0;
+      const hasNewLogs = (yLogs.length > prevLogCount);
+
+      if (isProper && !hasNewLogs) {
+        Logger.log(`[Diary] 昨日の日記（${yKey}）は夜の会話まで反映完了済みのため大切にキープ`, "info");
+        return;
+      }
+
+      Logger.log(`[Diary] 昨日の絵日記更新を検出（${yFullDate} / 前:${prevLogCount}件 ➔ 終:${yLogs.length}件）。完全版を生成…`, "info");
+
       const res = await this.ai.generateDailyDiarySummary(yLogs, yKey, yFullDate);
       if (res.success && res.diaryText) {
         StorageManager.saveDiary(res.diaryText, yKey, yFullDate, res.selectedPhoto, yLogs.length, res.kuroComment);
@@ -2642,6 +2796,8 @@ const AppCore = {
       }
     } catch (err) {
       Logger.log(`[Diary] ⚠️ 昨日の日記自動生成で一時エラー: ${err.message}`, "warn");
+    } finally {
+      this.state.isFinalizingDiary = false;
     }
   },
 
@@ -2684,7 +2840,7 @@ const AppCore = {
 
     this.audio.onSpeechFinal = (finalText) => {
       this.resetActivityTimer();
-      if (this.state.isProcessingInput || this.state.isDiaryReading || this.audio.isActionButtonLocked) return;
+      if (this.state.isProcessingInput || this.state.isDiaryReading || this.audio.isActionButtonLocked || this.audio.isSpeechProducing) return;
       this.state.isProcessingInput = true;
       this.renderBubble('user', finalText);
       this.handleUserInput(finalText);
@@ -2693,7 +2849,7 @@ const AppCore = {
     this.audio.onListeningStatus = () => {
       const st = document.getElementById('status-text');
       const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
-      if (st && this.state.isRunning && !this.audio.isSpeaking && !this.state.isThinking && !this.audio.isActionButtonLocked) {
+      if (st && this.state.isRunning && !this.audio.isSpeaking && !this.audio.isSpeechProducing && !this.state.isThinking && !this.audio.isActionButtonLocked) {
         st.textContent = `👂 聴いてる${suffix}`;
       }
     };
@@ -2799,7 +2955,7 @@ const AppCore = {
       const currentPool = StorageManager.getDailyPhotoPool(TimeProvider.getCurrentInfo().lifeLogKey);
       if (currentPool.length >= 12) {
         if (!window.confirm("写真が上限（12枚）に達しています！\n一番古い写真が自動で入れ替わりますが、このまま撮影しますか？")) {
-          if (this.state.isRunning) this.audio.startListening();
+          if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
           return;
         }
       }
@@ -2808,7 +2964,7 @@ const AppCore = {
 
     photoInput.onchange = async (e) => {
       const file = e.target.files?.[0];
-      if (!file) { if (this.state.isRunning) this.audio.startListening(); return; }
+      if (!file) { if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening(); return; }
       Toast.show("写真をギュッと小さく圧縮中…📷", "info");
 
       const compressedBase64 = await new Promise(resolve => {
@@ -2910,7 +3066,7 @@ const AppCore = {
           if (this.avatar && this.state.isRunning) this.avatar.setEmotion('talking');
         }, () => {
           if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
-          if (this.state.isRunning && !this.audio.isSpeaking) this.audio.startListening();
+          if (this.state.isRunning && !this.audio.isSpeaking && !this.audio.isSpeechProducing) this.audio.startListening();
         });
       }
     }, 1000);
@@ -3069,8 +3225,8 @@ const AppCore = {
       await LocationProvider.fetchLocationOnDemand(false);
       const isAtHome = LocationProvider.isAtHome;
       const rep = cur.id === 'shiro'
-        ? (isAtHome ? "いまは研究所（お家）でまったり待機中だホ！落ち着くホな。" : `いまは【${LocationProvider.townLevelArea}】でフィールドワーク中だホ！`)
-        : (isAtHome ? "いまはお家でぬくぬく、まったりしてるニャン🐾 落ち着くニャ〜♡" : `いまは【${LocationProvider.townLevelArea}】をお散歩中ニャ！お出かけ楽しいニャン🐾`);
+        ? (isAtHome ? "いまは研究所（お家）でまったり待機中だホ！落ち着くホな。" : `いまは【${LocationProvider.cleanCityOnly}】でフィールドワーク中だホ！`)
+        : (isAtHome ? "いまはお家でぬくぬく、まったりしてるニャン🐾 落ち着くニャ〜♡" : `いまは【${LocationProvider.cleanCityOnly}】をお散歩中ニャ！お出かけ楽しいニャン🐾`);
 
       this.audio.speak(rep, null, () => this.renderBubble('model', rep), () => {
         this.state.isProcessingInput = false;
@@ -3094,10 +3250,9 @@ const AppCore = {
       return;
     }
 
-    // ★天気・気温スマート即答ハンドラー（0秒即答）
     if (/(?:(?:今日|きょう|いま|現在)?の?(?:天気|気温|温度).*?(?:どれくらい|どう|教えて|なに|何|何度)|(?:天気|気温|温度).*?(?:どう|どんな|教えて)|いま何度|今日何度)/.test(text)) {
       const w = LocationProvider.weather || "快晴";
-      const t = LocationProvider.temperature !== null ? `${LocationProvider.temperature}度` : "過ごしやすい気温";
+      const t = LocationProvider.temperature !== null ? `${LocationProvider.temperature}度` : "10度";
       const suffix = cur.id === 'shiro' ? 'ホ！' : 'ニャン🐾';
       const rep = `きょうは${w}で、気温は${t}だ${suffix}`;
 
@@ -3208,7 +3363,7 @@ const AppCore = {
       });
     } finally {
       setTimeout(() => {
-        if (this.state.isProcessingInput && !this.audio.isSpeaking && !this.audio.isReadingAloud) {
+        if (this.state.isProcessingInput && !this.audio.isSpeaking && !this.audio.isReadingAloud && !this.audio.isSpeechProducing) {
           this.state.isProcessingInput = false;
           this.state.isThinking = false;
           const suffix = cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪';
@@ -3241,7 +3396,7 @@ const AppCore = {
         this.audio.isActionButtonLocked = false;
         const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
         if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
-        if (this.state.isRunning) this.audio.startListening();
+        if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
       }, 400);
       return;
     }
@@ -3299,7 +3454,7 @@ const AppCore = {
       this.state.isDiaryReading = false;
       this._updateDiaryReadBtnUI(false);
       modal?.classList.remove('is-open');
-      if (this.state.isRunning) this.audio.startListening();
+      if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
     });
 
     document.getElementById('btn-studio-prev-page')?.addEventListener('click', () => {
@@ -3319,7 +3474,7 @@ const AppCore = {
     document.getElementById('btn-studio-save-exit')?.addEventListener('click', () => {
       Toast.show("絵日記を保存したホ！📖✨", "success");
       modal?.classList.remove('is-open');
-      if (this.state.isRunning) this.audio.startListening();
+      if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
     });
 
     document.addEventListener('click', (e) => {
@@ -3586,7 +3741,6 @@ const AppCore = {
   },
 
   _bindCustomSettingsUI() {
-    // パートナーキャラクター切替ボタン
     document.querySelectorAll('#character-selector-segment-group .segment-btn').forEach(btn => {
       btn.onclick = () => {
         const charId = btn.dataset.charId;
@@ -3724,9 +3878,11 @@ const AppCore = {
     });
   },
 
+  // ★抜本改修：まぶた調整スライダーを動かした瞬間に直接駆動！
   _bindEyelidSettingsUI() {
     const btnSave = document.getElementById('btn-save-eyelid-settings');
     if (!btnSave) return;
+
     ['adj-eyelid-y', 'adj-eyelid-x', 'adj-eyelid-gap', 'adj-eyelid-size', 'adj-eyelid-rotate'].forEach(id => {
       document.getElementById(id)?.addEventListener('input', () => {
         const c = {
@@ -3736,11 +3892,15 @@ const AppCore = {
           size: parseInt(document.getElementById('adj-eyelid-size').value, 10),
           rotate: parseInt(document.getElementById('adj-eyelid-rotate').value, 10)
         };
-        if (this.avatar) { this.avatar.eyelidCoords = c; this.avatar.applyEyelidTransforms(); }
+        if (this.avatar) {
+          this.avatar.eyelidCoords = c;
+          this.avatar.applyEyelidTransforms(); // 瞬時に斜め回転を直接DOMへ注入！
+        }
         const valDisp = document.getElementById(`${id}-val`);
         if (valDisp) valDisp.textContent = (id === 'adj-eyelid-rotate') ? `${c.rotate}°` : document.getElementById(id).value;
       });
     });
+
     btnSave.onclick = () => {
       const c = {
         y: parseInt(document.getElementById('adj-eyelid-y').value, 10),
@@ -3750,6 +3910,10 @@ const AppCore = {
         rotate: parseInt(document.getElementById('adj-eyelid-rotate').value, 10)
       };
       StorageManager.saveEyelidCoords(c);
+      if (this.avatar) {
+        this.avatar.eyelidCoords = c;
+        this.avatar.applyEyelidTransforms();
+      }
       Toast.show("まぶた位置・角度を保存したホ！👁️✨", "success");
     };
   },
@@ -3817,10 +3981,10 @@ const AppCore = {
     document.getElementById('btn-download-backup')?.addEventListener('click', () => StorageManager.downloadDataPackage());
 
     document.getElementById('btn-deep-clean-storage')?.addEventListener('click', async () => {
-      const msg = "【安全確認】\n実行すると、まず現在の原本データ（JSON）が自動ダウンロードされます。\nその上で、スマホ内の全写真を「3〜5KB」にスリム化し、容量を安全に90%近く削減します！\n（※写真や日記は消えずに100%残ります）\n実行しますか？";
+      const msg = "【安全確認】\n実行すると、まずPC連携用の『高画質写真アルバム原本（JSON）』が自動保存されます！\nその上で、スマホ内の写真を『3〜5KB』にスリム化し、容量を安全に90%近く削減します。\n（※PCで写真原本をキープしたまま、スマホを快適に保てます）\n実行しますか？";
       if (!window.confirm(msg)) return;
 
-      Toast.show("原本バックアップ保存中＆大掃除中…🧹", "info", 5000);
+      Toast.show("高画質写真アルバム保存中＆大掃除中…🧹", "info", 5000);
       const ok = await StorageManager.executeSafeStorageDeepClean();
       if (ok) {
         this._updateStorageMonitorUI();
@@ -3832,19 +3996,20 @@ const AppCore = {
 
     const restoreInput = document.getElementById('file-input-restore');
     document.getElementById('btn-trigger-restore')?.addEventListener('click', () => restoreInput?.click());
-    restoreInput?.addEventListener('change', (e) => {
+    restoreInput?.addEventListener('change', async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = (evt) => {
+      reader.onload = async (evt) => {
         try {
-          StorageManager.importAndReplaceDataPackage(JSON.parse(evt.target.result));
+          await StorageManager.importAndReplaceDataPackage(JSON.parse(evt.target.result));
           this.memories = StorageManager.loadMemories(getCurChar().defaultMemories);
           this._renderMemories();
           this._restoreTimelineHistory();
           this._updateStorageMonitorUI();
           this._updateCharacterUI();
           this._syncEyelidInputsToActiveChar();
+          this.updateTopHeaderClockWeatherUI();
           Toast.show("データを安全に完全復元したホ！🎉", "success");
         } catch(err) {
           Toast.show("読み込み失敗: " + err.message, "error");
@@ -3877,6 +4042,7 @@ const AppCore = {
         localStorage.setItem('kuro_home_coords', val);
         Toast.show("現在地を拠点（自宅）にセットしたホ！🏠✨", "success");
         Logger.log(`[Home] 現在地を拠点に設定: ${val}`, "success");
+        this.updateTopHeaderClockWeatherUI();
       } else {
         Toast.show("現在地を取得できませんでした", "error");
       }
@@ -4060,16 +4226,22 @@ const AppCore = {
         if (this.avatar) this.avatar.triggerYawn();
         setTimeout(() => {
           if (!this.state.isRunning) {
-            if (this.avatar) this.avatar.setEmotion('idle');
+            if (this.avatar) {
+              this.avatar.setEmotion('idle');
+              this.avatar.applyEyelidTransforms(); // 目閉じスタイルを確実に直接適用！
+            }
             if (wrap) wrap.classList.add('is-sleeping');
           }
         }, 500);
 
-        Logger.log(`[Status] 💤 お休み中（居眠りモード開始・idleロック）`, "info");
+        Logger.log(`[Status] 💤 お休み中（居眠りモード開始・直接目閉じ駆動）`, "info");
       } else {
         petContainer?.classList.remove('is-paused-mode');
         if (wrap) wrap.classList.remove('is-sleeping');
-        if (this.avatar) this.avatar.setEmotion('idle');
+        if (this.avatar) {
+          this.avatar.setEmotion('idle');
+          this.avatar.applyEyelidTransforms(); // 目開き復帰を確実に直接適用！
+        }
         const suffix = cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪';
         if (st) st.textContent = `👂 聴いてる${suffix}`;
 
@@ -4078,7 +4250,7 @@ const AppCore = {
           : "ふぁ〜あ…！おやびん、起きたニャン🐾";
 
         this.audio.speak(wakeMsg, null, () => this.renderBubble('model', wakeMsg), () => {
-          if (this.state.isRunning) this.audio.startListening();
+          if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
         });
         Logger.log(`[Status] 🟢 会話中復帰`, "info");
       }
@@ -4180,7 +4352,7 @@ const AppCore = {
     document.getElementById('modal-overlay')?.addEventListener('click', (e) => {
       if (e.target.id === 'modal-overlay') {
         document.getElementById('modal-overlay').style.display = 'none';
-        if (this.state.isRunning) this.audio.startListening();
+        if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
       }
     });
 
@@ -4232,6 +4404,7 @@ const AppCore = {
       localStorage.setItem('kuro_home_coords', newHome);
 
       LocationProvider._applyHomeFallback();
+      this.updateTopHeaderClockWeatherUI();
       document.getElementById('modal-overlay').style.display = 'none';
       Toast.show("設定と記憶を保存したホ！", "success");
       const cur = getCurChar();
@@ -4257,7 +4430,7 @@ const AppCore = {
     });
     document.getElementById('diag-close-btn')?.addEventListener('click', () => {
       document.getElementById('diag-panel')?.classList.remove('expanded');
-      if (this.state.isRunning) this.audio.startListening();
+      if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
     });
     document.getElementById('diag-copy-evidence-btn')?.addEventListener('click', () => {
       navigator.clipboard.writeText(Logger.getEvidenceText()).then(() => Toast.show("ログをコピーしたホ！📋", "success"));

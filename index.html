@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja" data-theme="normal">
 <head>
@@ -24,7 +25,6 @@
     :root {
       --system-outer-bg: #ffffff;
       --cat-scale: 1;
-      --eyelid-rotate: 8deg;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -212,7 +212,7 @@
       justify-content: space-between;
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(8px);
-      padding: 6px 10px;
+      padding: 5px 8px;
       border-radius: 24px;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
       border: 1px solid rgba(241, 245, 249, 0.85);
@@ -222,18 +222,61 @@
       z-index: 20;
       margin-top: 2px;
       margin-bottom: 6px;
-      gap: 6px;
+      gap: 5px;
     }
-    .top-header-left { display: flex; align-items: center; flex-shrink: 0; gap: 8px; padding-left: 2px; }
+    .top-header-left { display: flex; align-items: center; flex-shrink: 0; gap: 6px; padding-left: 2px; }
     .top-header-right { display: flex; align-items: center; flex-shrink: 0; gap: 4px; padding-right: 2px; }
-    #clock-display { font-size: 12px; font-weight: 800; color: #334155; padding-left: 0; margin-left: 0; }
+
+    /* ★ 刷新：上段＝日付・時間 / 下段＝天気アイコン＋市名のみ（はみ出し完全防止） */
+    .header-weather-clock-box {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1.5px;
+      min-width: 90px;
+      line-height: 1.15;
+    }
+    .hwc-row-datetime {
+      font-size: 11px;
+      font-weight: 900;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      letter-spacing: -0.2px;
+      white-space: nowrap;
+    }
+    .hwc-row-weatherloc {
+      font-size: 9.5px;
+      font-weight: 800;
+      color: #0284c7;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+      letter-spacing: -0.2px;
+    }
+    .hwc-weather-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      color: #ea580c;
+    }
+    .hwc-location-badge {
+      display: inline-block;
+      max-width: 60px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #475569;
+    }
 
     #status-badge-container {
       flex: 1;
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 0 4px;
+      padding: 0 3px;
       min-width: 0;
     }
 
@@ -245,16 +288,16 @@
       justify-content: center;
       background: #0f172a;
       color: #38bdf8;
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 900;
-      padding: 5px 10px;
+      padding: 5px 8px;
       border-radius: 20px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.15) inset;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       transition: all 0.25s ease-out;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.2px;
     }
     #status-text.is-hearing {
       background: #0284c7 !important;
@@ -273,21 +316,23 @@
       color: #db2777;
       border: 1.2px solid #f472b6;
       border-radius: 12px;
-      padding: 4px 9px;
-      font-size: 11px;
+      padding: 4px 7px;
+      font-size: 10.5px;
       font-weight: 900;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 3px;
+      gap: 2px;
       transition: all 0.15s;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .btn-top-diary:active { transform: scale(0.93); background: #fce7f3; }
 
     .model-badge {
-      padding: 4px 7px;
+      padding: 4px 6px;
       border-radius: 12px;
-      font-size: 10.5px;
+      font-size: 10px;
       font-weight: 800;
       transition: all 0.3s;
       white-space: nowrap;
@@ -604,9 +649,8 @@
       animation: catStageSleep 4.0s ease-in-out infinite alternate !important;
     }
     @keyframes catStageSleep {
-      0% { transform: scale(var(--cat-scale, 1), var(--cat-scale, 1)) translateY(0) rotate(0deg); }
-      50% { transform: scale(calc(var(--cat-scale, 1) * 1.015), calc(var(--cat-scale, 1) * 0.985)) translateY(3px) rotate(-1deg); }
-      100% { transform: scale(var(--cat-scale, 1), var(--cat-scale, 1)) translateY(0) rotate(0.5deg); }
+      0%, 100% { transform: scale(var(--cat-scale, 1), var(--cat-scale, 1)) translateY(0); }
+      50% { transform: scale(calc(var(--cat-scale, 1) * 1.012), calc(var(--cat-scale, 1) * 0.99)) translateY(2px); }
     }
 
     .pet-avatar-wrapper.is-yawning #cat-stage-box {
@@ -693,7 +737,6 @@
     .pet-avatar-wrapper.is-real-mode .cat-frame { display: flex; }
     .pet-avatar-wrapper.is-real-mode .cat-frame.active { opacity: 1; pointer-events: none; }
 
-    /* ★ リアル画像アセット（透過処理 ＆ クロちゃん/シロくんの完全両立） */
     .cat-avatar-img {
       position: absolute;
       bottom: 0;
@@ -710,7 +753,6 @@
     }
     .cat-avatar-img.is-png { mix-blend-mode: normal !important; }
 
-    /* ★ シロくんは完全透過PNGのため mix-blend-mode: normal でクリアに発色 */
     .pet-avatar-wrapper.is-char-shiro .cat-avatar-img {
       mix-blend-mode: normal !important;
       background-color: transparent !important;
@@ -731,14 +773,14 @@
     }
     .pet-avatar-wrapper.is-real-mode .real-eyelid-unit { display: block; }
 
-    /* 1. クロちゃん専用まぶた（黒毛・引き締まった目・子猫仕様） */
+    /* 1. クロちゃん専用まぶた */
     .real-eyelid {
       position: absolute;
       background: 
         radial-gradient(ellipse at 50% 15%, rgba(51, 65, 85, 0.45) 0%, rgba(20, 24, 33, 0.96) 65%, #0e1117 95%),
         repeating-linear-gradient(172deg, rgba(30, 35, 48, 0.6) 0px, #141720 2.5px, #252a38 4px, #12141c 6px);
       border-radius: 46% 46% 50% 50%;
-      transform-origin: top center;
+      transform-origin: center center;
       transform: scaleY(0);
       opacity: 0.98;
       transition: transform 0.16s cubic-bezier(0.25, 1, 0.5, 1);
@@ -750,28 +792,21 @@
       border-bottom: 2px solid rgba(12, 14, 20, 0.95);
     }
 
-    /* 2. ★ シロくん専用まぶた（白フクロウ・羽毛テクスチャ・すやすや目尻ライン） */
+    /* 2. ★ 刷新：シロくん専用まぶた（真っ白解消・リアル白黒羽毛テクスチャ ＆ center回転） */
     .pet-avatar-wrapper.is-char-shiro .real-eyelid {
       background: 
-        radial-gradient(ellipse at 50% 30%, #ffffff 0%, #f8fafc 45%, #e2e8f0 78%, #94a3b8 100%),
-        repeating-linear-gradient(168deg, rgba(255, 255, 255, 0.9) 0px, #f1f5f9 2px, #cbd5e1 3.5px, #94a3b8 5px);
+        radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.95) 0%, rgba(241, 245, 249, 0.9) 35%, rgba(203, 213, 225, 0.85) 65%, rgba(71, 85, 105, 0.95) 95%),
+        repeating-linear-gradient(168deg, rgba(255, 255, 255, 0.95) 0px, rgba(241, 245, 249, 0.9) 2px, rgba(148, 163, 184, 0.75) 3.5px, rgba(30, 41, 59, 0.88) 5.5px),
+        repeating-radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.9) 0px, rgba(255, 255, 255, 0.9) 3px, rgba(51, 65, 85, 0.4) 4px, rgba(15, 23, 42, 0.6) 6.5px);
       border-radius: 50% 50% 48% 48%;
-      opacity: 0.99;
+      transform-origin: center center;
+      opacity: 0.98;
       box-shadow: 
-        0 2px 5px rgba(15, 23, 42, 0.35),
-        0 0 6px rgba(255, 255, 255, 0.8),
-        inset 0 -2.5px 2px rgba(71, 85, 105, 0.75);
-      border-bottom: 2.5px solid #334155;
-    }
-
-    /* シロくんの初期まぶた（回転角度を変数から適用） */
-    .pet-avatar-wrapper.is-char-shiro .real-eyelid.eye-left {
-      transform-origin: center top;
-      transform: rotate(var(--eyelid-rotate, 8deg)) scaleY(0);
-    }
-    .pet-avatar-wrapper.is-char-shiro .real-eyelid.eye-right {
-      transform-origin: center top;
-      transform: rotate(calc(var(--eyelid-rotate, 8deg) * -1)) scaleY(0);
+        0 2.5px 6px rgba(15, 23, 42, 0.55),
+        0 0 8px rgba(255, 255, 255, 0.7),
+        inset 0 -3px 3px rgba(15, 23, 42, 0.9),
+        inset 0 2px 2px rgba(255, 255, 255, 0.9);
+      border-bottom: 2.8px solid #0f172a;
     }
 
     /* クロちゃんの瞬きアニメーション */
@@ -783,49 +818,9 @@
       96%, 98% { transform: scaleY(1.02); }
     }
 
-    /* ★ シロくん専用の瞬きアニメーション（角度を100%保持しながら開閉） */
-    .pet-avatar-wrapper.is-char-shiro.is-real-mode.is-idling:not(.is-sleeping) .real-eyelid.eye-left {
-      animation: realEyeBlinkShiroL 4.6s ease-in-out infinite;
-    }
-    @keyframes realEyeBlinkShiroL {
-      0%, 93%, 100% { transform: rotate(var(--eyelid-rotate, 8deg)) scaleY(0); }
-      96%, 98% { transform: rotate(var(--eyelid-rotate, 8deg)) scaleY(1.04); }
-    }
-    .pet-avatar-wrapper.is-char-shiro.is-real-mode.is-idling:not(.is-sleeping) .real-eyelid.eye-right {
-      animation: realEyeBlinkShiroR 4.6s ease-in-out infinite;
-    }
-    @keyframes realEyeBlinkShiroR {
-      0%, 93%, 100% { transform: rotate(calc(var(--eyelid-rotate, 8deg) * -1)) scaleY(0); }
-      96%, 98% { transform: rotate(calc(var(--eyelid-rotate, 8deg) * -1)) scaleY(1.04); }
-    }
-
-    /* 眠り状態の目閉じ（回転を保持したまま閉じる） */
-    .pet-avatar-wrapper:not(.is-char-shiro).is-sleeping .real-eyelid {
-      transform: scaleY(1.04) !important;
+    /* ★ 刷新：眠り状態（!important による transform ロックを完全撤去！JavaScriptによる直接駆動を保証） */
+    .pet-avatar-wrapper.is-sleeping .real-eyelid {
       animation: none !important;
-      border-bottom: 2px solid #06070a;
-      box-shadow: 
-        0 2px 4px rgba(0, 0, 0, 0.8),
-        0 0 5px rgba(14, 18, 25, 0.6),
-        inset 0 -2.5px 2px rgba(5, 7, 10, 0.98);
-    }
-    .pet-avatar-wrapper.is-char-shiro.is-sleeping .real-eyelid.eye-left {
-      transform: rotate(var(--eyelid-rotate, 8deg)) scaleY(1.05) !important;
-      animation: none !important;
-      border-bottom: 2.5px solid #1e293b;
-      box-shadow: 
-        0 2px 5px rgba(15, 23, 42, 0.4),
-        0 0 6px rgba(255, 255, 255, 0.9),
-        inset 0 -2.5px 2px rgba(51, 65, 85, 0.85);
-    }
-    .pet-avatar-wrapper.is-char-shiro.is-sleeping .real-eyelid.eye-right {
-      transform: rotate(calc(var(--eyelid-rotate, 8deg) * -1)) scaleY(1.05) !important;
-      animation: none !important;
-      border-bottom: 2.5px solid #1e293b;
-      box-shadow: 
-        0 2px 5px rgba(15, 23, 42, 0.4),
-        0 0 6px rgba(255, 255, 255, 0.9),
-        inset 0 -2.5px 2px rgba(51, 65, 85, 0.85);
     }
 
     .accessory-layer {
@@ -967,7 +962,6 @@
       100% { transform: scale(1.08); filter: brightness(1.2); }
     }
 
-    /* アバターコンテナ（キャラクター定義ファイルからSVGが動的注入されます） */
     #cat-vector-avatar-container {
       width: 270px;
       height: 310px;
@@ -1431,6 +1425,20 @@
     }
     .segment-btn.is-active.pink { color: #db2777; }
     .segment-btn.is-active.blue { color: #0284c7; }
+
+    /* 「お話の長さ」セグメント専用レスポンシブ（はみ出し防止） */
+    #talk-length-segment-group.segment-capsule-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      padding: 3px;
+      gap: 2px;
+      width: 100%;
+    }
+    #talk-length-segment-group .segment-btn {
+      padding: 7px 2px;
+      font-size: 10.5px;
+      letter-spacing: -0.3px;
+    }
 
     .voice-chip-container {
       display: grid;
@@ -2364,7 +2372,17 @@
     <div class="app-col-left">
       <div class="top-header">
         <div class="top-header-left">
-          <span id="clock-display">00:00</span>
+          <!-- ★ 刷新：上段＝日付・時間 / 下段＝天気アイコン＋市名のみ（はみ出し完全防止） -->
+          <div class="header-weather-clock-box">
+            <div class="hwc-row-datetime">
+              <span id="clock-display-datetime">11/9 (月) 12:54</span>
+            </div>
+            <div class="hwc-row-weatherloc">
+              <span class="hwc-weather-badge" id="clock-display-weather">☀️ 10℃</span>
+              <span class="hwc-location-badge" id="clock-display-location">東村山市</span>
+            </div>
+          </div>
+
           <button type="button" class="btn-top-diary" id="top-diary-btn" title="これまでの絵日記をアルバムで開くニャ！">📖 日記帳</button>
         </div>
 
@@ -2439,7 +2457,6 @@
             <div class="accessory-layer" id="acc-happy"></div>
           </div>
 
-          <!-- アバターコンテナ（キャラクター定義ファイルからSVGが動的注入されます） -->
           <div id="cat-vector-avatar-container"></div>
         </div>
 
@@ -2613,7 +2630,6 @@
         <span id="setting-modal-version-tag" style="font-size:11px;font-weight:normal;color:#94a3b8;margin-left:auto;"></span>
       </h3>
 
-      <!-- パートナーキャラクター切り替え（クロちゃん ⇔ シロくん） -->
       <div class="setting-section-header">🐾 パートナーの選択（キャラクター切替）</div>
       <div class="form-group">
         <div class="segment-capsule-row" id="character-selector-segment-group">
@@ -2663,28 +2679,27 @@
           <div>設定画面から【🌸 ノーマル（サクラピンク）】【🌙 ナイトダーク】【🍃 フォレストミント】【🍊 キャンディポップ】をお好みで選べるニャ！透過ペットがどのお部屋でも美しく引き立ちます！</div>
 
           <div class="manual-sec-title">📱 画面の向きと空中くるりん着地</div>
-          <div>スマホやタブレットを横向きに寝かせると、ボタンがサッと道をあけて、ペットが空中で身をひるがえして「くるりんっ♪トンッ！」と華麗に着地します！足元にキラキラ肉球が弾けて、最新のお話しへ自動でシュッと移動します🐾（歩行中のちょっとした揺れでは動かない安心安全設計ニャ！）</div>
+          <div>スマホやタブレットを横向きに寝かせると、ボタンがサッと道をあけて、ペットが空中で身をひるがえして「くるりんっ♪トンッ！」と華麗に着地します！足元にキラキラ肉球が弾けて、最新のお話しへ自動でシュッと移動します🐾</div>
 
           <div class="manual-sec-title">📷 写真を見せる ＆ 思い出写真（12枚上限と個別整理）</div>
           <div>下の「📷 写真」ボタンを押すと、スマホのカメラで撮った写真やアルバムの写真をペットに見せられます！今日撮った写真の中から、日記の内容に一番ぴったりのベストショットをAIが選んで絵日記に飾ります♪<br>
-          ・<b>左右2分割アルバム</b>：日記帳を開くと、左にメイン写真、右側に今日撮ったスナップ写真（最大12枚）が上下2段の横スクロールで並びます。タップでメイン写真へワンタップ切替、または全画面拡大ができます。<br>
-          ・<b>💡 写真の個別整理</b>：スナップ写真の右上の【✕】ボタンを押すと、失敗した写真や不要な写真だけを選んで1枚ずつ削除できます。もし12枚いっぱいになっても、いらない写真を削除すれば新しい写真の枠をいつでも空けられます！</div>
+          ・<b>左右2分割アルバム</b>：日記帳を開くと、左にメイン写真、右側に今日撮ったスナップ写真（最大12枚）が並びます。タップで切替や全画面拡大ができます。<br>
+          ・<b>写真の個別整理</b>：スナップ写真の右上の【✕】ボタンを押すと、不要な写真だけを選んで1枚ずつ削除できます。</div>
 
-          <div class="manual-sec-title">📖 絵日記の仕様と生活リズム（夜20:00以降の自然な案内）</div>
+          <div class="manual-sec-title">📖 絵日記の仕様と生活リズム</div>
           <div>
-            ・<b>夜20:00以降のご案内</b>：昼間はお話し中の可愛い見守り画面になり、夜20:00を過ぎると「今日の日記をまとめるニャ！」ボタンが出現します。<br>
+            ・<b>夜20:00以降のご案内</b>：夜20:00を過ぎると「今日の日記をまとめるニャ！」ボタンが出現します。<br>
             ・<b>夜の会話自動追記</b>：夕方に日記を書いた後、夜や深夜にお話しした内容もその日の日記にしっかり追加・反映されます！<br>
             ・<b>朝4:00の生活日切り替え</b>：アプリを開いたまま朝4:00を迎えても、自動で新しい今日へ切り替わり、昨日の日記を美しくまとめ直します。<br>
-            ・<b>シームレスな朗読</b>：上の「📖 日記帳」を開いて「🔊 読むニャ♪」を押すと、本文の中身だけをスラスラ滑らかに朗読してくれます！
+            ・<b>シームレスな朗読</b>：上の「📖 日記帳」を開いて「🔊 読むホ♪（読むニャ♪）」を押すと、本文の中身だけをスラスラ滑らかに朗読してくれます！
           </div>
 
           <div class="manual-sec-title">✨ 変身・🐟 おやつ・なでなで・⏱️ タイマー・↩️ とりけし</div>
           <div>
             ・<b>✨ 変身</b>：右下の「変身」ボタンを押すと、リアル写真と手描きイラストの姿が煙と共に瞬時に入れ替わります！<br>
-            ・<b>🐟 おやつ と なでなで</b>：左下の「おやつ」でちゅ〜るや木の実を食べるニャ（3回連続で極楽ゴロゴロ♪）。画面をタップすると「なでなで」されて喉を鳴らしたり羽をパタパタして喜びます！<br>
-            ・<b>⏱️ タイマー</b>：「3分測って」「1分半タイマー」「20秒計って」と言うと、左に砂時計付きタイマーが作動します！「タイマー止めて」の声でも即停止できます。<br>
-            ・<b>🐾 ちょい待ち ＆ すすめる！</b>：動いているタイマーをタップすると一時停止、もう一度タップすると再開します！<br>
-            ・<b>↩️ とりけし</b>：マイクの誤認識でおかしな言葉を聞き取って考え始めてしまった時や、お話し中に押すと、今の発言をきれいに取り消して巻き戻せます！（※待機中には過去の会話は消えない安心安全設計！）。<br>
+            ・<b>🐟 おやつ と なでなで</b>：左下の「おやつ」でちゅ〜るや木の実を食べるニャ（3回連続で極楽ゴロゴロ♪）。画面をタップすると喉を鳴らしたり羽をパタパタして喜びます！<br>
+            ・<b>⏱️ タイマー</b>：「3分測って」「1分半タイマー」と言うと、左に砂時計付きタイマーが作動します！<br>
+            ・<b>↩️ とりけし</b>：マイクの誤認識でおかしな言葉を聞き取って考え始めてしまった時や、お話し中に押すと、今の発言をきれいに取り消して巻き戻せます！<br>
             ・<b>🟢 会話中 / 🛑 お休み中</b>：会話をお休みしたい時は「会話中（緑）」ボタンを押してニャ。
           </div>
         </div>
@@ -2747,12 +2762,12 @@
       </div>
 
       <div class="form-group">
-        <label>お話しの長さ:</label>
+        <label>お話の長さ:</label>
         <div class="segment-capsule-row" id="talk-length-segment-group">
-          <button type="button" class="segment-btn is-active pink" data-talk-len="auto">🤖 自動（おまかせ）</button>
-          <button type="button" class="segment-btn" data-talk-len="short">🐾 短い（サクサク）</button>
-          <button type="button" class="segment-btn" data-talk-len="normal">🌸 普通（標準）</button>
-          <button type="button" class="segment-btn" data-talk-len="long">🗣️ 長い（おしゃべり）</button>
+          <button type="button" class="segment-btn is-active pink" data-talk-len="auto">🤖 自動</button>
+          <button type="button" class="segment-btn" data-talk-len="short">🐾 短い</button>
+          <button type="button" class="segment-btn" data-talk-len="normal">🌸 普通</button>
+          <button type="button" class="segment-btn" data-talk-len="long">🗣️ 長い</button>
         </div>
       </div>
 
