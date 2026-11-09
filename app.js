@@ -1,3 +1,4 @@
+// [v1.0.0 作業版 Rev.2] 首かしげ両目傾き（右目アップ幾何連動）・絵日記写真の日付完全独立化・トースト語尾完全同期
 /* ==========================================================================
    AIペット 共通対話エンジン＆中央司令塔OS（app.js Part 1/2）
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
@@ -6,8 +7,8 @@
    - 【自声エコー完全根絶】音声生成準備〜再生完了〜余韻までマイク絶対遮断フラグで物理ロック
    - 【TTSレート制限(429)防護壁】429検知時のクールダウンタイマー＆安全キューイング機構導入
    - 【絵日記書き出し完全統一】「YYYY年M月D日 (曜日) 天気: ○○ 気温: ○○℃」ヘッダー自動整形＆重複挨拶パージ
-   - 【PC逆インポート安全防護壁】PCから戻した大きな画像によるスマホ容量パンクを自動再スリム化で完全防御
-   - 【まぶた完全個別化】キャラごとのまぶた座標・サイズ・角度を安全に分離管理
+   - 【絵日記写真日付完全独立】別の日付の写真が勝手に引き継がれる現象を物理的に完全遮断
+   - 【首かしげ両目傾き調整】幾何学連動によりスライダーで首の傾きに合わせて右目が上がり左目が下がる動的傾斜を実現
    - 【装飾個別化】クロちゃん（帽子＋メガネ）／シロくん（博士帽のみ）の独立位置調整
    - 【日時・天気2段ステーション】上段:日付＋時間 / 下段:天気アイコン＋市名のみ のスリム表示
    - 【トークスタイル連動】自動/短い/普通/長いの設定保存・復元に対応
@@ -23,7 +24,6 @@
    - 【オンデマンド即時GPS測位】場所質問時にその場で最新位置情報を取得してから即答
    - 【防音シールド】タイマー完了アラーム鳴動中のマイク誤認識を物理的に完全遮断
    - 【音響完全修復】直列カスケード回路によるプツプツノイズ100%根絶＆豊かな元祖ゴロゴロ音
-   ※このPart 1は StorageManager の閉じカッコ（};）まで綺麗に完結しています。
    ========================================================================== */
 
 /* ★ アクティブキャラクターの安全動的取得（クロちゃん ⇔ シロくん） */
@@ -53,7 +53,6 @@ const CurrentCharacterFallback = {
   getVectorAvatarSvg: () => ""
 };
 
-// スクリプトの読み込み順序や選択キャラに依存せず常に最新のキャラクター定義を動的取得する安全ゲッター
 const getCurChar = () => {
   const activeId = localStorage.getItem('kuro_active_character') || 'kuro';
   if (activeId === 'shiro' && window.Character_Shiro) {
@@ -69,13 +68,13 @@ const CurrentCharacter = new Proxy(CurrentCharacterFallback, {
   }
 });
 
-/* ★ Gemini連携モデル完全固定定数（追加・変更・自動並び替えを物理的に完全禁止） */
+/* ★ Gemini連携モデル完全固定定数 */
 const FIXED_LITE_MODELS = Object.freeze([
-  "gemini-3.5-flash-lite",     // 第1優先（主軸・最速モデル）
-  "gemini-flash-lite-latest"   // 第2優先（タイムアウト時バックアップ）
+  "gemini-3.5-flash-lite",
+  "gemini-flash-lite-latest"
 ]);
 
-/* ★ 正式なFunction Calling定義（公園・カフェ・散策スポットへ自然拡張） */
+/* ★ 正式なFunction Calling定義 */
 const KURO_TOOLS = [
   {
     functionDeclarations: [
@@ -146,7 +145,7 @@ const Logger = {
 };
 
 /* ==========================================================================
-   MODULE 0.5: 日時・生活リズム提供エンジン（絶対停止防御 ＆ 西暦カット自然発話）
+   MODULE 0.5: 日時・生活リズム提供エンジン
    ========================================================================== */
 const TimeProvider = {
   getCurrentInfo() {
@@ -164,7 +163,6 @@ const TimeProvider = {
       const logKey = `${year}-${pad(month)}-${pad(date)}`;
       const fullDate = `${year}年${month}月${date}日 (${dayOfWeek})`;
 
-      // 上段ヘッダー用表示フォーマット（例: 11/9 (月) 12:54）
       const topDateDisplay = `${month}/${date} (${dayOfWeek}) ${clock}`;
       const headerDisplay = topDateDisplay;
 
@@ -268,7 +266,7 @@ const TimeProvider = {
 };
 
 /* ==========================================================================
-   MODULE 1: 音声合成＆音声認識エンジン（自声エコー物理遮断＆429防護壁）
+   MODULE 1: 音声合成＆音声認識エンジン
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -285,8 +283,6 @@ class AudioSpeechEngine {
     this.isListening = false;
     this.isStarting = false;
     this.isActionButtonLocked = false;
-    
-    // ★マイク物理遮断フラグ（リクエスト準備中〜再生終了余韻までマイクを物理ロック）
     this.isSpeechProducing = false;
 
     this.recognition = null;
@@ -297,7 +293,6 @@ class AudioSpeechEngine {
     this.recentSpokenTexts = [];
     this.lastSpeechEndTime = 0;
 
-    // ★429レート制限防護壁（クールダウンタイマー＆直列ロック）
     this.rateLimitCooldownUntil = 0;
     this.ttsRequestChain = Promise.resolve();
     this.lastVoicevoxRequestTime = 0;
@@ -530,14 +525,12 @@ class AudioSpeechEngine {
     return t;
   }
 
-  // ★即時相槌（WebAudioによる待ち時間0秒の自然なレスポンス）
   playImmediateFiller(type = 'general') {
     this.unlockMasterAudio();
     this.playEffect('aizuchi');
     if (AppCore.avatar && AppCore.state.isRunning) AppCore.avatar.setEmotion('thinking');
   }
 
-  // ★音声リクエストの安全直列化 ＆ 429レート制限防護壁
   _getVoicevoxBlobUrl(text, speakerId) {
     const key = `${speakerId}_${text}`;
     if (this.blobUrlCache.has(key)) {
@@ -895,7 +888,7 @@ class AudioSpeechEngine {
 }
 
 /* ==========================================================================
-   MODULE 2: オンデマンドGPS ＆ リアルタイム在宅センサー（市名のみスマート抽出）
+   MODULE 2: オンデマンドGPS ＆ リアルタイム在宅センサー
    ========================================================================== */
 const LocationProvider = {
   lat: null, lon: null, homeLat: null, homeLon: null,
@@ -990,7 +983,6 @@ const LocationProvider = {
     } catch(e) {}
   },
 
-  // ★都道府県名や丁目・番地を完全に削ぎ落とし、「市・区・町・村」のみを抽出
   async _reverseGeocode(lat, lon) {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=ja`);
@@ -1339,7 +1331,7 @@ const StorageManager = {
     return list.find(d => d.dateKey === dateKey) || null;
   },
 
-  // ★絵日記の完全自動統一保存（ヘッダー定型化 ＆ 重複漢数字挨拶の自動カット）
+  // ★絵日記保存：日付をまたいで過去の写真が勝手に引き継がれないよう日付境界を完全厳格化
   saveDiary(entryText, customDateKey = null, customFullDate = null, photoData = null, currentLogCount = null, kuroComment = null) {
     if (!entryText || entryText.length < 15) return false;
     const timeInfo = TimeProvider.getCurrentInfo();
@@ -1350,20 +1342,15 @@ const StorageManager = {
     cleanContent = AppCore.audio.cleanEndingNenyan(cleanContent);
     let extractedComment = kuroComment;
 
-    // 末尾のひとこと抽出
     const match = cleanContent.match(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?)\s*([^\n]+)/);
     if (match) {
       if (!extractedComment) extractedComment = match[1].trim();
       cleanContent = cleanContent.replace(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?)\s*[^\n]+$/, '').trim();
     }
 
-    // 既存の崩れたヘッダー行を完全パージ
     cleanContent = cleanContent.replace(/^【?[0-9０-９一二三四五六七八九〇]+年[^\n]+】?\s*\n*/u, '').trim();
-
-    // ★重要：本文冒頭に現れる「今日は二〇二六年…」「きょうは2026年…」の日付・天気重複挨拶を自動カット！
     cleanContent = cleanContent.replace(/^(?:今日|きょう)は[0-9０-９一二三四五六七八九〇]+年[^\n。！？]*[。！？\n]\s*/u, '').trim();
 
-    // ★「YYYY年M月D日 (曜日) 天気: ○○ 気温: ○○℃」の統一ヘッダーを厳格生成
     const weatherStr = LocationProvider.weather || "快晴";
     const tempStr = LocationProvider.temperature !== null ? `${LocationProvider.temperature}℃` : "10℃";
     const unifiedHeader = `【${fullDate} 天気:${weatherStr} 気温:${tempStr}】\n\n`;
@@ -1379,6 +1366,7 @@ const StorageManager = {
 
     const recordedLogCount = (currentLogCount !== null) ? currentLogCount : this.getDailyLogs(dateKey).length;
 
+    // ★重要：photoDataが指定されていない場合、同じ日付の日記（idx >= 0）の写真のみ保持し、別の日付から写真は絶対に持ってこない
     let targetPhoto = photoData || (idx >= 0 ? list[idx].photo : null) || null;
     if (targetPhoto) {
       this.addPhotoToDailyPool(targetPhoto, "絵日記メイン写真");
@@ -1571,7 +1559,7 @@ const StorageManager = {
     const pkg = {
       format: "kuro_pure_data_package_v2",
       characterId: getCurChar().id,
-      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.2.0.0",
+      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.1.0.0",
       exportedAt: now.toLocaleString('ja-JP'),
       memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
@@ -1670,34 +1658,7 @@ const StorageManager = {
 };
 
 /* ==========================================================================
-   AIペット 共通対話エンジン＆中央司令塔OS（app.js Part 2/2）
-   - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
-   - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全切替
-   - 【アバター動的切替】キャラ選択に応じてリアル写真（shiro_*.png）とSVGを自動更新
-   - 【透過PNG完全対応】シロくん透過PNGの黒背景ノイズを完全にパージし鮮明表示
-   - 【まぶた完全個別化＆直接駆動】JavaScriptから直接 transform 注入し傾きスライダー即時連動
-   - 【装飾個別化】クロちゃん（帽子＋メガネ）／シロくん（不透明博士帽のみ）の独立位置調整
-   - 【自声エコー完全根絶】発話準備〜再生〜余韻までマイク絶対遮断フラグで物理ロック
-   - 【起動時重複完全ガード】日記生成のセマフォ制御により起動時・画面復帰時の2重生成を完全根絶
-   - 【絵日記書き出し完全統一】「YYYY年M月D日 (曜日) 天気: ○○ 気温: ○○℃」ヘッダー自動整形
-   - 【日時・天気2段ステーション】上段:日付＋時間 / 下段:天気アイコン＋市名のみ のスリム表示
-   - 【天気・気温スマート即答】最新GPS気象データから0秒即答・長文TTS遅延を完全根絶
-   - 【生URL物理除去＆セリフUI完全分離】セリフ内URLを根絶・おてつだい時はカードUIに集約
-   - 【トークスタイル3段階自律判定】自動(auto)時に文脈・入力から短/普/長をスマート切替
-   - 【16秒打ち切り＆案3セリフ】第1(8秒)＋第2(8秒)で決着・知恵熱セリフで愛らしく自動復帰
-   - 【思考デッドロック完全根絶】try...finally による入力処理中フラグ（鍵）の確実な自動解除
-   - 【絵日記完全日本語ロック】system_instruction による英語ドリフト完全根絶
-   - 【マップカード厳格化】なかよしモードでの誤作動を根絶しおてつだいモード時のみ正確に案内
-   - Gemini対話・Function Calling・タイマー・受入テスト全項目完全対応
-   - 【居眠り表情完全修復】お休み中におけるトーキング顔フリーズを根絶し安らかなidle顔を保証
-   - 【朝4時またぎ自動監視】開いたまま朝を迎えても自動で生活日を切り替え昨日の日記を完全救済
-   - 【夜20時基準生活リズム】夜20:00以降の自然な日記作成案内 ＆ 昼間は直近完成日記優先表示
-   - 【データライフサイクル完全保護】logCountAtSave に基づく夜の会話自動追記エンジンの維持
-   - 【三重起動安全ガード】DOMContentLoaded / load / readyState の完全即時安全ブート
-   ========================================================================== */
-
-/* ==========================================================================
-   MODULE 4: キャラクター描画 ＆ 透過自動切り替え（プラグイン連動）
+   MODULE 4: キャラクター描画 ＆ 首かしげ幾何学まぶた制御（app.js Part 2/2）
    ========================================================================== */
 class CatAvatarRenderer {
   constructor() {
@@ -1856,7 +1817,7 @@ class CatAvatarRenderer {
     });
   }
 
-  // ★抜本改修：まぶた傾きの直接駆動（!importantの競合を全廃し、左右個別インラインスタイルへダイレクト注入）
+  // ★抜本改修：首かしげ（両目傾き）幾何学連動！回転角に応じて右目が上がり左目が下がる完全同期
   applyEyelidTransforms() {
     const cur = getCurChar();
     const c = this.eyelidCoords || cur.defaultEyelidCoords || { y: 172, x: 0, gap: 28, size: 16, rotate: 0 };
@@ -1864,31 +1825,43 @@ class CatAvatarRenderer {
     const rightEl = document.getElementById('eye-right-idle');
 
     if (!leftEl || !rightEl) return;
-    const halfGap = c.gap / 2;
     const h = Math.round(c.size * (cur.id === 'shiro' ? 0.95 : 0.75));
     const rot = c.rotate !== undefined ? c.rotate : (cur.id === 'shiro' ? 8 : 0);
 
     const isSleeping = !AppCore.state.isRunning || this.wrapper?.classList.contains('is-sleeping');
+    const shouldClose = isSleeping || AppCore.state.isCalibratingEyelid;
 
-    leftEl.style.bottom = `${c.y}px`;
-    leftEl.style.left = `calc(50% + ${c.x - halfGap - c.size / 2}px)`;
+    // ★幾何学回転計算：中心点を軸に首をかしげる（角度rot）ことで、右目が持ち上がり左目が下がる！
+    const rad = (rot * Math.PI) / 180;
+    const halfDist = (c.gap + c.size) / 2;
+    const dx = halfDist * Math.cos(rad);
+    const dy = halfDist * Math.sin(rad);
+
+    // CSS変数へ首かしげ角度を注入
+    leftEl.style.setProperty('--eye-rot-l', `${rot}deg`);
+    rightEl.style.setProperty('--eye-rot-r', `${rot}deg`);
+
+    // 左目：中心から左下へ（首かしげ時）
+    leftEl.style.bottom = `${Math.round(c.y - dy)}px`;
+    leftEl.style.left = `calc(50% + ${Math.round(c.x - dx - c.size / 2)}px)`;
     leftEl.style.width = `${c.size}px`;
     leftEl.style.height = `${h}px`;
     leftEl.style.transformOrigin = "center center";
 
-    rightEl.style.bottom = `${c.y}px`;
-    rightEl.style.left = `calc(50% + ${c.x + halfGap - c.size / 2}px)`;
+    // 右目：中心から右上へ持ち上がる（首かしげ時）
+    rightEl.style.bottom = `${Math.round(c.y + dy)}px`;
+    rightEl.style.left = `calc(50% + ${Math.round(c.x + dx - c.size / 2)}px)`;
     rightEl.style.width = `${c.size}px`;
     rightEl.style.height = `${h}px`;
     rightEl.style.transformOrigin = "center center";
 
-    // お休み中なら確実に目閉じスケールを維持しながら斜めに回転！
-    if (isSleeping) {
+    // まぶた自体の傾きも首のかしげ角度（rot）に完全同期して美しくフィット！
+    if (shouldClose) {
       leftEl.style.transform = `rotate(${rot}deg) scaleY(1.05)`;
-      rightEl.style.transform = `rotate(-${rot}deg) scaleY(1.05)`;
+      rightEl.style.transform = `rotate(${rot}deg) scaleY(1.05)`;
     } else {
       leftEl.style.transform = `rotate(${rot}deg) scaleY(0)`;
-      rightEl.style.transform = `rotate(-${rot}deg) scaleY(0)`;
+      rightEl.style.transform = `rotate(${rot}deg) scaleY(0)`;
     }
   }
 
@@ -2023,7 +1996,7 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   MODULE 5: Gemini AI思考エンジン（プラグインプロンプト連動）
+   MODULE 5: Gemini AI思考エンジン
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
@@ -2430,6 +2403,7 @@ class AIThoughtEngine {
           content = content.replace(/^【?[0-9０-９一二三四五六七八九〇]+年[^\n]+】?\s*\n*/u, '').trim();
           content = content.replace(/^(?:今日|きょう)は[0-9０-９一二三四五六七八九〇]+年[^\n。！？]*[。！？\n]\s*/u, '').trim();
 
+          // その日付の写真プールからのみ取得（他の日の写真は引き継がない）
           const pool = StorageManager.getDailyPhotoPool(lifeKey);
           return { success: true, diaryText: content, kuroComment, selectedPhoto: pool[0]?.base64 || null };
         }
@@ -2450,6 +2424,8 @@ const AppCore = {
     chimeTimerId: null,
     wakeLockSentinel: null, isLandscape: false,
 
+    isCalibratingEyelid: false,
+
     studioDateKeys: [],
     studioCurrentDateIdx: 0,
     isDiaryReading: false,
@@ -2467,6 +2443,10 @@ const AppCore = {
 
   getSpeakerId() { return parseInt(localStorage.getItem('kuro_voice_speaker_id') || String(getCurChar().defaultSpeakerId || 10), 10); },
   getTimerSound() { return localStorage.getItem('kuro_timer_sound') || 'bell'; },
+
+  getCurEnding(kuroEnding = "ニャ！", shiroEnding = "ホ！") {
+    return getCurChar().id === 'shiro' ? shiroEnding : kuroEnding;
+  },
 
   applyTheme(theme) {
     const validThemes = ['normal', 'dark', 'mint', 'pop'];
@@ -2510,7 +2490,8 @@ const AppCore = {
       : "おやびん、わたしはクロだニャン♪ 今日もよろしくニャ！";
 
     this.audio.speak(welcomeMsg, null, () => this.renderBubble('model', welcomeMsg));
-    Toast.show(`パートナーを【${cur.name}】に切り替えたホ！`, "success", 3000);
+    const switchToast = charId === 'shiro' ? "パートナーを【ホウ博士】に切り替えたホ！" : "パートナーを【クロちゃん】に切り替えたニャン♪";
+    Toast.show(switchToast, "success", 3000);
     Logger.log(`[Character] 🔄 パートナー切替完了: ${cur.name} (${cur.id})`, "success");
   },
 
@@ -2524,7 +2505,7 @@ const AppCore = {
     if (snackTxt) snackTxt.textContent = isShiro ? '木の実' : 'おやつ';
 
     const verTag = document.getElementById('app-footer-version-tag');
-    if (verTag) verTag.textContent = isShiro ? '🦉 シロくん（ホウ博士）' : '🐾 クロちゃん';
+    if (verTag) verTag.textContent = isShiro ? '🦉 シロくん（ホウ博士） V.1.0.0' : '🐾 クロちゃん V.1.0.0';
 
     const studioTitle = document.getElementById('studio-top-title-text');
     if (studioTitle) studioTitle.textContent = isShiro ? 'ホウ博士の研究観察日誌' : 'クロの思い出絵日記アルバム';
@@ -2556,9 +2537,15 @@ const AppCore = {
     setVal('adj-eyelid-gap', c.gap);
     setVal('adj-eyelid-size', c.size);
     setVal('adj-eyelid-rotate', c.rotate !== undefined ? c.rotate : (cur.id === 'shiro' ? 8 : 0));
+
+    const btnSaveEyelid = document.getElementById('btn-save-eyelid-settings');
+    if (btnSaveEyelid) {
+      btnSaveEyelid.textContent = cur.id === 'shiro'
+        ? "👁️ ホウ博士のまぶた位置・傾きを保存するホ！"
+        : "👁️ クロちゃんのまぶた位置・傾きを保存するニャ！";
+    }
   },
 
-  // ★刷新：上段（日付＋時間）/ 下段（天気アイコン＋市名のみ）の完全同期
   updateTopHeaderClockWeatherUI() {
     const cur = TimeProvider.getCurrentInfo();
     const dtEl = document.getElementById('clock-display-datetime');
@@ -2668,13 +2655,18 @@ const AppCore = {
     if (pillMeta) pillMeta.textContent = `📝 記憶設定: ${u.metaMB.toFixed(2)} MB`;
 
     if (statusPill) {
-      statusPill.textContent = u.isDanger ? "⚠️ 残りわずか" : (u.isWarning ? "⚠️ 容量注意" : "快適ニャ🐾");
+      const cur = getCurChar();
+      const okTxt = cur.id === 'shiro' ? "快適だホ！" : "快適ニャ🐾";
+      statusPill.textContent = u.isDanger ? "⚠️ 残りわずか" : (u.isWarning ? "⚠️ 容量注意" : okTxt);
       statusPill.style.color = u.isDanger ? "#dc2626" : (u.isWarning ? "#d97706" : "#15803d");
     }
 
     if (u.usedMB >= 4.0 && !this.state._hasShown4MbAlert) {
       this.state._hasShown4MbAlert = true;
-      Toast.show("写真がたくさん溜まってきたホ！そろそろPCにバックアップを推奨するホ！", "error", 6000);
+      const warnMsg = getCurChar().id === 'shiro'
+        ? "写真がたくさん溜まってきたホ！そろそろPCにバックアップを推奨するホ！"
+        : "写真がたくさん溜まってきたニャン！そろそろPCにバックアップしてニャ！";
+      Toast.show(warnMsg, "error", 6000);
       Logger.log(`[Storage] ⚠️ ストレージが4.0MBに達しました。バックアップを推奨します`, "warn");
     }
   },
@@ -3016,7 +3008,8 @@ const AppCore = {
     const update = () => {
       const m = Math.floor(this.state.timerSeconds / 60), s = this.state.timerSeconds % 60;
       const str = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-      if (disp) disp.textContent = this.state.isTimerPaused ? `ちょい待ち ${str}` : str;
+      const pauseLabel = getCurChar().id === 'shiro' ? '一時停止' : 'ちょい待ち';
+      if (disp) disp.textContent = this.state.isTimerPaused ? `${pauseLabel} ${str}` : str;
       if (widget) widget.classList.toggle('is-urgent', this.state.timerSeconds <= 10 && !this.state.isTimerPaused);
     };
     update();
@@ -3079,23 +3072,31 @@ const AppCore = {
     this.state.isTimerCompleted = false;
     const widget = document.getElementById('kitchen-timer-widget');
     if (widget) widget.style.display = 'none';
-    if (manual) Toast.show("タイマーを取り消したホ！", "info");
+    if (manual) {
+      const msg = getCurChar().id === 'shiro' ? "タイマーを取り消したホ！" : "タイマーを取り消したニャ！";
+      Toast.show(msg, "info");
+    }
   },
 
   _bindKitchenTimerWidgetUI() {
     const widget = document.getElementById('kitchen-timer-widget');
     if (!widget) return;
     widget.onclick = () => {
+      const cur = getCurChar();
       if (this.state.isTimerCompleted) {
         this.cancelKitchenTimer(false);
         this.audio.playEffect('aizuchi');
-        Toast.show("タイマーを消去したホ！🔔", "info");
+        const clearMsg = cur.id === 'shiro' ? "タイマーを消去したホ！🔔" : "タイマーを消去したニャ！🔔";
+        Toast.show(clearMsg, "info");
         return;
       }
       this.state.isTimerPaused = !this.state.isTimerPaused;
       widget.classList.toggle('is-paused', this.state.isTimerPaused);
       this.audio.playEffect('aizuchi');
-      Toast.show(this.state.isTimerPaused ? "一時停止したホ！" : "再開したホ！", "info");
+      const pauseMsg = this.state.isTimerPaused
+        ? (cur.id === 'shiro' ? "一時停止したホ！" : "ちょい待ちニャ！")
+        : (cur.id === 'shiro' ? "再開したホ！" : "すすめるニャ！");
+      Toast.show(pauseMsg, "info");
     };
   },
 
@@ -3472,7 +3473,8 @@ const AppCore = {
     });
 
     document.getElementById('btn-studio-save-exit')?.addEventListener('click', () => {
-      Toast.show("絵日記を保存したホ！📖✨", "success");
+      const saveAck = getCurChar().id === 'shiro' ? "絵日記を保存したホ！📖✨" : "絵日記を保存したニャン♪📖✨";
+      Toast.show(saveAck, "success");
       modal?.classList.remove('is-open');
       if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
     });
@@ -3556,18 +3558,18 @@ const AppCore = {
           <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fffaf5; border:2px dashed #fed7aa; border-radius:20px; padding:24px 18px; text-align:center; gap:12px;">
             <div style="font-size:48px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">${cur.id === 'shiro' ? '🦉🌙' : '🐾🌙'}</div>
             <div style="font-size:15px; font-weight:900; color:#9a3412;">📅 ${fullDate}</div>
-            <div style="font-size:13.5px; font-weight:900; color:#c2410c;">そろそろ今日の日記をまとめる時間だホ！</div>
+            <div style="font-size:13.5px; font-weight:900; color:#c2410c;">そろそろ今日の日記をまとめる時間だ${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}</div>
             <div style="font-size:11.5px; color:#ea580c; line-height:1.6; max-width:320px;">
-              今日の記録ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）を記録したホ！<br>
-              下のボタンを押すと、今日の楽しい思い出をぎゅっと日誌にまとめますホ！
+              今日の記録ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）を記録した${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}<br>
+              下のボタンを押すと、今日の楽しい思い出をぎゅっと日誌にまとめます${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}
             </div>
-            <button type="button" id="btn-create-today-now" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ 今日の日記をまとめるホ！</button>
+            <button type="button" id="btn-create-today-now" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ 今日の日記をまとめる${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}</button>
           </div>
         `;
         document.getElementById('btn-create-today-now')?.addEventListener('click', async (e) => {
           const btn = e.currentTarget;
           btn.disabled = true;
-          btn.textContent = "一生懸命書いてるホ…📖";
+          btn.textContent = cur.id === 'shiro' ? "一生懸命書いてるホ…📖" : "一生懸命書いてるニャ…📖";
           await this._rescueCreateDiaryForDate(curDateKey, fullDate, dayLogs);
         });
       } else {
@@ -3575,11 +3577,11 @@ const AppCore = {
           <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fffaf5; border:2px dashed #fed7aa; border-radius:20px; padding:24px 18px; text-align:center; gap:12px;">
             <div style="font-size:48px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">${cur.id === 'shiro' ? '🦉☀️' : '🐾☀️'}</div>
             <div style="font-size:15px; font-weight:900; color:#9a3412;">📅 ${fullDate}</div>
-            <div style="font-size:13.5px; font-weight:900; color:#c2410c;">今日はおやびん/助手と楽しくお話し中だホ！</div>
+            <div style="font-size:13.5px; font-weight:900; color:#c2410c;">今日はおやびん/助手と楽しくお話し中だ${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}</div>
             <div style="font-size:11.5px; color:#ea580c; line-height:1.6; max-width:320px;">
-              ただいま会話ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）を記録中だホ！<br>
-              夜20時以降になったら『今日の日記書いて』と話しかけてくれホ！<br>
-              ◀ 下の『前の日』ボタンで過去の記録アルバムをめくれますホ！
+              ただいま会話ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）を記録中だ${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}<br>
+              夜20時以降になったら『今日の日記書いて』と話しかけてくれ${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}<br>
+              ◀ 下の『前の日』ボタンで過去の記録アルバムをめくれます${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}
             </div>
           </div>
         `;
@@ -3593,16 +3595,16 @@ const AppCore = {
         <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fffaf5; border:2px dashed #fed7aa; border-radius:20px; padding:24px 18px; text-align:center; gap:12px;">
           <div style="font-size:46px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">${cur.id === 'shiro' ? '🦉📖' : '🐾📖'}</div>
           <div style="font-size:15px; font-weight:900; color:#9a3412;">📅 ${fullDate}</div>
-          <div style="font-size:13px; font-weight:900; color:#c2410c;">まだ記録が書かれていませんホ！</div>
+          <div style="font-size:13px; font-weight:900; color:#c2410c;">まだ記録が書かれていません${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}</div>
           <div style="font-size:11.5px; color:#ea580c; line-height:1.6; max-width:320px;">
             ${hasLogs 
-              ? `この日の記録ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）が大切に保管されていますホ！下のボタンを押すと、思い出をぎゅっと絵日記にまとめますホ！` 
-              : `この日はまだお話し記録がありませんホ。`}
+              ? `この日の記録ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）が大切に保管されています${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}下のボタンを押すと、思い出をぎゅっと絵日記にまとめます${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}` 
+              : `この日はまだお話し記録がありません${cur.id === 'shiro' ? 'ホ。' : 'ニャ。'}`}
           </div>
           ${hasLogs ? `
-            <button type="button" id="btn-rescue-create-diary" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ この日の絵日記を書くホ！（${fullDate}）</button>
+            <button type="button" id="btn-rescue-create-diary" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ この日の絵日記を書く${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}（${fullDate}）</button>
           ` : `
-            <button type="button" id="btn-empty-create-diary" style="background:#ffedd5; border:1.5px solid #ea580c; color:#c2410c; padding:8px 18px; border-radius:12px; font-size:12px; font-weight:900; cursor:pointer;">✍️ 新しく書くホ！</button>
+            <button type="button" id="btn-empty-create-diary" style="background:#ffedd5; border:1.5px solid #ea580c; color:#c2410c; padding:8px 18px; border-radius:12px; font-size:12px; font-weight:900; cursor:pointer;">✍️ 新しく書く${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}</button>
           `}
         </div>
       `;
@@ -3610,7 +3612,7 @@ const AppCore = {
       document.getElementById('btn-rescue-create-diary')?.addEventListener('click', async (e) => {
         const btn = e.currentTarget;
         btn.disabled = true;
-        btn.textContent = "一生懸命書いてるホ…📖";
+        btn.textContent = cur.id === 'shiro' ? "一生懸命書いてるホ…📖" : "一生懸命書いてるニャ…📖";
         await this._rescueCreateDiaryForDate(curDateKey, fullDate, dayLogs);
       });
 
@@ -3618,7 +3620,8 @@ const AppCore = {
         const dummyText = cur.id === 'shiro'
           ? `今日も助手と一緒に充実した研究活動を行えたホ！`
           : `今日もおやびんと一緒に過ごせて幸せな一日だったニャン🐾`;
-        StorageManager.saveDiary(dummyText, curDateKey, fullDate, photoPool[0]?.base64 || null, 0, "助手を信頼しているホ！");
+        const comment = cur.id === 'shiro' ? "助手を信頼しているホ！" : "おやびん大好きニャ！";
+        StorageManager.saveDiary(dummyText, curDateKey, fullDate, photoPool[0]?.base64 || null, 0, comment);
         this._renderStudioDiaryPage();
         this._updateStorageMonitorUI();
       });
@@ -3631,9 +3634,9 @@ const AppCore = {
           <span class="book-date-title">📅 ${diary.fullDate}</span>
           <div class="book-meta-tags">
             ${hasNewLogs ? `
-              <button type="button" class="btn-read-aloud" id="btn-update-with-night-logs" style="background:linear-gradient(135deg, #0284c7, #0369a1);" title="お昼以降の夜の会話も追加して更新するホ！">📝 夜の記録も追加更新</button>
+              <button type="button" class="btn-read-aloud" id="btn-update-with-night-logs" style="background:linear-gradient(135deg, #0284c7, #0369a1);" title="夜の会話も追加して更新するニャ！">📝 夜の記録も追加更新</button>
             ` : ''}
-            <button type="button" class="btn-read-aloud" id="btn-read-diary-aloud">${this.state.isDiaryReading ? '🛑 朗読ストップ' : `🔊 ${cur.name}が読むホ♪`}</button>
+            <button type="button" class="btn-read-aloud" id="btn-read-diary-aloud">${this.state.isDiaryReading ? '🛑 朗読ストップ' : `🔊 ${cur.name}が読む${cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪'}`}</button>
             <button type="button" class="book-btn-del-entry" id="btn-del-cur-diary">🗑️ 削除</button>
           </div>
         </div>
@@ -3721,15 +3724,16 @@ const AppCore = {
   },
 
   async _rescueCreateDiaryForDate(targetDateKey, targetFullDate, dayLogs) {
-    Toast.show(`記録を一生懸命書いているホ…📖`, "info");
+    const cur = getCurChar();
+    Toast.show(`記録を一生懸命書いている${cur.id === 'shiro' ? 'ホ…📖' : 'ニャ…📖'}`, "info");
     const res = await this.ai.generateDailyDiarySummary(dayLogs, targetDateKey, targetFullDate);
     if (res.success && res.diaryText) {
       StorageManager.saveDiary(res.diaryText, targetDateKey, targetFullDate, res.selectedPhoto, dayLogs.length, res.kuroComment);
-      Toast.show(`記録をまとめあげたホ！📖✨`, "success");
+      Toast.show(`記録をまとめあげた${cur.id === 'shiro' ? 'ホ！📖✨' : 'ニャ！📖✨'}`, "success");
       this._renderStudioDiaryPage();
       this._updateStorageMonitorUI();
     } else {
-      Toast.show("記録の作成に失敗しました。通信状態を確認してくださいホ", "error");
+      Toast.show("記録の作成に失敗しました。通信状態を確認してください", "error");
       this._renderStudioDiaryPage();
     }
   },
@@ -3737,7 +3741,7 @@ const AppCore = {
   _updateDiaryReadBtnUI(reading) {
     const btn = document.getElementById('btn-read-diary-aloud');
     const cur = getCurChar();
-    if (btn) btn.textContent = reading ? "🛑 朗読ストップ" : `🔊 ${cur.name}が読むホ♪`;
+    if (btn) btn.textContent = reading ? "🛑 朗読ストップ" : `🔊 ${cur.name}が読む${cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪'}`;
   },
 
   _bindCustomSettingsUI() {
@@ -3753,7 +3757,8 @@ const AppCore = {
         const theme = btn.dataset.themeVal;
         this.applyTheme(theme);
         this.audio.playEffect('aizuchi');
-        Toast.show(`お部屋のテーマを切り替えたホ！🎨✨`, "success", 2000);
+        const themeAck = getCurChar().id === 'shiro' ? "お部屋のテーマを切り替えたホ！🎨✨" : "お部屋のテーマを切り替えたニャン♪🎨✨";
+        Toast.show(themeAck, "success", 2000);
       };
     });
 
@@ -3869,22 +3874,40 @@ const AppCore = {
         this.avatar.applyAllFramesTransform();
       }
       updateSliders(this.state.activeAdjustTab);
-      Toast.show("初期位置にリセットしたホ！", "info");
+      const resetMsg = cur.id === 'shiro' ? "初期位置にリセットしたホ！" : "初期位置にリセットしたニャ！";
+      Toast.show(resetMsg, "info");
     });
 
     document.getElementById('btn-adjust-save')?.addEventListener('click', () => {
       if (this.avatar) StorageManager.saveGlassesCoords(this.avatar.glassesCoords);
-      Toast.show("装飾位置を保存したホ！✨", "success");
+      const saveMsg = getCurChar().id === 'shiro' ? "装飾位置を保存したホ！✨" : "装飾位置を保存したニャン！✨";
+      Toast.show(saveMsg, "success");
     });
   },
 
-  // ★抜本改修：まぶた調整スライダーを動かした瞬間に直接駆動！
+  // ★抜本改修：首かしげ（両目傾き）スライダーを動かした瞬間に幾何学連動＆リアルタイムテスト閉眼プレビュー
   _bindEyelidSettingsUI() {
     const btnSave = document.getElementById('btn-save-eyelid-settings');
+    const accordion = document.getElementById('eyelid-adjust-accordion');
     if (!btnSave) return;
+
+    if (accordion) {
+      accordion.addEventListener('toggle', () => {
+        this.state.isCalibratingEyelid = accordion.open;
+        if (this.avatar?.wrapper) {
+          this.avatar.wrapper.classList.toggle('is-calibrating-eyelids', accordion.open);
+        }
+        if (this.avatar) this.avatar.applyEyelidTransforms();
+      });
+    }
 
     ['adj-eyelid-y', 'adj-eyelid-x', 'adj-eyelid-gap', 'adj-eyelid-size', 'adj-eyelid-rotate'].forEach(id => {
       document.getElementById(id)?.addEventListener('input', () => {
+        this.state.isCalibratingEyelid = true;
+        if (this.avatar?.wrapper) {
+          this.avatar.wrapper.classList.add('is-calibrating-eyelids');
+        }
+
         const c = {
           y: parseInt(document.getElementById('adj-eyelid-y').value, 10),
           x: parseInt(document.getElementById('adj-eyelid-x').value, 10),
@@ -3894,7 +3917,7 @@ const AppCore = {
         };
         if (this.avatar) {
           this.avatar.eyelidCoords = c;
-          this.avatar.applyEyelidTransforms(); // 瞬時に斜め回転を直接DOMへ注入！
+          this.avatar.applyEyelidTransforms(); // 首かしげに合わせて右目が上がり左目が下がる！
         }
         const valDisp = document.getElementById(`${id}-val`);
         if (valDisp) valDisp.textContent = (id === 'adj-eyelid-rotate') ? `${c.rotate}°` : document.getElementById(id).value;
@@ -3914,7 +3937,9 @@ const AppCore = {
         this.avatar.eyelidCoords = c;
         this.avatar.applyEyelidTransforms();
       }
-      Toast.show("まぶた位置・角度を保存したホ！👁️✨", "success");
+      const cur = getCurChar();
+      const saveAck = cur.id === 'shiro' ? "まぶた位置・傾きを保存したホ！👁️✨" : "まぶた位置・傾きを保存したニャ！👁️✨";
+      Toast.show(saveAck, "success");
     };
   },
 
@@ -3942,7 +3967,9 @@ const AppCore = {
             StorageManager.saveMemories(this.memories);
             this.state.editingMemoryIdx = null;
             this._renderMemories();
-            Toast.show("記憶を更新したホ！✏️✨", "success");
+            const cur = getCurChar();
+            const memAck = cur.id === 'shiro' ? "記憶を更新したホ！✏️✨" : "記憶を更新したニャン！✏️✨";
+            Toast.show(memAck, "success");
           }
         };
         item.querySelector(`#btn-save-mem-${idx}`).onclick = saveAction;
@@ -3955,7 +3982,7 @@ const AppCore = {
         item.innerHTML = `
           <div class="memory-text-view">📌 ${mem}</div>
           <div class="memory-actions">
-            <button class="mem-btn mem-btn-edit" id="btn-edit-mem-${idx}" title="編集">✏️</button>
+　　　　　　<button class="mem-btn mem-btn-edit" id="btn-edit-mem-${idx}" title="編集">✏️</button>
             <button class="mem-btn mem-btn-del" id="btn-del-mem-${idx}" title="削除">🗑️</button>
           </div>
         `;
@@ -3990,7 +4017,10 @@ const AppCore = {
         this._updateStorageMonitorUI();
         this._restoreTimelineHistory();
         this.audio.playEffect('purr');
-        Toast.show("大掃除完了！原本を保存し、容量がスッキリしたホ！🎉✨", "success", 5000);
+        const cleanAck = getCurChar().id === 'shiro'
+          ? "大掃除完了！原本を保存し、容量がスッキリしたホ！🎉✨"
+          : "大掃除完了！原本を保存し、容量がスッキリしたニャン！🎉✨";
+        Toast.show(cleanAck, "success", 5000);
       }
     });
 
@@ -4010,7 +4040,8 @@ const AppCore = {
           this._updateCharacterUI();
           this._syncEyelidInputsToActiveChar();
           this.updateTopHeaderClockWeatherUI();
-          Toast.show("データを安全に完全復元したホ！🎉", "success");
+          const restoreAck = getCurChar().id === 'shiro' ? "データを安全に完全復元したホ！🎉" : "データを安全に完全復元したニャ！🎉";
+          Toast.show(restoreAck, "success");
         } catch(err) {
           Toast.show("読み込み失敗: " + err.message, "error");
         }
@@ -4026,7 +4057,8 @@ const AppCore = {
         return;
       }
       navigator.clipboard.writeText(val).then(() => {
-        Toast.show("座標をコピーしたホ！📋", "success");
+        const copyAck = getCurChar().id === 'shiro' ? "座標をコピーしたホ！📋" : "座標をコピーしたニャ！📋";
+        Toast.show(copyAck, "success");
         Logger.log(`[Home] 座標コピー成功: ${val}`, "info");
       });
     });
@@ -4040,7 +4072,8 @@ const AppCore = {
         LocationProvider.homeLat = LocationProvider.lat;
         LocationProvider.homeLon = LocationProvider.lon;
         localStorage.setItem('kuro_home_coords', val);
-        Toast.show("現在地を拠点（自宅）にセットしたホ！🏠✨", "success");
+        const homeAck = getCurChar().id === 'shiro' ? "現在地を拠点（自宅）にセットしたホ！🏠✨" : "現在地を拠点（自宅）にセットしたニャ！🏠✨";
+        Toast.show(homeAck, "success");
         Logger.log(`[Home] 現在地を拠点に設定: ${val}`, "success");
         this.updateTopHeaderClockWeatherUI();
       } else {
@@ -4079,7 +4112,8 @@ const AppCore = {
         }
       }
       Logger.log("=== 導通テスト完了 ===", "info");
-      Toast.show("モデル検証が完了したホ！🩺", "success");
+      const testAck = getCurChar().id === 'shiro' ? "モデル検証が完了したホ！🩺" : "モデル検証が完了したニャ！🩺";
+      Toast.show(testAck, "success");
     });
 
     document.getElementById('btn-clear-chat-display')?.addEventListener('click', () => {
@@ -4116,7 +4150,11 @@ const AppCore = {
         this.avatar.triggerPoofSmoke();
         const next = (this.avatar.mode === 'vector') ? 'real' : 'vector';
         this.avatar.applyMode(next);
-        Toast.show(`姿を変身したホ！✨（${next === 'real' ? 'リアル写真' : 'イラスト'}）`, 'info');
+        const cur = getCurChar();
+        const tfAck = cur.id === 'shiro'
+          ? `姿を変身したホ！✨（${next === 'real' ? 'リアル写真' : 'イラスト'}）`
+          : `姿を変身したニャン！✨（${next === 'real' ? 'リアル写真' : 'イラスト'}）`;
+        Toast.show(tfAck, 'info');
       }
     });
 
@@ -4154,7 +4192,8 @@ const AppCore = {
         this._updateStorageMonitorUI();
 
         if (this.avatar) this.avatar.setEmotion('idle');
-        Toast.show("直前の発言を取り消したホ！", "info");
+        const cancelMsg = cur.id === 'shiro' ? "直前の発言を取り消したホ！" : "直前の発言を取り消したニャ！";
+        Toast.show(cancelMsg, "info");
         const ack = cur.id === 'shiro' ? "うむ！" : "はーい！";
         this.triggerActionVoice(ack, "↩️ いまのナシ！");
         return;
@@ -4178,7 +4217,8 @@ const AppCore = {
         this._updateStorageMonitorUI();
 
         if (this.avatar) this.avatar.setEmotion('idle');
-        Toast.show("いまの会話を取り消したホ！", "info");
+        const cancelMsg = cur.id === 'shiro' ? "いまの会話を取り消したホ！" : "いまの会話を取り消したニャ！";
+        Toast.show(cancelMsg, "info");
         const ack = cur.id === 'shiro' ? "うむ！" : "はーい！";
         this.triggerActionVoice(ack, "↩️ いまのナシ！");
         return;
@@ -4228,7 +4268,7 @@ const AppCore = {
           if (!this.state.isRunning) {
             if (this.avatar) {
               this.avatar.setEmotion('idle');
-              this.avatar.applyEyelidTransforms(); // 目閉じスタイルを確実に直接適用！
+              this.avatar.applyEyelidTransforms();
             }
             if (wrap) wrap.classList.add('is-sleeping');
           }
@@ -4240,10 +4280,10 @@ const AppCore = {
         if (wrap) wrap.classList.remove('is-sleeping');
         if (this.avatar) {
           this.avatar.setEmotion('idle');
-          this.avatar.applyEyelidTransforms(); // 目開き復帰を確実に直接適用！
+          this.avatar.applyEyelidTransforms();
         }
         const suffix = cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪';
-        if (st) st.textContent = `👂 聴いてる${suffix}`;
+        if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
 
         const wakeMsg = cur.id === 'shiro'
           ? "ふぁ〜あ…！助手よ、目覚めたホ！どんな用件ホ？"
@@ -4349,11 +4389,19 @@ const AppCore = {
       document.getElementById('modal-overlay').style.display = 'flex';
     });
 
-    document.getElementById('modal-overlay')?.addEventListener('click', (e) => {
-      if (e.target.id === 'modal-overlay') {
-        document.getElementById('modal-overlay').style.display = 'none';
-        if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
+    const closeSettingsModal = () => {
+      this.state.isCalibratingEyelid = false;
+      if (this.avatar?.wrapper) {
+        this.avatar.wrapper.classList.remove('is-calibrating-eyelids');
       }
+      if (this.avatar) this.avatar.applyEyelidTransforms();
+
+      document.getElementById('modal-overlay').style.display = 'none';
+      if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
+    };
+
+    document.getElementById('modal-overlay')?.addEventListener('click', (e) => {
+      if (e.target.id === 'modal-overlay') closeSettingsModal();
     });
 
     document.getElementById('save-settings-btn')?.addEventListener('click', async () => {
@@ -4389,7 +4437,8 @@ const AppCore = {
         }
 
         if (saveBtn) saveBtn.classList.remove('is-saving');
-        if (saveTxt) saveTxt.textContent = "設定と記憶を保存するニャン♪";
+        const defaultSaveTxt = getCurChar().id === 'shiro' ? "設定と記憶を保存するホ！" : "設定と記憶を保存するニャン♪";
+        if (saveTxt) saveTxt.textContent = defaultSaveTxt;
 
         if (hasError) {
           this.audio.playEffect('alarm');
@@ -4405,9 +4454,18 @@ const AppCore = {
 
       LocationProvider._applyHomeFallback();
       this.updateTopHeaderClockWeatherUI();
+
+      this.state.isCalibratingEyelid = false;
+      if (this.avatar?.wrapper) {
+        this.avatar.wrapper.classList.remove('is-calibrating-eyelids');
+      }
+      if (this.avatar) this.avatar.applyEyelidTransforms();
+
       document.getElementById('modal-overlay').style.display = 'none';
-      Toast.show("設定と記憶を保存したホ！", "success");
+
       const cur = getCurChar();
+      const saveMsg = cur.id === 'shiro' ? "設定と記憶を保存したホ！" : "設定と記憶を保存したニャン♪";
+      Toast.show(saveMsg, "success");
       const ackVoice = cur.id === 'shiro' ? "バッチリホ！" : "バッチリニャ！";
       this.triggerActionVoice(ackVoice, `💾 ${ackVoice}`);
       Logger.log(`[Auth] ✅ 設定保存完了`, "success");
@@ -4433,12 +4491,14 @@ const AppCore = {
       if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
     });
     document.getElementById('diag-copy-evidence-btn')?.addEventListener('click', () => {
-      navigator.clipboard.writeText(Logger.getEvidenceText()).then(() => Toast.show("ログをコピーしたホ！📋", "success"));
+      const cur = getCurChar();
+      const copyAck = cur.id === 'shiro' ? "ログをコピーしたホ！📋" : "ログをコピーしたニャ！📋";
+      navigator.clipboard.writeText(Logger.getEvidenceText()).then(() => Toast.show(copyAck, "success"));
     });
   }
 };
 
-/* ★ 三重起動安全ガード（DOM読み込みタイミングの差異を100%吸収し即時起動） */
+/* ★ 三重起動安全ガード */
 function bootAIApp() {
   if (window._hasAppBooted) return;
   window._hasAppBooted = true;
@@ -4451,5 +4511,3 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
   document.addEventListener('DOMContentLoaded', bootAIApp);
   window.addEventListener('load', bootAIApp);
 }
-
-

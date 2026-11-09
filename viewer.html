@@ -1,0 +1,1877 @@
+<!-- [稼働Ver 作業版 Rev.1] 高画質写真プロテクトマージ機能・写真やり取り手順ガイド追加・V.1.0.0初期登録仕様 -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>クロちゃんの思い出アルバム ＆ バックアップ ビューワー＆エディター🐾 V.1.0.0</title>
+
+  <style>
+    :root {
+      --primary: #f472b6;
+      --primary-dark: #db2777;
+      --secondary: #0284c7;
+      --bg-desk: #0f172a;
+      --book-cover: #1e293b;
+      --page-bg: #fffdfa;
+      --text-main: #334155;
+      --border-warm: #fed7aa;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg-desk);
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+
+    /* 上部ヘッダーバー */
+    header {
+      width: 100%;
+      background: rgba(30, 41, 59, 0.95);
+      border-bottom: 2px solid #334155;
+      padding: 10px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+      z-index: 100;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15.5px;
+      font-weight: 900;
+      color: #38bdf8;
+      letter-spacing: 0.5px;
+    }
+    .header-logo span.badge {
+      background: #fdf2f8;
+      color: #db2777;
+      border: 1px solid #f472b6;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-action-top {
+      background: #334155;
+      color: #e2e8f0;
+      border: 1px solid #475569;
+      padding: 7px 14px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s;
+    }
+    .btn-action-top:hover { background: #475569; color: #ffffff; }
+    .btn-action-top.primary {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      border-color: #38bdf8;
+      color: #ffffff;
+    }
+    .btn-action-top.save-btn {
+      background: linear-gradient(135deg, #10b981, #059669);
+      border-color: #34d399;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    }
+    .btn-action-top.save-btn:hover { background: linear-gradient(135deg, #059669, #047857); }
+    .btn-action-top.mem-btn {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      color: #1e293b;
+    }
+    .btn-action-top.mem-btn:hover { background: #ffffff; color: #0284c7; border-color: #38bdf8; }
+    .btn-action-top.guide-btn {
+      background: #fdf2f8;
+      border-color: #f472b6;
+      color: #db2777;
+    }
+    .btn-action-top.guide-btn:hover { background: #fce7f3; color: #be185d; }
+
+    /* ファイル未読込時のドロップゾーン */
+    #dropzone-container {
+      flex: 1;
+      width: 100%;
+      max-width: 860px;
+      margin: 40px auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dropzone-card {
+      width: 100%;
+      background: #1e293b;
+      border: 2.5px dashed #475569;
+      border-radius: 28px;
+      padding: 60px 30px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    }
+    .dropzone-card:hover, .dropzone-card.dragover {
+      border-color: #38bdf8;
+      background: #243248;
+      transform: translateY(-2px);
+    }
+    .dropzone-icon {
+      font-size: 56px;
+      margin-bottom: 16px;
+      filter: drop-shadow(0 4px 10px rgba(56, 189, 248, 0.4));
+    }
+    .dropzone-title {
+      font-size: 18px;
+      font-weight: 900;
+      color: #f8fafc;
+      margin-bottom: 8px;
+    }
+    .dropzone-desc {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    /* メイン見開きブックコンテナ */
+    #viewer-main-area {
+      display: none;
+      width: 100%;
+      max-width: 1340px;
+      flex: 1;
+      padding: 16px 24px 30px 24px;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* 上部ナビゲーションバー */
+    .book-control-bar {
+      width: 100%;
+      background: #1e293b;
+      border-radius: 20px;
+      padding: 10px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid #334155;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .book-pager {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-nav-page {
+      background: #ffedd5;
+      border: 1.5px solid #ea580c;
+      color: #c2410c;
+      padding: 7px 14px;
+      border-radius: 10px;
+      font-size: 12.5px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-nav-page:hover:not(:disabled) { background: #fed7aa; }
+    .btn-nav-page:disabled { opacity: 0.35; cursor: not-allowed; border-color: #cbd5e1; background: #e2e8f0; color: #94a3b8; }
+    .date-dropdown-select {
+      background: #0f172a;
+      color: #38bdf8;
+      border: 1.5px solid #0284c7;
+      padding: 7px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 900;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .data-summary-pills {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .summary-pill {
+      background: #0f172a;
+      border: 1px solid #334155;
+      padding: 5px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #94a3b8;
+    }
+    .summary-pill b { color: #38bdf8; }
+    .btn-icon-sub {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      padding: 5px 10px;
+      border-radius: 12px;
+      font-size: 11.5px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-icon-sub:hover { background: #334155; color: #ffffff; }
+
+    /* 本の見開きレイアウト */
+    .spread-book-wrapper {
+      display: flex;
+      width: 100%;
+      height: 80vh;
+      min-height: 590px;
+      background: #2b394e;
+      border-radius: 28px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+      border: 3px solid #334155;
+      padding: 10px;
+      gap: 10px;
+      position: relative;
+    }
+
+    .spread-book-wrapper::before {
+      content: "";
+      position: absolute;
+      top: 10px;
+      bottom: 10px;
+      left: 50%;
+      width: 16px;
+      transform: translateX(-50%);
+      background: linear-gradient(90deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.02) 50%, rgba(0,0,0,0.18) 100%);
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    /* 左ページ：絵日記（推敲エディター） */
+    .page-pane-left {
+      flex: 1;
+      background: var(--page-bg);
+      border-radius: 20px 6px 6px 20px;
+      border: 2px solid var(--border-warm);
+      padding: 18px 22px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      gap: 10px;
+      box-shadow: inset -6px 0 15px rgba(0,0,0,0.03);
+      position: relative;
+    }
+
+    /* 右ページ：1日の会話ログ */
+    .page-pane-right {
+      flex: 1;
+      background: #ffffff;
+      border-radius: 6px 20px 20px 6px;
+      border: 2px solid #cbd5e1;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: hidden;
+      box-shadow: inset 6px 0 15px rgba(0,0,0,0.03);
+    }
+
+    /* 絵日記ヘッダー */
+    .diary-page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px dashed #fed7aa;
+      padding-bottom: 8px;
+    }
+    .diary-page-date {
+      font-size: 16px;
+      font-weight: 900;
+      color: #9a3412;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .diary-page-meta {
+      display: flex;
+      gap: 10px;
+      font-size: 12px;
+      font-weight: 800;
+      color: #ea580c;
+    }
+
+    /* 未作成日の閲覧専用・安心案内カード */
+    .diary-empty-card {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #fffaf5;
+      border: 2px dashed #fed7aa;
+      border-radius: 20px;
+      padding: 30px 20px;
+      text-align: center;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .diary-empty-icon { font-size: 48px; filter: drop-shadow(0 2px 8px rgba(234, 88, 12, 0.2)); }
+    .diary-empty-title { font-size: 16px; font-weight: 900; color: #9a3412; }
+    .diary-empty-desc { font-size: 12.5px; color: #c2410c; line-height: 1.6; max-width: 360px; }
+
+    /* 左右2分割フォトブロック */
+    .diary-photo-duo-container {
+      width: 100%;
+      height: 180px;
+      display: flex;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .photo-duo-left {
+      flex: 1.25;
+      height: 100%;
+      border: 2px dashed #fed7aa;
+      border-radius: 14px;
+      background: #fffaf5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+      cursor: pointer;
+      min-width: 0;
+    }
+    .photo-duo-left img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+      transition: transform 0.2s ease-out;
+    }
+    .photo-duo-left:hover img { transform: scale(1.02); }
+    .photo-zoom-hint {
+      position: absolute;
+      bottom: 6px;
+      right: 8px;
+      background: rgba(15, 23, 42, 0.78);
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 800;
+      backdrop-filter: blur(4px);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .photo-detach-btn {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(0, 0, 0, 0.65);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 3px 7px;
+      font-size: 10px;
+      cursor: pointer;
+      z-index: 10;
+    }
+
+    .photo-size-badge {
+      position: absolute;
+      bottom: 6px;
+      left: 8px;
+      background: rgba(15, 23, 42, 0.85);
+      color: #4ade80;
+      border: 1px solid #22c55e;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 900;
+      font-family: monospace;
+      pointer-events: none;
+      z-index: 8;
+      backdrop-filter: blur(4px);
+    }
+    .photo-size-badge.is-large {
+      color: #fca5a5;
+      border-color: #ef4444;
+      background: rgba(69, 10, 10, 0.9);
+      animation: badgeWarnPulse 1.8s infinite alternate;
+    }
+    @keyframes badgeWarnPulse {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.06); filter: brightness(1.2); }
+    }
+
+    .photo-duo-right {
+      flex: 1.1;
+      height: 100%;
+      background: #fffaf5;
+      border: 1px dashed #fed7aa;
+      border-radius: 14px;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .duo-right-header {
+      font-size: 11px;
+      font-weight: 900;
+      color: #ea580c;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+      padding: 0 2px;
+    }
+    .duo-right-grid-horizontal {
+      flex: 1;
+      display: grid;
+      grid-template-rows: repeat(2, 1fr);
+      grid-auto-flow: column;
+      grid-auto-columns: 74px;
+      gap: 6px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding-bottom: 2px;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+    .duo-right-grid-horizontal::-webkit-scrollbar { height: 4px; }
+    .duo-right-grid-horizontal::-webkit-scrollbar-thumb { background: #fdba74; border-radius: 4px; }
+
+    .snap-grid-item {
+      width: 74px;
+      height: 74px;
+      border-radius: 8px;
+      border: 1.5px solid #fed7aa;
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+      background: #ffffff;
+      flex-shrink: 0;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .snap-grid-item:hover { transform: scale(1.03); border-color: #f472b6; }
+    .snap-grid-item.is-selected {
+      border: 2px solid #f472b6;
+      box-shadow: 0 0 8px rgba(244, 114, 182, 0.6);
+    }
+    .snap-grid-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .btn-snap-del {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      background: rgba(15, 23, 42, 0.75);
+      color: #ffffff;
+      border: none;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 5;
+      transition: background 0.15s;
+    }
+    .btn-snap-del:hover { background: #ef4444; }
+
+    .snap-size-badge {
+      position: absolute;
+      bottom: 2px;
+      left: 2px;
+      background: rgba(15, 23, 42, 0.85);
+      color: #4ade80;
+      border: 1px solid #22c55e;
+      padding: 1px 4px;
+      border-radius: 4px;
+      font-size: 8.5px;
+      font-weight: 900;
+      font-family: monospace;
+      pointer-events: none;
+      z-index: 4;
+    }
+    .snap-size-badge.is-large {
+      color: #fca5a5;
+      border-color: #ef4444;
+      background: rgba(69, 10, 10, 0.9);
+    }
+
+    /* 本文推敲エリア */
+    .diary-edit-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-height: 120px;
+    }
+    .diary-edit-label {
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #9a3412;
+      display: flex;
+      justify-content: space-between;
+    }
+    .diary-edit-textarea {
+      flex: 1;
+      width: 100%;
+      background: #ffffff;
+      border: 1.5px solid #fed7aa;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 13.5px;
+      line-height: 1.7;
+      color: #431407;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      min-height: 100px;
+    }
+    .diary-edit-textarea:focus {
+      border-color: #f97316;
+      box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.15);
+    }
+
+    /* クロからのひとこと推敲枠 */
+    .diary-comment-edit-box {
+      background: #fdf2f8;
+      border: 1.5px solid #fbcfe8;
+      border-radius: 12px;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .diary-comment-label {
+      font-size: 11px;
+      font-weight: 900;
+      color: #db2777;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .diary-comment-textarea {
+      width: 100%;
+      background: #ffffff;
+      border: 1px solid #fbcfe8;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: #9d174d;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+    }
+    .diary-comment-textarea:focus {
+      border-color: #f472b6;
+      box-shadow: 0 0 0 2px rgba(244, 114, 182, 0.2);
+    }
+
+    /* 右ページ要素：会話タイムライン */
+    .chat-timeline-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+      flex-shrink: 0;
+    }
+    .chat-header-title {
+      font-size: 14.5px;
+      font-weight: 900;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chat-timeline-scroll {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 6px 4px 16px 4px;
+    }
+
+    .chat-row {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+    .chat-row.user { align-items: flex-end; }
+    .chat-row.model { align-items: flex-start; }
+
+    .chat-meta-time {
+      font-size: 10px;
+      color: #94a3b8;
+      font-weight: 700;
+      margin-bottom: 2px;
+      padding: 0 4px;
+    }
+
+    .chat-bubble {
+      max-width: 84%;
+      padding: 9px 14px;
+      border-radius: 16px;
+      font-size: 13px;
+      line-height: 1.5;
+      word-break: break-word;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .chat-row.user .chat-bubble {
+      background: #0284c7;
+      color: #ffffff;
+      border-bottom-right-radius: 4px;
+    }
+    .chat-row.model .chat-bubble {
+      background: #fdf2f8;
+      color: #1e293b;
+      border: 1.5px solid #fbcfe8;
+      border-bottom-left-radius: 4px;
+    }
+
+    .chat-bubble-photo-wrap {
+      max-width: 220px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid #bae6fd;
+      margin-bottom: 6px;
+      cursor: pointer;
+      position: relative;
+    }
+    .chat-bubble-photo-wrap img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* 汎用モーダル */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.82);
+      backdrop-filter: blur(8px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 300;
+      padding: 20px;
+    }
+    .modal-overlay.is-open { display: flex; }
+    .modal-window {
+      background: #ffffff;
+      width: 100%;
+      max-width: 720px;
+      max-height: 88vh;
+      border-radius: 24px;
+      padding: 24px;
+      color: #1e293b;
+      overflow-y: auto;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.45);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .modal-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 12px;
+    }
+    .modal-header-title {
+      font-size: 16px;
+      font-weight: 900;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* 記憶帳・設定ウィンドウ専用デザイン */
+    .mem-tab-bar {
+      display: flex;
+      gap: 6px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 4px;
+    }
+    .mem-tab-btn {
+      padding: 7px 14px;
+      border: none;
+      background: transparent;
+      font-size: 12.5px;
+      font-weight: 800;
+      color: #64748b;
+      cursor: pointer;
+      border-radius: 10px 10px 0 0;
+      transition: all 0.15s;
+    }
+    .mem-tab-btn.active {
+      color: #0284c7;
+      border-bottom: 2.5px solid #0284c7;
+      font-weight: 900;
+    }
+    .mem-tab-pane { display: none; flex-direction: column; gap: 10px; }
+    .mem-tab-pane.active { display: flex; }
+
+    .mem-item-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 6px 10px;
+      gap: 8px;
+    }
+    .mem-item-row:focus-within {
+      border-color: #0284c7;
+      box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.12);
+      background: #ffffff;
+    }
+    .mem-input-text {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 12.5px;
+      outline: none;
+      color: #1e293b;
+      font-family: inherit;
+    }
+    .btn-mem-clear {
+      border: none;
+      background: #e2e8f0;
+      color: #64748b;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-mem-clear:hover { background: #cbd5e1; color: #0f172a; }
+
+    .btn-save-memories-main {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #ffffff;
+      border: none;
+      border-radius: 14px;
+      font-size: 13.5px;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 3px 10px rgba(16, 185, 129, 0.25);
+      margin-top: 6px;
+      transition: all 0.15s;
+    }
+    .btn-save-memories-main:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+    /* ガイドモーダル専用デザイン */
+    .guide-section-box {
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .guide-section-box.view { border-color: #bae6fd; background: #f0f9ff; }
+    .guide-section-box.edit { border-color: #fbcfe8; background: #fdf2f8; }
+    .guide-section-box.save { border-color: #bbf7d0; background: #f0fdf4; }
+    .guide-sec-title {
+      font-size: 13.5px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .guide-section-box.view .guide-sec-title { color: #0284c7; }
+    .guide-section-box.edit .guide-sec-title { color: #db2777; }
+    .guide-section-box.save .guide-sec-title { color: #15803d; }
+    .guide-sec-body {
+      font-size: 12px;
+      line-height: 1.65;
+      color: #334155;
+    }
+    .guide-kw-pill {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 11.5px;
+      margin-top: 4px;
+      line-height: 1.55;
+    }
+
+    /* 写真フルサイズ拡大表示モーダル */
+    #photo-zoom-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.92);
+      backdrop-filter: blur(8px);
+      z-index: 500;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      cursor: pointer;
+    }
+    #photo-zoom-modal.is-open { display: flex; }
+    .zoom-content {
+      position: relative;
+      max-width: 90vw;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      pointer-events: auto;
+    }
+    .zoom-img {
+      max-width: 88vw;
+      max-height: 82vh;
+      object-fit: contain;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+    .zoom-caption {
+      margin-top: 10px;
+      color: #f1f5f9;
+      font-size: 13px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    @media print {
+      body { background: white; color: black; }
+      header, .book-control-bar, #photo-zoom-modal, .modal-overlay, .btn-action-top { display: none !important; }
+      #viewer-main-area { display: block !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
+      .spread-book-wrapper { height: auto !important; border: none !important; box-shadow: none !important; background: white !important; padding: 0 !important; }
+      .page-pane-left, .page-pane-right { border: 1px solid #ccc !important; box-shadow: none !important; height: auto !important; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 上部ヘッダー（極限までシンプル・4つのボタンだけに集約） -->
+  <header>
+    <div class="header-logo">
+      <span>📖</span>
+      <span>クロちゃんの思い出アルバム ＆ バックアップ エディター</span>
+      <span class="badge" id="header-pkg-version">V.1.0.0 対応</span>
+    </div>
+
+    <div class="header-actions">
+      <button type="button" class="btn-action-top primary" id="btn-open-file">📁 バックアップを開く</button>
+      <input type="file" id="json-file-input" accept=".json" style="display: none;">
+
+      <button type="button" class="btn-action-top save-btn" id="btn-save-package" style="display: none;">💾 スマホに戻す保存</button>
+      <button type="button" class="btn-action-top mem-btn" id="btn-open-mem-settings" style="display: none;">📌 クロの記憶帳・設定</button>
+      <button type="button" class="btn-action-top guide-btn" id="btn-open-guide" style="display: none;">❓ ガイド</button>
+    </div>
+  </header>
+
+  <!-- ファイルドロップゾーン（初回表示） -->
+  <div id="dropzone-container">
+    <div class="dropzone-card" id="dropzone-card">
+      <div class="dropzone-icon">🐾📁</div>
+      <div class="dropzone-title">クロちゃんのバックアップファイル（JSON）をここにドロップ</div>
+      <div class="dropzone-desc">
+        スマホのクロちゃんの設定画面で「📁 ファイル保存」したバックアップファイル（.json）を<br>
+        この枠内にドラッグ＆ドロップ、またはクリックして選択してくださいニャ！
+      </div>
+      <button type="button" class="btn-action-top primary" style="margin: 0 auto; padding: 10px 24px; font-size: 13.5px;">ファイルを選択する</button>
+    </div>
+  </div>
+
+  <!-- メイン見開きビューワー＆エディターエリア -->
+  <main id="viewer-main-area">
+    <!-- ナビゲーションバー -->
+    <div class="book-control-bar">
+      <div class="book-pager">
+        <button type="button" class="btn-nav-page" id="btn-prev-day">◀ 前の日</button>
+        <select id="date-select-dropdown" class="date-dropdown-select"></select>
+        <button type="button" class="btn-nav-page" id="btn-next-day">次の日 ▶</button>
+      </div>
+
+      <div class="data-summary-pills">
+        <span class="summary-pill" id="pill-summary-diary">絵日記: <b>0日分</b></span>
+        <span class="summary-pill" id="pill-summary-photos">写真プール: <b>0枚</b></span>
+        <span class="summary-pill" id="pill-summary-chats">総会話ログ: <b>0件</b></span>
+        <span class="summary-pill" id="pill-summary-filesize">ファイル容量: <b>0 KB</b></span>
+        <button type="button" class="btn-icon-sub" id="btn-print-page" title="アルバムの見開きを印刷またはPDFとして保存">🖨️ 印刷</button>
+      </div>
+    </div>
+
+    <!-- 本の見開き本体 -->
+    <div class="spread-book-wrapper">
+      <!-- 左ページ：エディット①【絵日記本文の推敲 ＆ スナップ写真整理】 -->
+      <section class="page-pane-left" id="page-left">
+        <div class="diary-page-header">
+          <div class="diary-page-date">
+            <span>📅</span>
+            <span id="diary-full-date-disp">2026年11月5日 (木)</span>
+          </div>
+          <div class="diary-page-meta">
+            <span id="diary-weather-disp">🌤️ 快晴</span>
+            <span id="diary-temp-disp">🌡️ 22℃</span>
+          </div>
+        </div>
+
+        <!-- 未作成日の閲覧専用・安心案内カード -->
+        <div class="diary-empty-card" id="diary-empty-view" style="display:none;">
+          <div class="diary-empty-icon">🐾📖</div>
+          <div class="diary-empty-title">この日はまだ絵日記が書かれていませんニャ🐾</div>
+          <div class="diary-empty-desc">
+            右ページでその日のおやびんとクロの会話ログを振り返ることができますニャン♪<br>
+            <span style="font-size:11.5px; color:#9a3412; font-weight:bold; margin-top:6px; display:inline-block;">
+              ※データの整合性を安全に守るため、絵日記の新規作成はスマホのクロちゃんにお話しして行ってくださいニャ！
+            </span>
+          </div>
+        </div>
+
+        <!-- 日記エディター本体 -->
+        <div id="diary-editor-view" style="display:flex; flex-direction:column; gap:10px; flex:1;">
+          <!-- 左右2分割フォトブロック -->
+          <div class="diary-photo-duo-container">
+            <!-- 左列：メイン写真フレーム -->
+            <div class="photo-duo-left" id="diary-main-photo-box" title="クリックでフルサイズ拡大プレビュー">
+              <img src="" alt="メイン写真" id="diary-main-photo-img">
+              <span class="photo-size-badge" id="main-photo-size-badge">24 KB</span>
+              <span class="photo-zoom-hint">🔍 拡大</span>
+              <button type="button" class="photo-detach-btn" id="btn-detach-main-photo">✕ 外す</button>
+            </div>
+
+            <!-- 右列：思い出スナッププール -->
+            <div class="photo-duo-right">
+              <div class="duo-right-header">
+                <span id="duo-right-header-text">📷 スナップ一覧（0枚）</span>
+                <span style="font-size:9.5px;color:#9a3412;">✕で削除</span>
+              </div>
+              <div class="duo-right-grid-horizontal" id="snap-grid-box"></div>
+            </div>
+          </div>
+
+          <!-- 本文直接編集・推敲エリア -->
+          <div class="diary-edit-container">
+            <div class="diary-edit-label">
+              <span>✍️ クロの日記本文（直接推敲・修正できます）:</span>
+              <span id="diary-char-counter" style="font-size:10.5px;color:#64748b;">0 文字</span>
+            </div>
+            <textarea class="diary-edit-textarea" id="diary-content-input" placeholder="ここに絵日記の本文を入力・推敲できますニャ🐾"></textarea>
+          </div>
+
+          <!-- クロからのひとこと推敲枠 -->
+          <div class="diary-comment-edit-box">
+            <span class="diary-comment-label">🐾 クロからのひとこと:</span>
+            <textarea class="diary-comment-textarea" id="diary-comment-input" rows="2" placeholder="（ひとこと記録なし）"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右ページ：1日の会話履歴鑑賞 -->
+      <section class="page-pane-right" id="page-right">
+        <div class="chat-timeline-header">
+          <div class="chat-header-title">
+            <span>💬</span>
+            <span id="chat-day-title">この日のおやびんとクロの会話</span>
+          </div>
+          <span style="font-size:11.5px;color:#64748b;font-weight:700;" id="chat-count-badge">0 件の会話</span>
+        </div>
+
+        <div class="chat-timeline-scroll" id="chat-timeline-scroll"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- 📌 エディット②【クロの記憶帳 ＆ 設定・大掃除ウィンドウ】 -->
+  <div class="modal-overlay" id="mem-settings-modal">
+    <div class="modal-window">
+      <div class="modal-header-row">
+        <div class="modal-header-title">
+          <span>📌</span>
+          <span>クロの記憶帳 ＆ システム設定</span>
+        </div>
+        <button type="button" class="btn-action-top" id="btn-close-mem-settings">✕ 閉じる</button>
+      </div>
+
+      <div class="mem-tab-bar">
+        <button type="button" class="mem-tab-btn active" data-target="tab-memories">📌 クロの記憶帳（絆・設定）</button>
+        <button type="button" class="mem-tab-btn" data-target="tab-settings">⚙️ 声・見た目の設定</button>
+        <button type="button" class="mem-tab-btn" data-target="tab-maint">🗄️ データ管理・過去の大掃除</button>
+      </div>
+
+      <div class="mem-tab-pane active" id="tab-memories">
+        <div style="font-size:12px; color:#475569; line-height:1.5;">
+          クロちゃんが一生忘れない大切な記憶です。テキストを直接打ち替えて、最後に下の「💾 記憶の変更を保存するニャ！」を押してくださいニャン🐾
+        </div>
+        <div id="memories-container" style="display:flex; flex-direction:column; gap:7px; max-height:280px; overflow-y:auto; padding:2px;"></div>
+        
+        <div style="display:flex; gap:6px; margin-top:4px;">
+          <input type="text" id="new-mem-input" placeholder="新しい記憶を追加（例: 大好物はちゅ〜るのまぐろ味）" style="flex:1; padding:7px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:12px; outline:none;">
+          <button type="button" class="btn-action-top primary" id="btn-add-memory" style="padding:6px 14px;">＋ 行を追加</button>
+        </div>
+
+        <button type="button" class="btn-save-memories-main" id="btn-save-memories">
+          <span>💾</span>
+          <span>記憶の変更を保存するニャ！</span>
+        </button>
+      </div>
+
+      <div class="mem-tab-pane" id="tab-settings">
+        <div style="font-size:12px; color:#475569;">スマホアプリ本体の音声や見た目の設定内容です。</div>
+        <div id="settings-view-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; font-size:12px;"></div>
+      </div>
+
+      <div class="mem-tab-pane" id="tab-maint">
+        <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:12px; padding:12px; font-size:12px; color:#9a3412; line-height:1.55;">
+          <b>🗄️ 過去データの救済・大掃除:</b><br>
+          昔の未圧縮写真（100KB超）を自動検出し、画質そのまま約15〜20KBへスマート再圧縮します。<br>
+          ※現在のスマホは自動圧縮が効いているため、<b>日常の運用では基本的にこの操作は不要です</b>。
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px;">
+          <div>
+            <div style="font-size:12.5px; font-weight:900; color:#0f172a;">未圧縮写真（100KB超）の一括軽量化</div>
+            <div style="font-size:11px; color:#64748b;" id="maint-uncompressed-status">点検中…</div>
+          </div>
+          <button type="button" class="btn-action-top" id="btn-run-recompress" style="background:#ea580c; border-color:#c2410c; color:#ffffff;">⚡ 軽量化を実行</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ❓ 使い方 ＆ 取扱説明書（スマホ⇔PCの写真連携・軽量化手順を完全明記） -->
+  <div class="modal-overlay" id="guide-modal">
+    <div class="modal-window">
+      <div class="modal-header-row">
+        <div class="modal-header-title">
+          <span>❓</span>
+          <span>使い方 ＆ 取扱説明書（トリセツ）</span>
+        </div>
+        <button type="button" class="btn-action-top" id="btn-close-guide">✕ 閉じる</button>
+      </div>
+
+      <!-- 1. はじめに（ツールの役割） -->
+      <div style="font-size:12.5px; line-height:1.6; color:#475569;">
+        本ツールは、スマホのクロちゃん（またはシロくん）が保存したバックアップデータを、PCの大画面で**「見る（ビューワー）」**そして**「直す（エディター）」**ための専用環境ですニャン🐾
+      </div>
+
+      <!-- 2. 写真の連携・軽量化手順と安心設計（新設） -->
+      <div class="guide-section-box save">
+        <div class="guide-sec-title">📱💻 スマホとPCの写真連携＆軽量化の安心手順</div>
+        <div class="guide-sec-body">
+          スマホの容量を快適に保ちながら、PCで高画質写真をずっと大切に残すための標準的な手順です：<br><br>
+          1. <b>スマホが重くなったら（4MB警告など）</b>:<br>
+             スマホの設定画面から「🧹 写真ストレージ安全お掃除」を実行します。<br>
+             ➔ 自動的に『高画質写真アルバム原本（JSON）』がダウンロードされ、スマホ内の写真は3〜5KBに極小化されて空き容量が劇的に回復します！<br><br>
+          2. <b>PCで高画質写真を保存・鑑賞</b>:<br>
+             ダウンロードされた原本JSONをPCに送り、このビューワーで開きます。<br>
+             ➔ PCの大画面で、綺麗な高画質スナップ写真を鑑賞・印刷・PDF保存できます。<br><br>
+          3. <b>スマホから後日バックアップを読み込んでも安心（高画質保護）</b>:<br>
+             後日、スマホで軽量化されたデータ（3〜5KB）をPCビューワーに読み込ませても、<b>PC側の高画質写真は自動保護され、絶対に荒い写真で上書きされません</b>。<br><br>
+          4. <b>PCで日記を直してスマホに戻す</b>:<br>
+             PCで日記や記憶を推敲したら「💾 スマホに戻す保存」を押し、スマホの設定で「📁 ファイル読込」を行えば、<b>スマホでおしゃべりした最新の会話ログを一切消さずに、日記と記憶だけが安全に更新</b>されます！
+        </div>
+      </div>
+
+      <!-- 3. ビューワー機能の説明 -->
+      <div class="guide-section-box view">
+        <div class="guide-sec-title">① 思い出アルバムを見る（ビューワー機能）</div>
+        <div class="guide-sec-body">
+          ・<b>日付をめくる</b>: 上部の「◀ 前の日 / 次の日 ▶」やプルダウンで過去の思い出ページを開きます。<br>
+          ・<b>写真を大画面で鑑賞</b>: 写真をクリックすると全画面フルサイズで綺麗に拡大プレビューされます。<br>
+          ・<b>印刷 / PDF保存</b>: 右上の「🖨️ 印刷」を押すと、見開きレイアウトのまま紙やPDFへ美しく出力できます。
+        </div>
+      </div>
+
+      <!-- 4. エディター機能の説明 -->
+      <div class="guide-section-box edit">
+        <div class="guide-sec-title">② 日記や記憶を直す（エディター機能）</div>
+        <div class="guide-sec-body">
+          ・<b>【絵日記の推敲】</b>: メイン画面の左ページで、過去の日記本文やクロのひとことを直接キーボードで手直しできます。スナップ写真一覧の「✕」を押すと不要な写真を1枚ずつ整理できます。<br>
+          ・<b>【クロの記憶帳の編集】</b>: 右上の「📌 クロの記憶帳・設定」を開くと、クロちゃんとの大切な記憶（プロフィールや好物、家族の思い出）をじっくり編集・更新できます。<br>
+          ※安全のため、新しい日記の執筆はスマホ側で行ってくださいニャ！
+        </div>
+      </div>
+
+      <!-- 5. モード別話しかけキーワードの確認 -->
+      <div class="guide-section-box view">
+        <div class="guide-sec-title">③ スマホでの話しかけキーワード（お散歩・遊び）</div>
+        <div class="guide-sec-body">
+          スマホのクロちゃんに話しかける時に迷ったら「<b>何ができるの？</b>」と聞くだけで、クロちゃんが可愛い声で教えてくれますニャン🐾<br>
+          <div class="guide-kw-pill">
+            <b>🐾 なかよしモード（遊び・絆）:</b><br>
+            ・しりとり（「しりとりしよ！」）<br>
+            ・なぞなぞ（「なぞなぞ出して」「クイズしよ」）<br>
+            ・お散歩探検（「お散歩ミッションちょうだい！」）<br>
+            ・肉球うらない（「今日の運勢は？」「占って」）<br>
+            ・現在地確認（「いまどこ？」「ここどこ？」※即座にGPS測位）
+          </div>
+          <div class="guide-kw-pill" style="margin-top:6px;">
+            <b>👓 おてつだいモード（案内・散策）:</b><br>
+            ・近くの公園（「近くの公園探して」「散歩コース」）<br>
+            ・カフェ・休憩（「休憩できるカフェ」「冷たいもの飲みたい」）<br>
+            ・グルメ（「ラーメン」「焼肉」「お腹すいた」）<br>
+            ・最新ニュース（「ニュース教えて」「大谷翔平の話題」）
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 写真フルサイズ拡大表示モーダル -->
+  <div id="photo-zoom-modal">
+    <div class="zoom-content">
+      <img src="" alt="写真拡大プレビュー" class="zoom-img" id="zoom-img">
+      <div class="zoom-caption" id="zoom-caption">📸 写真の全貌</div>
+    </div>
+  </div>
+
+  <script src="version.js"></script>
+  <script>
+    /* ==========================================================================
+       クロちゃん バックアップデータ解析・エディター＆高画質保護エンジン (V.1.0.0)
+       ========================================================================== */
+    let gPackageData = null;
+    let gSortedDateKeys = [];
+    let gCurrentDateKey = null;
+
+    const fileInput = document.getElementById('json-file-input');
+    const dropzoneCard = document.getElementById('dropzone-card');
+    const dropzoneContainer = document.getElementById('dropzone-container');
+    const viewerMainArea = document.getElementById('viewer-main-area');
+
+    const btnOpenFile = document.getElementById('btn-open-file');
+    const btnSavePackage = document.getElementById('btn-save-package');
+    const btnOpenMemSettings = document.getElementById('btn-open-mem-settings');
+    const btnOpenGuide = document.getElementById('btn-open-guide');
+    const btnPrintPage = document.getElementById('btn-print-page');
+
+    const guideModal = document.getElementById('guide-modal');
+    const btnCloseGuide = document.getElementById('btn-close-guide');
+
+    const memSettingsModal = document.getElementById('mem-settings-modal');
+    const btnCloseMemSettings = document.getElementById('btn-close-mem-settings');
+    const memoriesContainer = document.getElementById('memories-container');
+    const newMemInput = document.getElementById('new-mem-input');
+    const btnAddMemory = document.getElementById('btn-add-memory');
+    const btnSaveMemories = document.getElementById('btn-save-memories');
+    const settingsViewGrid = document.getElementById('settings-view-grid');
+    const maintUncompressedStatus = document.getElementById('maint-uncompressed-status');
+    const btnRunRecompress = document.getElementById('btn-run-recompress');
+
+    const dateDropdown = document.getElementById('date-select-dropdown');
+    const btnPrevDay = document.getElementById('btn-prev-day');
+    const btnNextDay = document.getElementById('btn-next-day');
+
+    const zoomModal = document.getElementById('photo-zoom-modal');
+    const zoomImg = document.getElementById('zoom-img');
+    const zoomCaption = document.getElementById('zoom-caption');
+
+    const diaryEmptyView = document.getElementById('diary-empty-view');
+    const diaryEditorView = document.getElementById('diary-editor-view');
+    const diaryTextInput = document.getElementById('diary-content-input');
+    const diaryCommentInput = document.getElementById('diary-comment-input');
+    const diaryCharCounter = document.getElementById('diary-char-counter');
+    const btnDetachPhoto = document.getElementById('btn-detach-main-photo');
+    const mainPhotoSizeBadge = document.getElementById('main-photo-size-badge');
+
+    btnOpenFile.onclick = () => fileInput.click();
+    dropzoneCard.onclick = () => fileInput.click();
+
+    fileInput.onchange = (e) => {
+      const file = e.target.files?.[0];
+      if (file) handleFile(file);
+    };
+
+    ['dragenter', 'dragover'].forEach(name => {
+      dropzoneCard.addEventListener(name, (e) => {
+        e.preventDefault(); e.stopPropagation();
+        dropzoneCard.classList.add('dragover');
+      }, false);
+    });
+    ['dragleave', 'drop'].forEach(name => {
+      dropzoneCard.addEventListener(name, (e) => {
+        e.preventDefault(); e.stopPropagation();
+        dropzoneCard.classList.remove('dragover');
+      }, false);
+    });
+    dropzoneCard.addEventListener('drop', (e) => {
+      const file = e.dataTransfer.files?.[0];
+      if (file) handleFile(file);
+    }, false);
+
+    function handleFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const json = JSON.parse(e.target.result);
+          loadBackupPackage(json, file.name);
+        } catch (err) {
+          alert("JSONファイルの解析に失敗しましたニャ: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function calcBase64KB(base64Str) {
+      if (!base64Str || typeof base64Str !== 'string') return 0;
+      const len = base64Str.length;
+      return Math.round((len * 0.75) / 1024);
+    }
+
+    function formatKBDisplay(kb) {
+      if (kb >= 1024) return (kb / 1024).toFixed(2) + " MB";
+      return kb + " KB";
+    }
+
+    function calcTotalPackageKB(pkg) {
+      try {
+        const jsonStr = JSON.stringify(pkg);
+        return Math.round(new Blob([jsonStr]).size / 1024);
+      } catch(e) { return 0; }
+    }
+
+    function isProperDiaryItem(diary) {
+      if (!diary || !diary.content) return false;
+      const txt = diary.content.trim();
+      if (txt.includes("今日はおやびんと写真を見せ合って楽しかったニャン♪") && txt.length < 50) return false;
+      if (txt.includes("今日は助手と写真を見せ合って楽しかったホ！") && txt.length < 50) return false;
+      return (txt.length >= 30);
+    }
+
+    // ★高画質写真プロテクト・マージ機構（軽量化サムネイルによる高画質写真上書きを完全防止）
+    function mergeWithHighResProtection(newPkg, existingPkg) {
+      if (!existingPkg || !newPkg) return newPkg;
+
+      // 1. 日記写真の高画質マージ
+      if (Array.isArray(newPkg.diaries) && Array.isArray(existingPkg.diaries)) {
+        newPkg.diaries.forEach(newD => {
+          const oldD = existingPkg.diaries.find(d => d.dateKey === newD.dateKey);
+          if (oldD && oldD.photo && newD.photo) {
+            const oldKB = calcBase64KB(oldD.photo);
+            const newKB = calcBase64KB(newD.photo);
+            // 既存が高画質（20KB以上）かつ新規が軽量サムネイル（新KBが旧KBの半分以下）なら高画質を死守
+            if (oldKB > 20 && newKB < oldKB * 0.6) {
+              newD.photo = oldD.photo;
+            }
+          } else if (oldD && oldD.photo && !newD.photo) {
+            newD.photo = oldD.photo;
+          }
+        });
+      }
+
+      // 2. 日別スナップ写真プールの高画質マージ
+      if (newPkg.dailyPhotoPools && existingPkg.dailyPhotoPools) {
+        for (const poolKey in newPkg.dailyPhotoPools) {
+          const newArr = newPkg.dailyPhotoPools[poolKey];
+          const oldArr = existingPkg.dailyPhotoPools[poolKey];
+          if (Array.isArray(newArr) && Array.isArray(oldArr)) {
+            newArr.forEach((newP, idx) => {
+              if (oldArr[idx] && oldArr[idx].base64) {
+                const oldKB = calcBase64KB(oldArr[idx].base64);
+                const newKB = calcBase64KB(newP.base64);
+                if (oldKB > 20 && newKB < oldKB * 0.6) {
+                  newP.base64 = oldArr[idx].base64;
+                }
+              }
+            });
+          }
+        }
+      }
+
+      return newPkg;
+    }
+
+    function loadBackupPackage(pkg, filename) {
+      if (!pkg || typeof pkg !== 'object') {
+        alert("有効なバックアップファイルではありませんニャ。");
+        return;
+      }
+
+      // 高画質写真の自動保護マージを実行
+      if (gPackageData) {
+        pkg = mergeWithHighResProtection(pkg, gPackageData);
+      }
+
+      gPackageData = pkg;
+
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const todayKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+      if (Array.isArray(pkg.diaries)) {
+        pkg.diaries = pkg.diaries.map(d => {
+          let comment = d.kuroComment || "";
+          if (comment.includes("今日もおやびんと一緒で最高に幸せな一日だった")) comment = "";
+          d.kuroComment = comment;
+          return d;
+        });
+      }
+
+      const dateSet = new Set();
+      if (Array.isArray(pkg.diaries)) {
+        pkg.diaries.forEach(d => { if (d.dateKey) dateSet.add(d.dateKey); });
+      }
+      if (pkg.dailyPhotoPools) {
+        Object.keys(pkg.dailyPhotoPools).forEach(k => {
+          const cleanK = k.replace(/^kuro_daily_photos_(?:[a-z]+_)?/, '');
+          if (/^\d{4}-\d{2}-\d{2}$/.test(cleanK)) dateSet.add(cleanK);
+        });
+      }
+      if (pkg.dailyChatLogs) {
+        Object.keys(pkg.dailyChatLogs).forEach(k => {
+          const cleanK = k.replace(/^kuro_daily_logs_(?:[a-z]+_)?/, '');
+          if (/^\d{4}-\d{2}-\d{2}$/.test(cleanK)) dateSet.add(cleanK);
+        });
+      }
+
+      gSortedDateKeys = Array.from(dateSet).sort().reverse();
+      if (gSortedDateKeys.length === 0) gSortedDateKeys.push(todayKey);
+
+      let initialKey = gSortedDateKeys[0];
+      const latestDiary = (pkg.diaries || []).find(d => d.dateKey === initialKey);
+      if (!isProperDiaryItem(latestDiary)) {
+        const foundProper = gSortedDateKeys.find(key => {
+          const d = (pkg.diaries || []).find(item => item.dateKey === key);
+          return isProperDiaryItem(d);
+        });
+        if (foundProper) initialKey = foundProper;
+      }
+      gCurrentDateKey = initialKey;
+
+      dropzoneContainer.style.display = 'none';
+      viewerMainArea.style.display = 'flex';
+      btnSavePackage.style.display = 'flex';
+      btnOpenMemSettings.style.display = 'flex';
+      btnOpenGuide.style.display = 'flex';
+
+      const currentVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "V.1.0.0";
+      const verTag = document.getElementById('header-pkg-version');
+      if (verTag) verTag.textContent = `${currentVer} （${pkg.exportedAt || 'バックアップ'}）`;
+
+      updateSummaryPills();
+      buildDateDropdown();
+      renderCurrentSpread();
+      renderMemoriesAndSettingsUI();
+    }
+
+    function updateSummaryPills() {
+      const pkg = gPackageData;
+      const diaryCount = Array.isArray(pkg.diaries) ? pkg.diaries.length : 0;
+
+      let photoCount = 0;
+      let totalPhotoKB = 0;
+      if (pkg.dailyPhotoPools) {
+        Object.values(pkg.dailyPhotoPools).forEach(arr => {
+          if (Array.isArray(arr)) {
+            photoCount += arr.length;
+            arr.forEach(p => { totalPhotoKB += calcBase64KB(p.base64); });
+          }
+        });
+      } else if (Array.isArray(pkg.diaries)) {
+        pkg.diaries.forEach(d => {
+          if (d && d.photo) {
+            photoCount++;
+            totalPhotoKB += calcBase64KB(d.photo);
+          }
+        });
+      }
+
+      let chatCount = 0;
+      if (pkg.dailyChatLogs) {
+        Object.values(pkg.dailyChatLogs).forEach(arr => {
+          if (Array.isArray(arr)) chatCount += arr.length;
+        });
+      } else if (Array.isArray(pkg.recentLogs)) {
+        chatCount = pkg.recentLogs.length;
+      }
+
+      const totalKB = calcTotalPackageKB(pkg);
+
+      document.getElementById('pill-summary-diary').innerHTML = `絵日記: <b>${diaryCount}日分</b>`;
+      document.getElementById('pill-summary-photos').innerHTML = `写真プール: <b>${photoCount}枚 (${formatKBDisplay(totalPhotoKB)})</b>`;
+      document.getElementById('pill-summary-chats').innerHTML = `総会話ログ: <b>${chatCount}件</b>`;
+      document.getElementById('pill-summary-filesize').innerHTML = `ファイル容量: <b>${formatKBDisplay(totalKB)}</b>`;
+    }
+
+    function buildDateDropdown() {
+      dateDropdown.innerHTML = '';
+      gSortedDateKeys.forEach((key, idx) => {
+        const opt = document.createElement('option');
+        opt.value = key;
+
+        const diary = (gPackageData.diaries || []).find(d => d.dateKey === key);
+        const hasDiary = isProperDiaryItem(diary);
+        const fullDate = diary?.fullDate || key;
+
+        opt.textContent = `${hasDiary ? '📖' : '💬'} ${fullDate} ${idx === 0 ? '（最新）' : ''}`;
+        dateDropdown.appendChild(opt);
+      });
+
+      dateDropdown.value = gCurrentDateKey;
+      dateDropdown.onchange = (e) => {
+        gCurrentDateKey = e.target.value;
+        renderCurrentSpread();
+      };
+
+      btnPrevDay.onclick = () => {
+        const curIdx = gSortedDateKeys.indexOf(gCurrentDateKey);
+        if (curIdx < gSortedDateKeys.length - 1) {
+          gCurrentDateKey = gSortedDateKeys[curIdx + 1];
+          dateDropdown.value = gCurrentDateKey;
+          renderCurrentSpread();
+        }
+      };
+
+      btnNextDay.onclick = () => {
+        const curIdx = gSortedDateKeys.indexOf(gCurrentDateKey);
+        if (curIdx > 0) {
+          gCurrentDateKey = gSortedDateKeys[curIdx - 1];
+          dateDropdown.value = gCurrentDateKey;
+          renderCurrentSpread();
+        }
+      };
+    }
+
+    function renderCurrentSpread() {
+      const curIdx = gSortedDateKeys.indexOf(gCurrentDateKey);
+      btnPrevDay.disabled = (curIdx >= gSortedDateKeys.length - 1);
+      btnNextDay.disabled = (curIdx <= 0);
+
+      const pkg = gPackageData;
+      let diary = (pkg.diaries || []).find(d => d.dateKey === gCurrentDateKey);
+      const hasProperDiary = isProperDiaryItem(diary);
+
+      const dateDisp = document.getElementById('diary-full-date-disp');
+      const weatherDisp = document.getElementById('diary-weather-disp');
+      const tempDisp = document.getElementById('diary-temp-disp');
+      const photoImg = document.getElementById('diary-main-photo-img');
+      const photoBox = document.getElementById('diary-main-photo-box');
+      const duoRightHeaderText = document.getElementById('duo-right-header-text');
+      const snapGridBox = document.getElementById('snap-grid-box');
+
+      dateDisp.textContent = diary?.fullDate || `${gCurrentDateKey}（未作成）`;
+      weatherDisp.textContent = `🌤️ ${diary?.weather || '快晴'}`;
+      tempDisp.textContent = `🌡️ ${diary?.temperature || '22'}℃`;
+
+      if (!hasProperDiary) {
+        diaryEmptyView.style.display = 'flex';
+        diaryEditorView.style.display = 'none';
+      } else {
+        diaryEmptyView.style.display = 'none';
+        diaryEditorView.style.display = 'flex';
+      }
+
+      diaryTextInput.value = diary?.content || "";
+      diaryCharCounter.textContent = `${diaryTextInput.value.length} 文字`;
+      diaryCommentInput.value = diary?.kuroComment || "";
+
+      const activeId = pkg.characterId || pkg.settings?.activeCharacter || 'kuro';
+      const poolKey = activeId === 'kuro' ? `kuro_daily_photos_${gCurrentDateKey}` : `kuro_daily_photos_${activeId}_${gCurrentDateKey}`;
+      if (!pkg.dailyPhotoPools) pkg.dailyPhotoPools = {};
+      if (!pkg.dailyPhotoPools[poolKey] && pkg.dailyPhotoPools[`kuro_daily_photos_${gCurrentDateKey}`]) {
+        pkg.dailyPhotoPools[poolKey] = pkg.dailyPhotoPools[`kuro_daily_photos_${gCurrentDateKey}`];
+      }
+      if (!pkg.dailyPhotoPools[poolKey]) pkg.dailyPhotoPools[poolKey] = [];
+      let photos = pkg.dailyPhotoPools[poolKey];
+
+      if (diary?.photo && !photos.some(p => p.base64 === diary.photo)) {
+        photos.unshift({ base64: diary.photo, comment: "メイン写真", time: "12:00" });
+      }
+
+      const mainPhotoBase64 = diary?.photo || (photos.length > 0 ? photos[0].base64 : null);
+
+      if (mainPhotoBase64) {
+        photoImg.src = mainPhotoBase64;
+        photoImg.style.display = 'block';
+        btnDetachPhoto.style.display = 'block';
+        photoBox.onclick = () => openZoom(mainPhotoBase64, `📖 ${dateDisp.textContent} の思い出写真`);
+
+        const mainKB = calcBase64KB(mainPhotoBase64);
+        mainPhotoSizeBadge.style.display = 'block';
+        mainPhotoSizeBadge.textContent = `${formatKBDisplay(mainKB)}${mainKB > 100 ? ' ⚠️ 未圧縮' : ''}`;
+        mainPhotoSizeBadge.classList.toggle('is-large', mainKB > 100);
+      } else {
+        photoImg.src = '';
+        photoImg.style.display = 'none';
+        btnDetachPhoto.style.display = 'none';
+        mainPhotoSizeBadge.style.display = 'none';
+        photoBox.onclick = null;
+      }
+
+      btnDetachPhoto.onclick = (e) => {
+        e.stopPropagation();
+        if (diary) {
+          diary.photo = null;
+          renderCurrentSpread();
+        }
+      };
+
+      let dayPhotosTotalKB = 0;
+      photos.forEach(p => { dayPhotosTotalKB += calcBase64KB(p.base64); });
+      duoRightHeaderText.textContent = `📷 スナップ一覧（${photos.length}枚 / 計${formatKBDisplay(dayPhotosTotalKB)}）`;
+      snapGridBox.innerHTML = '';
+
+      if (photos.length === 0) {
+        snapGridBox.innerHTML = '<div style="align-self:center;text-align:center;color:#94a3b8;font-size:11px;padding:30px 10px;">スナップなし</div>';
+      } else {
+        photos.forEach((p, pIdx) => {
+          const isSelected = (mainPhotoBase64 === p.base64);
+          const pKB = calcBase64KB(p.base64);
+          const isLarge = (pKB > 100);
+
+          const item = document.createElement('div');
+          item.className = `snap-grid-item ${isSelected ? 'is-selected' : ''}`;
+          item.title = `写真 ${pIdx + 1} (${formatKBDisplay(pKB)})${isLarge ? ' ⚠️容量大' : ''}（クリックでメイン写真に切替）`;
+          item.innerHTML = `
+            <img src="${p.base64}" alt="スナップ" class="snap-grid-img">
+            <span class="snap-size-badge ${isLarge ? 'is-large' : ''}">${formatKBDisplay(pKB)}${isLarge ? '⚠️' : ''}</span>
+            <button type="button" class="btn-snap-del" title="この写真を削除">✕</button>
+          `;
+
+          item.onclick = (e) => {
+            if (e.target.classList.contains('btn-snap-del')) return;
+            if (diary) {
+              diary.photo = p.base64;
+              renderCurrentSpread();
+            }
+          };
+
+          item.querySelector('.btn-snap-del').onclick = (e) => {
+            e.stopPropagation();
+            const isOk = window.confirm(`写真 ${pIdx + 1} (${formatKBDisplay(pKB)}) を思い出から削除しますかニャ？\n（※削除すると空き容量が ${formatKBDisplay(pKB)} 増えます）`);
+            if (isOk) {
+              photos.splice(pIdx, 1);
+              if (diary && diary.photo === p.base64) {
+                diary.photo = photos.length > 0 ? photos[0].base64 : null;
+              }
+              updateSummaryPills();
+              renderCurrentSpread();
+            }
+          };
+
+          snapGridBox.appendChild(item);
+        });
+      }
+
+      // 会話タイムライン
+      const chatScroll = document.getElementById('chat-timeline-scroll');
+      const chatTitle = document.getElementById('chat-day-title');
+      const chatBadge = document.getElementById('chat-count-badge');
+      chatScroll.innerHTML = '';
+
+      const chatKey = activeId === 'kuro' ? `kuro_daily_logs_${gCurrentDateKey}` : `kuro_daily_logs_${activeId}_${gCurrentDateKey}`;
+      let logs = (pkg.dailyChatLogs && pkg.dailyChatLogs[chatKey]) ? pkg.dailyChatLogs[chatKey] : [];
+      if (logs.length === 0 && pkg.dailyChatLogs && pkg.dailyChatLogs[`kuro_daily_logs_${gCurrentDateKey}`]) {
+        logs = pkg.dailyChatLogs[`kuro_daily_logs_${gCurrentDateKey}`];
+      }
+
+      if (logs.length === 0 && pkg.recentLogs && gCurrentDateKey === gSortedDateKeys[0]) {
+        logs = pkg.recentLogs;
+      }
+
+      chatTitle.textContent = `${dateDisp.textContent.replace('（未作成）', '')} の会話`;
+      chatBadge.textContent = `${logs.length} 件の会話`;
+
+      if (logs.length === 0) {
+        chatScroll.innerHTML = `
+          <div style="text-align:center;color:#94a3b8;padding:40px 10px;font-size:13px;font-weight:700;">
+            🐾 この日の保存された会話ログはありませんニャ
+          </div>
+        `;
+      } else {
+        logs.forEach(item => {
+          const row = document.createElement('div');
+          row.className = `chat-row ${item.role === 'model' ? 'model' : 'user'}`;
+
+          const timeSpan = document.createElement('span');
+          timeSpan.className = 'chat-meta-time';
+          const partnerName = activeId === 'shiro' ? 'ホウ博士🦉' : 'クロちゃん🐾';
+          timeSpan.textContent = `${item.role === 'model' ? partnerName : '相棒'} (${item.time || ''})`;
+          row.appendChild(timeSpan);
+
+          if (item.photoUrl) {
+            const chatPhotoKB = calcBase64KB(item.photoUrl);
+            const isLarge = (chatPhotoKB > 100);
+            const imgWrap = document.createElement('div');
+            imgWrap.className = 'chat-bubble-photo-wrap';
+            imgWrap.innerHTML = `
+              <img src="${item.photoUrl}" alt="写真">
+              <span class="snap-size-badge ${isLarge ? 'is-large' : ''}" style="bottom:4px;left:4px;">${formatKBDisplay(chatPhotoKB)}${isLarge ? '⚠️' : ''}</span>
+            `;
+            imgWrap.onclick = () => openZoom(item.photoUrl, `📸 送信されたお写真 (${formatKBDisplay(chatPhotoKB)})`);
+            row.appendChild(imgWrap);
+          }
+
+          const bubble = document.createElement('div');
+          bubble.className = 'chat-bubble';
+          bubble.textContent = item.text || '';
+          row.appendChild(bubble);
+
+          chatScroll.appendChild(row);
+        });
+      }
+    }
+
+    diaryTextInput.oninput = () => {
+      const pkg = gPackageData;
+      if (!pkg) return;
+      let diary = (pkg.diaries || []).find(d => d.dateKey === gCurrentDateKey);
+      if (diary) {
+        diary.content = diaryTextInput.value;
+        diaryCharCounter.textContent = `${diaryTextInput.value.length} 文字`;
+      }
+    };
+
+    diaryCommentInput.oninput = () => {
+      const pkg = gPackageData;
+      if (!pkg) return;
+      let diary = (pkg.diaries || []).find(d => d.dateKey === gCurrentDateKey);
+      if (diary) diary.kuroComment = diaryCommentInput.value;
+    };
+
+    function openZoom(src, caption) {
+      zoomImg.src = src;
+      zoomCaption.textContent = caption || "📸 写真の全貌";
+      zoomModal.classList.add('is-open');
+    }
+    zoomModal.onclick = () => zoomModal.classList.remove('is-open');
+
+    const openGuideModal = () => guideModal.classList.add('is-open');
+    const closeGuideModal = () => guideModal.classList.remove('is-open');
+    btnOpenGuide.onclick = openGuideModal;
+    btnCloseGuide.onclick = closeGuideModal;
+    guideModal.onclick = (e) => { if (e.target.id === 'guide-modal') closeGuideModal(); };
+
+    const openMemSettingsModal = () => {
+      renderMemoriesAndSettingsUI();
+      memSettingsModal.classList.add('is-open');
+    };
+    const closeMemSettingsModal = () => memSettingsModal.classList.remove('is-open');
+    btnOpenMemSettings.onclick = openMemSettingsModal;
+    btnCloseMemSettings.onclick = closeMemSettingsModal;
+    memSettingsModal.onclick = (e) => { if (e.target.id === 'mem-settings-modal') closeMemSettingsModal(); };
+
+    document.querySelectorAll('.mem-tab-btn').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('.mem-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.mem-tab-pane').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.target)?.classList.add('active');
+      };
+    });
+
+    function renderMemoriesAndSettingsUI() {
+      const pkg = gPackageData;
+      if (!pkg) return;
+
+      memoriesContainer.innerHTML = '';
+      const memories = Array.isArray(pkg.memories) ? pkg.memories : [];
+      memories.forEach((mem, idx) => {
+        const row = document.createElement('div');
+        row.className = 'mem-item-row';
+        row.innerHTML = `
+          <input type="text" class="mem-input-text" value="${mem}" data-idx="${idx}" placeholder="記憶を入力（空欄にして保存すると削除されます）">
+          <button type="button" class="btn-mem-clear" title="空欄にする" tabindex="-1">✕</button>
+        `;
+        const inp = row.querySelector('.mem-input-text');
+        row.querySelector('.btn-mem-clear').onclick = () => {
+          inp.value = '';
+          inp.focus();
+        };
+        memoriesContainer.appendChild(row);
+      });
+
+      const s = pkg.settings || {};
+      const themeLabelMap = {
+        'normal': '🌸 ノーマル（サクラピンク）',
+        'dark': '🌙 ナイトダーク（漆黒ネイビー）',
+        'mint': '🍃 フォレスト（ボタニカルミント）',
+        'pop': '🍊 キャンディ（陽だまりアプリコット）'
+      };
+      const curThemeText = themeLabelMap[s.theme] || s.theme || '🌸 ノーマル（サクラピンク）';
+
+      settingsViewGrid.innerHTML = `
+        <div><b>パートナー:</b> ${s.activeCharacter === 'shiro' ? '🦉 シロくん（ホウ博士）' : '🐾 クロちゃん'}</div>
+        <div><b>VoiceVox話者:</b> ${s.speakerId || '10'}</div>
+        <div><b>話速:</b> ${s.voiceRate || '1.05'}</div>
+        <div><b>ボタン音声:</b> ${s.buttonFeedback || 'voice'}</div>
+        <div><b>タイマー音:</b> ${s.timerSound || 'bell'}</div>
+        <div style="grid-column: span 2;"><b>カラーテーマ:</b> ${curThemeText}</div>
+        <div><b>紹介件数:</b> ニュース${s.newsCount || '2'}件 / お店${s.spotCount || '2'}件</div>
+        <div style="grid-column: span 2;"><b>自宅座標:</b> ${s.homeCoords || '東村山市（デフォルト）'}</div>
+      `;
+
+      let uncompressedCount = 0;
+      if (pkg.dailyPhotoPools) {
+        Object.values(pkg.dailyPhotoPools).forEach(arr => {
+          if (Array.isArray(arr)) {
+            arr.forEach(p => { if (calcBase64KB(p.base64) > 100) uncompressedCount++; });
+          }
+        });
+      }
+      if (uncompressedCount > 0) {
+        maintUncompressedStatus.innerHTML = `<span style="color:#ef4444;font-weight:bold;">⚠️ 100KB超の写真が ${uncompressedCount} 枚見つかりました</span>`;
+        btnRunRecompress.disabled = false;
+      } else {
+        maintUncompressedStatus.innerHTML = `<span style="color:#16a34a;font-weight:bold;">✅ すべての写真が20KB以下に軽量化されています（お掃除不要）</span>`;
+        btnRunRecompress.disabled = true;
+      }
+    }
+
+    btnAddMemory.onclick = () => {
+      const val = newMemInput.value.trim();
+      if (!val) return;
+      if (!Array.isArray(gPackageData.memories)) gPackageData.memories = [];
+      gPackageData.memories.push(val);
+      newMemInput.value = '';
+      renderMemoriesAndSettingsUI();
+    };
+
+    btnSaveMemories.onclick = () => {
+      const inputs = memoriesContainer.querySelectorAll('.mem-input-text');
+      const updatedMemories = [];
+      inputs.forEach(inp => {
+        const val = inp.value.trim();
+        if (val) updatedMemories.push(val);
+      });
+      gPackageData.memories = updatedMemories;
+      renderMemoriesAndSettingsUI();
+      alert("記憶を更新・保存しましたニャン！📌✨\n（空欄にした項目は綺麗に整理されました）");
+    };
+
+    async function compressBase64Image(base64Str, maxDimension = 320, quality = 0.50) {
+      if (!base64Str || typeof base64Str !== 'string' || !base64Str.startsWith('data:image')) return base64Str;
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+          let w = img.width, h = img.height;
+          if (w > maxDimension || h > maxDimension) {
+            if (w > h) { h = Math.round((h * maxDimension) / w); w = maxDimension; }
+            else { w = Math.round((w * maxDimension) / h); h = maxDimension; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => resolve(base64Str);
+        img.src = base64Str;
+      });
+    }
+
+    btnRunRecompress.onclick = async () => {
+      if (!gPackageData) return;
+      btnRunRecompress.disabled = true;
+      btnRunRecompress.textContent = "圧縮中…";
+
+      const pkg = gPackageData;
+      if (pkg.dailyPhotoPools) {
+        for (const poolKey in pkg.dailyPhotoPools) {
+          const arr = pkg.dailyPhotoPools[poolKey];
+          if (Array.isArray(arr)) {
+            for (let i = 0; i < arr.length; i++) {
+              if (arr[i] && arr[i].base64 && calcBase64KB(arr[i].base64) > 100) {
+                arr[i].base64 = await compressBase64Image(arr[i].base64, 320, 0.48);
+              }
+            }
+          }
+        }
+      }
+      if (Array.isArray(pkg.diaries)) {
+        for (const d of pkg.diaries) {
+          if (d && d.photo && calcBase64KB(d.photo) > 100) {
+            d.photo = await compressBase64Image(d.photo, 320, 0.48);
+          }
+        }
+      }
+
+      btnRunRecompress.textContent = "⚡ 軽量化を実行";
+      updateSummaryPills();
+      renderCurrentSpread();
+      renderMemoriesAndSettingsUI();
+      alert("未圧縮写真の軽量化が完了しましたニャン！🐾");
+    };
+
+    btnSavePackage.onclick = () => {
+      if (!gPackageData) return;
+
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const ymd = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+      const hm = `${pad(now.getHours())}${pad(now.getMinutes())}`;
+      const partnerName = gPackageData.characterId === 'shiro' ? 'シロくん' : 'クロちゃん';
+      const filename = `AIペット_${partnerName}_編集済_${ymd}_${hm}.json`;
+
+      gPackageData.exportedAt = now.toLocaleString('ja-JP');
+
+      const blob = new Blob([JSON.stringify(gPackageData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      alert(`【保存完了】\n「${filename}」を書き出しました！\n\nスマホの設定画面で「📁 ファイル読込」からこのファイルを選ぶと、推敲した日記や記憶がそのまま反映されます！\n（※スマホ側でおしゃべりした最新の会話ログは安全に保護され、消えることはありません！）`);
+    };
+
+    btnPrintPage.onclick = () => window.print();
+  </script>
+</body>
+</html>
