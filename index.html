@@ -1,4 +1,4 @@
-<!-- [v1.0.0 作業版 Rev.4] VOICEVOX話者入替（ナンバーセブン&猫使アル）・シロくん上から瞬きスタイル適用 -->
+<!-- [v1.0.0 作業版 Rev.5] ベクターポーズ制御CSS・シロくん翼羽ばたきアニメ・黒四角フォーカス枠根絶 -->
 <!DOCTYPE html>
 <html lang="ja" data-theme="normal">
 <head>
@@ -122,6 +122,12 @@
       user-select: none;
       -webkit-user-drag: none;
       -webkit-tap-highlight-color: transparent;
+      outline: none !important;
+    }
+
+    *:focus {
+      outline: none !important;
+      box-shadow: none !important;
     }
 
     body {
@@ -649,7 +655,7 @@
       animation: catStageSleep 4.0s ease-in-out infinite alternate !important;
     }
     @keyframes catStageSleep {
-      0%, 100% { transform: scale(var(--cat-scale, 1)) translateY(0); }
+      0%, 100% { transform: scale(var(--cat-scale, 1), var(--cat-scale, 1)) translateY(0); }
       50% { transform: scale(calc(var(--cat-scale, 1) * 1.012), calc(var(--cat-scale, 1) * 0.99)) translateY(2px); }
     }
 
@@ -968,17 +974,84 @@
       100% { transform: scale(1.08); filter: brightness(1.2); }
     }
 
+    /* ==========================================================================
+       ★ ベクターアバター（アニメキャラ）表示 ＆ ポーズ・羽ばたき制御完全定義
+       ========================================================================== */
     #cat-vector-avatar-container {
       width: 270px;
       height: 310px;
       position: absolute;
       bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
       display: none;
       transform-origin: bottom center;
       z-index: 10;
       pointer-events: none;
     }
     #cat-vector-avatar-container.active-mode { display: block; }
+
+    /* 全ポーズを基本非表示とし、アクティブな感情ポーズのみを表示するルール */
+    .pose-group { display: none !important; }
+    .pose-idle-active #pose-idle { display: block !important; }
+    .pose-talking-active #pose-talking { display: block !important; }
+    .pose-thinking-active #pose-thinking { display: block !important; }
+    .pose-happy-active #pose-happy { display: block !important; }
+
+    /* おてつだいモード時のみベクター角帽を表示 */
+    #vec-acc-hat { display: none; }
+    .is-assistant-mode #vec-acc-hat { display: block; }
+
+    /* シロくん専用：大喜び（Happy）時の翼パタパタ羽ばたきアニメーション */
+    .pose-happy-active .anim-happy-wings {
+      transform-origin: 100px 135px;
+      animation: shiroFlapWings 0.22s ease-in-out infinite alternate;
+    }
+    @keyframes shiroFlapWings {
+      0% { transform: scale(1, 1) rotate(0deg); }
+      50% { transform: scale(1.08, 0.88) rotate(-3deg); }
+      100% { transform: scale(0.92, 1.14) rotate(4deg); }
+    }
+
+    /* シロくん専用：お話し中（Talking）の右翼ジェスチャー */
+    .pose-talking-active .anim-talking-wing {
+      transform-origin: 140px 135px;
+      animation: shiroTalkWing 0.65s ease-in-out infinite alternate;
+    }
+    @keyframes shiroTalkWing {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(-8deg) translateY(-3px); }
+    }
+
+    /* シロくん・クロちゃん共通：考え中（Thinking）の知的な首傾げ */
+    .pose-thinking-active #head-unit {
+      transform-origin: 100px 110px;
+      animation: thinkHeadTilt 2.0s ease-in-out infinite alternate;
+    }
+    @keyframes thinkHeadTilt {
+      0% { transform: rotate(-4deg); }
+      100% { transform: rotate(5deg); }
+    }
+
+    /* シロくん・クロちゃん共通：待機中（Idle）の自然な呼吸 */
+    .pose-idle-active #head-unit {
+      transform-origin: 100px 110px;
+      animation: idleHeadBreathe 4.2s ease-in-out infinite alternate;
+    }
+    @keyframes idleHeadBreathe {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-2px); }
+    }
+
+    /* クロちゃん専用：尻尾ゆらゆら */
+    .anim-idle-tail {
+      transform-origin: 130px 190px;
+      animation: kuroTailWag 3.2s ease-in-out infinite alternate;
+    }
+    @keyframes kuroTailWag {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(8deg); }
+    }
 
     .cat-ground-shadow {
       position: absolute;
@@ -2303,7 +2376,7 @@
     }
     .diag-header { background: #1e293b; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; color: #38bdf8; font-weight: bold; }
     .diag-header-actions { display: flex; gap: 8px; }
-    .diag-act-btn { background: #334155; border: none; color: #e2e8f0; border-radius: 10px; padding: 5px 9px; font-size: 11px; cursor: font-weight: bold; }
+    .diag-act-btn { background: #334155; border: none; color: #e2e8f0; border-radius: 10px; padding: 5px 9px; font-size: 11px; cursor: pointer; font-weight: bold; }
     .diag-act-btn:active { background: #475569; }
     .diag-logs { padding: 12px 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 6px; color: #cbd5e1; }
     .log-row { line-height: 1.45; word-break: break-all; }
@@ -2765,8 +2838,8 @@
         <label>話すスピード: <span id="rate-val">1.05</span></label>
         <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.05" value="1.05">
       </div>
-
-      <div class="form-group">
+   
+　　　<div class="form-group">
         <label>お話の長さ:</label>
         <div class="segment-capsule-row" id="talk-length-segment-group">
           <button type="button" class="segment-btn is-active pink" data-talk-len="auto">🤖 自動</button>

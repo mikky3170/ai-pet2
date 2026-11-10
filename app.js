@@ -1,18 +1,19 @@
-// [v1.0.0 作業版 Rev.5] シロくん上から瞬き（top center基準・幾何連動）への完全統一
+// [v1.0.0 作業版 Rev.6] 絵日記ひとこと完全分離抽出・自動日記フォーマット同期・ベクター感情完全連動
 /* ==========================================================================
    AIペット 共通対話エンジン＆中央司令塔OS（app.js）
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全切替
    - 【クロちゃん原状復元】目の位置計算・瞬きアニメーションを前々回の元祖仕様へ100%完全復帰（デグレゼロ）
-   - 【シロくん上から瞬き】首の傾きに合わせた独立幾何計算＋上端基準（top center）で上からスッと閉じる自然な瞬き
-   - 【メガネ内まぶた】メガネ枠線は二重描画せず写真のレンズ内径にすっぽり収まる上品な目閉じ
+   - 【シロくん上から瞬き】首の傾きに合わせた独立幾何計算＋上端基準（top center）の上からスッと閉じる自然な瞬き
+   - 【絵日記ひとこと完全分離】正規表現強化＆フォールバックによるひとこと枠への確実な格納・本文混入100%根絶
+   - 【自動日記フォーマット同期】タイムライン案内カードとアルバムモーダルの表示書式・ヘッダーを完全統一
+   - 【ベクター感情完全連動】変身時のアニメキャラ表示復帰＆シロくん羽ばたき・クロちゃんポーズ完全同期
    - 【日時・天気2段ステーション】上段:日付＋時間 / 下段:天気アイコン＋市名のみ のスリム表示
    - 【トークスタイル連動】自動/短い/普通/長いの設定保存・復元に対応
    - 【発話サニタイズ】セリフから生URL文字列を物理除去しVOICEVOXのURL読み上げを完全根絶
    - 【しりとり・クイズ救済】2文字以下の単語ログを捨てずにGeminiへ届ける対話整合性
    - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
    - 【新・とりけし保護エンジン】直前の誤認識発言・ログを画面とストレージから安全にロールバック
-   - 【お散歩＆寄り道拡張】公園・カフェ・休憩場所・散策スポットのGoogleマップカード即時連携
    - 【防音シールド】タイマー完了アラーム鳴動中のマイク誤認識を物理的に完全遮断
    ========================================================================== */
 
@@ -176,7 +177,6 @@ class CatAvatarRenderer {
     });
   }
 
-  // ★重要：クロちゃんは元祖の水平座標計算に100%原状復帰、シロくんは首かしげ連動＋上端基準（top center）の上から自然な瞬き
   applyEyelidTransforms() {
     const cur = getCurChar();
     const c = this.eyelidCoords || cur.defaultEyelidCoords || { y: 172, x: 0, gap: 28, size: 16, rotate: 0 };
@@ -188,7 +188,6 @@ class CatAvatarRenderer {
     const shouldClose = isSleeping || AppCore.state.isCalibratingEyelid;
 
     if (cur.id === 'kuro') {
-      // 🐾 【クロちゃん：完全無傷の元祖座標計算式】
       const halfGap = c.gap / 2;
       const h = Math.round(c.size * 0.75);
 
@@ -212,7 +211,6 @@ class CatAvatarRenderer {
         rightEl.style.transform = `scaleY(0)`;
       }
     } else {
-      // 🦉 【シロくん：首かしげ幾何学独立計算＋上端基準（top center）の上からスッと閉じる自然な瞬き】
       const rot = c.rotate !== undefined ? c.rotate : 8;
       const h = Math.round(c.size * 0.88);
       const rad = (rot * Math.PI) / 180;
@@ -220,21 +218,18 @@ class CatAvatarRenderer {
       const dx = halfDist * Math.cos(rad);
       const dy = halfDist * Math.sin(rad);
 
-      // 左目（首かしげ時：中心から左下へ）
       leftEl.style.bottom = `${Math.round(c.y - dy)}px`;
       leftEl.style.left = `calc(50% + ${Math.round(c.x - dx - c.size / 2)}px)`;
       leftEl.style.width = `${c.size}px`;
       leftEl.style.height = `${h}px`;
       leftEl.style.transformOrigin = "top center";
 
-      // 右目（首かしげ時：中心から右上へ持ち上がる）
       rightEl.style.bottom = `${Math.round(c.y + dy)}px`;
       rightEl.style.left = `calc(50% + ${Math.round(c.x + dx - c.size / 2)}px)`;
       rightEl.style.width = `${c.size}px`;
       rightEl.style.height = `${h}px`;
       rightEl.style.transformOrigin = "top center";
 
-      // 上からスッと降りて閉じる自然な瞬き
       if (shouldClose) {
         leftEl.style.transform = `scaleY(1.05)`;
         rightEl.style.transform = `scaleY(1.05)`;
@@ -737,6 +732,7 @@ class AIThoughtEngine {
     return [];
   }
 
+  // ★重要：柔軟正規表現 ＆ 安全フォールバックによる「ひとこと」完全分離抽出
   async generateDailyDiarySummary(dailyAllLogs, targetLifeDateKey = null, targetLifeFullDate = null) {
     if (!this.apiKey) return { success: false };
 
@@ -773,18 +769,35 @@ class AIThoughtEngine {
           clean = AppCore.audio.cleanEndingNenyan(clean);
 
           let content = clean;
-          let kuroComment = "";
-          const match = clean.match(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?)\s*([^\n]+)/);
+          let extractedComment = "";
+
+          // 1. 柔軟な正規表現で「ひとこと」をあらゆる改行・カッコ表記から100%確実に抽出
+          const commentPattern = /(?:【|\n|\s)*(?:🐾\s*)?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?\s*([^\n】]+)(?:】)?/iu;
+          const match = clean.match(commentPattern);
+
           if (match) {
-            kuroComment = match[1].trim();
-            content = clean.replace(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?)\s*[^\n]+$/, '').trim();
+            extractedComment = match[1].replace(/】+$/, '').trim();
+            // 本文側から「ひとこと」ブロック全体を物理的に完全消去
+            content = clean.replace(/(?:【|\n|\s)*(?:🐾\s*)?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?\s*[\s\S]*$/iu, '').trim();
+          } else {
+            // 2. フォールバック：万一AIがタグを出力しなかった場合、最後の1文を「ひとこと」として安全抽出
+            const sentences = clean.split(/[。！？\n]+/).map(s => s.trim()).filter(Boolean);
+            if (sentences.length >= 2) {
+              const lastSentence = sentences[sentences.length - 1];
+              if (lastSentence.length <= 60 && /(?:だニャ|ニャン|ホ！|ホな|おやびん|助手)/.test(lastSentence)) {
+                extractedComment = lastSentence;
+                sentences.pop();
+                content = sentences.join('\n').trim();
+              }
+            }
           }
 
+          // 本文冒頭の日付・天気の重複挨拶を完全パージ
           content = content.replace(/^【?[0-9０-９一二三四五六七八九〇]+年[^\n]+】?\s*\n*/u, '').trim();
           content = content.replace(/^(?:今日|きょう)は[0-9０-９一二三四五六七八九〇]+年[^\n。！？]*[。！？\n]\s*/u, '').trim();
 
           const pool = StorageManager.getDailyPhotoPool(lifeKey);
-          return { success: true, diaryText: content, kuroComment, selectedPhoto: pool[0]?.base64 || null };
+          return { success: true, diaryText: content, kuroComment: extractedComment, selectedPhoto: pool[0]?.base64 || null };
         }
       }
     } catch(e) {}
@@ -794,7 +807,7 @@ class AIThoughtEngine {
 
 /* ==========================================================================
    MODULE 6: 中央司令塔（AppCore）
-   ========================================================================= */
+   ========================================================================== */
 const AppCore = {
   state: {
     isRunning: true, isThinking: false, isProcessingInput: false, isDiaryProcessing: false,
@@ -1284,6 +1297,7 @@ const AppCore = {
     return b;
   },
 
+  // ★重要：自動作成時・閲覧時のカードフォーマットをアルバムモーダルと完全同期化
   renderDiaryCard(diaryData) {
     const box = document.getElementById('chat-timeline');
     if (!box || !diaryData) return;
@@ -1292,11 +1306,21 @@ const AppCore = {
     row.className = `chat-row model`;
     const card = document.createElement('div');
     card.className = 'timeline-diary-card';
+
+    // 本文先頭の重複ヘッダー【YYYY年...】をパージしてすっきり同期表示
+    let cleanBody = (diaryData.content || '').replace(/^【?[0-9０-９一二三四五六七八九〇]+年[^\n]+】?\s*\n*/u, '').trim();
+
     card.innerHTML = `
-      <div class="timeline-diary-header"><span>📖 ${diaryData.fullDate} の${cur.title || cur.name}記録</span><span>🐾 記録完了</span></div>
-      <div class="timeline-diary-meta"><span>🌤️ 天気: ${diaryData.weather}</span><span>🌡️ 気温: ${diaryData.temperature}℃</span></div>
+      <div class="timeline-diary-header">
+        <span>📖 ${diaryData.fullDate} の${cur.title || cur.name}記録</span>
+        <span>🐾 記録完了</span>
+      </div>
+      <div class="timeline-diary-meta">
+        <span>🌤️ 天気: ${diaryData.weather || '快晴'}</span>
+        <span>🌡️ 気温: ${diaryData.temperature !== null ? diaryData.temperature + '℃' : '10℃'}</span>
+      </div>
       ${diaryData.photo ? `<div class="timeline-diary-photo"><img src="${diaryData.photo}" alt="写真" id="card-diary-img-${diaryData.dateKey}"></div>` : ''}
-      <div class="timeline-diary-body">${diaryData.content}</div>
+      <div class="timeline-diary-body">${cleanBody}</div>
       ${diaryData.kuroComment ? `
         <div class="timeline-diary-comment-box">
           <span class="timeline-diary-comment-label">🐾 ${cur.title || cur.name}のひとこと:</span>
@@ -2264,7 +2288,6 @@ const AppCore = {
     });
   },
 
-  // ★重要：首かしげ（両目傾き）スライダーを動かした瞬間に幾何学連動＆リアルタイムテスト閉眼プレビュー
   _bindEyelidSettingsUI() {
     const btnSave = document.getElementById('btn-save-eyelid-settings');
     const accordion = document.getElementById('eyelid-adjust-accordion');
