@@ -1,13 +1,15 @@
-// [v1.0.0 作業版 Rev.7] 正規表現SyntaxError完全根絶・絵日記ひとこと完全分離・ベクター感情完全連動
+// [v1.0.0 作業版 Rev.8] キャラ別音声保持・居眠り時Idle待機＆目閉じ物理強制
 /* ==========================================================================
    AIペット 共通対話エンジン＆中央司令塔OS（app.js）
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全切替
+   - 【キャラ別音声保持】キャラごとに選択したVOICEVOX音声を個別記憶・復元（初期値上書き完全根絶）
+   - 【居眠り時待機姿勢＆目閉じ強制】停止ボタン押下時に即座にIdle姿勢へ固定し確実に閉眼させてからあくび・居眠り導入
    - 【構文エラー完全根絶】正規表現を枯れた安全標準記法に固定し、SyntaxErrorの再発を完全防止
    - 【絵日記ひとこと完全分離】正規表現強化＆安全フォールバックによるひとこと枠への確実な格納・本文混入100%根絶
    - 【自動日記フォーマット同期】タイムライン案内カードとアルバムモーダルの表示書式・ヘッダーを完全統一
    - 【ベクター感情完全連動】変身時のアニメキャラ表示復帰＆シロくん羽ばたき・クロちゃんポーズ・瞬き完全同期
-   - 【クロちゃん原状復元】目の位置計算・瞬きアニメーションを前々回の元祖仕様へ100%完全復帰（デグレゼロ）
+   - 【クロちゃん原状復元】目の位置計算・瞬きアニメーションを元祖仕様へ100%完全復帰（デグレゼロ）
    - 【シロくん上から瞬き】首の傾きに合わせた独立幾何計算＋上端基準（top center）の上からスッと閉じる自然な瞬き
    - 【日時・天気2段ステーション】上段:日付＋時間 / 下段:天気アイコン＋市名のみ のスリム表示
    - 【トークスタイル連動】自動/短い/普通/長いの設定保存・復元に対応
@@ -733,7 +735,6 @@ class AIThoughtEngine {
     return [];
   }
 
-  // ★重要：構文エラー完全根絶・柔軟正規表現 ＆ 安全フォールバックによる「ひとこと」完全分離抽出
   async generateDailyDiarySummary(dailyAllLogs, targetLifeDateKey = null, targetLifeFullDate = null) {
     if (!this.apiKey) return { success: false };
 
@@ -772,7 +773,6 @@ class AIThoughtEngine {
           let content = clean;
           let extractedComment = "";
 
-          // 1. 柔軟な正規表現で「ひとこと」をあらゆる改行・カッコ表記から100%確実に抽出
           const commentPattern = /(?:【|\n|\s)*(?:🐾\s*)?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?\s*([^\n】]+)(?:】)?/iu;
           const match = clean.match(commentPattern);
 
@@ -780,7 +780,6 @@ class AIThoughtEngine {
             extractedComment = match[1].replace(/】+$/, '').trim();
             content = clean.replace(/(?:【|\n|\s)*(?:🐾\s*)?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?\s*[\s\S]*$/iu, '').trim();
           } else {
-            // 2. フォールバック：万一AIがタグを出力しなかった場合、安全な標準splitで最後の1文を抽出
             const sentences = clean.split(/[。！？\n]+/).map(s => s.trim()).filter(Boolean);
             if (sentences.length >= 2) {
               const lastSentence = sentences[sentences.length - 1];
@@ -832,7 +831,20 @@ const AppCore = {
   memories: [],
   todayLogs: [],
 
-  getSpeakerId() { return parseInt(localStorage.getItem('kuro_voice_speaker_id') || String(getCurChar().defaultSpeakerId || 10), 10); },
+  // ★重要：キャラクター個別の設定キー（kuro_voice_speaker_id_{charId}）から安全に読み込み
+  getSpeakerId() {
+    const cur = getCurChar();
+    const charSpecific = localStorage.getItem(`kuro_voice_speaker_id_${cur.id}`);
+    if (charSpecific !== null && charSpecific !== "") {
+      return parseInt(charSpecific, 10);
+    }
+    const legacy = localStorage.getItem('kuro_voice_speaker_id');
+    if (legacy !== null && legacy !== "") {
+      return parseInt(legacy, 10);
+    }
+    return parseInt(String(cur.defaultSpeakerId || 10), 10);
+  },
+
   getTimerSound() { return localStorage.getItem('kuro_timer_sound') || 'bell'; },
 
   getCurEnding(kuroEnding = "ニャ！", shiroEnding = "ホ！") {
@@ -850,12 +862,18 @@ const AppCore = {
     });
   },
 
+  // ★重要：キャラクター切り替え時にユーザーの選んだ音声を上書き破壊しない安全切替
   switchActiveCharacter(charId) {
     if (charId !== 'kuro' && charId !== 'shiro') return;
     localStorage.setItem('kuro_active_character', charId);
     const cur = getCurChar();
 
-    localStorage.setItem('kuro_voice_speaker_id', cur.defaultSpeakerId);
+    // 以前そのキャラで選んだ声があればそれを復元、未選択時のみ初期値を適用
+    const existingVoice = localStorage.getItem(`kuro_voice_speaker_id_${cur.id}`);
+    if (!existingVoice) {
+      localStorage.setItem(`kuro_voice_speaker_id_${cur.id}`, String(cur.defaultSpeakerId));
+    }
+    localStorage.setItem('kuro_voice_speaker_id', localStorage.getItem(`kuro_voice_speaker_id_${cur.id}`));
 
     if (this.avatar) {
       this.avatar.updateCharacterClass();
@@ -883,7 +901,7 @@ const AppCore = {
     this.audio.speak(welcomeMsg, null, () => this.renderBubble('model', welcomeMsg));
     const switchToast = charId === 'shiro' ? "パートナーを【ホウ博士】に切り替えたホ！" : "パートナーを【クロちゃん】に切り替えたニャン♪";
     Toast.show(switchToast, "success", 3000);
-    Logger.log(`[Character] 🔄 パートナー切替完了: ${cur.name} (${cur.id})`, "success");
+    Logger.log(`[Character] 🔄 パートナー切替完了: ${cur.name} (${cur.id}) (適用音声ID:${this.getSpeakerId()})`, "success");
   },
 
   _updateCharacterUI() {
@@ -893,7 +911,7 @@ const AppCore = {
     const snackIcon = document.getElementById('snack-btn-icon');
     const snackTxt = document.getElementById('snack-btn-text');
     if (snackIcon) snackIcon.textContent = isShiro ? '🌰' : '🐟';
-    if (snackTxt) snackTxt.textContent = isShiro ? '木の実' : 'おやつ';
+    if (snackTxt) snackTxt.textContent = isShiro ? '木の手の実' : 'おやつ';
 
     const verTag = document.getElementById('app-footer-version-tag');
     if (verTag) verTag.textContent = isShiro ? '🦉 シロくん（ホウ博士） v1.0.0' : '🐾 クロちゃん v1.0.0';
@@ -1296,7 +1314,6 @@ const AppCore = {
     return b;
   },
 
-  // ★重要：自動作成時・閲覧時のカードフォーマットをアルバムモーダルと完全同期化
   renderDiaryCard(diaryData) {
     const box = document.getElementById('chat-timeline');
     if (!box || !diaryData) return;
@@ -1535,6 +1552,12 @@ const AppCore = {
       const txt = document.getElementById('pause-text');
       if (icon) icon.textContent = "🟢";
       if (txt) txt.textContent = "会話中";
+
+      if (this.avatar) {
+        this.avatar.setEmotion('idle');
+        this.avatar.applyEyelidTransforms();
+      }
+
       const wakeMsg = cur.id === 'shiro'
         ? "ふぁ〜あ…！助手よ、目覚めたホ！どんな用件ホ？"
         : "ふぁ〜あ…！おやびん、起きたニャン🐾 なに話すニャ？";
@@ -2163,13 +2186,17 @@ const AppCore = {
       };
     });
 
+    // ★重要：キャラ個別の音声IDスロットに安全保存
     document.querySelectorAll('.voice-chip-btn').forEach(btn => {
       btn.onclick = () => {
         document.querySelectorAll('.voice-chip-btn').forEach(b => b.classList.remove('is-active'));
         btn.classList.add('is-active');
         const spk = parseInt(btn.dataset.voiceId, 10);
-        localStorage.setItem('kuro_voice_speaker_id', spk);
+        const cur = getCurChar();
+        localStorage.setItem(`kuro_voice_speaker_id_${cur.id}`, String(spk));
+        localStorage.setItem('kuro_voice_speaker_id', String(spk));
         this.audio.playEffect('aizuchi');
+        Logger.log(`[Voice] 🔊 ${cur.name}の音声を「${spk}」に個別保存`, "info");
       };
     });
 
@@ -2635,6 +2662,7 @@ const AppCore = {
       this.triggerActionVoice(ackVoice, statusAck);
     });
 
+    // ★重要：居眠りボタン押下時に直ちに表情をIdleに固定し、まぶたを自然に閉じる改修
     document.getElementById('pause-btn')?.addEventListener('click', () => {
       this.state.isRunning = !this.state.isRunning;
       const btn = document.getElementById('pause-btn');
@@ -2650,6 +2678,7 @@ const AppCore = {
       if (txt) txt.textContent = this.state.isRunning ? "会話中" : "お休み中";
 
       if (!this.state.isRunning) {
+        // 会話・思考を即時中断
         this.audio.stopListening();
         this.audio.stopSpeaking();
         this.audio.stopReadingAloud();
@@ -2658,23 +2687,20 @@ const AppCore = {
         this.state.isProcessingInput = false;
         this.state.isDiaryReading = false;
 
-        if (this.avatar) this.avatar.setEmotion('idle');
-
         petContainer?.classList.add('is-paused-mode');
         if (st) st.textContent = "💤 すやすやお休み中…";
 
-        if (this.avatar) this.avatar.triggerYawn();
-        setTimeout(() => {
-          if (!this.state.isRunning) {
-            if (this.avatar) {
-              this.avatar.setEmotion('idle');
-              this.avatar.applyEyelidTransforms();
-            }
-            if (wrap) wrap.classList.add('is-sleeping');
-          }
-        }, 500);
+        // ★最重要：喋り顔や喜び顔のまま寝ないよう、即座にIdle姿勢＆居眠りクラスを適用して閉眼！
+        if (this.avatar) {
+          this.avatar.setEmotion('idle');
+        }
+        if (wrap) wrap.classList.add('is-sleeping');
+        if (this.avatar) {
+          this.avatar.applyEyelidTransforms();
+          this.avatar.triggerYawn();
+        }
 
-        Logger.log(`[Status] 💤 お休み中（居眠りモード開始・直接目閉じ駆動）`, "info");
+        Logger.log(`[Status] 💤 お休み中（Idle待機姿勢固定・自然閉眼＆居眠り導入完了）`, "info");
       } else {
         petContainer?.classList.remove('is-paused-mode');
         if (wrap) wrap.classList.remove('is-sleeping');
@@ -2760,7 +2786,8 @@ const AppCore = {
       const currentTheme = localStorage.getItem('kuro_theme') || 'normal';
       document.querySelectorAll('.theme-card-btn').forEach(btn => btn.classList.toggle('is-active', btn.dataset.themeVal === currentTheme));
 
-      const currentSpeaker = localStorage.getItem('kuro_voice_speaker_id') || String(getCurChar().defaultSpeakerId || 10);
+      // ★重要：アクティブなキャラの個別音声IDを取得してチップをアクティブ化
+      const currentSpeaker = String(this.getSpeakerId());
       document.querySelectorAll('.voice-chip-btn').forEach(btn => btn.classList.toggle('is-active', btn.dataset.voiceId === currentSpeaker));
 
       const syncSegment = (groupId, key, defaultVal, activeClass) => {
