@@ -1,15 +1,15 @@
-// [v1.0.0 作業版 Rev.1] app.jsから安全分割された静的基盤エンジン（ストレージ・音声・GPS・日時・写真日付独立ガード）
+// [v1.0.0 作業版 Rev.9] LocationProvider表示・対話2系統分離（ヘッダー市名/会話検索町名GPS）
 /* ==========================================================================
    AIペット 共通対話基盤エンジンOS（core_engine.js）
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全動的取得
    - 【データ独立保護】キャラごとの記憶帳・絵日記・写真プールを混ざらず安全に独立保持
+   - 【位置情報2系統完全分離】ヘッダー表示用（cleanCityOnly: 市名のみ）＆ 対話・検索用（detailedTownArea: 町名付近＋GPS座標）
    - 【絵日記写真日付完全独立】写真のない日に過去の日付の写真が勝手に引き継がれる現象を物理的に完全遮断
    - 【自声エコー完全根絶】音声生成準備〜再生完了〜余韻までマイク絶対遮断フラグ（isSpeechProducing）で物理ロック
    - 【TTSレート制限(429)防護壁】429検知時のクールダウンタイマー＆安全キューイング機構
    - 【絵日記書き出し完全統一】「YYYY年M月D日 (曜日) 天気: ○○ 気温: ○○℃」ヘッダー自動整形＆重複挨拶パージ
    - 【PC逆インポート安全防護壁】PCから戻した大きな画像によるスマホ容量パンクを自動再スリム化で完全防御
-   - 【日時・天気2段ステーション】上段:日付＋時間 / 下段:天気アイコン＋市名のみ のスリム情報提供
    - 【非破壊ストレージ大掃除】原本JSONを強制ダウンロード後に安全に3〜5KB化＆重複完全排除
    - 【4.0MB自動監視アラート】4MB到達時にPCバックアップを優しく促す安全センサー常時稼働
    - 【音響完全修復】直列カスケード回路によるプツプツノイズ100%根絶＆豊かな元祖ゴロゴロ音
@@ -28,6 +28,10 @@ const CurrentCharacterFallback = {
   defaultVoiceRate: 1.05,
   imagePrefix: "",
   fillerPhrases: ["そうニャン♪", "えーっとニャ…", "確認するニャ！", "おまかせニャ！", "あそぶニャ♪", "バッチリニャ！", "はーい！"],
+  photoUserPrompt: "クロちゃん、この写真見てニャ！",
+  photoAiThoughtPrompt: "この写真を見て感想を聞かせてニャン🐾",
+  photoThinkingStatus: "📷 写真見てるニャ…",
+  photoThinkingBubble: "クロがお写真を見てるニャ…📷✨",
   cleanEnding: (t) => t,
   correctSpeechInput: (t) => t,
   defaultMemories: [],
@@ -883,7 +887,7 @@ class AudioSpeechEngine {
 const LocationProvider = {
   lat: null, lon: null, homeLat: null, homeLon: null,
   cityArea: "東村山市", detailedAddress: "東京都東村山市本町付近",
-  townLevelArea: "東村山市", cleanCityOnly: "東村山市",
+  townLevelArea: "東村山市本町付近", cleanCityOnly: "東村山市", detailedTownArea: "東村山市本町付近",
   nearbySpots: [], weather: "快晴", temperature: "10", isAtHome: true,
 
   calcDistanceMeters(lat1, lon1, lat2, lon2) {
@@ -925,7 +929,7 @@ const LocationProvider = {
           await this._reverseGeocode(this.lat, this.lon);
           this._checkHomeProximity();
           await this._fetchWeather(this.lat, this.lon);
-          Logger.log(`[GPS] 📍 リアルタイム最新測位完了: ${this.cleanCityOnly} (${this.isAtHome ? 'お家' : 'お散歩中'})`, "info");
+          Logger.log(`[GPS] 📍 リアルタイム最新測位完了: ${this.detailedTownArea} (${this.isAtHome ? 'お家' : 'お散歩中'})`, "info");
           AppCore.updateTopHeaderClockWeatherUI();
           resolve(true);
         },
@@ -956,6 +960,10 @@ const LocationProvider = {
     this.isAtHome = true;
     await this._reverseGeocode(this.lat, this.lon);
     await this._fetchWeather(this.lat, this.lon);
+    if (!this.detailedTownArea || this.detailedTownArea === "東村山市付近") {
+      this.detailedTownArea = "東村山市本町付近";
+      this.cleanCityOnly = "東村山市";
+    }
   },
 
   async _fetchWeather(lat, lon) {
@@ -980,15 +988,18 @@ const LocationProvider = {
         const a = (await res.json()).address || {};
         const pref = a.province || a.state || "";
         const city = a.city || a.ward || a.town || a.village || "";
-        const sub = a.suburb || a.quarter || "";
+        const sub = a.suburb || a.quarter || a.neighbourhood || a.city_district || "";
         
         this.cleanCityOnly = city ? city.trim() : (pref.includes("東京") ? "東村山市" : "市内");
         this.cityArea = `${pref}${city}`.trim() || "東京都東村山市";
-        this.townLevelArea = this.cleanCityOnly;
+        this.detailedTownArea = sub ? `${this.cleanCityOnly}${sub}付近` : `${this.cleanCityOnly}付近`;
+        this.townLevelArea = this.detailedTownArea;
         this.detailedAddress = [pref, city, sub].filter(Boolean).join("") || "東京都東村山市本町";
       }
     } catch(e) {
       this.cleanCityOnly = "東村山市";
+      this.detailedTownArea = "東村山市本町付近";
+      this.townLevelArea = "東村山市本町付近";
     }
   }
 };
@@ -1321,7 +1332,6 @@ const StorageManager = {
     return list.find(d => d.dateKey === dateKey) || null;
   },
 
-  // ★重要：過去写真の漏れ出し完全遮断（その日付に写真がない場合は絶対に勝手に他日の写真を入れない）
   saveDiary(entryText, customDateKey = null, customFullDate = null, photoData = null, currentLogCount = null, kuroComment = null) {
     if (!entryText || entryText.length < 15) return false;
     const timeInfo = TimeProvider.getCurrentInfo();
@@ -1332,10 +1342,10 @@ const StorageManager = {
     cleanContent = AppCore.audio.cleanEndingNenyan(cleanContent);
     let extractedComment = kuroComment;
 
-    const match = cleanContent.match(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?)\s*([^\n]+)/);
+    const match = cleanContent.match(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?|🦉\s*ホウ博士のひとこと[:：]?)\s*([^\n]+)/);
     if (match) {
       if (!extractedComment) extractedComment = match[1].trim();
-      cleanContent = cleanContent.replace(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?)\s*[^\n]+$/, '').trim();
+      cleanContent = cleanContent.replace(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?|🦉\s*ホウ博士のひとこと[:：]?)\s*[^\n]+$/, '').trim();
     }
 
     cleanContent = cleanContent.replace(/^【?[0-9０-９一二三四五六七八九〇]+年[^\n]+】?\s*\n*/u, '').trim();
@@ -1356,7 +1366,6 @@ const StorageManager = {
 
     const recordedLogCount = (currentLogCount !== null) ? currentLogCount : this.getDailyLogs(dateKey).length;
 
-    // ★重要：同じ日付に既に保存されていた写真、または明示的に渡されたphotoDataのみ適用。過去の日付からは絶対に持ってこない！
     let targetPhoto = photoData || (idx >= 0 ? list[idx].photo : null) || null;
     if (targetPhoto) {
       this.addPhotoToDailyPool(targetPhoto, "絵日記メイン写真");
@@ -1384,7 +1393,7 @@ const StorageManager = {
 
   attachPhotoToTodayDiary(photoBase64) {
     const timeInfo = TimeProvider.getCurrentInfo();
-    this.addPhotoToDailyPool(photoBase64, "写真を見せたニャ");
+    this.addPhotoToDailyPool(photoBase64, "写真を見せた記録");
     let list = this.loadAllDiaries();
     const idx = list.findIndex(d => d.dateKey === timeInfo.lifeLogKey);
     const defTxt = getCurChar().id === 'shiro'

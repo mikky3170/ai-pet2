@@ -1,17 +1,21 @@
-// [v1.0.0 作業版 Rev.8] キャラ別音声保持・居眠り時Idle待機＆目閉じ物理強制
+// [v1.0.0 作業版 Rev.11] カード救済ロジック完全共通化・セリフ言い回し依存脱却・おてつだい検索確実化
 /* ==========================================================================
    AIペット 共通対話エンジン＆中央司令塔OS（app.js）
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全切替
+   - 【カード救済ロジック完全共通化】AIのセリフの言い回し依存を撤廃し、おてつだい時の検索カード発行を100%確実化
+   - 【プラグイン写真プロンプト完全連動】写真撮影時のセリフ・AI思考依頼・吹き出しを各キャラ定義から動的取得
+   - 【今どこ町名高精度完全復帰】「今どこ？」の回答を「〇〇市〇〇町付近」の高精度で回答（ヘッダー市名表示と完全両立）
+   - 【GoogleマップGPS二重強化】検索クエリに町名レベルエリア＋精密GPS座標（&ll=&center=）を二重連携
    - 【キャラ別音声保持】キャラごとに選択したVOICEVOX音声を個別記憶・復元（初期値上書き完全根絶）
    - 【居眠り時待機姿勢＆目閉じ強制】停止ボタン押下時に即座にIdle姿勢へ固定し確実に閉眼させてからあくび・居眠り導入
+   - 【UIアイコン完全同期】絵日記カード・アルバムのひとことアイコン（クロ: 🐾 / シロ: 🦉）を完全照合
    - 【構文エラー完全根絶】正規表現を枯れた安全標準記法に固定し、SyntaxErrorの再発を完全防止
    - 【絵日記ひとこと完全分離】正規表現強化＆安全フォールバックによるひとこと枠への確実な格納・本文混入100%根絶
    - 【自動日記フォーマット同期】タイムライン案内カードとアルバムモーダルの表示書式・ヘッダーを完全統一
    - 【ベクター感情完全連動】変身時のアニメキャラ表示復帰＆シロくん羽ばたき・クロちゃんポーズ・瞬き完全同期
    - 【クロちゃん原状復元】目の位置計算・瞬きアニメーションを元祖仕様へ100%完全復帰（デグレゼロ）
    - 【シロくん上から瞬き】首の傾きに合わせた独立幾何計算＋上端基準（top center）の上からスッと閉じる自然な瞬き
-   - 【日時・天気2段ステーション】上段:日付＋時間 / 下段:天気アイコン＋市名のみ のスリム表示
    - 【トークスタイル連動】自動/短い/普通/長いの設定保存・復元に対応
    - 【発話サニタイズ】セリフから生URL文字列を物理除去しVOICEVOXのURL読み上げを完全根絶
    - 【しりとり・クイズ救済】2文字以下の単語ログを捨てずにGeminiへ届ける対話整合性
@@ -458,7 +462,7 @@ class AIThoughtEngine {
     const timeInfo = TimeProvider.getCurrentInfo();
     const weather = LocationProvider.weather;
     const temp = LocationProvider.temperature;
-    const townArea = LocationProvider.cleanCityOnly;
+    const townArea = LocationProvider.detailedTownArea || LocationProvider.cleanCityOnly || "東村山市";
     const isAtHome = LocationProvider.isAtHome;
     const isAssistant = AppCore.state.isAssistantMode;
     const talkLen = localStorage.getItem('kuro_talk_length') || 'auto';
@@ -599,8 +603,9 @@ class AIThoughtEngine {
             clean = clean.replace(/余([はがものにもと])/g, `${cur.firstPerson}$1`).replace(/余/g, cur.firstPerson);
             clean = AppCore.audio.cleanEndingNenyan(clean);
 
+            // ★重要：AIがツールを実行しなかった場合でも確実にカードを発行する完全共通救済
             if (isAssistant && cards.length === 0) {
-              const fallbackCards = this._detectCardsFromKuroSpeech(clean, promptText);
+              const fallbackCards = this._detectCardsFromSpeech(clean, promptText);
               if (fallbackCards.length > 0) cards = fallbackCards;
             }
 
@@ -648,12 +653,12 @@ class AIThoughtEngine {
   _createSmartMapCards(spotName, area) {
     const cards = [];
     const spotLimit = parseInt(localStorage.getItem('kuro_spot_count') || '2', 10);
-    const searchArea = area || LocationProvider.cleanCityOnly || "東村山市";
+    const searchArea = area || LocationProvider.detailedTownArea || LocationProvider.cleanCityOnly || "東村山市";
     const cleanSpot = spotName.replace(/おすすめ|美味しい|人気/g, '').trim() || spotName;
 
-    let queryParam = encodeURIComponent(cleanSpot + ' ' + searchArea);
+    let queryParam = encodeURIComponent(cleanSpot + ' ' + searchArea.replace(/付近$/, ''));
     if (LocationProvider.lat !== null && LocationProvider.lon !== null) {
-      queryParam += `&ll=${LocationProvider.lat},${LocationProvider.lon}`;
+      queryParam += `&ll=${LocationProvider.lat},${LocationProvider.lon}&center=${LocationProvider.lat},${LocationProvider.lon}`;
     }
 
     cards.push({
@@ -668,7 +673,7 @@ class AIThoughtEngine {
         type: 'map-sub',
         icon: '🌳',
         title: `${cleanSpot}（現在地周辺のスポット）`,
-        url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanSpot + ' 人気')}`
+        url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanSpot + ' ' + searchArea.replace(/付近$/, ''))}`
       });
     }
 
@@ -676,8 +681,8 @@ class AIThoughtEngine {
       cards.push({
         type: 'map-all',
         icon: '🗺️',
-        title: `${searchArea}の周辺おすすめ一覧（まとめ）`,
-        url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchArea + ' スポット')}`
+        title: `${searchArea.replace(/付近$/, '')}の周辺おすすめ一覧（まとめ）`,
+        url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchArea.replace(/付近$/, '') + ' スポット')}`
       });
     }
     return cards;
@@ -715,23 +720,31 @@ class AIThoughtEngine {
     return cards;
   }
 
-  _detectCardsFromKuroSpeech(speechText, userPrompt) {
+  // ★重要：AIの言葉遣いに依存しない、堅牢なカード救済フォールバック（シロくん・クロちゃん完全共通）
+  _detectCardsFromSpeech(speechText, userPrompt) {
     if (!AppCore.state.isAssistantMode) return [];
 
-    const combined = `${speechText} ${userPrompt}`;
-    const isMapConfirmed = /(?:見つけてきた|探してきた|地図で案内|地図をチェック|割り出した)/.test(speechText);
-    const isNewsConfirmed = /(?:ニュースをチェック|最新ニュース|情報を整理)/.test(speechText);
+    const combined = `${userPrompt} ${speechText}`;
 
-    if (isMapConfirmed) {
-      const match = combined.match(/(?:公園|カフェ|ベンチ|散歩|炭火ホルモン\s*丸川|丸川|餃子の満洲|ラーメン|ホルモン|餃子|焼肉|寿司|麻婆豆腐|カレー|うどん)/);
-      const spot = match ? match[0] : "おすすめスポット";
-      return this._createSmartMapCards(spot, LocationProvider.cleanCityOnly);
-    }
-    if (isNewsConfirmed) {
-      const match = combined.match(/(?:大谷翔平|プロ野球|天気|東村山|政治|経済)/);
-      const topic = match ? match[0] : "最新ニュース";
+    // 1. ニュース判定（ユーザーまたはAIの発言にニュース関連単語が含まれているか）
+    const isNewsTarget = /(?:ニュース|速報|ヘッドライン|トピックス|最新情報|大谷|話題)/i.test(combined);
+    if (isNewsTarget) {
+      const newsMatch = combined.match(/(?:大谷翔平|プロ野球|天気|東村山|政治|経済|話題)/);
+      const topic = newsMatch ? newsMatch[0] : "最新ニュース";
+      Logger.log(`[Tool] 📰 救済ロジック発動: ニュースカード発行（${topic}）`, "info");
       return this._createSmartNewsCards(topic);
     }
+
+    // 2. 地図・スポット判定（具体的なジャンル、施設、または「探して」「教えて」「どこ」が含まれているか）
+    const spotMatch = combined.match(/(?:炭火ホルモン\s*丸川|丸川|餃子の満洲|満洲|ラーメン|つけ麺|ホルモン|餃子|焼肉|寿司|鮨|カレー|うどん|そば|中華|イタリアン|居酒屋|カフェ|喫茶店|公園|ベンチ|散歩コース|休憩スポット|スポット|散策)/);
+    const hasSearchIntent = /(?:探して|教えて|どこ|場所|近く|案内|おすすめ|行きたい|食べたい)/.test(combined);
+
+    if (spotMatch || hasSearchIntent) {
+      const spot = spotMatch ? spotMatch[0] : "おすすめスポット";
+      Logger.log(`[Tool] 📍 救済ロジック発動: マップカード発行（${spot}）`, "info");
+      return this._createSmartMapCards(spot, LocationProvider.detailedTownArea || LocationProvider.cleanCityOnly);
+    }
+
     return [];
   }
 
@@ -773,12 +786,12 @@ class AIThoughtEngine {
           let content = clean;
           let extractedComment = "";
 
-          const commentPattern = /(?:【|\n|\s)*(?:🐾\s*)?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?\s*([^\n】]+)(?:】)?/iu;
+          const commentPattern = /(?:【|\n|\s)*(?:🐾|🦉\s*)?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?\s*([^\n】]+)(?:】)?/iu;
           const match = clean.match(commentPattern);
 
           if (match) {
             extractedComment = match[1].replace(/】+$/, '').trim();
-            content = clean.replace(/(?:【|\n|\s)*(?:🐾\s*)?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?\s*[\s\S]*$/iu, '').trim();
+            content = clean.replace(/(?:【|\n|\s)*(?:🐾|🦉\s*)?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?\s*[\s\S]*$/iu, '').trim();
           } else {
             const sentences = clean.split(/[。！？\n]+/).map(s => s.trim()).filter(Boolean);
             if (sentences.length >= 2) {
@@ -831,7 +844,6 @@ const AppCore = {
   memories: [],
   todayLogs: [],
 
-  // ★重要：キャラクター個別の設定キー（kuro_voice_speaker_id_{charId}）から安全に読み込み
   getSpeakerId() {
     const cur = getCurChar();
     const charSpecific = localStorage.getItem(`kuro_voice_speaker_id_${cur.id}`);
@@ -862,13 +874,11 @@ const AppCore = {
     });
   },
 
-  // ★重要：キャラクター切り替え時にユーザーの選んだ音声を上書き破壊しない安全切替
   switchActiveCharacter(charId) {
     if (charId !== 'kuro' && charId !== 'shiro') return;
     localStorage.setItem('kuro_active_character', charId);
     const cur = getCurChar();
 
-    // 以前そのキャラで選んだ声があればそれを復元、未選択時のみ初期値を適用
     const existingVoice = localStorage.getItem(`kuro_voice_speaker_id_${cur.id}`);
     if (!existingVoice) {
       localStorage.setItem(`kuro_voice_speaker_id_${cur.id}`, String(cur.defaultSpeakerId));
@@ -911,7 +921,7 @@ const AppCore = {
     const snackIcon = document.getElementById('snack-btn-icon');
     const snackTxt = document.getElementById('snack-btn-text');
     if (snackIcon) snackIcon.textContent = isShiro ? '🌰' : '🐟';
-    if (snackTxt) snackTxt.textContent = isShiro ? '木の手の実' : 'おやつ';
+    if (snackTxt) snackTxt.textContent = isShiro ? '木の実' : 'おやつ';
 
     const verTag = document.getElementById('app-footer-version-tag');
     if (verTag) verTag.textContent = isShiro ? '🦉 シロくん（ホウ博士） v1.0.0' : '🐾 クロちゃん v1.0.0';
@@ -1318,6 +1328,7 @@ const AppCore = {
     const box = document.getElementById('chat-timeline');
     if (!box || !diaryData) return;
     const cur = getCurChar();
+    const isShiro = (cur.id === 'shiro');
     const row = document.createElement('div');
     row.className = `chat-row model`;
     const card = document.createElement('div');
@@ -1328,7 +1339,7 @@ const AppCore = {
     card.innerHTML = `
       <div class="timeline-diary-header">
         <span>📖 ${diaryData.fullDate} の${cur.title || cur.name}記録</span>
-        <span>🐾 記録完了</span>
+        <span>${isShiro ? '🦉' : '🐾'} 記録完了</span>
       </div>
       <div class="timeline-diary-meta">
         <span>🌤️ 天気: ${diaryData.weather || '快晴'}</span>
@@ -1338,7 +1349,7 @@ const AppCore = {
       <div class="timeline-diary-body">${cleanBody}</div>
       ${diaryData.kuroComment ? `
         <div class="timeline-diary-comment-box">
-          <span class="timeline-diary-comment-label">🐾 ${cur.title || cur.name}のひとこと:</span>
+          <span class="timeline-diary-comment-label">${isShiro ? '🦉' : '🐾'} ${cur.title || cur.name}のひとこと:</span>
           <span class="timeline-diary-comment-text">${diaryData.kuroComment}</span>
         </div>
       ` : ''}
@@ -1395,9 +1406,7 @@ const AppCore = {
       });
 
       const cur = getCurChar();
-      const showPrompt = cur.id === 'shiro'
-        ? `${cur.title || cur.name}、この写真を観察してくれ！`
-        : `${cur.name}ちゃん、この写真見てニャ！`;
+      const showPrompt = cur.photoUserPrompt || (cur.id === 'shiro' ? "ホウ博士、この写真を観察してくれホ！" : "クロちゃん、この写真見てニャ！");
 
       this.renderBubble('user', showPrompt, [], compressedBase64);
       StorageManager.appendChatLog('user', showPrompt, compressedBase64);
@@ -1405,7 +1414,8 @@ const AppCore = {
       this._updateStorageMonitorUI();
 
       this.audio.playImmediateFiller('search');
-      this.executeThought("この写真を見て感想や考察を聞かせてくれ！", compressedBase64, true);
+      const thoughtPrompt = cur.photoAiThoughtPrompt || (cur.id === 'shiro' ? "この写真を観察して分析・考察を聞かせてくれホ！" : "この写真を見て感想を聞かせてニャン🐾");
+      this.executeThought(thoughtPrompt, compressedBase64, true);
       photoInput.value = '';
     };
   },
@@ -1649,9 +1659,10 @@ const AppCore = {
       Toast.show("現在地を確認中…📍", "info", 1500);
       await LocationProvider.fetchLocationOnDemand(false);
       const isAtHome = LocationProvider.isAtHome;
+      const currentPlace = LocationProvider.detailedTownArea || `${LocationProvider.cleanCityOnly}付近`;
       const rep = cur.id === 'shiro'
-        ? (isAtHome ? "いまは研究所（お家）でまったり待機中だホ！落ち着くホな。" : `いまは【${LocationProvider.cleanCityOnly}】でフィールドワーク中だホ！`)
-        : (isAtHome ? "いまはお家でぬくぬく、まったりしてるニャン🐾 落ち着くニャ〜♡" : `いまは【${LocationProvider.cleanCityOnly}】をお散歩中ニャ！お出かけ楽しいニャン🐾`);
+        ? (isAtHome ? "いまは研究所（お家）でまったり待機中だホ！落ち着くホな。" : `いまは【${currentPlace}】でフィールドワーク中だホ！`)
+        : (isAtHome ? "いまはお家でぬくぬく、まったりしてるニャン🐾 落ち着くニャ〜♡" : `いまは【${currentPlace}】をお散歩中ニャ！お出かけ楽しいニャン🐾`);
 
       this.audio.speak(rep, null, () => this.renderBubble('model', rep), () => {
         this.state.isProcessingInput = false;
@@ -1695,9 +1706,18 @@ const AppCore = {
     if (this.avatar && this.state.isRunning) this.avatar.setEmotion('thinking');
     const st = document.getElementById('status-text');
     const cur = getCurChar();
+    const isShiro = (cur.id === 'shiro');
 
-    if (st && this.state.isRunning) st.textContent = photoBase64 ? "📷 観察中…" : (cur.id === 'shiro' ? "💭 計算中ホ…" : "💭 考え中ニャ…");
-    const bubble = this.renderBubble('model', photoBase64 ? "観察しているホ…📷✨" : (cur.id === 'shiro' ? "ホウ博士が計算中ホ…💭" : "クロが考えてるニャ…💭"));
+    const statusText = photoBase64
+      ? (cur.photoThinkingStatus || (isShiro ? "📷 観察中ホ…" : "📷 写真見てるニャ…"))
+      : (isShiro ? "💭 計算中ホ…" : "💭 考え中ニャ…");
+
+    const bubbleText = photoBase64
+      ? (cur.photoThinkingBubble || (isShiro ? "ホウ博士が観察・分析中ホ…📷✨" : "クロがお写真を見てるニャ…📷✨"))
+      : (isShiro ? `${cur.title || cur.name}が計算中ホ…💭` : `${cur.name}が考えてるニャ…💭`);
+
+    if (st && this.state.isRunning) st.textContent = statusText;
+    const bubble = this.renderBubble('model', bubbleText);
     
     try {
       const rawLogs = StorageManager.loadRecentTimelineLogs();
@@ -1963,6 +1983,7 @@ const AppCore = {
     const timeInfo = TimeProvider.getCurrentInfo();
     const isToday = (curDateKey === timeInfo.lifeLogKey);
     const cur = getCurChar();
+    const isShiro = (cur.id === 'shiro');
 
     if (pageIndicator) pageIndicator.textContent = `${curIdx + 1} / ${dateKeys.length} 日目`;
     if (prevBtn) prevBtn.disabled = (curIdx >= dateKeys.length - 1);
@@ -1980,32 +2001,32 @@ const AppCore = {
       if (timeInfo.isEvening) {
         pageContainer.innerHTML = `
           <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fffaf5; border:2px dashed #fed7aa; border-radius:20px; padding:24px 18px; text-align:center; gap:12px;">
-            <div style="font-size:48px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">${cur.id === 'shiro' ? '🦉🌙' : '🐾🌙'}</div>
+            <div style="font-size:48px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">${isShiro ? '🦉🌙' : '🐾🌙'}</div>
             <div style="font-size:15px; font-weight:900; color:#9a3412;">📅 ${fullDate}</div>
-            <div style="font-size:13.5px; font-weight:900; color:#c2410c;">そろそろ今日の日記をまとめる時間だ${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}</div>
+            <div style="font-size:13.5px; font-weight:900; color:#c2410c;">そろそろ今日の日記をまとめる時間だ${isShiro ? 'ホ！' : 'ニャ！'}</div>
             <div style="font-size:11.5px; color:#ea580c; line-height:1.6; max-width:320px;">
-              今日の記録ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）を記録した${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}<br>
-              下のボタンを押すと、今日の楽しい思い出をぎゅっと日誌にまとめます${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}
+              今日の記録ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）を記録した${isShiro ? 'ホ！' : 'ニャ！'}<br>
+              下のボタンを押すと、今日の楽しい思い出をぎゅっと日誌にまとめます${isShiro ? 'ホ！' : 'ニャ！'}
             </div>
-            <button type="button" id="btn-create-today-now" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ 今日の日記をまとめる${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}</button>
+            <button type="button" id="btn-create-today-now" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ 今日の日記をまとめる${isShiro ? 'ホ！' : 'ニャ！'}</button>
           </div>
         `;
         document.getElementById('btn-create-today-now')?.addEventListener('click', async (e) => {
           const btn = e.currentTarget;
           btn.disabled = true;
-          btn.textContent = cur.id === 'shiro' ? "一生懸命書いてるホ…📖" : "一生懸命書いてるニャ…📖";
+          btn.textContent = isShiro ? "一生懸命書いてるホ…📖" : "一生懸命書いてるニャ…📖";
           await this._rescueCreateDiaryForDate(curDateKey, fullDate, dayLogs);
         });
       } else {
         pageContainer.innerHTML = `
           <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fffaf5; border:2px dashed #fed7aa; border-radius:20px; padding:24px 18px; text-align:center; gap:12px;">
-            <div style="font-size:48px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">${cur.id === 'shiro' ? '🦉☀️' : '🐾☀️'}</div>
+            <div style="font-size:48px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">${isShiro ? '🦉☀️' : '🐾☀️'}</div>
             <div style="font-size:15px; font-weight:900; color:#9a3412;">📅 ${fullDate}</div>
-            <div style="font-size:13.5px; font-weight:900; color:#c2410c;">今日はおやびん/助手と楽しくお話し中だ${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}</div>
+            <div style="font-size:13.5px; font-weight:900; color:#c2410c;">今日はおやびん/助手と楽しくお話し中だ${isShiro ? 'ホ！' : 'ニャ！'}</div>
             <div style="font-size:11.5px; color:#ea580c; line-height:1.6; max-width:320px;">
-              ただいま会話ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）を記録中だ${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}<br>
-              夜20時以降になったら『今日の日記書いて』と話しかけてくれ${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}<br>
-              ◀ 下の『前の日』ボタンで過去の記録アルバムをめくれます${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}
+              ただいま会話ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）を記録中だ${isShiro ? 'ホ！' : 'ニャ！'}<br>
+              夜20時以降になったら『今日の日記書いて』と話しかけてくれ${isShiro ? 'ホ！' : 'ニャ！'}<br>
+              ◀ 下の『前の日』ボタンで過去の記録アルバムをめくれます${isShiro ? 'ホ！' : 'ニャ！'}
             </div>
           </div>
         `;
@@ -2017,18 +2038,18 @@ const AppCore = {
       const hasLogs = (dayLogs && dayLogs.length >= 2);
       pageContainer.innerHTML = `
         <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fffaf5; border:2px dashed #fed7aa; border-radius:20px; padding:24px 18px; text-align:center; gap:12px;">
-          <div style="font-size:46px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">${cur.id === 'shiro' ? '🦉📖' : '🐾📖'}</div>
+          <div style="font-size:46px; filter:drop-shadow(0 2px 8px rgba(234,88,12,0.2));">${isShiro ? '🦉📖' : '🐾📖'}</div>
           <div style="font-size:15px; font-weight:900; color:#9a3412;">📅 ${fullDate}</div>
-          <div style="font-size:13px; font-weight:900; color:#c2410c;">まだ記録が書かれていません${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}</div>
+          <div style="font-size:13px; font-weight:900; color:#c2410c;">まだ記録が書かれていません${isShiro ? 'ホ！' : 'ニャ！'}</div>
           <div style="font-size:11.5px; color:#ea580c; line-height:1.6; max-width:320px;">
             ${hasLogs 
-              ? `この日の記録ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）が大切に保管されています${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}下のボタンを押すと、思い出をぎゅっと絵日記にまとめます${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}` 
-              : `この日はまだお話し記録がありません${cur.id === 'shiro' ? 'ホ。' : 'ニャ。'}`}
+              ? `この日の記録ログ（${dayLogs.length}件）とお写真（${photoPool.length}枚）が大切に保管されています${isShiro ? 'ホ！' : 'ニャ！'}下のボタンを押すと、思い出をぎゅっと絵日記にまとめます${isShiro ? 'ホ！' : 'ニャ！'}` 
+              : `この日はまだお話し記録がありません${isShiro ? 'ホ。' : 'ニャ。'}`}
           </div>
           ${hasLogs ? `
-            <button type="button" id="btn-rescue-create-diary" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ この日の絵日記を書く${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}（${fullDate}）</button>
+            <button type="button" id="btn-rescue-create-diary" style="background:linear-gradient(135deg, #f97316, #ea580c); color:#ffffff; border:none; padding:10px 22px; border-radius:14px; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 4px 12px rgba(234, 88, 12, 0.3);">✍️ この日の絵日記を書く${isShiro ? 'ホ！' : 'ニャ！'}（${fullDate}）</button>
           ` : `
-            <button type="button" id="btn-empty-create-diary" style="background:#ffedd5; border:1.5px solid #ea580c; color:#c2410c; padding:8px 18px; border-radius:12px; font-size:12px; font-weight:900; cursor:pointer;">✍️ 新しく書く${cur.id === 'shiro' ? 'ホ！' : 'ニャ！'}</button>
+            <button type="button" id="btn-empty-create-diary" style="background:#ffedd5; border:1.5px solid #ea580c; color:#c2410c; padding:8px 18px; border-radius:12px; font-size:12px; font-weight:900; cursor:pointer;">✍️ 新しく書く${isShiro ? 'ホ！' : 'ニャ！'}</button>
           `}
         </div>
       `;
@@ -2036,15 +2057,15 @@ const AppCore = {
       document.getElementById('btn-rescue-create-diary')?.addEventListener('click', async (e) => {
         const btn = e.currentTarget;
         btn.disabled = true;
-        btn.textContent = cur.id === 'shiro' ? "一生懸命書いてるホ…📖" : "一生懸命書いてるニャ…📖";
+        btn.textContent = isShiro ? "一生懸命書いてるホ…📖" : "一生懸命書いてるニャ…📖";
         await this._rescueCreateDiaryForDate(curDateKey, fullDate, dayLogs);
       });
 
       document.getElementById('btn-empty-create-diary')?.addEventListener('click', () => {
-        const dummyText = cur.id === 'shiro'
+        const dummyText = isShiro
           ? `今日も助手と一緒に充実した研究活動を行えたホ！`
           : `今日もおやびんと一緒に過ごせて幸せな一日だったニャン🐾`;
-        const comment = cur.id === 'shiro' ? "助手を信頼しているホ！" : "おやびん大好きニャ！";
+        const comment = isShiro ? "助手を信頼しているホ！" : "おやびん大好きニャ！";
         StorageManager.saveDiary(dummyText, curDateKey, fullDate, photoPool[0]?.base64 || null, 0, comment);
         this._renderStudioDiaryPage();
         this._updateStorageMonitorUI();
@@ -2060,7 +2081,7 @@ const AppCore = {
             ${hasNewLogs ? `
               <button type="button" class="btn-read-aloud" id="btn-update-with-night-logs" style="background:linear-gradient(135deg, #0284c7, #0369a1);" title="夜の会話も追加して更新するニャ！">📝 夜の記録も追加更新</button>
             ` : ''}
-            <button type="button" class="btn-read-aloud" id="btn-read-diary-aloud">${this.state.isDiaryReading ? '🛑 朗読ストップ' : `🔊 ${cur.name}が読む${cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪'}`}</button>
+            <button type="button" class="btn-read-aloud" id="btn-read-diary-aloud">${this.state.isDiaryReading ? '🛑 朗読ストップ' : `🔊 ${cur.name}が読む${isShiro ? 'ホ♪' : 'ニャ♪'}`}</button>
             <button type="button" class="book-btn-del-entry" id="btn-del-cur-diary">🗑️ 削除</button>
           </div>
         </div>
@@ -2088,7 +2109,7 @@ const AppCore = {
         </div>
 
         <div class="studio-diary-comment-box">
-          <span class="studio-diary-comment-label">🐾 ${cur.title || cur.name}のひとこと:</span>
+          <span class="studio-diary-comment-label">${isShiro ? '🦉' : '🐾'} ${cur.title || cur.name}のひとこと:</span>
           <textarea class="studio-diary-comment-textarea" id="studio-diary-comment" rows="2" placeholder="（ひとこと記録なし）">${diary.kuroComment || ""}</textarea>
         </div>
       </div>
@@ -2186,7 +2207,6 @@ const AppCore = {
       };
     });
 
-    // ★重要：キャラ個別の音声IDスロットに安全保存
     document.querySelectorAll('.voice-chip-btn').forEach(btn => {
       btn.onclick = () => {
         document.querySelectorAll('.voice-chip-btn').forEach(b => b.classList.remove('is-active'));
@@ -2662,7 +2682,6 @@ const AppCore = {
       this.triggerActionVoice(ackVoice, statusAck);
     });
 
-    // ★重要：居眠りボタン押下時に直ちに表情をIdleに固定し、まぶたを自然に閉じる改修
     document.getElementById('pause-btn')?.addEventListener('click', () => {
       this.state.isRunning = !this.state.isRunning;
       const btn = document.getElementById('pause-btn');
@@ -2678,7 +2697,6 @@ const AppCore = {
       if (txt) txt.textContent = this.state.isRunning ? "会話中" : "お休み中";
 
       if (!this.state.isRunning) {
-        // 会話・思考を即時中断
         this.audio.stopListening();
         this.audio.stopSpeaking();
         this.audio.stopReadingAloud();
@@ -2690,7 +2708,6 @@ const AppCore = {
         petContainer?.classList.add('is-paused-mode');
         if (st) st.textContent = "💤 すやすやお休み中…";
 
-        // ★最重要：喋り顔や喜び顔のまま寝ないよう、即座にIdle姿勢＆居眠りクラスを適用して閉眼！
         if (this.avatar) {
           this.avatar.setEmotion('idle');
         }
@@ -2786,7 +2803,6 @@ const AppCore = {
       const currentTheme = localStorage.getItem('kuro_theme') || 'normal';
       document.querySelectorAll('.theme-card-btn').forEach(btn => btn.classList.toggle('is-active', btn.dataset.themeVal === currentTheme));
 
-      // ★重要：アクティブなキャラの個別音声IDを取得してチップをアクティブ化
       const currentSpeaker = String(this.getSpeakerId());
       document.querySelectorAll('.voice-chip-btn').forEach(btn => btn.classList.toggle('is-active', btn.dataset.voiceId === currentSpeaker));
 
