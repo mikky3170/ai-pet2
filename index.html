@@ -1,4 +1,4 @@
-<!-- [v1.0.0 作業版 Rev.5] ベクターポーズ制御CSS・シロくん翼羽ばたきアニメ・黒四角フォーカス枠根絶 -->
+<!-- [v1.0.0 作業版 Rev.6] ベクター瞬きアニメーション・アニメ装飾モード連動CSS（クロ素顔⇔眼鏡帽/シロ眼鏡⇔眼鏡帽）・黒四角根絶 -->
 <!DOCTYPE html>
 <html lang="ja" data-theme="normal">
 <head>
@@ -175,7 +175,6 @@
     #toast-notification.error { background: #450a0a; color: #fca5a5; border: 1.5px solid #ef4444; }
     #toast-notification.info { background: #0f172a; color: #38bdf8; border: 1.5px solid #38bdf8; }
 
-    /* ★ 下部余白極小化：セーフエリアの二重重複を完全解消 */
     #pet-container {
       position: absolute;
       width: 100%;
@@ -779,7 +778,7 @@
     }
     .pet-avatar-wrapper.is-real-mode .real-eyelid-unit { display: block; }
 
-    /* 1. クロちゃん専用まぶた（元祖の美しいスタイル完全維持） */
+    /* 1. クロちゃん専用リアルまぶた */
     .real-eyelid {
       position: absolute;
       background: 
@@ -798,7 +797,7 @@
       border-bottom: 2px solid rgba(12, 14, 20, 0.95);
     }
 
-    /* 2. シロくん専用まぶた（上から自然に降りて閉じる上蓋構造・メガネ内径フィット） */
+    /* 2. シロくん専用リアルまぶた（上から自然に降りて閉じる上蓋構造） */
     .pet-avatar-wrapper.is-char-shiro .real-eyelid {
       background: 
         radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.96) 0%, rgba(241, 245, 249, 0.92) 35%, rgba(203, 213, 225, 0.88) 65%, rgba(71, 85, 105, 0.95) 95%),
@@ -812,7 +811,7 @@
       border-bottom: 2.4px solid #1e293b;
     }
 
-    /* ★ クロちゃんの元祖・自然な瞬きアニメーション完全復元 */
+    /* リアル瞬きアニメーション */
     .pet-avatar-wrapper:not(.is-char-shiro).is-real-mode.is-idling:not(.is-sleeping) .real-eyelid {
       animation: realEyeBlinkKuro 4.6s ease-in-out infinite;
     }
@@ -821,7 +820,6 @@
       96%, 98% { transform: scaleY(1.02); }
     }
 
-    /* ★ シロくんの自然な上からのパチパチ瞬きアニメーション（クロちゃんと同様に上からスッと閉じる自然な瞬き） */
     .pet-avatar-wrapper.is-char-shiro.is-real-mode.is-idling:not(.is-sleeping) .real-eyelid {
       animation: realEyeBlinkShiro 4.8s ease-in-out infinite;
     }
@@ -830,7 +828,6 @@
       96%, 98% { transform: scaleY(1.02); }
     }
 
-    /* お休み中（居眠りモード）はアニメーションを物理解除し、設定された閉眼状態で固定 */
     .pet-avatar-wrapper.is-sleeping .real-eyelid {
       animation: none !important;
     }
@@ -975,7 +972,7 @@
     }
 
     /* ==========================================================================
-       ★ ベクターアバター（アニメキャラ）表示 ＆ ポーズ・羽ばたき制御完全定義
+       ★ ベクターアバター（アニメキャラ）表示 ＆ ポーズ・瞬き・装飾連動完全定義
        ========================================================================== */
     #cat-vector-avatar-container {
       width: 270px;
@@ -998,11 +995,49 @@
     .pose-thinking-active #pose-thinking { display: block !important; }
     .pose-happy-active #pose-happy { display: block !important; }
 
-    /* おてつだいモード時のみベクター角帽を表示 */
-    #vec-acc-hat { display: none; }
-    .is-assistant-mode #vec-acc-hat { display: block; }
+    /* ★ アニメモード（ベクター）自然なパチパチ瞬きアニメーション */
+    .pose-idle-active:not(.is-sleeping) .cat-eye-blink {
+      animation: vectorEyeBlink 4.5s ease-in-out infinite;
+    }
+    @keyframes vectorEyeBlink {
+      0%, 92%, 100% { transform: scaleY(1); }
+      95%, 97% { transform: scaleY(0.08); }
+    }
 
-    /* シロくん専用：大喜び（Happy）時の翼パタパタ羽ばたきアニメーション */
+    /* お休み中（居眠りモード）はベクター瞳を閉眼状態で完全固定 */
+    .is-sleeping .cat-eye-blink {
+      animation: none !important;
+      transform: scaleY(0.08) !important;
+    }
+
+    /* ★ アニメモード限定：モード連動装飾（メガネ・帽子）の厳格制御 */
+    /* 1. クロちゃん（アニメモード）：なかよし時は完全素顔、おてつだい時のみメガネ＋帽子 */
+    .is-char-kuro:not(.is-assistant-mode) #cat-vector-accessories {
+      display: none !important;
+    }
+    .is-char-kuro.is-assistant-mode #cat-vector-accessories {
+      display: block !important;
+    }
+    .is-char-kuro.is-assistant-mode #vec-acc-glasses,
+    .is-char-kuro.is-assistant-mode #vec-acc-hat {
+      display: block !important;
+    }
+
+    /* 2. シロくん（アニメモード）：なかよし時はメガネのみ常時着用、おてつだい時のみ帽子追加 */
+    .is-char-shiro #cat-vector-accessories {
+      display: block !important;
+    }
+    .is-char-shiro #vec-acc-glasses {
+      display: block !important; /* メガネは常時装備 */
+    }
+    .is-char-shiro:not(.is-assistant-mode) #vec-acc-hat {
+      display: none !important; /* なかよし時は帽子なし */
+    }
+    .is-char-shiro.is-assistant-mode #vec-acc-hat {
+      display: block !important; /* おてつだい時は帽子着用 */
+    }
+
+    /* シロくん専用：大喜び（Happy）時の「両翼パタパタ羽ばたき」アニメーション */
     .pose-happy-active .anim-happy-wings {
       transform-origin: 100px 135px;
       animation: shiroFlapWings 0.22s ease-in-out infinite alternate;
@@ -2838,8 +2873,8 @@
         <label>話すスピード: <span id="rate-val">1.05</span></label>
         <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.05" value="1.05">
       </div>
-   
-　　　<div class="form-group">
+
+      <div class="form-group">
         <label>お話の長さ:</label>
         <div class="segment-capsule-row" id="talk-length-segment-group">
           <button type="button" class="segment-btn is-active pink" data-talk-len="auto">🤖 自動</button>
@@ -3022,7 +3057,7 @@
                 <input type="range" id="adj-eyelid-size" min="10" max="36" step="1" value="16">
                 <span class="val-disp" id="adj-eyelid-size-val" style="color:#0284c7;">16</span>
               </div>
-              <!-- 首かしげ（両目傾き・段差）スライダー（シロくんの首かしげ角度にピタリ追従） -->
+              <!-- 首かしげ（両目傾き・段差）スライダー -->
               <div class="adjust-row" style="color:#1e293b;">
                 <span>首傾き (度):</span>
                 <input type="range" id="adj-eyelid-rotate" min="-30" max="30" step="1" value="0">

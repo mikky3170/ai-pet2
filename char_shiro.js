@@ -1,16 +1,16 @@
+// [v1.0.0 作業版 Rev.3] シロくん造形刷新（ぽっちゃり丸体型・愛らしいパッチリ瞳・猫尻尾完全撤廃・両翼羽ばたき機構）
 /* ==========================================================================
    AIペット キャラクター定義プラグイン：シロくん（ホウ博士）🦉 (char_shiro.js)
    - シロくんの造形（SVGベクター）、口調、プロンプト、音声設定、初期記憶を集約
    - モチーフ：丸メガネをかけた手のひらサイズの豆メガネフクロウ（男の子）
    - 性格：博識・夜行性・メガネツンデレ（褒められると羽をパタパタして喜ぶ）
    - 一人称：「ボク」 / 飼い主さんの呼び方：「助手」
+   - 【造形全面刷新】猫の尻尾を100%完全撤廃＆ぽっちゃり愛らしい丸々としたモフモフ体型
+   - 【瞳の愛嬌強化】金色の大きなまんまる瞳にキュルンとしたハイライトを追加
+   - 【両翼パタパタ】大喜び（Happy）時に両方の翼を嬉しそうに一生懸命羽ばたく機構
+   - 【アニメ装飾連動】なかよしモード時は丸メガネのみ常時着用、おてつだいモード時のみ博士帽を追加
    - 【まぶた完全個別化】金色の丸メガネの傾き（ハの字8度）に合わせた専用まぶた初期設定
    - 【不透明博士帽】後ろの羽毛が一切透けないソリッドブラックの学術帽子を装備
-   - 【現在日付厳格アンカー】今日の日付を固定し、過去日記の日付混同を100%根絶
-   - 【絵日記重複挨拶完全禁止】本文冒頭での日付・天気等の挨拶を禁止し生き生きとした研究エピソードから開始
-   - 【モード別完全棲み分け】なかよしモードでのURL・地図案内を物理的に完全禁止
-   - 【セリフ内URL完全禁止】外部リンクはカードUIに一元化し、発話へのURL混入を根絶
-   - 【シチュエーション自律発話】自動/短い/普通/長い の4大トークスタイル完全連動
    - 共通OS（app.js）と完全に分離独立し、デグレゼロ・プラグイン動作を保証
    ========================================================================== */
 
@@ -20,8 +20,8 @@ window.Character_Shiro = {
   name: "シロ",
   title: "ホウ博士",
   species: "手のひらサイズの豆メガネフクロウ（威厳ある小さな学者・男の子）",
-  firstPerson: "ボク", // 一人称（「余」は禁止）
-  ownerCall: "助手", // 飼い主さんの呼び方
+  firstPerson: "ボク",
+  ownerCall: "助手",
 
   // リアル画像アセットの接頭辞（shiro_idle.png 等）
   imagePrefix: "shiro_",
@@ -53,10 +53,8 @@ window.Character_Shiro = {
   correctSpeechInput(text) {
     if (!text) return "";
     let t = text;
-    // シロくん・ホウ博士の呼びかけ補正
     t = t.replace(/(?:白くん|白君|しろくん|シロ君|シロクン)/gu, 'シロくん');
     t = t.replace(/(?:方博士|ほうはかせ|ほう博士|ホウはかせ|砲博士)/gu, 'ホウ博士');
-    // 家族や好物の表記ゆれ補正
     t = t.replace(/(?:ミッキー|みっきー)(?:さん)?/gu, '助手');
     t = t.replace(/(?:大成|大聖|泰成|泰聖|たいせい)(?:くん|君)?/gu, 'たいせいくん');
     t = t.replace(/(?:流星|隆成|竜成|りゅうせい)(?:くん|君)?/gu, 'りゅうせいくん');
@@ -80,11 +78,11 @@ window.Character_Shiro = {
 
   // 4. 生体キャリブレーション初期設定（シロくんの丸メガネ・傾きに合わせた専用値）
   defaultEyelidCoords: {
-    y: 184,      // 目の高さ
-    x: 0,        // 左右中心
-    gap: 36,     // フクロウのパッチリした目の間隔
-    size: 26,    // 大きな丸い瞳に合わせたサイズ
-    rotate: 8    // 写真のメガネに沿った傾き（左目+8度、右目-8度）
+    y: 184,
+    x: 0,
+    gap: 36,
+    size: 26,
+    rotate: 8
   },
 
   // 写真ごとの博士帽（帽子のみ）初期位置
@@ -106,19 +104,12 @@ window.Character_Shiro = {
             <stop offset="100%" stop-color="#020617"/>
           </linearGradient>
         </defs>
-        <!-- 威厳あるホウ博士の角帽（完全不透明ソリッドブラック・後ろが透けない仕様） -->
         <g class="real-hat-group">
-          <!-- 背景遮断用アンダーレイヤー -->
           <polygon points="70,16 122,32 70,48 18,32" fill="#020617"/>
           <path d="M42 42 Q70 33 98 42 L95 53 Q70 44 45 53 Z" fill="#020617"/>
-          
-          <!-- 帽子の台座（頭頂部にしっかり乗る） -->
           <path d="M44 44 Q70 35 96 44 L93 52 Q70 43 47 52 Z" fill="#0f172a" stroke="#334155" stroke-width="1.2"/>
-          <!-- 四角い天板（完全不透明） -->
           <polygon points="70,18 118,32 70,46 22,32" fill="url(#grad-shiro-mortar-solid)" stroke="#475569" stroke-width="1.6"/>
-          <!-- 天板中央の金ボタン -->
           <circle cx="70" cy="32" r="3.5" fill="#eab308" stroke="#ca8a04" stroke-width="0.8"/>
-          <!-- 揺れる金色のタッセル（房） -->
           <g class="mortar-tassel">
             <path d="M70 32 Q96 35 104 55" stroke="#ca8a04" stroke-width="2.6" fill="none"/>
             <polygon points="101,55 107,55 109,72 99,72" fill="#eab308" stroke="#ca8a04" stroke-width="0.5"/>
@@ -128,7 +119,7 @@ window.Character_Shiro = {
     `;
   },
 
-  // 5. AI対話システムプロンプト生成（現在日付アンカー ＆ トークスタイル完全連動）
+  // 5. AI対話システムプロンプト生成
   buildSystemPrompt(context) {
     const isAssistant = context.isAssistantMode;
     const talkLen = context.talkLength || "auto";
@@ -204,7 +195,7 @@ ${context.pastMemoryDiary ? `【昔の思い出】\n${context.pastMemoryDiary.co
 `;
   },
 
-  // 6. 絵日記生成プロンプト生成（冒頭重複挨拶の完全禁止 ＆ ひとこと枠固定）
+  // 6. 絵日記生成プロンプト生成
   buildDiaryPrompt(context) {
     return `
 あなたは知性派学者の豆メガネフクロウの男の子「${this.name}」（${this.title}）です。
@@ -230,160 +221,185 @@ ${context.pastMemoryDiary ? `【昔の思い出】\n${context.pastMemoryDiary.co
 `;
   },
 
-  // 7. ベクターSVGアバターのHTMLマークアップ（白フクロウ・丸メガネ造形 ＆ おてつだい時の博士帽）
+  // 7. ベクターSVGアバターのHTMLマークアップ（尻尾完全排除・ぽっちゃり丸体型・キュルン瞳・両翼羽ばたき）
   getVectorAvatarSvg() {
     return `
-      <svg viewBox="0 0 200 240" id="cat-vector-avatar" style="width:270px; height:310px; position:absolute; bottom:0; transform-origin:bottom center; z-index:10; pointer-events:none;">
+      <svg viewBox="0 0 200 240" id="cat-vector-avatar" style="width:270px; height:310px; position:absolute; bottom:0; left:50%; transform:translateX(-50%); transform-origin:bottom center; z-index:10; pointer-events:none;">
         <defs>
-          <radialGradient id="grad-owl-white" cx="50%" cy="45%" r="60%">
+          <!-- ぽっちゃりモフモフ白羽毛グラデーション -->
+          <radialGradient id="grad-owl-fat-white" cx="50%" cy="40%" r="62%">
             <stop offset="0%" stop-color="#ffffff"/>
-            <stop offset="65%" stop-color="#f8fafc"/>
+            <stop offset="60%" stop-color="#f8fafc"/>
+            <stop offset="85%" stop-color="#e2e8f0"/>
+            <stop offset="100%" stop-color="#cbd5e1"/>
+          </radialGradient>
+
+          <!-- お腹のやわらか影 -->
+          <linearGradient id="grad-owl-belly" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#ffffff"/>
+            <stop offset="70%" stop-color="#f1f5f9"/>
             <stop offset="100%" stop-color="#e2e8f0"/>
-          </radialGradient>
-
-          <radialGradient id="grad-owl-gold-eye" cx="45%" cy="40%" r="55%">
-            <stop offset="0%" stop-color="#fef08a"/>
-            <stop offset="40%" stop-color="#eab308"/>
-            <stop offset="85%" stop-color="#ca8a04"/>
-            <stop offset="100%" stop-color="#854d0e"/>
-          </radialGradient>
-
-          <linearGradient id="grad-owl-beak" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stop-color="#475569"/>
-            <stop offset="50%" stop-color="#1e293b"/>
-            <stop offset="100%" stop-color="#0f172a"/>
           </linearGradient>
 
-          <pattern id="owl-speckles" width="16" height="16" patternUnits="userSpaceOnUse">
-            <path d="M4 4 L6 7 L2 7 Z" fill="#94a3b8" opacity="0.45"/>
-            <path d="M12 12 L14 15 L10 15 Z" fill="#64748b" opacity="0.4"/>
+          <!-- キュルンと輝く大きな黄金の瞳 -->
+          <radialGradient id="grad-owl-sparkle-eye" cx="40%" cy="35%" r="60%">
+            <stop offset="0%" stop-color="#fef08a"/>
+            <stop offset="35%" stop-color="#facc15"/>
+            <stop offset="75%" stop-color="#ca8a04"/>
+            <stop offset="100%" stop-color="#713f12"/>
+          </radialGradient>
+
+          <!-- 愛らしい小さな嘴 -->
+          <linearGradient id="grad-owl-cute-beak" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#64748b"/>
+            <stop offset="50%" stop-color="#334155"/>
+            <stop offset="100%" stop-color="#1e293b"/>
+          </linearGradient>
+
+          <!-- 羽毛の愛らしい班点 -->
+          <pattern id="owl-soft-speckles" width="14" height="14" patternUnits="userSpaceOnUse">
+            <path d="M4 3 Q7 6 4 9" stroke="#94a3b8" stroke-width="1.2" fill="none" opacity="0.4"/>
+            <path d="M10 10 Q13 13 10 16" stroke="#94a3b8" stroke-width="1.2" fill="none" opacity="0.4"/>
           </pattern>
         </defs>
 
-        <!-- 1. 待機ポーズ (idle) -->
+        <!-- 1. 待機ポーズ (idle: ぽっちゃり丸体型でちょこんと佇む・尻尾なし) -->
         <g id="pose-idle" class="pose-group">
-          <!-- 左右の羽（たたんでいる） -->
-          <path d="M46 110 C36 130 38 180 58 205 C50 175 52 135 60 115 Z" fill="#cbd5e1"/>
-          <path d="M154 110 C164 130 162 180 142 205 C150 175 148 135 140 115 Z" fill="#cbd5e1"/>
+          <!-- 左右のふっくらたたんだ翼（肩から丸いライン） -->
+          <path d="M38 105 C26 130 30 182 54 205 C44 175 42 135 52 112 Z" fill="#cbd5e1"/>
+          <path d="M162 105 C174 130 170 182 146 205 C156 175 158 135 148 112 Z" fill="#cbd5e1"/>
           
-          <!-- まるっこい胴体 -->
-          <ellipse cx="100" cy="155" rx="54" ry="62" fill="url(#grad-owl-white)"/>
-          <ellipse cx="100" cy="158" rx="44" ry="50" fill="url(#owl-speckles)"/>
+          <!-- まるまると太ったお団子のような胴体 -->
+          <ellipse cx="100" cy="154" rx="60" ry="65" fill="url(#grad-owl-fat-white)"/>
+          <ellipse cx="100" cy="156" rx="50" ry="54" fill="url(#grad-owl-belly)"/>
+          <ellipse cx="100" cy="158" rx="42" ry="46" fill="url(#owl-soft-speckles)"/>
 
-          <!-- 足指・爪 -->
+          <!-- ちょこんとした小さな足指（木にとまる足） -->
           <g fill="#334155">
-            <path d="M78 214 C74 216 70 223 72 227 C76 226 80 220 82 215 Z"/>
-            <path d="M85 214 C85 218 84 225 87 228 C89 226 90 220 89 215 Z"/>
-            <path d="M92 214 C94 218 96 224 99 226 C100 224 98 218 95 214 Z"/>
-            <path d="M108 214 C105 218 103 224 101 226 C100 224 102 218 105 214 Z"/>
-            <path d="M115 214 C115 218 116 225 113 228 C111 226 110 220 111 215 Z"/>
-            <path d="M122 214 C126 216 130 223 128 227 C124 226 120 220 118 215 Z"/>
+            <ellipse cx="80" cy="220" rx="9" ry="5"/>
+            <ellipse cx="89" cy="221" rx="8" ry="4.5"/>
+            <ellipse cx="111" cy="221" rx="8" ry="4.5"/>
+            <ellipse cx="120" cy="220" rx="9" ry="5"/>
           </g>
         </g>
 
-        <!-- 2. お話しポーズ (talking: 右翼を上げて解説) -->
+        <!-- 2. お話しポーズ (talking: 右翼を軽く上げて知的にジェスチャー) -->
         <g id="pose-talking" class="pose-group">
-          <!-- 左羽はたたみ、右羽を斜め上に上げる -->
-          <path d="M46 110 C36 130 38 180 58 205 C50 175 52 135 60 115 Z" fill="#cbd5e1"/>
-          <g class="anim-talking-wing">
-            <path d="M142 125 C165 105 185 85 190 70 C175 80 155 105 138 135 Z" fill="#cbd5e1"/>
-            <path d="M140 128 C160 110 178 95 182 82 C170 92 152 112 136 138 Z" fill="#f8fafc"/>
+          <path d="M38 105 C26 130 30 182 54 205 C44 175 42 135 52 112 Z" fill="#cbd5e1"/>
+          <g class="anim-talking-wing" style="transform-origin: 145px 125px;">
+            <path d="M145 125 C170 105 192 82 195 68 C178 78 158 102 140 135 Z" fill="#cbd5e1"/>
+            <path d="M143 128 C165 110 185 92 188 80 C174 90 156 110 138 138 Z" fill="#f8fafc"/>
           </g>
-          <ellipse cx="100" cy="155" rx="54" ry="62" fill="url(#grad-owl-white)"/>
-          <ellipse cx="100" cy="158" rx="44" ry="50" fill="url(#owl-speckles)"/>
-          <!-- 足 -->
-          <ellipse cx="85" cy="218" rx="10" ry="5" fill="#334155"/>
-          <ellipse cx="115" cy="218" rx="10" ry="5" fill="#334155"/>
+          <ellipse cx="100" cy="154" rx="60" ry="65" fill="url(#grad-owl-fat-white)"/>
+          <ellipse cx="100" cy="156" rx="50" ry="54" fill="url(#grad-owl-belly)"/>
+          <ellipse cx="100" cy="158" rx="42" ry="46" fill="url(#owl-soft-speckles)"/>
+          <g fill="#334155">
+            <ellipse cx="80" cy="220" rx="9" ry="5"/>
+            <ellipse cx="120" cy="220" rx="9" ry="5"/>
+          </g>
         </g>
 
-        <!-- 3. 考え中ポーズ (thinking: 首をかしげ、翼先を顎に当てる) -->
+        <!-- 3. 考え中ポーズ (thinking: 首をコテンと傾げ、翼先をふっくら胸元に当てる) -->
         <g id="pose-thinking" class="pose-group">
-          <path d="M154 110 C164 130 162 180 142 205 C150 175 148 135 140 115 Z" fill="#cbd5e1"/>
-          <path d="M54 185 C46 160 62 130 84 118 C80 128 68 152 68 180 Z" fill="#cbd5e1"/>
-          <ellipse cx="100" cy="155" rx="54" ry="62" fill="url(#grad-owl-white)"/>
-          <ellipse cx="100" cy="158" rx="44" ry="50" fill="url(#owl-speckles)"/>
-          <ellipse cx="85" cy="218" rx="10" ry="5" fill="#334155"/>
-          <ellipse cx="115" cy="218" rx="10" ry="5" fill="#334155"/>
+          <path d="M162 105 C174 130 170 182 146 205 C156 175 158 135 148 112 Z" fill="#cbd5e1"/>
+          <path d="M48 185 C38 160 55 128 78 116 C74 126 62 150 62 180 Z" fill="#cbd5e1"/>
+          <ellipse cx="100" cy="154" rx="60" ry="65" fill="url(#grad-owl-fat-white)"/>
+          <ellipse cx="100" cy="156" rx="50" ry="54" fill="url(#grad-owl-belly)"/>
+          <ellipse cx="100" cy="158" rx="42" ry="46" fill="url(#owl-soft-speckles)"/>
+          <g fill="#334155">
+            <ellipse cx="80" cy="220" rx="9" ry="5"/>
+            <ellipse cx="120" cy="220" rx="9" ry="5"/>
+          </g>
         </g>
 
-        <!-- 4. 喜びポーズ (happy: 両翼を広げて大喜びパタパタ) -->
+        <!-- 4. 喜びポーズ (happy: 両翼を広げて嬉しそうにパタパタ羽ばたく！) -->
         <g id="pose-happy" class="pose-group">
-          <g class="anim-happy-wings">
-            <path d="M58 130 C30 100 12 75 8 60 C24 72 45 100 62 140 Z" fill="#cbd5e1"/>
-            <path d="M60 132 C35 105 20 85 16 72 C30 82 48 108 64 142 Z" fill="#f8fafc"/>
-            <path d="M142 130 C170 100 188 75 192 60 C176 72 155 100 138 140 Z" fill="#cbd5e1"/>
-            <path d="M140 132 C165 105 180 85 184 72 C170 82 152 108 136 142 Z" fill="#f8fafc"/>
+          <!-- 左右の翼：肩の付け根を起点に両方大きく羽ばたく構造 -->
+          <g class="anim-happy-wings" style="transform-origin: 100px 135px;">
+            <!-- 左翼 -->
+            <path d="M52 130 C20 95 6 68 2 52 C20 64 42 94 58 138 Z" fill="#cbd5e1"/>
+            <path d="M54 132 C26 100 14 78 10 64 C26 74 45 102 60 140 Z" fill="#f8fafc"/>
+            <!-- 右翼 -->
+            <path d="M148 130 C180 95 194 68 198 52 C180 64 158 94 142 138 Z" fill="#cbd5e1"/>
+            <path d="M146 132 C174 100 186 78 190 64 C174 74 155 102 140 140 Z" fill="#f8fafc"/>
           </g>
-          <ellipse cx="100" cy="155" rx="54" ry="62" fill="url(#grad-owl-white)"/>
-          <ellipse cx="100" cy="158" rx="44" ry="50" fill="url(#owl-speckles)"/>
-          <ellipse cx="85" cy="218" rx="10" ry="5" fill="#334155"/>
-          <ellipse cx="115" cy="218" rx="10" ry="5" fill="#334155"/>
+          <ellipse cx="100" cy="154" rx="60" ry="65" fill="url(#grad-owl-fat-white)"/>
+          <ellipse cx="100" cy="156" rx="50" ry="54" fill="url(#grad-owl-belly)"/>
+          <ellipse cx="100" cy="158" rx="42" ry="46" fill="url(#owl-soft-speckles)"/>
+          <g fill="#334155">
+            <ellipse cx="80" cy="220" rx="9" ry="5"/>
+            <ellipse cx="120" cy="220" rx="9" ry="5"/>
+          </g>
         </g>
 
-        <!-- 頭部ユニット（フクロウの顔・大きな金色の瞳・丸メガネ） -->
+        <!-- 頭部ユニット（丸くて愛らしい顔盤・パッチリ大きなキュルン瞳） -->
         <g id="head-unit" class="anim-idle-head">
-          <!-- 羽角（小さな耳のような羽） -->
-          <polygon points="68,52 56,30 80,44" fill="#cbd5e1"/>
-          <polygon points="132,52 144,30 120,44" fill="#cbd5e1"/>
+          <!-- 小さなモフモフ羽角（ぴょこんと生えた愛嬌羽） -->
+          <path d="M66 48 Q52 24 74 38 Z" fill="#cbd5e1"/>
+          <path d="M134 48 Q148 24 126 38 Z" fill="#cbd5e1"/>
 
-          <!-- まん丸な頭 -->
-          <circle cx="100" cy="85" r="48" fill="url(#grad-owl-white)"/>
-          <!-- フクロウ特有の顔盤（ハート型・丸型の輪郭） -->
-          <path d="M62 82 C62 62 78 50 100 62 C122 50 138 62 138 82 C138 108 118 120 100 122 C82 120 62 108 62 82 Z" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.2"/>
+          <!-- まんまるな大きな頭 -->
+          <circle cx="100" cy="80" r="50" fill="url(#grad-owl-fat-white)"/>
+          <!-- フクロウのハート型ふっくら顔盤（より丸く愛らしい輪郭） -->
+          <path d="M58 78 C58 56 75 45 100 58 C125 45 142 56 142 78 C142 106 122 118 100 120 C78 118 58 106 58 78 Z" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.4"/>
 
-          <!-- 目：通常 (eyes-normal: パッチリ大きな黄金の瞳) -->
-          <g id="eyes-normal" class="cat-eye-blink" style="transform-origin: 100px 84px;">
-            <circle cx="80" cy="84" r="15" fill="url(#grad-owl-gold-eye)"/>
-            <circle cx="80" cy="84" r="9" fill="#090d16"/>
-            <circle cx="77" cy="80" r="3.2" fill="#ffffff"/>
-            <circle cx="83" cy="87" r="1.5" fill="#ffffff" opacity="0.8"/>
+          <!-- 瞳：通常 (eyes-normal: キュルンと輝く大きな黄金の瞳・瞬き対応) -->
+          <g id="eyes-normal" class="cat-eye-blink" style="transform-origin: 100px 78px;">
+            <!-- 左目 -->
+            <circle cx="78" cy="78" r="16.5" fill="url(#grad-owl-sparkle-eye)"/>
+            <circle cx="78" cy="78" r="9.5" fill="#090d16"/>
+            <!-- キュルンとした大きなハイライト -->
+            <circle cx="74" cy="73" r="4.2" fill="#ffffff"/>
+            <circle cx="82" cy="82" r="2.0" fill="#ffffff" opacity="0.9"/>
+            <circle cx="74" cy="82" r="1.2" fill="#ffffff" opacity="0.7"/>
 
-            <circle cx="120" cy="84" r="15" fill="url(#grad-owl-gold-eye)"/>
-            <circle cx="120" cy="84" r="9" fill="#090d16"/>
-            <circle cx="117" cy="80" r="3.2" fill="#ffffff"/>
-            <circle cx="123" cy="87" r="1.5" fill="#ffffff" opacity="0.8"/>
+            <!-- 右目 -->
+            <circle cx="122" cy="78" r="16.5" fill="url(#grad-owl-sparkle-eye)"/>
+            <circle cx="122" cy="78" r="9.5" fill="#090d16"/>
+            <circle cx="118" cy="73" r="4.2" fill="#ffffff"/>
+            <circle cx="126" cy="82" r="2.0" fill="#ffffff" opacity="0.9"/>
+            <circle cx="118" cy="82" r="1.2" fill="#ffffff" opacity="0.7"/>
           </g>
 
-          <!-- 目：喜び (eyes-happy: ニッコリ細めた目) -->
+          <!-- 瞳：喜び (eyes-happy: ニッコリ三日月目の細め目) -->
           <g id="eyes-happy" style="display:none;">
-            <path d="M68 86 Q80 72 92 86" stroke="#ca8a04" stroke-width="4.5" stroke-linecap="round" fill="none"/>
-            <path d="M108 86 Q120 72 132 86" stroke="#ca8a04" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+            <path d="M66 80 Q78 65 90 80" stroke="#ca8a04" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+            <path d="M66 80 Q78 65 90 80" stroke="#fef08a" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            <path d="M110 80 Q122 65 134 80" stroke="#ca8a04" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+            <path d="M110 80 Q122 65 134 80" stroke="#fef08a" stroke-width="2.2" stroke-linecap="round" fill="none"/>
           </g>
 
-          <!-- くちばし -->
-          <polygon points="96,92 104,92 100,108" fill="url(#grad-owl-beak)"/>
+          <!-- ちょこんとした小さなくちばし -->
+          <polygon points="96,86 104,86 100,102" fill="url(#grad-owl-cute-beak)"/>
 
           <!-- 口（お話し中・喜び中） -->
           <g id="mouth-closed"></g>
           <g id="mouth-talking" style="display:none;">
-            <path d="M96 98 Q100 108 104 98 Z" fill="#be123c"/>
+            <path d="M96 92 Q100 104 104 92 Z" fill="#be123c"/>
           </g>
           <g id="mouth-happy" style="display:none;">
-            <path d="M95 98 Q100 112 105 98 Z" fill="#f43f5e"/>
+            <path d="M95 92 Q100 108 105 92 Z" fill="#f43f5e"/>
           </g>
 
-          <!-- 知的トレードマーク：金縁の丸メガネ（常時装備） -->
+          <!-- アニメ装飾ユニット（メガネは常時、帽子はおてつだいモード時のみ） -->
           <g id="cat-vector-accessories">
+            <!-- 金縁の丸メガネ（常時表示・知的なトレードマーク） -->
             <g id="vec-acc-glasses">
-              <!-- 左レンズ＆フレーム -->
-              <circle cx="80" cy="84" r="19" fill="rgba(255, 255, 255, 0.12)" stroke="#eab308" stroke-width="3"/>
-              <!-- 右レンズ＆フレーム -->
-              <circle cx="120" cy="84" r="19" fill="rgba(255, 255, 255, 0.12)" stroke="#eab308" stroke-width="3"/>
-              <!-- ブリッジ（鼻あて） -->
-              <path d="M99 82 Q100 78 101 82" stroke="#eab308" stroke-width="3" fill="none"/>
-              <!-- テンプル（ツル） -->
-              <line x1="61" y1="84" x2="52" y2="82" stroke="#eab308" stroke-width="2.5" stroke-linecap="round"/>
-              <line x1="139" y1="84" x2="148" y2="82" stroke="#eab308" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="78" cy="78" r="20" fill="rgba(255, 255, 255, 0.14)" stroke="#eab308" stroke-width="3.2"/>
+              <circle cx="122" cy="78" r="20" fill="rgba(255, 255, 255, 0.14)" stroke="#eab308" stroke-width="3.2"/>
+              <path d="M98 76 Q100 72 102 76" stroke="#eab308" stroke-width="3.2" fill="none"/>
+              <line x1="58" y1="78" x2="48" y2="76" stroke="#eab308" stroke-width="2.6" stroke-linecap="round"/>
+              <line x1="142" y1="78" x2="152" y2="76" stroke="#eab308" stroke-width="2.6" stroke-linecap="round"/>
             </g>
 
-            <!-- おてつだいモード時：頭上に現れる博士帽 -->
-            <g id="vec-acc-hat" style="display:none;">
-              <path d="M78 40 Q100 34 122 40 L120 46 Q100 40 80 46 Z" fill="#0f172a"/>
-              <polygon points="100,16 142,28 100,40 58,28" fill="#0f172a" stroke="#334155" stroke-width="1.2"/>
-              <circle cx="100" cy="28" r="3" fill="#eab308"/>
+            <!-- おてつだいモード時限定：頭の上に現れる小さな博士帽 -->
+            <g id="vec-acc-hat">
+              <path d="M78 34 Q100 28 122 34 L120 40 Q100 34 80 40 Z" fill="#0f172a"/>
+              <polygon points="100,10 142,22 100,34 58,22" fill="#0f172a" stroke="#334155" stroke-width="1.2"/>
+              <circle cx="100" cy="22" r="3" fill="#eab308"/>
               <g class="mortar-tassel">
-                <path d="M100 28 Q122 30 128 46" stroke="#ca8a04" stroke-width="2" fill="none"/>
-                <polygon points="126,46 131,46 132,58 124,58" fill="#eab308"/>
+                <path d="M100 22 Q122 24 128 40" stroke="#ca8a04" stroke-width="2" fill="none"/>
+                <polygon points="126,40 131,40 132,52 124,52" fill="#eab308"/>
               </g>
             </g>
           </g>
