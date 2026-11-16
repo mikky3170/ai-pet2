@@ -1,4 +1,4 @@
-// [v1.0.0 作業版 Rev.9] LocationProvider表示・対話2系統分離（ヘッダー市名/会話検索町名GPS）
+// [稼働Ver 1.1.0 作業版 Rev.10] ngrok経由PCローカル超高速合成＆クラウド自動フォールバックハイブリッド対応
 /* ==========================================================================
    AIペット 共通対話基盤エンジンOS（core_engine.js）
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
@@ -7,7 +7,9 @@
    - 【位置情報2系統完全分離】ヘッダー表示用（cleanCityOnly: 市名のみ）＆ 対話・検索用（detailedTownArea: 町名付近＋GPS座標）
    - 【絵日記写真日付完全独立】写真のない日に過去の日付の写真が勝手に引き継がれる現象を物理的に完全遮断
    - 【自声エコー完全根絶】音声生成準備〜再生完了〜余韻までマイク絶対遮断フラグ（isSpeechProducing）で物理ロック
-   - 【TTSレート制限(429)防護壁】429検知時のクールダウンタイマー＆安全キューイング機構
+   - 【TTSハイブリッド・自動フォールバック】ngrok経由PCローカル爆速合成（最優先）➔ 未起動・外出時は自動でクラウド合成へフェイルオーバー
+   - 【ngrok無料警告画面完全回避】すべてのリクエストに 'ngrok-skip-browser-warning' ヘッダーを自動付与
+   - 【TTSレート制限(429)防護壁】クラウド利用時の429検知時クールダウンタイマー＆安全キューイング機構維持
    - 【絵日記書き出し完全統一】「YYYY年M月D日 (曜日) 天気: ○○ 気温: ○○℃」ヘッダー自動整形＆重複挨拶パージ
    - 【PC逆インポート安全防護壁】PCから戻した大きな画像によるスマホ容量パンクを自動再スリム化で完全防御
    - 【非破壊ストレージ大掃除】原本JSONを強制ダウンロード後に安全に3〜5KB化＆重複完全排除
@@ -260,7 +262,7 @@ const TimeProvider = {
 };
 
 /* ==========================================================================
-   MODULE 1: 音声合成＆音声認識エンジン
+   MODULE 1: 音声合成＆音声認識エンジン（PCローカルngrok優先＆クラウドフォールバック）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -525,6 +527,7 @@ class AudioSpeechEngine {
     if (AppCore.avatar && AppCore.state.isRunning) AppCore.avatar.setEmotion('thinking');
   }
 
+  // ★ ハイブリッド音声生成エンジン（ngrok経由PCローカル最優先 ➔ クラウド自動フォールバック）
   _getVoicevoxBlobUrl(text, speakerId) {
     const key = `${speakerId}_${text}`;
     if (this.blobUrlCache.has(key)) {
@@ -535,10 +538,72 @@ class AudioSpeechEngine {
     this.ttsRequestChain = this.ttsRequestChain.catch(() => {}).then(async () => {
       if (this.blobUrlCache.has(key)) return this.blobUrlCache.get(key);
 
+      const t0 = performance.now();
+      const ngrokBaseUrl = (localStorage.getItem('kuro_ngrok_url') || 'https://crystal-statute-silencer.ngrok-free.dev').replace(/\/+$/, '');
+
+      // ========================================================
+      // 【第1優先】PCローカル（ngrok経由）超高速音声合成の試行
+      // ========================================================
+      let localSucceeded = false;
+      let localBlobUrl = null;
+
+      if (ngrokBaseUrl) {
+        const localAbortCtrl = new AbortController();
+        const localTimeoutId = setTimeout(() => localAbortCtrl.abort(), 1800); // 1.8秒応答なければ即フォールバック
+
+        try {
+          Logger.log(`[TTS] ⚡ PCローカル試行 (ngrok, 話者:${speakerId}): 「${text.substring(0, 16)}…」`, "info");
+
+          // 1. audio_query 生成
+          const qUrl = `${ngrokBaseUrl}/audio_query?text=${encodeURIComponent(text)}&speaker=${speakerId}`;
+          const qRes = await fetch(qUrl, {
+            method: 'POST',
+            headers: {
+              'ngrok-skip-browser-warning': 'true' // ngrok無料案内画面を完全バイパス
+            },
+            signal: localAbortCtrl.signal
+          });
+
+          if (!qRes.ok) throw new Error(`Query HTTP ${qRes.status}`);
+          const qJson = await qRes.json();
+
+          // 2. synthesis 音声合成
+          const sUrl = `${ngrokBaseUrl}/synthesis?speaker=${speakerId}`;
+          const sRes = await fetch(sUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'ngrok-skip-browser-warning': 'true'
+            },
+            body: JSON.stringify(qJson),
+            signal: localAbortCtrl.signal
+          });
+
+          if (!sRes.ok) throw new Error(`Synth HTTP ${sRes.status}`);
+          const blob = await sRes.blob();
+
+          clearTimeout(localTimeoutId);
+          localBlobUrl = URL.createObjectURL(blob);
+          this.blobUrlCache.set(key, localBlobUrl);
+          localSucceeded = true;
+
+          const ms = Math.round(performance.now() - t0);
+          Logger.log(`[TTS] ⚡ PCローカル合成成功 (${ms}ms) [高速GPU/CPU]`, "success");
+          return localBlobUrl;
+
+        } catch (localErr) {
+          clearTimeout(localTimeoutId);
+          Logger.log(`[TTS] ⚠️ PCローカル未接続/待機超過 (${localErr.message}) ➔ クラウドへ自動切替`, "warn");
+        }
+      }
+
+      // ========================================================
+      // 【第2優先】VOICEVOX クラウド API (自動フォールバック)
+      // ========================================================
       const now = Date.now();
       if (now < this.rateLimitCooldownUntil) {
         const remainingSec = Math.ceil((this.rateLimitCooldownUntil - now) / 1000);
-        Logger.log(`[TTS] ⏳ 429クールダウン中（残り${remainingSec}秒）。API呼び出しをスキップします`, "warn");
+        Logger.log(`[TTS] ⏳ クラウド429クールダウン中（残り${remainingSec}秒）。API呼び出しをスキップします`, "warn");
         throw new Error("TTS_RATE_LIMITED_COOLDOWN");
       }
 
@@ -546,36 +611,35 @@ class AudioSpeechEngine {
       if (elapsed < 600) await new Promise(r => setTimeout(r, 600 - elapsed));
       this.lastVoicevoxRequestTime = Date.now();
 
-      const t0 = performance.now();
       const vvKey = (localStorage.getItem('kuro_voicevox_key') || '').trim();
       let initUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodeURIComponent(text)}&speaker=${speakerId}`;
       if (vvKey) initUrl += `&key=${encodeURIComponent(vvKey)}`;
 
       const keyStatusText = vvKey ? "🔑個別キー適用済" : "🆓無料枠";
-      Logger.log(`[TTS] 音声生成開始 (${keyStatusText}, 話者:${speakerId}): 「${text.substring(0, 16)}…」`, "info");
+      Logger.log(`[TTS] ☁️ クラウド音声生成開始 (${keyStatusText}, 話者:${speakerId}): 「${text.substring(0, 16)}…」`, "info");
 
       let initRes;
       try {
         initRes = await fetch(initUrl);
       } catch (networkErr) {
-        Logger.log(`[TTS] ネットワークエラー: ${networkErr.message}`, "error");
+        Logger.log(`[TTS] クラウドネットワークエラー: ${networkErr.message}`, "error");
         throw networkErr;
       }
 
       if (initRes.status === 429) {
         this.rateLimitCooldownUntil = Date.now() + 8000;
-        Logger.log(`[TTS] ⚠️ レート制限(429)検知。8秒間のクールダウン防護壁を展開します`, "warn");
+        Logger.log(`[TTS] ⚠️ クラウド429レート制限検知。8秒間のクールダウン防護壁を展開します`, "warn");
         throw new Error("HTTPエラー 429");
       }
 
       if (!initRes.ok) {
-        Logger.log(`[TTS] HTTPエラー ${initRes.status}`, "error");
+        Logger.log(`[TTS] クラウドHTTPエラー ${initRes.status}`, "error");
         throw new Error(`HTTPエラー ${initRes.status}`);
       }
 
       const initData = await initRes.json();
       if (initData.isAudioError) {
-        Logger.log(`[TTS] VOICEVOX生成エラー`, "error");
+        Logger.log(`[TTS] VOICEVOXクラウド生成エラー`, "error");
         throw new Error("VOICEVOX生成エラー");
       }
 
@@ -600,7 +664,7 @@ class AudioSpeechEngine {
       const blobUrl = URL.createObjectURL(blob);
       this.blobUrlCache.set(key, blobUrl);
       const ms = Math.round(performance.now() - t0);
-      Logger.log(`[TTS] ✅ 音声取得完了 (${ms}ms) [${keyStatusText}]`, "success");
+      Logger.log(`[TTS] ✅ クラウド音声取得完了 (${ms}ms) [${keyStatusText}]`, "success");
       return blobUrl;
     });
 
